@@ -32,7 +32,7 @@
 	<title>Records &ndash; Archiver</title>
 </svelte:head>
 
-<h1 class="mb-6 text-[var(--vui-text-2xl)] font-extrabold tracking-tight">Records</h1>
+<h1 class="mb-6 text-[length:var(--vui-text-2xl)] font-extrabold tracking-tight">Records</h1>
 
 {#if data.records.empty}
 	<div class="vui-card">

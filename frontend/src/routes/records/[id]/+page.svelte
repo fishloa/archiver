@@ -36,7 +36,7 @@
 
 <div class="vui-card mb-6 vui-animate-fade-in">
 	<div class="flex items-start gap-3 mb-4">
-		<h1 class="text-[var(--vui-text-2xl)] font-extrabold tracking-tight">{record.title ?? '(untitled)'}</h1>
+		<h1 class="text-[length:var(--vui-text-2xl)] font-extrabold tracking-tight">{record.title ?? '(untitled)'}</h1>
 		<StatusBadge status={record.status} />
 	</div>
 
@@ -47,7 +47,7 @@
 	<div class="grid grid-cols-1 gap-x-8 gap-y-2 sm:grid-cols-2">
 		{#each metaFields as field}
 			{#if field.value}
-				<div class="flex gap-2 text-[var(--vui-text-sm)]">
+				<div class="flex gap-2 text-[length:var(--vui-text-sm)]">
 					<span class="font-medium text-text-muted">{field.label}:</span>
 					<span class="text-text-sub">{field.value}</span>
 				</div>
@@ -81,10 +81,10 @@
 					/>
 				{:else}
 					<div class="flex aspect-[3/4] items-center justify-center bg-surface">
-						<span class="text-text-dim text-[var(--vui-text-xs)]">No image</span>
+						<span class="text-text-dim text-[length:var(--vui-text-xs)]">No image</span>
 					</div>
 				{/if}
-				<div class="px-2 py-1.5 text-center text-[var(--vui-text-xs)] text-text-muted">
+				<div class="px-2 py-1.5 text-center text-[length:var(--vui-text-xs)] text-text-muted">
 					{page.pageLabel ?? `Page ${page.seq}`}
 				</div>
 			</a>

@@ -17,7 +17,7 @@
 	<a href="/records/{record.id}" class="vui-btn vui-btn-ghost vui-btn-sm">
 		<ArrowLeft size={13} strokeWidth={2} /> {record.title ?? 'Back to record'}
 	</a>
-	<span class="text-[var(--vui-text-sm)] text-text-muted tabular-nums">
+	<span class="text-[length:var(--vui-text-sm)] text-text-muted tabular-nums">
 		{page.pageLabel ?? `Page ${page.seq}`} &middot; {page.seq} of {totalPages}
 	</span>
 </div>

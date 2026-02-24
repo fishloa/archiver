@@ -1,4 +1,54 @@
-@import "tailwindcss";
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
 @import url('https://icomb.place/design-system/verdant-tokens.css');
-@import url('https://icomb.place/design-system/verdant-tailwind.css');
 @import url('https://icomb.place/design-system/verdant-base.css');
+@import "tailwindcss";
+
+/* Verdant UI → Tailwind v4 theme mapping (processed at build time) */
+@theme {
+  --color-bg:             var(--vui-bg);
+  --color-bg-deep:        var(--vui-bg-deep);
+  --color-sidebar:        var(--vui-sidebar);
+  --color-surface:        var(--vui-surface);
+  --color-surface-alt:    var(--vui-surface-alt);
+  --color-surface-hover:  var(--vui-surface-hover);
+  --color-glass:          var(--vui-glass);
+  --color-glass-border:   var(--vui-glass-border);
+  --color-border:         var(--vui-border);
+  --color-border-hover:   var(--vui-border-hover);
+  --color-text:           var(--vui-text);
+  --color-text-sub:       var(--vui-text-sub);
+  --color-text-muted:     var(--vui-text-muted);
+  --color-text-dim:       var(--vui-text-dim);
+  --color-accent:         var(--vui-accent);
+  --color-accent-hover:   var(--vui-accent-hover);
+  --color-accent-dim:     var(--vui-accent-dim);
+  --color-accent-border:  var(--vui-accent-border);
+  --color-accent-glow:    var(--vui-accent-glow);
+  --color-accent-text:    var(--vui-accent-text);
+  --color-danger:         var(--vui-danger);
+  --color-danger-dim:     var(--vui-danger-dim);
+  --color-danger-border:  var(--vui-danger-border);
+  --color-warning:        var(--vui-warning);
+  --color-warning-dim:    var(--vui-warning-dim);
+  --color-warning-border: var(--vui-warning-border);
+  --color-info:           var(--vui-info);
+  --color-info-dim:       var(--vui-info-dim);
+  --color-info-border:    var(--vui-info-border);
+  --color-purple:         var(--vui-purple);
+  --color-purple-dim:     var(--vui-purple-dim);
+  --color-purple-border:  var(--vui-purple-border);
+  --font-sans: var(--vui-font-sans);
+  --font-mono: var(--vui-font-mono);
+  --radius-sm:   var(--vui-radius-sm);
+  --radius-md:   var(--vui-radius-md);
+  --radius-lg:   var(--vui-radius-lg);
+  --radius-xl:   var(--vui-radius-xl);
+  --radius-full: var(--vui-radius-full);
+  --shadow-sm:    var(--vui-shadow-sm);
+  --shadow-md:    var(--vui-shadow-md);
+  --shadow-lg:    var(--vui-shadow-lg);
+  --shadow-xl:    var(--vui-shadow-xl);
+  --shadow-2xl:   var(--vui-shadow-2xl);
+  --shadow-inner: var(--vui-shadow-inner);
+  --shadow-focus: var(--vui-shadow-focus);
+}
