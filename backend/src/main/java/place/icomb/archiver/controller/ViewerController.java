@@ -72,18 +72,22 @@ public class ViewerController {
   public ResponseEntity<Map<String, Object>> getPageText(@PathVariable Long pageId) {
     List<PageText> texts = pageTextRepository.findByPageId(pageId);
     if (texts.isEmpty()) {
-      return ResponseEntity.ok(Map.of("pageId", pageId, "text", "", "confidence", 0.0, "engine", ""));
+      return ResponseEntity.ok(
+          Map.of("pageId", pageId, "text", "", "confidence", 0.0, "engine", ""));
     }
     // Return the highest-confidence result
-    PageText best = texts.stream()
-        .max(Comparator.comparing(PageText::getConfidence, Comparator.nullsFirst(Comparator.naturalOrder())))
-        .orElse(texts.get(0));
-    return ResponseEntity.ok(Map.of(
-        "pageId", pageId,
-        "text", best.getTextRaw() != null ? best.getTextRaw() : "",
-        "confidence", best.getConfidence() != null ? best.getConfidence() : 0.0f,
-        "engine", best.getEngine() != null ? best.getEngine() : ""
-    ));
+    PageText best =
+        texts.stream()
+            .max(
+                Comparator.comparing(
+                    PageText::getConfidence, Comparator.nullsFirst(Comparator.naturalOrder())))
+            .orElse(texts.get(0));
+    return ResponseEntity.ok(
+        Map.of(
+            "pageId", pageId,
+            "text", best.getTextRaw() != null ? best.getTextRaw() : "",
+            "confidence", best.getConfidence() != null ? best.getConfidence() : 0.0f,
+            "engine", best.getEngine() != null ? best.getEngine() : ""));
   }
 
   @GetMapping("/search")
@@ -98,32 +102,40 @@ public class ViewerController {
     long total = pageTextRepository.countByText(q);
     List<PageText> hits = pageTextRepository.searchByText(q, size, page * size);
 
-    List<Map<String, Object>> results = hits.stream().map(pt -> {
-      var pageEntity = pageRepository.findById(pt.getPageId()).orElse(null);
-      var record = pageEntity != null ? recordRepository.findById(pageEntity.getRecordId()).orElse(null) : null;
+    List<Map<String, Object>> results =
+        hits.stream()
+            .map(
+                pt -> {
+                  var pageEntity = pageRepository.findById(pt.getPageId()).orElse(null);
+                  var record =
+                      pageEntity != null
+                          ? recordRepository.findById(pageEntity.getRecordId()).orElse(null)
+                          : null;
 
-      // Extract snippet around the match
-      String text = pt.getTextRaw() != null ? pt.getTextRaw() : "";
-      String snippet = extractSnippet(text, q, 200);
+                  // Extract snippet around the match
+                  String text = pt.getTextRaw() != null ? pt.getTextRaw() : "";
+                  String snippet = extractSnippet(text, q, 200);
 
-      Map<String, Object> result = new LinkedHashMap<>();
-      result.put("pageTextId", pt.getId());
-      result.put("pageId", pt.getPageId());
-      result.put("confidence", pt.getConfidence());
-      result.put("engine", pt.getEngine());
-      result.put("snippet", snippet);
-      if (pageEntity != null) {
-        result.put("seq", pageEntity.getSeq());
-        result.put("recordId", pageEntity.getRecordId());
-      }
-      if (record != null) {
-        result.put("recordTitle", record.getTitle());
-        result.put("referenceCode", record.getReferenceCode());
-      }
-      return result;
-    }).toList();
+                  Map<String, Object> result = new LinkedHashMap<>();
+                  result.put("pageTextId", pt.getId());
+                  result.put("pageId", pt.getPageId());
+                  result.put("confidence", pt.getConfidence());
+                  result.put("engine", pt.getEngine());
+                  result.put("snippet", snippet);
+                  if (pageEntity != null) {
+                    result.put("seq", pageEntity.getSeq());
+                    result.put("recordId", pageEntity.getRecordId());
+                  }
+                  if (record != null) {
+                    result.put("recordTitle", record.getTitle());
+                    result.put("referenceCode", record.getReferenceCode());
+                  }
+                  return result;
+                })
+            .toList();
 
-    return ResponseEntity.ok(Map.of("results", results, "total", total, "page", page, "size", size));
+    return ResponseEntity.ok(
+        Map.of("results", results, "total", total, "page", page, "size", size));
   }
 
   @GetMapping("/files/{attachmentId}")

@@ -10,15 +10,18 @@ public interface PageTextRepository extends CrudRepository<PageText, Long> {
 
   List<PageText> findByPageId(Long pageId);
 
-  @Query("""
+  @Query(
+      """
       SELECT pt.* FROM page_text pt
       WHERE pt.text_norm ILIKE '%' || immutable_unaccent(lower(:term)) || '%'
       ORDER BY pt.confidence DESC NULLS LAST
       LIMIT :limit OFFSET :offset
       """)
-  List<PageText> searchByText(@Param("term") String term, @Param("limit") int limit, @Param("offset") int offset);
+  List<PageText> searchByText(
+      @Param("term") String term, @Param("limit") int limit, @Param("offset") int offset);
 
-  @Query("""
+  @Query(
+      """
       SELECT count(*) FROM page_text pt
       WHERE pt.text_norm ILIKE '%' || immutable_unaccent(lower(:term)) || '%'
       """)
