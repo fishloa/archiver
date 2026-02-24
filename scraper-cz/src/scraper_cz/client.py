@@ -1,5 +1,6 @@
 """Backend API client for the archiver service."""
 
+import json as jsonmod
 import time
 import logging
 
@@ -10,6 +11,10 @@ from .config import get_config
 log = logging.getLogger(__name__)
 
 SOURCE_SYSTEM = "vademecum.nacr.cz"
+
+# Default archive ID for Czech National Archives.
+# Must exist in the archives table.
+DEFAULT_ARCHIVE_ID = 1
 
 
 class BackendClient:
@@ -26,7 +31,7 @@ class BackendClient:
         self._client = httpx.Client(
             base_url=self.base_url,
             timeout=60.0,
-            headers={"User-Agent": f"scraper-cz/0.1"},
+            headers={"User-Agent": "scraper-cz/0.1"},
         )
 
     def close(self):
@@ -70,16 +75,29 @@ class BackendClient:
         source_record_id: str,
         metadata: dict,
     ) -> str:
-        """Create a new record in the backend. Returns the record_id."""
-        resp = self._request(
-            "POST",
-            "/records",
-            json={
-                "source_system": source_system,
-                "source_record_id": source_record_id,
-                "metadata": metadata,
-            },
-        )
+        """Create a new record in the backend. Returns the record_id.
+
+        Maps scraper metadata fields to IngestRecordRequest fields.
+        """
+        body = {
+            "archiveId": metadata.get("archive_id", DEFAULT_ARCHIVE_ID),
+            "sourceSystem": source_system,
+            "sourceRecordId": source_record_id,
+            "title": metadata.get("title", ""),
+            "description": metadata.get("desc") or metadata.get("obsah") or "",
+            "dateRangeText": metadata.get("datace", ""),
+            "referenceCode": metadata.get("sig", ""),
+            "inventoryNumber": str(metadata["inv"]) if metadata.get("inv") else None,
+            "containerType": metadata.get("karton_type") or None,
+            "containerNumber": metadata.get("karton_number") or None,
+            "findingAidNumber": metadata.get("finding_aid_number") or None,
+            "indexTerms": metadata.get("rejstrikova_hesla") or None,
+            "rawSourceMetadata": jsonmod.dumps(metadata, ensure_ascii=False),
+        }
+        # Remove None values
+        body = {k: v for k, v in body.items() if v is not None}
+
+        resp = self._request("POST", "/api/ingest/records", json=body)
         data = resp.json()
         record_id = data.get("id") or data.get("record_id")
         log.info("Created record %s for %s/%s", record_id, source_system, source_record_id)
@@ -92,39 +110,53 @@ class BackendClient:
         image_bytes: bytes,
         metadata: dict | None = None,
     ) -> str:
-        """Upload a single page image to a record. Returns attachment_id."""
-        files = {"file": (f"page_{seq:04d}.jpg", image_bytes, "image/jpeg")}
-        data = {"seq": str(seq)}
+        """Upload a single page image to a record. Returns page id."""
+        files = {"image": (f"page_{seq:04d}.jpg", image_bytes, "image/jpeg")}
+        params = {"seq": seq}
+
+        # PageMetadata is optional (pageLabel, width, height)
         if metadata:
-            import json
-            data["metadata"] = json.dumps(metadata)
+            page_meta = {}
+            if "pageLabel" in metadata:
+                page_meta["pageLabel"] = metadata["pageLabel"]
+            if "width" in metadata:
+                page_meta["width"] = metadata["width"]
+            if "height" in metadata:
+                page_meta["height"] = metadata["height"]
+            if page_meta:
+                files["metadata"] = (
+                    "metadata.json",
+                    jsonmod.dumps(page_meta).encode(),
+                    "application/json",
+                )
+
         resp = self._request(
             "POST",
-            f"/records/{record_id}/pages",
+            f"/api/ingest/records/{record_id}/pages",
             files=files,
-            data=data,
+            params=params,
         )
         result = resp.json()
-        attachment_id = result.get("id") or result.get("attachment_id")
-        log.debug("Uploaded page %d for record %s -> %s", seq, record_id, attachment_id)
-        return attachment_id
+        page_id = result.get("id")
+        log.debug("Uploaded page %d for record %s -> %s", seq, record_id, page_id)
+        return page_id
 
     def upload_pdf(self, record_id: str, pdf_bytes: bytes) -> str:
         """Upload a complete PDF to a record. Returns attachment_id."""
-        files = {"file": ("document.pdf", pdf_bytes, "application/pdf")}
+        files = {"pdf": ("document.pdf", pdf_bytes, "application/pdf")}
         resp = self._request(
             "POST",
-            f"/records/{record_id}/pdf",
+            f"/api/ingest/records/{record_id}/pdf",
             files=files,
         )
         result = resp.json()
-        attachment_id = result.get("id") or result.get("attachment_id")
+        attachment_id = result.get("attachmentId")
         log.info("Uploaded PDF for record %s -> %s", record_id, attachment_id)
         return attachment_id
 
     def complete_ingest(self, record_id: str) -> None:
         """Mark a record as fully ingested."""
-        self._request("POST", f"/records/{record_id}/complete")
+        self._request("POST", f"/api/ingest/records/{record_id}/complete")
         log.info("Completed ingest for record %s", record_id)
 
     def get_status(self, source_system: str, source_record_id: str) -> dict:
@@ -132,11 +164,7 @@ class BackendClient:
         try:
             resp = self._request(
                 "GET",
-                "/records/status",
-                params={
-                    "source_system": source_system,
-                    "source_record_id": source_record_id,
-                },
+                f"/api/ingest/status/{source_system}/{source_record_id}",
             )
             return resp.json()
         except httpx.HTTPStatusError as exc:
