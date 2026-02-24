@@ -9,14 +9,18 @@ def changed(module) {
 pipeline {
     agent any
 
+    parameters {
+        booleanParam(name: 'BUILD_ALL', defaultValue: false, description: 'Build all services regardless of changes')
+    }
+
     stages {
         stage('Detect Changes') {
             steps {
                 script {
-                    env.BUILD_BACKEND = changed('backend')
-                    env.BUILD_FRONTEND = changed('frontend')
-                    env.BUILD_SCRAPER = changed('scraper-cz')
-                    env.BUILD_OCR = changed('ocr-worker-paddle')
+                    env.BUILD_BACKEND = params.BUILD_ALL || changed('backend')
+                    env.BUILD_FRONTEND = params.BUILD_ALL || changed('frontend')
+                    env.BUILD_SCRAPER = params.BUILD_ALL || changed('scraper-cz')
+                    env.BUILD_OCR = params.BUILD_ALL || changed('ocr-worker-paddle')
                     echo "backend=${env.BUILD_BACKEND} frontend=${env.BUILD_FRONTEND} scraper-cz=${env.BUILD_SCRAPER} ocr-worker-paddle=${env.BUILD_OCR}"
                 }
             }
