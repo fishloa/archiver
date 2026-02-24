@@ -1,10 +1,10 @@
 package place.icomb.archiver.repository;
 
-import place.icomb.archiver.model.Collection;
 import java.util.List;
 import org.springframework.data.repository.CrudRepository;
 import org.springframework.data.repository.PagingAndSortingRepository;
 import org.springframework.stereotype.Repository;
+import place.icomb.archiver.model.Collection;
 
 @Repository
 public interface CollectionRepository

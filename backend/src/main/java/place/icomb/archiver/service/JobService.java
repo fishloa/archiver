@@ -1,12 +1,12 @@
 package place.icomb.archiver.service;
 
-import place.icomb.archiver.model.Job;
-import place.icomb.archiver.repository.JobRepository;
 import java.time.Instant;
 import java.util.Optional;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import place.icomb.archiver.model.Job;
+import place.icomb.archiver.repository.JobRepository;
 
 @Service
 public class JobService {

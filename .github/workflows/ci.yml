@@ -64,7 +64,7 @@ jobs:
 
       - name: Install scraper-cz
         working-directory: scraper-cz
-        run: pip install -e '.[dev]'
+        run: pip install -e '.[test]'
 
       - name: Run tests
         working-directory: scraper-cz

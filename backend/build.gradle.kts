@@ -53,7 +53,7 @@ dependencies {
 // ---------------------------------------------------------------------------
 spotless {
     java {
-        googleJavaFormat("1.25.2")
+        googleJavaFormat("1.34.1")
         removeUnusedImports()
         trimTrailingWhitespace()
         endWithNewline()

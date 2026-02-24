@@ -1,11 +1,5 @@
 package place.icomb.archiver.controller;
 
-import place.icomb.archiver.dto.PageResponse;
-import place.icomb.archiver.dto.RecordResponse;
-import place.icomb.archiver.model.Page;
-import place.icomb.archiver.model.Record;
-import place.icomb.archiver.repository.PageRepository;
-import place.icomb.archiver.repository.RecordRepository;
 import java.util.List;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -16,6 +10,12 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import place.icomb.archiver.dto.PageResponse;
+import place.icomb.archiver.dto.RecordResponse;
+import place.icomb.archiver.model.Page;
+import place.icomb.archiver.model.Record;
+import place.icomb.archiver.repository.PageRepository;
+import place.icomb.archiver.repository.RecordRepository;
 
 @RestController
 @RequestMapping("/api/records")
@@ -36,7 +36,9 @@ public class CatalogueController {
       @RequestParam(defaultValue = "createdAt") String sortBy,
       @RequestParam(defaultValue = "desc") String sortDir) {
     Sort sort =
-        sortDir.equalsIgnoreCase("asc") ? Sort.by(sortBy).ascending() : Sort.by(sortBy).descending();
+        sortDir.equalsIgnoreCase("asc")
+            ? Sort.by(sortBy).ascending()
+            : Sort.by(sortBy).descending();
     Pageable pageable = PageRequest.of(page, size, sort);
     org.springframework.data.domain.Page<Record> records = recordRepository.findAll(pageable);
     org.springframework.data.domain.Page<RecordResponse> response = records.map(this::toResponse);

@@ -1,13 +1,5 @@
 package place.icomb.archiver.controller;
 
-import place.icomb.archiver.dto.PageResponse;
-import place.icomb.archiver.model.Attachment;
-import place.icomb.archiver.model.Page;
-import place.icomb.archiver.model.Record;
-import place.icomb.archiver.repository.AttachmentRepository;
-import place.icomb.archiver.repository.PageRepository;
-import place.icomb.archiver.repository.RecordRepository;
-import place.icomb.archiver.service.StorageService;
 import org.springframework.core.io.Resource;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
@@ -16,6 +8,13 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import place.icomb.archiver.dto.PageResponse;
+import place.icomb.archiver.model.Attachment;
+import place.icomb.archiver.model.Record;
+import place.icomb.archiver.repository.AttachmentRepository;
+import place.icomb.archiver.repository.PageRepository;
+import place.icomb.archiver.repository.RecordRepository;
+import place.icomb.archiver.service.StorageService;
 
 @RestController
 @RequestMapping("/api")
@@ -57,10 +56,7 @@ public class ViewerController {
 
   @GetMapping("/files/{attachmentId}")
   public ResponseEntity<Resource> streamFile(@PathVariable Long attachmentId) {
-    Attachment attachment =
-        attachmentRepository
-            .findById(attachmentId)
-            .orElse(null);
+    Attachment attachment = attachmentRepository.findById(attachmentId).orElse(null);
     if (attachment == null) {
       return ResponseEntity.notFound().build();
     }

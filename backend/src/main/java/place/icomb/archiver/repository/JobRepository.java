@@ -1,6 +1,5 @@
 package place.icomb.archiver.repository;
 
-import place.icomb.archiver.model.Job;
 import java.util.List;
 import java.util.Optional;
 import org.springframework.data.jdbc.repository.query.Modifying;
@@ -8,6 +7,7 @@ import org.springframework.data.jdbc.repository.query.Query;
 import org.springframework.data.repository.CrudRepository;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
+import place.icomb.archiver.model.Job;
 
 @Repository
 public interface JobRepository extends CrudRepository<Job, Long> {
@@ -34,9 +34,7 @@ public interface JobRepository extends CrudRepository<Job, Long> {
 
   @Query("SELECT * FROM job WHERE record_id = :recordId AND kind = :kind AND status = :status")
   List<Job> findByRecordIdAndKindAndStatus(
-      @Param("recordId") Long recordId,
-      @Param("kind") String kind,
-      @Param("status") String status);
+      @Param("recordId") Long recordId, @Param("kind") String kind, @Param("status") String status);
 
   @Modifying
   @Query("UPDATE job SET status = :status, finished_at = now() WHERE id = :id")

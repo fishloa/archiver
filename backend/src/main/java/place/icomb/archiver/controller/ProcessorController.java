@@ -1,19 +1,5 @@
 package place.icomb.archiver.controller;
 
-import place.icomb.archiver.dto.EntityHitRequest;
-import place.icomb.archiver.dto.JobClaimRequest;
-import place.icomb.archiver.dto.JobCompleteRequest;
-import place.icomb.archiver.dto.JobFailRequest;
-import place.icomb.archiver.dto.JobResponse;
-import place.icomb.archiver.dto.OcrResultRequest;
-import place.icomb.archiver.model.Attachment;
-import place.icomb.archiver.model.Job;
-import place.icomb.archiver.model.Page;
-import place.icomb.archiver.repository.AttachmentRepository;
-import place.icomb.archiver.repository.JobRepository;
-import place.icomb.archiver.repository.PageRepository;
-import place.icomb.archiver.service.JobService;
-import place.icomb.archiver.service.StorageService;
 import jakarta.validation.Valid;
 import java.io.IOException;
 import java.time.Instant;
@@ -33,6 +19,20 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
+import place.icomb.archiver.dto.EntityHitRequest;
+import place.icomb.archiver.dto.JobClaimRequest;
+import place.icomb.archiver.dto.JobCompleteRequest;
+import place.icomb.archiver.dto.JobFailRequest;
+import place.icomb.archiver.dto.JobResponse;
+import place.icomb.archiver.dto.OcrResultRequest;
+import place.icomb.archiver.model.Attachment;
+import place.icomb.archiver.model.Job;
+import place.icomb.archiver.model.Page;
+import place.icomb.archiver.repository.AttachmentRepository;
+import place.icomb.archiver.repository.JobRepository;
+import place.icomb.archiver.repository.PageRepository;
+import place.icomb.archiver.service.JobService;
+import place.icomb.archiver.service.StorageService;
 
 @RestController
 @RequestMapping("/api/processor")
@@ -157,8 +157,7 @@ public class ProcessorController {
         request.hocr(),
         Instant.now());
 
-    return ResponseEntity.status(HttpStatus.CREATED)
-        .body(Map.of("pageId", pageId, "status", "ok"));
+    return ResponseEntity.status(HttpStatus.CREATED).body(Map.of("pageId", pageId, "status", "ok"));
   }
 
   @PostMapping(value = "/ocr/{pageId}/artifact", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
@@ -187,8 +186,7 @@ public class ProcessorController {
     attachment.setCreatedAt(Instant.now());
     attachmentRepository.save(attachment);
 
-    return ResponseEntity.status(HttpStatus.CREATED)
-        .body(Map.of("pageId", pageId, "path", path));
+    return ResponseEntity.status(HttpStatus.CREATED).body(Map.of("pageId", pageId, "path", path));
   }
 
   // -------------------------------------------------------------------------

@@ -19,33 +19,34 @@ services:
       SECRET_KEY: ${SECRET_KEY}
     restart: unless-stopped
 
-  scraper-cz:
-    image: ghcr.io/fishloa/archiver/scraper-cz:latest
-    environment:
-      BACKEND_URL: http://backend:8080
-    depends_on:
-      - backend
-    restart: unless-stopped
+  # --- Uncomment as images become available ---
+  # scraper-cz:
+  #   image: ghcr.io/fishloa/archiver/scraper-cz:latest
+  #   environment:
+  #     BACKEND_URL: http://backend:8080
+  #   depends_on:
+  #     - backend
+  #   restart: unless-stopped
 
-  ocr-worker-paddle:
-    image: ghcr.io/fishloa/archiver/ocr-worker-paddle:latest
-    environment:
-      BACKEND_URL: http://backend:8080
-      PROCESSOR_TOKEN: ${PROCESSOR_TOKEN}
-      DB_NOTIFY_URL: postgresql://${DB_USER}:${DB_PASSWORD}@${DB_HOST}:5432/${DB_NAME}
-    deploy:
-      resources:
-        reservations:
-          devices:
-            - driver: nvidia
-              count: 1
-              capabilities: [gpu]
-    depends_on:
-      - backend
-    restart: unless-stopped
+  # ocr-worker-paddle:
+  #   image: ghcr.io/fishloa/archiver/ocr-worker-paddle:latest
+  #   environment:
+  #     BACKEND_URL: http://backend:8080
+  #     PROCESSOR_TOKEN: ${PROCESSOR_TOKEN}
+  #     DB_NOTIFY_URL: postgresql://${DB_USER}:${DB_PASSWORD}@${DB_HOST}:5432/${DB_NAME}
+  #   deploy:
+  #     resources:
+  #       reservations:
+  #         devices:
+  #           - driver: nvidia
+  #             count: 1
+  #             capabilities: [gpu]
+  #   depends_on:
+  #     - backend
+  #   restart: unless-stopped
 
-  # ocr-worker-abbyy:
-  #   image: ghcr.io/fishloa/archiver/ocr-worker-abbyy:latest
+  # pdf-worker:
+  #   image: ghcr.io/fishloa/archiver/pdf-worker:latest
   #   environment:
   #     BACKEND_URL: http://backend:8080
   #     PROCESSOR_TOKEN: ${PROCESSOR_TOKEN}
@@ -54,35 +55,25 @@ services:
   #     - backend
   #   restart: unless-stopped
 
-  pdf-worker:
-    image: ghcr.io/fishloa/archiver/pdf-worker:latest
-    environment:
-      BACKEND_URL: http://backend:8080
-      PROCESSOR_TOKEN: ${PROCESSOR_TOKEN}
-      DB_NOTIFY_URL: postgresql://${DB_USER}:${DB_PASSWORD}@${DB_HOST}:5432/${DB_NAME}
-    depends_on:
-      - backend
-    restart: unless-stopped
+  # entity-worker:
+  #   image: ghcr.io/fishloa/archiver/entity-worker:latest
+  #   environment:
+  #     BACKEND_URL: http://backend:8080
+  #     PROCESSOR_TOKEN: ${PROCESSOR_TOKEN}
+  #     DB_NOTIFY_URL: postgresql://${DB_USER}:${DB_PASSWORD}@${DB_HOST}:5432/${DB_NAME}
+  #   depends_on:
+  #     - backend
+  #   restart: unless-stopped
 
-  entity-worker:
-    image: ghcr.io/fishloa/archiver/entity-worker:latest
-    environment:
-      BACKEND_URL: http://backend:8080
-      PROCESSOR_TOKEN: ${PROCESSOR_TOKEN}
-      DB_NOTIFY_URL: postgresql://${DB_USER}:${DB_PASSWORD}@${DB_HOST}:5432/${DB_NAME}
-    depends_on:
-      - backend
-    restart: unless-stopped
-
-  frontend:
-    image: ghcr.io/fishloa/archiver/frontend:latest
-    ports:
-      - "8099:3000"
-    environment:
-      PUBLIC_API_URL: http://backend:8080
-    depends_on:
-      - backend
-    restart: unless-stopped
+  # frontend:
+  #   image: ghcr.io/fishloa/archiver/frontend:latest
+  #   ports:
+  #     - "8099:3000"
+  #   environment:
+  #     PUBLIC_API_URL: http://backend:8080
+  #   depends_on:
+  #     - backend
+  #   restart: unless-stopped
 
 volumes:
   archive_store:

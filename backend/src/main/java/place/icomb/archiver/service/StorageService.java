@@ -1,6 +1,5 @@
 package place.icomb.archiver.service;
 
-import place.icomb.archiver.model.Attachment;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.UncheckedIOException;
@@ -10,6 +9,7 @@ import java.nio.file.StandardOpenOption;
 import org.springframework.core.io.InputStreamResource;
 import org.springframework.core.io.Resource;
 import org.springframework.stereotype.Service;
+import place.icomb.archiver.model.Attachment;
 
 @Service
 public class StorageService {
@@ -25,8 +25,7 @@ public class StorageService {
    * records/{recordId}/attachments/pages/p{seq:04d}.jpg
    */
   public String storePageImage(Long recordId, int seq, byte[] imageBytes) {
-    String relativePath =
-        String.format("records/%d/attachments/pages/p%04d.jpg", recordId, seq);
+    String relativePath = String.format("records/%d/attachments/pages/p%04d.jpg", recordId, seq);
     writeFile(relativePath, imageBytes);
     return relativePath;
   }

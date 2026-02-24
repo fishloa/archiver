@@ -1,14 +1,5 @@
 package place.icomb.archiver.controller;
 
-import place.icomb.archiver.dto.IngestRecordRequest;
-import place.icomb.archiver.dto.IngestRecordResponse;
-import place.icomb.archiver.dto.PageMetadata;
-import place.icomb.archiver.dto.PageResponse;
-import place.icomb.archiver.model.Attachment;
-import place.icomb.archiver.model.Page;
-import place.icomb.archiver.model.Record;
-import place.icomb.archiver.repository.RecordRepository;
-import place.icomb.archiver.service.IngestService;
 import jakarta.validation.Valid;
 import java.io.IOException;
 import java.util.Map;
@@ -24,6 +15,15 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
+import place.icomb.archiver.dto.IngestRecordRequest;
+import place.icomb.archiver.dto.IngestRecordResponse;
+import place.icomb.archiver.dto.PageMetadata;
+import place.icomb.archiver.dto.PageResponse;
+import place.icomb.archiver.model.Attachment;
+import place.icomb.archiver.model.Page;
+import place.icomb.archiver.model.Record;
+import place.icomb.archiver.repository.RecordRepository;
+import place.icomb.archiver.service.IngestService;
 
 @RestController
 @RequestMapping("/api/ingest")
@@ -50,9 +50,7 @@ public class IngestController {
                 record.getStatus()));
   }
 
-  @PostMapping(
-      value = "/records/{recordId}/pages",
-      consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+  @PostMapping(value = "/records/{recordId}/pages", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
   public ResponseEntity<PageResponse> addPage(
       @PathVariable Long recordId,
       @RequestParam int seq,
@@ -72,9 +70,7 @@ public class IngestController {
                 page.getHeight()));
   }
 
-  @PostMapping(
-      value = "/records/{recordId}/pdf",
-      consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+  @PostMapping(value = "/records/{recordId}/pdf", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
   public ResponseEntity<Map<String, Object>> addPdf(
       @PathVariable Long recordId, @RequestPart("pdf") MultipartFile pdf) throws IOException {
     Attachment attachment = ingestService.addPdf(recordId, pdf.getBytes());

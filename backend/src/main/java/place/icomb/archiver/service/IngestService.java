@@ -1,13 +1,5 @@
 package place.icomb.archiver.service;
 
-import place.icomb.archiver.dto.IngestRecordRequest;
-import place.icomb.archiver.dto.PageMetadata;
-import place.icomb.archiver.model.Attachment;
-import place.icomb.archiver.model.Page;
-import place.icomb.archiver.model.Record;
-import place.icomb.archiver.repository.AttachmentRepository;
-import place.icomb.archiver.repository.PageRepository;
-import place.icomb.archiver.repository.RecordRepository;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.time.Instant;
@@ -17,6 +9,14 @@ import java.util.Optional;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import place.icomb.archiver.dto.IngestRecordRequest;
+import place.icomb.archiver.dto.PageMetadata;
+import place.icomb.archiver.model.Attachment;
+import place.icomb.archiver.model.Page;
+import place.icomb.archiver.model.Record;
+import place.icomb.archiver.repository.AttachmentRepository;
+import place.icomb.archiver.repository.PageRepository;
+import place.icomb.archiver.repository.RecordRepository;
 
 @Service
 public class IngestService {
