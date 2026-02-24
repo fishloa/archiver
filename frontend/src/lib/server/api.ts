@@ -11,7 +11,8 @@ export async function fetchRecords(
 	page: number,
 	size: number,
 	sortBy: string,
-	sortDir: string
+	sortDir: string,
+	status?: string
 ): Promise<SpringPage<RecordResponse>> {
 	const params = new URLSearchParams({
 		page: String(page),
@@ -19,6 +20,7 @@ export async function fetchRecords(
 		sortBy,
 		sortDir
 	});
+	if (status) params.set('status', status);
 	const res = await fetch(`${backendUrl()}/api/records?${params}`);
 	if (!res.ok) throw new Error(`Backend error: ${res.status}`);
 	return res.json();

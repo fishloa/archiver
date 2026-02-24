@@ -1,11 +1,14 @@
 package place.icomb.archiver.controller;
 
 import java.util.List;
+import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.jdbc.core.BeanPropertyRowMapper;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -26,31 +29,70 @@ public class CatalogueController {
 
   private final RecordRepository recordRepository;
   private final PageRepository pageRepository;
+  private final JdbcTemplate jdbcTemplate;
   private final RecordEventService recordEventService;
 
   public CatalogueController(
       RecordRepository recordRepository,
       PageRepository pageRepository,
+      JdbcTemplate jdbcTemplate,
       RecordEventService recordEventService) {
     this.recordRepository = recordRepository;
     this.pageRepository = pageRepository;
+    this.jdbcTemplate = jdbcTemplate;
     this.recordEventService = recordEventService;
   }
+
+  private static final java.util.Set<String> SORTABLE_COLUMNS =
+      java.util.Set.of(
+          "id", "title", "dateRangeText", "referenceCode", "status", "createdAt", "pageCount");
 
   @GetMapping
   public ResponseEntity<org.springframework.data.domain.Page<RecordResponse>> listRecords(
       @RequestParam(defaultValue = "0") int page,
       @RequestParam(defaultValue = "20") int size,
       @RequestParam(defaultValue = "createdAt") String sortBy,
-      @RequestParam(defaultValue = "desc") String sortDir) {
-    Sort sort =
-        sortDir.equalsIgnoreCase("asc")
-            ? Sort.by(sortBy).ascending()
-            : Sort.by(sortBy).descending();
-    Pageable pageable = PageRequest.of(page, size, sort);
-    org.springframework.data.domain.Page<Record> records = recordRepository.findAll(pageable);
-    org.springframework.data.domain.Page<RecordResponse> response = records.map(this::toResponse);
-    return ResponseEntity.ok(response);
+      @RequestParam(defaultValue = "desc") String sortDir,
+      @RequestParam(required = false) String status) {
+
+    if (status == null || status.isBlank()) {
+      Sort sort =
+          sortDir.equalsIgnoreCase("asc")
+              ? Sort.by(sortBy).ascending()
+              : Sort.by(sortBy).descending();
+      Pageable pageable = PageRequest.of(page, size, sort);
+      org.springframework.data.domain.Page<Record> records = recordRepository.findAll(pageable);
+      return ResponseEntity.ok(records.map(this::toResponse));
+    }
+
+    // Filter by status using JdbcTemplate to avoid Spring Data JDBC limitations
+    String col = toSnakeCase(sortBy);
+    if (!SORTABLE_COLUMNS.contains(sortBy)) col = "created_at";
+    String dir = sortDir.equalsIgnoreCase("asc") ? "ASC" : "DESC";
+    int offset = page * size;
+
+    Long total =
+        jdbcTemplate.queryForObject(
+            "SELECT count(*) FROM record WHERE status = ?", Long.class, status);
+    List<Record> rows =
+        jdbcTemplate.query(
+            "SELECT * FROM record WHERE status = ? ORDER BY "
+                + col
+                + " "
+                + dir
+                + " LIMIT ? OFFSET ?",
+            new BeanPropertyRowMapper<>(Record.class),
+            status,
+            size,
+            offset);
+    Pageable pageable = PageRequest.of(page, size);
+    org.springframework.data.domain.Page<RecordResponse> result =
+        new PageImpl<>(rows.stream().map(this::toResponse).toList(), pageable, total != null ? total : 0);
+    return ResponseEntity.ok(result);
+  }
+
+  private static String toSnakeCase(String camel) {
+    return camel.replaceAll("([a-z])([A-Z])", "$1_$2").toLowerCase();
   }
 
   @GetMapping("/{id}")

@@ -29,6 +29,16 @@
 		};
 	});
 
+	const statuses = [
+		{ value: '', label: 'All' },
+		{ value: 'ingesting', label: 'Ingesting' },
+		{ value: 'ingested', label: 'Ingested' },
+		{ value: 'ocr_pending', label: 'OCR Pending' },
+		{ value: 'ocr_complete', label: 'OCR Complete' },
+		{ value: 'complete', label: 'Complete' },
+		{ value: 'error', label: 'Error' }
+	];
+
 	const columns = [
 		{ key: 'title', label: 'Title' },
 		{ key: 'dateRangeText', label: 'Date' },
@@ -81,8 +91,23 @@
 	<h1 class="text-[length:var(--vui-text-2xl)] font-extrabold tracking-tight">Records</h1>
 	<span class="flex items-center gap-1.5 text-[length:var(--vui-text-xs)] text-text-sub">
 		<span class="inline-block w-1.5 h-1.5 rounded-full {connected ? 'bg-green-500' : 'bg-red-500'}"></span>
-		{connected ? 'Live' : 'Connecting…'}
+		{connected ? 'Live' : 'Connecting\u2026'}
 	</span>
+</div>
+
+<div class="flex gap-2 mb-4">
+	{#each statuses as s}
+		{@const active = data.status === s.value}
+		<a
+			href={s.value ? `?status=${s.value}` : '/'}
+			class="px-3 py-1.5 rounded-full text-[length:var(--vui-text-xs)] font-medium border transition-all
+				{active
+					? 'bg-accent-dim text-accent border-accent-border'
+					: 'bg-surface border-border text-text-sub hover:border-border-hover hover:text-text'}"
+		>
+			{s.label}
+		</a>
+	{/each}
 </div>
 
 {#if data.records.empty}

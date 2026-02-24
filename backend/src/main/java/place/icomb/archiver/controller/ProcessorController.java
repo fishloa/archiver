@@ -2,6 +2,7 @@ package place.icomb.archiver.controller;
 
 import jakarta.validation.Valid;
 import java.io.IOException;
+import java.sql.Timestamp;
 import java.time.Instant;
 import java.util.Map;
 import org.springframework.beans.factory.annotation.Value;
@@ -170,7 +171,7 @@ public class ProcessorController {
         request.confidence(),
         request.textRaw(),
         request.hocr(),
-        Instant.now());
+        Timestamp.from(Instant.now()));
 
     return ResponseEntity.status(HttpStatus.CREATED).body(Map.of("pageId", pageId, "status", "ok"));
   }
@@ -257,7 +258,7 @@ public class ProcessorController {
           item.confidence(),
           item.startOffset(),
           item.endOffset(),
-          Instant.now());
+          Timestamp.from(Instant.now()));
     }
 
     return ResponseEntity.status(HttpStatus.CREATED)
