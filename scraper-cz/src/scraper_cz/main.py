@@ -25,13 +25,11 @@ from .pdf import build_pdf
 log = logging.getLogger(__name__)
 
 # Target NADs for the Czech National Archives.
-# These are the fonds most relevant to the Czernin project.
+# Only NADs with digitised content on VadeMeCum are included.
+# NADs 1005, 1075, 1420 have no digitised items as of 2026-02.
 TARGET_NADS = [
-    (1005, "Úřad říšského protektora"),
-    (1464, "Německé státní ministerství pro Čechy a Moravu"),
-    (1075, "Ministerstvo vnitra I"),
-    (1420, "Policejní ředitelství Praha II"),
-    (1799, "Státní tajemník u říšského protektora"),
+    (1464, "Německé státní ministerstvo pro Čechy a Moravu"),
+    (1799, "Státní tajemník u říšského protektora v Čechách a na Moravě"),
 ]
 
 

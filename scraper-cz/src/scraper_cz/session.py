@@ -75,16 +75,48 @@ class VadeMeCumSession:
     # -- session initialization --------------------------------------------
 
     def _init_session(self) -> None:
-        """Load the index page to establish a session and extract form tokens."""
+        """Load the index page to establish a session and extract form tokens.
+
+        VadeMeCum has two search forms:
+        - Simple: SearchBean.action (fulltext only)
+        - Extended: SearchBean.action?searchType=basic (NAD, digi, levels, etc.)
+
+        We extract tokens for both and pick the right one in search code.
+        """
         log.info("Initializing VadeMeCum session...")
         html = self.get_text(f"{BASE}/index.jsp")
 
-        sps = re.findall(r'name="_sourcePage"[^>]*value="([^"]+)"', html)
-        fps = re.findall(r'name="__fp"[^>]*value="([^"]+)"', html)
+        # Extract tokens per form
+        forms = re.findall(
+            r'<form[^>]*action="([^"]*SearchBean[^"]*)"[^>]*>(.*?)</form>',
+            html, re.DOTALL,
+        )
 
-        # Use the second form (main search form) when available
-        self._source_page = sps[1] if len(sps) > 1 else sps[0]
-        self._fp = fps[1] if len(fps) > 1 else fps[0]
+        self._simple_sp = None
+        self._simple_fp = None
+        self._extended_sp = None
+        self._extended_fp = None
+
+        for action, form_html in forms:
+            sp_m = re.search(r'name="_sourcePage"\s+value="([^"]+)"', form_html)
+            fp_m = re.search(r'name="__fp"\s+value="([^"]+)"', form_html)
+            if sp_m and fp_m:
+                if "searchType=basic" in action or "pevaCNAD" in form_html:
+                    self._extended_sp = sp_m.group(1)
+                    self._extended_fp = fp_m.group(1)
+                else:
+                    self._simple_sp = sp_m.group(1)
+                    self._simple_fp = fp_m.group(1)
+
+        # Fallback: use whatever we found
+        self._source_page = self._extended_sp or self._simple_sp
+        self._fp = self._extended_fp or self._simple_fp
+
+        log.info(
+            "Forms found: simple=%s, extended=%s",
+            "yes" if self._simple_sp else "no",
+            "yes" if self._extended_sp else "no",
+        )
 
         for cookie in self.cookie_jar:
             if cookie.name == "JSESSIONID":
@@ -104,6 +136,20 @@ class VadeMeCumSession:
     def fp(self) -> str:
         assert self._fp is not None, "Session not initialized"
         return self._fp
+
+    @property
+    def extended_source_page(self) -> str:
+        """Token for the extended search form (with NAD/digi filters)."""
+        sp = self._extended_sp or self._source_page
+        assert sp is not None, "Session not initialized"
+        return sp
+
+    @property
+    def extended_fp(self) -> str:
+        """Token for the extended search form (with NAD/digi filters)."""
+        fp = self._extended_fp or self._fp
+        assert fp is not None, "Session not initialized"
+        return fp
 
     # -- VadeMeCum-specific requests ---------------------------------------
 

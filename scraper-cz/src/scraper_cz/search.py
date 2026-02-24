@@ -23,9 +23,12 @@ def search(
 ) -> tuple[int, str]:
     """Execute a search on VadeMeCum.
 
+    Uses the extended search form (searchType=basic) which supports
+    NAD, digi-only, and level filters. The simple form only does fulltext.
+
     Args:
         session: Active VadeMeCum session.
-        term: Fulltext search term.
+        term: Fulltext search term (empty string for browse-all).
         digi_only: Only return digitised records.
         levels: List of level codes to search.
             9019 = item, 10026 = inventory, 10060 = fond.
@@ -42,9 +45,9 @@ def search(
         "patternFulltext": term,
         "searchFulltext": "",
         "wordPosition": "1",
-        "searchByEntityFields": "",
-        "_sourcePage": session.source_page,
-        "__fp": session.fp,
+        "searchByEntityFields": "true",
+        "_sourcePage": session.extended_source_page,
+        "__fp": session.extended_fp,
     }
     for lvl in levels:
         params[lvl] = "true"
@@ -53,7 +56,7 @@ def search(
     if nad is not None:
         params["pevaCNAD"] = str(nad)
 
-    html = session.post(f"{BASE}/SearchBean.action", params)
+    html = session.post(f"{BASE}/SearchBean.action?searchType=basic", params)
     total = extract_total(html)
     return total, html
 
