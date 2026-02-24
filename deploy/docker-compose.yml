@@ -4,13 +4,13 @@ services:
     ports:
       - "8098:8080"
     volumes:
-      - archive_store:/data/archive_store
+      - archiver_store:/data/archiver_store
     environment:
       SPRING_PROFILES_ACTIVE: prod
       DATASOURCE_URL: jdbc:postgresql://${DB_HOST}:5432/${DB_NAME}?stringtype=unspecified
       DATASOURCE_USERNAME: ${DB_USER}
       DATASOURCE_PASSWORD: ${DB_PASSWORD}
-      ARCHIVER_STORAGE_ROOT: /data/archive_store
+      ARCHIVER_STORAGE_ROOT: /data/archiver_store
       ARCHIVER_PROCESSOR_TOKEN: ${PROCESSOR_TOKEN}
       ARCHIVER_ESCALATION_CONFIDENCE_MIN: "0.70"
       ARCHIVER_ESCALATION_TEXT_MIN_CHARS: "200"
@@ -76,5 +76,5 @@ services:
   #   restart: unless-stopped
 
 volumes:
-  archive_store:
+  archiver_store:
     external: true
