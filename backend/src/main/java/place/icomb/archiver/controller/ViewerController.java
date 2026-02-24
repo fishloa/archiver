@@ -190,7 +190,7 @@ public class ViewerController {
     int offset = page * size;
 
     // Combined search: OCR text + record metadata (title, description, referenceCode)
-    long total =
+    Long total =
         jdbcTemplate.queryForObject(
             """
             SELECT count(*) FROM (
