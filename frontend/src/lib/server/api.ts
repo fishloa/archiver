@@ -68,6 +68,27 @@ export interface SearchResponse {
 	size: number;
 }
 
+export interface PipelineStage {
+	name: string;
+	records: number;
+	pages: number;
+	jobsPending?: number;
+	jobsRunning?: number;
+	jobsCompleted?: number;
+	jobsFailed?: number;
+}
+
+export interface PipelineStats {
+	stages: PipelineStage[];
+	totals: { records: number; pages: number };
+}
+
+export async function fetchPipelineStats(): Promise<PipelineStats> {
+	const res = await fetch(`${backendUrl()}/api/pipeline/stats`);
+	if (!res.ok) throw new Error(`Backend error: ${res.status}`);
+	return res.json();
+}
+
 export async function searchPages(q: string, page: number = 0, size: number = 20): Promise<SearchResponse> {
 	const params = new URLSearchParams({ q, page: String(page), size: String(size) });
 	const res = await fetch(`${backendUrl()}/api/search?${params}`);

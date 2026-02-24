@@ -14,12 +14,17 @@ public class JobService {
   private final JobRepository jobRepository;
   private final JdbcTemplate jdbcTemplate;
   private final JobEventService jobEventService;
+  private final RecordEventService recordEventService;
 
   public JobService(
-      JobRepository jobRepository, JdbcTemplate jdbcTemplate, JobEventService jobEventService) {
+      JobRepository jobRepository,
+      JdbcTemplate jdbcTemplate,
+      JobEventService jobEventService,
+      RecordEventService recordEventService) {
     this.jobRepository = jobRepository;
     this.jdbcTemplate = jdbcTemplate;
     this.jobEventService = jobEventService;
+    this.recordEventService = recordEventService;
   }
 
   /** Creates a new pending job and fires a NOTIFY on the appropriate channel. */
@@ -37,6 +42,8 @@ public class JobService {
 
     // Notify connected workers via SSE
     jobEventService.jobEnqueued(kind);
+    // Notify UI (pipeline dashboard)
+    recordEventService.pipelineChanged(kind, "pending");
 
     return job;
   }
@@ -59,7 +66,9 @@ public class JobService {
     job.setStatus("completed");
     job.setPayload(result);
     job.setFinishedAt(Instant.now());
-    return jobRepository.save(job);
+    job = jobRepository.save(job);
+    recordEventService.pipelineChanged(job.getKind(), "completed");
+    return job;
   }
 
   /** Marks a job as failed with an error message. */
@@ -72,7 +81,9 @@ public class JobService {
     job.setStatus("failed");
     job.setError(error);
     job.setFinishedAt(Instant.now());
-    return jobRepository.save(job);
+    job = jobRepository.save(job);
+    recordEventService.pipelineChanged(job.getKind(), "failed");
+    return job;
   }
 
   /** Returns the Postgres NOTIFY channel name for a given job kind. */

@@ -1,6 +1,6 @@
 <script lang="ts">
 	import '../app.css';
-	import { Archive, Search } from 'lucide-svelte';
+	import { Archive, Search, Workflow } from 'lucide-svelte';
 	import type { Snippet } from 'svelte';
 
 	let { children }: { children: Snippet } = $props();
@@ -12,6 +12,9 @@
 			<Archive size={18} strokeWidth={1.8} class="text-accent" />
 			<a href="/" class="text-[length:var(--vui-text-lg)] font-bold tracking-tight">Archiver</a>
 			<div class="flex-1"></div>
+			<a href="/pipeline" class="vui-btn vui-btn-ghost vui-btn-sm">
+				<Workflow size={14} strokeWidth={2} /> Pipeline
+			</a>
 			<a href="/search" class="vui-btn vui-btn-ghost vui-btn-sm">
 				<Search size={14} strokeWidth={2} /> Search
 			</a>

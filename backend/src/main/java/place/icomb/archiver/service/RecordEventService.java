@@ -44,4 +44,8 @@ public class RecordEventService {
   public void recordChanged(Long recordId, String action) {
     broadcast("record", Map.of("id", recordId, "action", action));
   }
+
+  public void pipelineChanged(String kind, String status) {
+    broadcast("record", Map.of("action", "pipeline", "kind", kind, "status", status));
+  }
 }

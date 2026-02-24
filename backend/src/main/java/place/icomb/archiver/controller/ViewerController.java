@@ -50,6 +50,91 @@ public class ViewerController {
     this.jdbcTemplate = jdbcTemplate;
   }
 
+  @GetMapping("/pipeline/stats")
+  public ResponseEntity<Map<String, Object>> pipelineStats() {
+    // Record counts per status
+    List<Map<String, Object>> recordCounts =
+        jdbcTemplate.queryForList(
+            "SELECT status, COUNT(*) AS cnt, COALESCE(SUM(page_count),0) AS pages"
+                + " FROM record GROUP BY status");
+
+    Map<String, Long> recordsByStatus = new LinkedHashMap<>();
+    Map<String, Long> pagesByStatus = new LinkedHashMap<>();
+    long totalRecords = 0;
+    long totalPages = 0;
+    for (var row : recordCounts) {
+      String status = (String) row.get("status");
+      long cnt = ((Number) row.get("cnt")).longValue();
+      long pages = ((Number) row.get("pages")).longValue();
+      recordsByStatus.put(status, cnt);
+      pagesByStatus.put(status, pages);
+      totalRecords += cnt;
+      totalPages += pages;
+    }
+
+    // Job counts per kind+status
+    List<Map<String, Object>> jobCounts =
+        jdbcTemplate.queryForList(
+            "SELECT kind, status, COUNT(*) AS cnt FROM job GROUP BY kind, status");
+
+    Map<String, Map<String, Long>> jobsByKind = new LinkedHashMap<>();
+    for (var row : jobCounts) {
+      String kind = (String) row.get("kind");
+      String status = (String) row.get("status");
+      long cnt = ((Number) row.get("cnt")).longValue();
+      jobsByKind.computeIfAbsent(kind, k -> new LinkedHashMap<>()).put(status, cnt);
+    }
+
+    // Build stage objects
+    List<Map<String, Object>> stages = new java.util.ArrayList<>();
+
+    stages.add(buildStage("Scraping", "ingesting",
+        recordsByStatus, pagesByStatus, null, jobsByKind));
+    stages.add(buildStage("Ingested", "ingested",
+        recordsByStatus, pagesByStatus, null, jobsByKind));
+    stages.add(buildStage("OCR", "ocr_pending",
+        recordsByStatus, pagesByStatus, "ocr_page_paddle", jobsByKind));
+    stages.add(buildStage("PDF Build", "pdf_pending",
+        recordsByStatus, pagesByStatus, "build_searchable_pdf", jobsByKind));
+    stages.add(buildStage("Entities", "entities_pending",
+        recordsByStatus, pagesByStatus, "extract_entities", jobsByKind));
+
+    // "Complete" aggregates terminal statuses
+    long doneRecords = recordsByStatus.getOrDefault("ocr_done", 0L)
+        + recordsByStatus.getOrDefault("pdf_done", 0L)
+        + recordsByStatus.getOrDefault("entities_done", 0L);
+    long donePages = pagesByStatus.getOrDefault("ocr_done", 0L)
+        + pagesByStatus.getOrDefault("pdf_done", 0L)
+        + pagesByStatus.getOrDefault("entities_done", 0L);
+    Map<String, Object> completeStage = new LinkedHashMap<>();
+    completeStage.put("name", "Complete");
+    completeStage.put("records", doneRecords);
+    completeStage.put("pages", donePages);
+    stages.add(completeStage);
+
+    return ResponseEntity.ok(Map.of(
+        "stages", stages,
+        "totals", Map.of("records", totalRecords, "pages", totalPages)));
+  }
+
+  private Map<String, Object> buildStage(
+      String name, String recordStatus,
+      Map<String, Long> recordsByStatus, Map<String, Long> pagesByStatus,
+      String jobKind, Map<String, Map<String, Long>> jobsByKind) {
+    Map<String, Object> stage = new LinkedHashMap<>();
+    stage.put("name", name);
+    stage.put("records", recordsByStatus.getOrDefault(recordStatus, 0L));
+    stage.put("pages", pagesByStatus.getOrDefault(recordStatus, 0L));
+    if (jobKind != null) {
+      Map<String, Long> jobs = jobsByKind.getOrDefault(jobKind, Map.of());
+      stage.put("jobsPending", jobs.getOrDefault("pending", 0L));
+      stage.put("jobsRunning", jobs.getOrDefault("claimed", 0L));
+      stage.put("jobsCompleted", jobs.getOrDefault("completed", 0L));
+      stage.put("jobsFailed", jobs.getOrDefault("failed", 0L));
+    }
+    return stage;
+  }
+
   @GetMapping("/pages/{pageId}")
   public ResponseEntity<PageResponse> getPage(@PathVariable Long pageId) {
     return pageRepository
