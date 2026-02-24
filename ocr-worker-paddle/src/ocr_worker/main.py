@@ -105,6 +105,34 @@ def process_one(client, job: dict, default_lang: str, use_gpu: bool) -> None:
     log.info("  Job %d completed", job_id)
 
 
+def wait_for_backend(client, max_retries=30, delay=5):
+    """Wait for the backend to become reachable before proceeding."""
+    for attempt in range(1, max_retries + 1):
+        try:
+            client.claim_job(JOB_KIND)  # just tests connectivity
+            log.info("Backend reachable")
+            return
+        except Exception:
+            log.info("Waiting for backend (%d/%d)...", attempt, max_retries)
+            time.sleep(delay)
+    raise RuntimeError(f"Backend not reachable after {max_retries * delay}s")
+
+
+def connect_event_source(cfg):
+    """Connect to the notification source with retries."""
+    if cfg.db_notify_url:
+        for attempt in range(1, 13):  # ~60s of retries
+            try:
+                return listen_pg(cfg.db_notify_url)
+            except Exception:
+                log.info("Waiting for database (%d/12)...", attempt)
+                time.sleep(5)
+        raise RuntimeError("Database not reachable after 60s")
+    else:
+        log.info("No DB_NOTIFY_URL — falling back to polling every %ds", cfg.poll_interval)
+        return poll_forever(cfg.poll_interval)
+
+
 def main():
     logging.basicConfig(
         level=logging.INFO,
@@ -135,12 +163,9 @@ def main():
         use_gpu,
     )
 
-    # Choose notification source
-    if cfg.db_notify_url:
-        event_source = listen_pg(cfg.db_notify_url)
-    else:
-        log.info("No DB_NOTIFY_URL — falling back to polling every %ds", cfg.poll_interval)
-        event_source = poll_forever(cfg.poll_interval)
+    # Wait for dependencies
+    wait_for_backend(client)
+    event_source = connect_event_source(cfg)
 
     # Drain any pending jobs on startup, then wait for notifications
     jobs_processed = 0
