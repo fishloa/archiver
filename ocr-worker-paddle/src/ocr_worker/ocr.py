@@ -21,7 +21,6 @@ def get_engine(lang: str = "german", use_gpu: bool = True) -> PaddleOCR:
             use_angle_cls=True,
             lang=lang,
             use_gpu=use_gpu,
-            show_log=False,
         )
         log.info("PaddleOCR engine ready")
     return _engine
