@@ -23,6 +23,12 @@ public class JobEventService {
     emitter.onCompletion(() -> emitters.remove(emitter));
     emitter.onTimeout(() -> emitters.remove(emitter));
     emitter.onError(e -> emitters.remove(emitter));
+    // Send initial event to flush HTTP response headers
+    try {
+      emitter.send(SseEmitter.event().comment("connected"));
+    } catch (IOException e) {
+      emitters.remove(emitter);
+    }
     return emitter;
   }
 
