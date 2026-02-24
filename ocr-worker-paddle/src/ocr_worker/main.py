@@ -7,6 +7,7 @@ Uses PostgreSQL LISTEN/NOTIFY for real-time job pickup when a
 DB connection URL is provided, otherwise falls back to polling.
 """
 
+import json
 import logging
 import select
 import sys
@@ -53,15 +54,30 @@ def poll_forever(interval: int):
         time.sleep(interval)
 
 
-def process_one(client, job: dict, lang: str, use_gpu: bool) -> None:
+def job_lang(job: dict, default: str) -> str:
+    """Extract language from job payload, falling back to default."""
+    payload = job.get("payload")
+    if payload:
+        try:
+            data = json.loads(payload) if isinstance(payload, str) else payload
+            lang = data.get("lang")
+            if lang:
+                return lang
+        except (json.JSONDecodeError, AttributeError):
+            pass
+    return default
+
+
+def process_one(client, job: dict, default_lang: str, use_gpu: bool) -> None:
     """Process a single OCR job."""
     from .ocr import process_image
 
     job_id = job["id"]
     page_id = job["pageId"]
     record_id = job.get("recordId", "?")
+    lang = job_lang(job, default_lang)
 
-    log.info("Processing job %d: page %d (record %s)", job_id, page_id, record_id)
+    log.info("Processing job %d: page %d (record %s, lang=%s)", job_id, page_id, record_id, lang)
 
     # Download the page image
     image_bytes = client.download_page_image(page_id)

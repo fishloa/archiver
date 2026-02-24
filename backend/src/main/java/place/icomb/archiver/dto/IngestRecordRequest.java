@@ -20,4 +20,5 @@ public record IngestRecordRequest(
     String containerNumber,
     String findingAidNumber,
     String indexTerms,
-    String rawSourceMetadata) {}
+    String rawSourceMetadata,
+    String lang) {}

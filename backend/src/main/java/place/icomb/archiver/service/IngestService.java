@@ -82,6 +82,9 @@ public class IngestService {
     record.setFindingAidNumber(request.findingAidNumber());
     record.setIndexTerms(request.indexTerms());
     record.setRawSourceMetadata(request.rawSourceMetadata());
+    if (request.lang() != null) {
+      record.setLang(request.lang());
+    }
     record.setUpdatedAt(Instant.now());
 
     record = recordRepository.save(record);
@@ -176,10 +179,11 @@ public class IngestService {
     record.setUpdatedAt(Instant.now());
     record = recordRepository.save(record);
 
-    // Enqueue OCR jobs for all pages
+    // Enqueue OCR jobs for all pages, passing language in payload
+    String ocrPayload = record.getLang() != null ? "{\"lang\":\"" + record.getLang() + "\"}" : null;
     List<Page> pages = pageRepository.findByRecordId(recordId);
     for (Page page : pages) {
-      jobService.enqueueJob("ocr_page_paddle", recordId, page.getId(), null);
+      jobService.enqueueJob("ocr_page_paddle", recordId, page.getId(), ocrPayload);
     }
 
     // Fire NOTIFY so listeners can pick up work immediately

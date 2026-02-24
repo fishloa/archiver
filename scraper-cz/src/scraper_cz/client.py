@@ -79,6 +79,7 @@ class BackendClient:
 
         Maps scraper metadata fields to IngestRecordRequest fields.
         """
+        cfg = get_config()
         body = {
             "archiveId": metadata.get("archive_id", DEFAULT_ARCHIVE_ID),
             "sourceSystem": source_system,
@@ -93,6 +94,7 @@ class BackendClient:
             "findingAidNumber": metadata.get("finding_aid_number") or None,
             "indexTerms": metadata.get("rejstrikova_hesla") or None,
             "rawSourceMetadata": jsonmod.dumps(metadata, ensure_ascii=False),
+            "lang": cfg.lang,
         }
         # Remove None values
         body = {k: v for k, v in body.items() if v is not None}

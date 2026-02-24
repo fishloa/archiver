@@ -25,6 +25,7 @@ public class Record {
   private String findingAidNumber;
   private String indexTerms;
   private String rawSourceMetadata;
+  private String lang;
   private Long pdfAttachmentId;
   private int attachmentCount;
   private int pageCount;
@@ -176,6 +177,14 @@ public class Record {
 
   public void setRawSourceMetadata(String rawSourceMetadata) {
     this.rawSourceMetadata = rawSourceMetadata;
+  }
+
+  public String getLang() {
+    return lang;
+  }
+
+  public void setLang(String lang) {
+    this.lang = lang;
   }
 
   public Long getPdfAttachmentId() {
