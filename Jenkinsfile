@@ -1,0 +1,93 @@
+def registry = 'dockerregistry.icomb.place'
+def prefix = "${registry}/archiver"
+
+def modules = ['backend', 'frontend', 'scraper-cz', 'ocr-worker-paddle']
+
+def changed(module) {
+    def changes = sh(script: "git diff --name-only HEAD~1 HEAD -- ${module}/", returnStdout: true).trim()
+    return changes.length() > 0
+}
+
+pipeline {
+    agent any
+
+    stages {
+        stage('Detect Changes') {
+            steps {
+                script {
+                    env.BUILD_BACKEND = changed('backend')
+                    env.BUILD_FRONTEND = changed('frontend')
+                    env.BUILD_SCRAPER = changed('scraper-cz')
+                    env.BUILD_OCR = changed('ocr-worker-paddle')
+                    echo "backend=${env.BUILD_BACKEND} frontend=${env.BUILD_FRONTEND} scraper-cz=${env.BUILD_SCRAPER} ocr-worker-paddle=${env.BUILD_OCR}"
+                }
+            }
+        }
+
+        stage('Build & Push') {
+            parallel {
+                stage('backend') {
+                    when { expression { env.BUILD_BACKEND == 'true' } }
+                    steps {
+                        dir('backend') {
+                            sh 'docker build -t ${prefix}/backend:latest -t ${prefix}/backend:${GIT_COMMIT} .'
+                        }
+                        withCredentials([usernamePassword(credentialsId: 'dockerregistry.icomb.place', usernameVariable: 'REG_USER', passwordVariable: 'REG_PASS')]) {
+                            sh 'echo $REG_PASS | docker login ${registry} -u $REG_USER --password-stdin'
+                        }
+                        sh "docker push ${prefix}/backend:latest"
+                        sh "docker push ${prefix}/backend:${GIT_COMMIT}"
+                    }
+                }
+
+                stage('frontend') {
+                    when { expression { env.BUILD_FRONTEND == 'true' } }
+                    steps {
+                        dir('frontend') {
+                            sh "docker build -t ${prefix}/frontend:latest -t ${prefix}/frontend:${GIT_COMMIT} ."
+                        }
+                        withCredentials([usernamePassword(credentialsId: 'dockerregistry.icomb.place', usernameVariable: 'REG_USER', passwordVariable: 'REG_PASS')]) {
+                            sh 'echo $REG_PASS | docker login ${registry} -u $REG_USER --password-stdin'
+                        }
+                        sh "docker push ${prefix}/frontend:latest"
+                        sh "docker push ${prefix}/frontend:${GIT_COMMIT}"
+                    }
+                }
+
+                stage('scraper-cz') {
+                    when { expression { env.BUILD_SCRAPER == 'true' } }
+                    steps {
+                        dir('scraper-cz') {
+                            sh "docker build -t ${prefix}/scraper-cz:latest -t ${prefix}/scraper-cz:${GIT_COMMIT} ."
+                        }
+                        withCredentials([usernamePassword(credentialsId: 'dockerregistry.icomb.place', usernameVariable: 'REG_USER', passwordVariable: 'REG_PASS')]) {
+                            sh 'echo $REG_PASS | docker login ${registry} -u $REG_USER --password-stdin'
+                        }
+                        sh "docker push ${prefix}/scraper-cz:latest"
+                        sh "docker push ${prefix}/scraper-cz:${GIT_COMMIT}"
+                    }
+                }
+
+                stage('ocr-worker-paddle') {
+                    when { expression { env.BUILD_OCR == 'true' } }
+                    steps {
+                        dir('ocr-worker-paddle') {
+                            sh "docker build -t ${prefix}/ocr-worker-paddle:latest -t ${prefix}/ocr-worker-paddle:${GIT_COMMIT} ."
+                        }
+                        withCredentials([usernamePassword(credentialsId: 'dockerregistry.icomb.place', usernameVariable: 'REG_USER', passwordVariable: 'REG_PASS')]) {
+                            sh 'echo $REG_PASS | docker login ${registry} -u $REG_USER --password-stdin'
+                        }
+                        sh "docker push ${prefix}/ocr-worker-paddle:latest"
+                        sh "docker push ${prefix}/ocr-worker-paddle:${GIT_COMMIT}"
+                    }
+                }
+            }
+        }
+    }
+
+    post {
+        always {
+            sh 'docker logout ${registry} || true'
+        }
+    }
+}

@@ -1,6 +1,6 @@
 services:
   backend:
-    image: ghcr.io/fishloa/archiver/backend:latest
+    image: dockerregistry.icomb.place/archiver/backend:latest
     ports:
       - "8098:8080"
     volumes:
@@ -20,7 +20,7 @@ services:
     restart: unless-stopped
 
   frontend:
-    image: ghcr.io/fishloa/archiver/frontend:latest
+    image: dockerregistry.icomb.place/archiver/frontend:latest
     ports:
       - "8099:3000"
     environment:
@@ -31,7 +31,7 @@ services:
     restart: unless-stopped
 
   scraper-cz:
-    image: ghcr.io/fishloa/archiver/scraper-cz:latest
+    image: dockerregistry.icomb.place/archiver/scraper-cz:latest
     environment:
       BACKEND_URL: http://backend:8080
     depends_on:
@@ -39,24 +39,19 @@ services:
     restart: "no"
 
   ocr-worker-paddle:
-    image: ghcr.io/fishloa/archiver/ocr-worker-paddle:latest
+    image: dockerregistry.icomb.place/archiver/ocr-worker-paddle:latest
+    runtime: nvidia
     environment:
       BACKEND_URL: http://backend:8080
       PROCESSOR_TOKEN: ${PROCESSOR_TOKEN}
       DB_NOTIFY_URL: postgresql://${DB_USER}:${DB_PASSWORD}@${DB_HOST}:5432/${DB_NAME}
-    deploy:
-      resources:
-        reservations:
-          devices:
-            - driver: nvidia
-              count: 1
-              capabilities: [gpu]
+      NVIDIA_VISIBLE_DEVICES: all
     depends_on:
       - backend
     restart: unless-stopped
 
   # pdf-worker:
-  #   image: ghcr.io/fishloa/archiver/pdf-worker:latest
+  #   image: dockerregistry.icomb.place/archiver/pdf-worker:latest
   #   environment:
   #     BACKEND_URL: http://backend:8080
   #     PROCESSOR_TOKEN: ${PROCESSOR_TOKEN}
@@ -66,7 +61,7 @@ services:
   #   restart: unless-stopped
 
   # entity-worker:
-  #   image: ghcr.io/fishloa/archiver/entity-worker:latest
+  #   image: dockerregistry.icomb.place/archiver/entity-worker:latest
   #   environment:
   #     BACKEND_URL: http://backend:8080
   #     PROCESSOR_TOKEN: ${PROCESSOR_TOKEN}
