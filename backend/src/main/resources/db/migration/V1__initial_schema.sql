@@ -6,6 +6,15 @@
 CREATE EXTENSION IF NOT EXISTS pg_trgm;
 CREATE EXTENSION IF NOT EXISTS unaccent;
 
+-- Immutable wrappers (needed for GENERATED columns)
+CREATE OR REPLACE FUNCTION immutable_unaccent(text) RETURNS text AS $$
+  SELECT unaccent($1)
+$$ LANGUAGE sql IMMUTABLE PARALLEL SAFE;
+
+CREATE OR REPLACE FUNCTION immutable_to_tsvector(regconfig, text) RETURNS tsvector AS $$
+  SELECT to_tsvector($1, $2)
+$$ LANGUAGE sql IMMUTABLE PARALLEL SAFE;
+
 -- ==========================================================================
 -- Enum-like types expressed as CHECK constraints (kept as text columns)
 -- ==========================================================================
@@ -162,7 +171,7 @@ CREATE TABLE page_text (
     engine      TEXT    NOT NULL,
     confidence  REAL,
     text_raw    TEXT    NOT NULL,
-    text_norm   TEXT    GENERATED ALWAYS AS (unaccent(lower(text_raw))) STORED,
+    text_norm   TEXT    GENERATED ALWAYS AS (immutable_unaccent(lower(text_raw))) STORED,
     hocr        TEXT,
     created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
 );
@@ -175,7 +184,7 @@ CREATE TABLE page_search (
     page_id         BIGINT  NOT NULL REFERENCES page(id) ON DELETE CASCADE,
     best_engine     TEXT    NOT NULL,
     best_text_norm  TEXT    NOT NULL,
-    tsv             TSVECTOR GENERATED ALWAYS AS (to_tsvector('simple', best_text_norm)) STORED
+    tsv             TSVECTOR GENERATED ALWAYS AS (immutable_to_tsvector('simple'::regconfig, best_text_norm)) STORED
 );
 
 CREATE UNIQUE INDEX idx_page_search_page_id ON page_search(page_id);

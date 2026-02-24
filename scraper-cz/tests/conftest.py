@@ -36,9 +36,12 @@ SAMPLE_SEARCH_RESULTS_HTML = """
       <span>Fond Alpha</span>
     </div>
   </a>
-  <div class="cNAD"><span>1799</span></div>
-  <div class="years"><span tooltip="1939-1942">1939-1942</span></div>
-  <div class="descr"><span tooltip='Heydrich-Bormann correspondence, situation reports'>Heydrich-Bormann</span></div>
+  <div class="cNAD"
+  <span>1799</span></div>
+  <div class="years"
+  <span tooltip="1939-1942">1939-1942</span></div>
+  <div class="descr"
+  <span tooltip='Heydrich-Bormann correspondence, situation reports'>Heydrich-Bormann</span></div>
   <div><a tooltip="Zobrazit v plné kvalitě 15 skenů">15</a></div>
 </aricle>
 
@@ -48,9 +51,12 @@ SAMPLE_SEARCH_RESULTS_HTML = """
       <span>Fond Beta</span>
     </div>
   </a>
-  <div class="cNAD"><span>1799</span></div>
-  <div class="years"><span tooltip="1940-1943">1940-1943</span></div>
-  <div class="descr"><span tooltip='Administrative matters, forced management'>Administrative</span></div>
+  <div class="cNAD"
+  <span>1799</span></div>
+  <div class="years"
+  <span tooltip="1940-1943">1940-1943</span></div>
+  <div class="descr"
+  <span tooltip='Administrative matters, forced management'>Administrative</span></div>
   <div><a tooltip="Zobrazit v plné kvalitě 8 skenů">8</a></div>
 </aricle>
 
@@ -60,9 +66,12 @@ SAMPLE_SEARCH_RESULTS_HTML = """
       <span>Fond Gamma</span>
     </div>
   </a>
-  <div class="cNAD"><span>1800</span></div>
-  <div class="years"><span tooltip="1941">1941</span></div>
-  <div class="descr"><span tooltip='Reports and analyses'>Reports</span></div>
+  <div class="cNAD"
+  <span>1800</span></div>
+  <div class="years"
+  <span tooltip="1941">1941</span></div>
+  <div class="descr"
+  <span tooltip='Reports and analyses'>Reports</span></div>
 </aricle>
 </body>
 </html>
@@ -75,11 +84,11 @@ SAMPLE_RECORD_DETAIL_HTML = """
 <h1>inv. č. 1777, sig. 109-5/5</h1>
 <div class="popis">Heydrich situation report to Bormann, 18 May 1942</div>
 <table>
-  <tr><td>Signatura:</td><td>109-5/5</td></tr>
-  <tr><td>Datace:</td><td>1942</td></tr>
-  <tr><td>Fond:</td><td>Úřad říšského protektora</td></tr>
-  <tr><td>NAD:</td><td>1799</td></tr>
-  <tr><td>Obsah:</td><td>Situační zpráva pro Bormanna</td></tr>
+  <tr><td>Signatura: 109-5/5</td></tr>
+  <tr><td>Datace: 1942</td></tr>
+  <tr><td>Fond: Úřad říšského protektora</td></tr>
+  <tr><td>NAD: 1799</td></tr>
+  <tr><td>Obsah: Situační zpráva pro Bormanna</td></tr>
 </table>
 <div>5 skenů</div>
 <a href="Zoomify.action?entityRef=cz%2Farchives%2FCZ-100000010%2Finventare%2Fdao%2F1234">View scans</a>

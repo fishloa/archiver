@@ -1,3 +1,0 @@
-package com.icomb.archiver.dto;
-
-public record PageMetadata(String pageLabel, Integer width, Integer height) {}

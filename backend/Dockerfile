@@ -1,18 +1,20 @@
 # ==========================================================================
 # Stage 1: Build
 # ==========================================================================
-FROM gradle:8.12-jdk25 AS build
+FROM amazoncorretto:25 AS build
 
 WORKDIR /app
+COPY gradlew gradle/ ./
+COPY gradle ./gradle
 COPY build.gradle.kts settings.gradle.kts ./
 COPY src ./src
 
-RUN gradle bootJar --no-daemon -x test -x spotlessCheck
+RUN ./gradlew bootJar --no-daemon -x test -x spotlessCheck
 
 # ==========================================================================
 # Stage 2: Runtime
 # ==========================================================================
-FROM eclipse-temurin:25-jre
+FROM amazoncorretto:25
 
 WORKDIR /app
 

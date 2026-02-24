@@ -6,7 +6,7 @@ plugins {
     jacoco
 }
 
-group = "com.icomb"
+group = "place.icomb"
 version = "0.0.1-SNAPSHOT"
 
 java {
@@ -29,7 +29,7 @@ dependencies {
 
     // Database
     runtimeOnly("org.postgresql:postgresql")
-    implementation("org.flywaydb:flyway-core")
+    implementation("org.springframework.boot:spring-boot-starter-flyway")
     implementation("org.flywaydb:flyway-database-postgresql")
 
     // MapStruct
@@ -42,8 +42,8 @@ dependencies {
     // Test
     testImplementation("org.springframework.boot:spring-boot-starter-test")
     testImplementation("org.springframework.boot:spring-boot-testcontainers")
-    testImplementation("org.testcontainers:junit-jupiter")
-    testImplementation("org.testcontainers:postgresql")
+    testImplementation("org.testcontainers:junit-jupiter:1.21.1")
+    testImplementation("org.testcontainers:postgresql:1.21.1")
     testImplementation("io.rest-assured:rest-assured:5.5.1")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 }
@@ -65,7 +65,7 @@ spotless {
 // JaCoCo — 80 % minimum line coverage
 // ---------------------------------------------------------------------------
 jacoco {
-    toolVersion = "0.8.12"
+    toolVersion = "0.8.13"
 }
 
 tasks.jacocoTestReport {

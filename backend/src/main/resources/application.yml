@@ -3,7 +3,7 @@ spring:
     name: archiver-backend
 
   datasource:
-    url: jdbc:postgresql://localhost:5432/archiver
+    url: jdbc:postgresql://localhost:5432/archiver?stringtype=unspecified
     username: archiver
     password: archiver
     hikari:
@@ -46,7 +46,7 @@ spring:
       on-profile: dev
 
   datasource:
-    url: jdbc:postgresql://localhost:5432/archiver_dev
+    url: jdbc:postgresql://localhost:5432/archiver_dev?stringtype=unspecified
     username: archiver
     password: archiver
 
@@ -70,7 +70,7 @@ spring:
       on-profile: test
 
   datasource:
-    url: jdbc:postgresql://localhost:5432/archiver_test
+    url: jdbc:postgresql://localhost:5432/archiver_test?stringtype=unspecified
     username: archiver
     password: archiver
 
