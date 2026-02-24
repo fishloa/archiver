@@ -13,5 +13,7 @@ RUN pip install --no-cache-dir --upgrade pip setuptools wheel && \
     pip install --no-cache-dir paddlepaddle-gpu && \
     pip install --no-cache-dir -e .
 
-# Models are downloaded on first run (~30s startup penalty, once only if volume-mounted)
+# Pre-download German OCR models (use_gpu=False for build, runtime uses GPU)
+RUN python3 -c "from paddleocr import PaddleOCR; PaddleOCR(use_angle_cls=True, lang='german', use_gpu=False, show_log=False)"
+
 CMD ["python3", "-m", "ocr_worker.main"]
