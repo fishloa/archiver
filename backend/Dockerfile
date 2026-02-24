@@ -1,9 +1,7 @@
 # ==========================================================================
 # Stage 1: Build
 # ==========================================================================
-FROM amazoncorretto:25 AS build
-
-RUN yum install -y findutils tar gzip && yum clean all
+FROM eclipse-temurin:25-jdk AS build
 
 WORKDIR /app
 COPY gradlew ./
@@ -16,12 +14,11 @@ RUN ./gradlew bootJar --no-daemon -x test -x spotlessCheck
 # ==========================================================================
 # Stage 2: Runtime
 # ==========================================================================
-FROM amazoncorretto:25
+FROM eclipse-temurin:25-jre-alpine
 
 WORKDIR /app
 
-RUN yum install -y shadow-utils && yum clean all && \
-    groupadd --system archiver && useradd --system --gid archiver archiver
+RUN addgroup -S archiver && adduser -S -G archiver archiver
 
 COPY --from=build /app/build/libs/*.jar app.jar
 
