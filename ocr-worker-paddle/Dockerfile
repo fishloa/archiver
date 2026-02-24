@@ -5,17 +5,13 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         python3 python3-pip python3-dev libgomp1 libglib2.0-0 libgl1 \
     && rm -rf /var/lib/apt/lists/*
 
-# Upgrade pip and setuptools before anything else
-RUN python3 -m pip install --break-system-packages --no-cache-dir \
-        --upgrade pip setuptools wheel
-
 WORKDIR /app
 COPY pyproject.toml ./
 COPY src/ src/
 
-# Install paddlepaddle-gpu first, then the worker package
-RUN pip install --break-system-packages --no-cache-dir paddlepaddle-gpu && \
-    pip install --break-system-packages --no-cache-dir -e .
+RUN pip install --no-cache-dir --upgrade pip setuptools wheel && \
+    pip install --no-cache-dir paddlepaddle-gpu && \
+    pip install --no-cache-dir -e .
 
 # Pre-download OCR models so startup is fast
 RUN python3 -c "from paddleocr import PaddleOCR; PaddleOCR(use_angle_cls=True, lang='latin', use_gpu=False, show_log=False)"

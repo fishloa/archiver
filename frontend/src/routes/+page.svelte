@@ -33,9 +33,9 @@
 		{ key: 'title', label: 'Title' },
 		{ key: 'dateRangeText', label: 'Date' },
 		{ key: 'referenceCode', label: 'Ref Code' },
-		{ key: 'pageCount', label: 'Pages' },
 		{ key: 'status', label: 'Status' },
-		{ key: 'createdAt', label: 'Added' }
+		{ key: 'createdAt', label: 'Added' },
+		{ key: 'pageCount', label: 'Pages' }
 	] as const;
 
 	function sortHref(key: string): string {
@@ -117,9 +117,9 @@
 						</td>
 						<td class="px-5 py-3.5 whitespace-nowrap text-text">{record.dateRangeText ?? ''}</td>
 						<td class="px-5 py-3.5 text-text">{record.referenceCode ?? ''}</td>
-						<td class="px-5 py-3.5 text-text tabular-nums">{pageDisplay(record)}</td>
 						<td class="px-5 py-3.5"><StatusBadge status={record.status} /></td>
 						<td class="px-5 py-3.5 whitespace-nowrap text-text-sub">{formatDate(record.createdAt)}</td>
+						<td class="px-5 py-3.5 text-text tabular-nums text-right">{pageDisplay(record)}</td>
 					</tr>
 				{/each}
 			</tbody>
