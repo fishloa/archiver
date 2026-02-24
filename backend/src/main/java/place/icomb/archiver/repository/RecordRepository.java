@@ -16,4 +16,7 @@ public interface RecordRepository
       "SELECT * FROM record WHERE source_system = :sourceSystem AND source_record_id = :sourceRecordId")
   Optional<Record> findBySourceSystemAndSourceRecordId(
       @Param("sourceSystem") String sourceSystem, @Param("sourceRecordId") String sourceRecordId);
+
+  @Query("SELECT * FROM record WHERE source_system = :sourceSystem")
+  java.util.List<Record> findBySourceSystem(@Param("sourceSystem") String sourceSystem);
 }

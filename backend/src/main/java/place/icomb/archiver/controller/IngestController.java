@@ -2,7 +2,9 @@ package place.icomb.archiver.controller;
 
 import jakarta.validation.Valid;
 import java.io.IOException;
+import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -124,5 +126,13 @@ public class IngestController {
                     new IngestRecordResponse(
                         r.getId(), r.getSourceSystem(), r.getSourceRecordId(), r.getStatus())))
         .orElse(ResponseEntity.notFound().build());
+  }
+
+  @GetMapping("/status/{sourceSystem}")
+  public ResponseEntity<Map<String, String>> getAllStatuses(@PathVariable String sourceSystem) {
+    List<Record> records = recordRepository.findBySourceSystem(sourceSystem);
+    Map<String, String> statuses =
+        records.stream().collect(Collectors.toMap(Record::getSourceRecordId, Record::getStatus));
+    return ResponseEntity.ok(statuses);
   }
 }

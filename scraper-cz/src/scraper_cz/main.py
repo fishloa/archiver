@@ -24,13 +24,24 @@ from .pdf import build_pdf
 
 log = logging.getLogger(__name__)
 
+# Target NADs for the Czech National Archives.
+# These are the fonds most relevant to the Czernin project.
+TARGET_NADS = [
+    (1005, "Úřad říšského protektora"),
+    (1464, "Německé státní ministerství pro Čechy a Moravu"),
+    (1075, "Ministerstvo vnitra I"),
+    (1420, "Policejní ředitelství Praha II"),
+    (1799, "Státní tajemník u říšského protektora"),
+]
+
 
 def ingest_record(
     client: BackendClient,
     session: VadeMeCumSession,
     rec: dict,
+    known_statuses: dict[str, str],
     dry_run: bool = False,
-) -> bool:
+) -> str:
     """Ingest a single record: metadata, pages, PDF, complete.
 
     Args:
@@ -38,28 +49,30 @@ def ingest_record(
         session: VadeMeCum session.
         rec: Record dict from enumeration (must have xid, and optionally
              inv, sig, scans, etc.).
+        known_statuses: Pre-fetched map of sourceRecordId -> status.
         dry_run: If True, skip actual uploads.
 
     Returns:
-        True if successful.
+        "ok", "skipped", or "failed".
     """
     cfg = get_config()
     xid = rec["xid"]
     label = f"inv.{rec.get('inv', '?')} sig.{rec.get('sig', '?')}"
 
-    # Check existing status
+    # Check existing status from pre-fetched map
     if not dry_run:
-        status_info = client.get_status(SOURCE_SYSTEM, xid)
-        current_status = status_info.get("status")
+        current_status = known_statuses.get(xid)
         if current_status and current_status not in ("ingesting",):
-            log.info("[SKIP] %s — status=%s", label, current_status)
-            return True
+            log.info("[SKIP] %s — already %s", label, current_status)
+            return "skipped"
         if current_status == "ingesting":
             # Previous ingest was incomplete — delete and re-ingest
+            status_info = client.get_status(SOURCE_SYSTEM, xid)
             record_id = status_info.get("id")
             if record_id:
                 log.info("[CLEANUP] %s — deleting incomplete record %s", label, record_id)
                 client.delete_record(record_id)
+                known_statuses.pop(xid, None)
 
     # Load full record detail
     log.info("[START] %s (xid=%s)", label, xid)
@@ -68,7 +81,7 @@ def ingest_record(
     if dry_run:
         log.info("[DRY-RUN] %s — %d scans, detail: %s",
                  label, detail.get("scans", 0), detail.get("title", ""))
-        return True
+        return "ok"
 
     # Create record in backend
     metadata = {
@@ -84,7 +97,8 @@ def ingest_record(
     if not entity_ref or scan_count == 0:
         log.warning("[SKIP] %s — no scans available", label)
         client.complete_ingest(record_id)
-        return True
+        known_statuses[xid] = "ocr_pending"
+        return "ok"
 
     # Load Zoomify viewer page to get scan UUIDs
     zoom_html = session.get_zoomify_page(entity_ref, scan_index=0)
@@ -122,8 +136,44 @@ def ingest_record(
 
     # Mark complete
     client.complete_ingest(record_id)
+    known_statuses[xid] = "ocr_pending"
     log.info("[DONE] %s — %d pages ingested", label, len(page_images))
-    return True
+    return "ok"
+
+
+def run_scrape(
+    records: list[dict],
+    session: VadeMeCumSession,
+    client: BackendClient | None,
+    known_statuses: dict[str, str],
+    dry_run: bool,
+    verbose: bool,
+) -> tuple[int, int, int]:
+    """Process a list of records. Returns (success, failed, skipped)."""
+    success, failed, skipped = 0, 0, 0
+
+    for i, rec in enumerate(records, start=1):
+        label = f"inv.{rec.get('inv', '?')} sig.{rec.get('sig', '?')}"
+        log.info(
+            "=== [%d/%d] %s (%d scans) ===",
+            i, len(records), label, rec.get("scans", 0),
+        )
+
+        try:
+            result = ingest_record(client, session, rec, known_statuses, dry_run=dry_run)
+            if result == "skipped":
+                skipped += 1
+            elif result == "ok":
+                success += 1
+            else:
+                failed += 1
+        except Exception as e:
+            log.error("Failed to ingest %s: %s", label, e, exc_info=verbose)
+            failed += 1
+
+        time.sleep(get_config().delay)
+
+    return success, failed, skipped
 
 
 def main():
@@ -140,6 +190,12 @@ def main():
         "--all",
         metavar="FILE",
         help="Load records from a JSON file (e.g. digi_items.json) instead of searching",
+    )
+    parser.add_argument(
+        "--all-nads",
+        action="store_true",
+        help="Scrape all target NADs (1005, 1464, 1075, 1420, 1799). "
+             "Requires a search term.",
     )
     parser.add_argument(
         "--backend-url",
@@ -164,7 +220,7 @@ def main():
     parser.add_argument(
         "--nad",
         type=int,
-        help="Filter by NAD number",
+        help="Filter by a single NAD number",
     )
     parser.add_argument(
         "--levels",
@@ -176,7 +232,7 @@ def main():
         "--max-items",
         type=int,
         default=5000,
-        help="Maximum number of items to enumerate (default: 5000)",
+        help="Maximum number of items to enumerate per NAD (default: 5000)",
     )
     parser.add_argument(
         "-v", "--verbose",
@@ -204,67 +260,101 @@ def main():
         cfg.delay = args.delay
     set_config(cfg)
 
-    # Load or enumerate records
-    if args.all:
-        log.info("Loading records from %s", args.all)
-        with open(args.all) as f:
-            records = json.load(f)
-        log.info("Loaded %d records", len(records))
-    else:
-        log.info("Searching VadeMeCum for: '%s'", args.term)
-        session = VadeMeCumSession()
-        total, records = enumerate_all(
-            session, args.term,
-            digi_only=args.digi_only,
-            levels=args.levels,
-            nad=args.nad,
-            max_items=args.max_items,
-        )
-        log.info("Enumerated %d/%d records", len(records), total)
-
-    if not records:
-        log.warning("No records found.")
-        sys.exit(0)
-
-    total_scans = sum(r.get("scans", 0) for r in records)
-    log.info(
-        "Processing %d records (%d total scans, ~%.0f MB estimated)",
-        len(records), total_scans, total_scans * 250 / 1024,
-    )
-
-    # Set up session and client
-    if not args.all:
-        # Reuse existing session
-        pass
-    else:
-        session = VadeMeCumSession()
-
+    # Pre-fetch all known statuses from the backend for resume support
+    known_statuses: dict[str, str] = {}
     client = None
     if not args.dry_run:
         client = BackendClient()
+        log.info("Fetching existing record statuses from backend...")
+        known_statuses = client.get_all_statuses(SOURCE_SYSTEM)
+        already_done = sum(1 for s in known_statuses.values() if s != "ingesting")
+        incomplete = sum(1 for s in known_statuses.values() if s == "ingesting")
+        log.info(
+            "Backend has %d records (%d complete, %d incomplete)",
+            len(known_statuses), already_done, incomplete,
+        )
 
-    # Process records
-    success, failed, skipped = 0, 0, 0
+    session = VadeMeCumSession()
+    total_success, total_failed, total_skipped = 0, 0, 0
 
     try:
-        for i, rec in enumerate(records, start=1):
-            label = f"inv.{rec.get('inv', '?')} sig.{rec.get('sig', '?')}"
+        if args.all:
+            # Load from JSON file
+            log.info("Loading records from %s", args.all)
+            with open(args.all) as f:
+                records = json.load(f)
+            log.info("Loaded %d records", len(records))
+
+            s, f, sk = run_scrape(records, session, client, known_statuses,
+                                  args.dry_run, args.verbose)
+            total_success += s
+            total_failed += f
+            total_skipped += sk
+
+        elif args.all_nads:
+            # Iterate over all target NADs
+            for nad_num, nad_name in TARGET_NADS:
+                log.info(
+                    "\n============================================================"
+                    "\n  NAD %d: %s"
+                    "\n============================================================",
+                    nad_num, nad_name,
+                )
+
+                session.reinit()
+                total, records = enumerate_all(
+                    session, args.term,
+                    digi_only=args.digi_only,
+                    levels=args.levels,
+                    nad=nad_num,
+                    max_items=args.max_items,
+                )
+                log.info("NAD %d: %d/%d records enumerated", nad_num, len(records), total)
+
+                if not records:
+                    continue
+
+                total_scans = sum(r.get("scans", 0) for r in records)
+                new_records = [r for r in records if r["xid"] not in known_statuses
+                               or known_statuses.get(r["xid"]) == "ingesting"]
+                log.info(
+                    "NAD %d: %d new/incomplete, %d already done, %d total scans",
+                    nad_num, len(new_records), len(records) - len(new_records), total_scans,
+                )
+
+                s, f, sk = run_scrape(records, session, client, known_statuses,
+                                      args.dry_run, args.verbose)
+                total_success += s
+                total_failed += f
+                total_skipped += sk
+
+        else:
+            # Single search term, optional single NAD
+            log.info("Searching VadeMeCum for: '%s'", args.term)
+            total, records = enumerate_all(
+                session, args.term,
+                digi_only=args.digi_only,
+                levels=args.levels,
+                nad=args.nad,
+                max_items=args.max_items,
+            )
+            log.info("Enumerated %d/%d records", len(records), total)
+
+            if not records:
+                log.warning("No records found.")
+                sys.exit(0)
+
+            total_scans = sum(r.get("scans", 0) for r in records)
             log.info(
-                "=== [%d/%d] %s (%d scans) ===",
-                i, len(records), label, rec.get("scans", 0),
+                "Processing %d records (%d total scans, ~%.0f MB estimated)",
+                len(records), total_scans, total_scans * 250 / 1024,
             )
 
-            try:
-                ok = ingest_record(client, session, rec, dry_run=args.dry_run)
-                if ok:
-                    success += 1
-                else:
-                    failed += 1
-            except Exception as e:
-                log.error("Failed to ingest %s: %s", label, e, exc_info=args.verbose)
-                failed += 1
-
-            time.sleep(get_config().delay)
+            s, f, sk = run_scrape(records, session, client, known_statuses,
+                                  args.dry_run, args.verbose)
+            total_success += s
+            total_failed += f
+            total_skipped += sk
 
     except KeyboardInterrupt:
         log.warning("Interrupted by user")
@@ -273,8 +363,8 @@ def main():
             client.close()
 
     log.info(
-        "Finished: %d success, %d failed, %d skipped out of %d total",
-        success, failed, skipped, len(records),
+        "Finished: %d success, %d failed, %d skipped",
+        total_success, total_failed, total_skipped,
     )
 
 

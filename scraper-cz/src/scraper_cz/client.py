@@ -190,3 +190,11 @@ class BackendClient:
             if exc.response.status_code == 404:
                 return {}
             raise
+
+    def get_all_statuses(self, source_system: str) -> dict[str, str]:
+        """Fetch all record statuses for a source system.
+
+        Returns a dict mapping sourceRecordId -> status.
+        """
+        resp = self._request("GET", f"/api/ingest/status/{source_system}")
+        return resp.json()
