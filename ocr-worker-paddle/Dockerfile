@@ -6,14 +6,18 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
-COPY pyproject.toml ./
-COPY src/ src/
 
+# Layer 1: Heavy deps — cached unless versions change
 RUN pip install --no-cache-dir --upgrade pip setuptools wheel && \
     pip install --no-cache-dir --timeout 120 --retries 5 paddlepaddle-gpu && \
-    pip install --no-cache-dir -e .
+    pip install --no-cache-dir "paddleocr>=2.9,<3" "httpx>=0.27" "httpx-sse>=0.4" "Pillow>=10.0"
 
-# Pre-download German OCR models (use_gpu=False for build, runtime uses GPU)
+# Layer 2: Pre-download German OCR models — cached unless paddleocr changes
 RUN python3 -c "from paddleocr import PaddleOCR; PaddleOCR(use_angle_cls=True, lang='german', use_gpu=False, show_log=False)"
+
+# Layer 3: App source — only this rebuilds on code changes
+COPY pyproject.toml ./
+COPY src/ src/
+RUN pip install --no-cache-dir -e .
 
 CMD ["python3", "-m", "ocr_worker.main"]
