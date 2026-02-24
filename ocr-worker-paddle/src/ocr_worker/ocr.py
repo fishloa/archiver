@@ -12,7 +12,7 @@ log = logging.getLogger(__name__)
 _engine: PaddleOCR | None = None
 
 
-def get_engine(lang: str = "latin", use_gpu: bool = True) -> PaddleOCR:
+def get_engine(lang: str = "en", use_gpu: bool = True) -> PaddleOCR:
     """Get or create the PaddleOCR engine (singleton)."""
     global _engine
     if _engine is None:
@@ -27,7 +27,7 @@ def get_engine(lang: str = "latin", use_gpu: bool = True) -> PaddleOCR:
     return _engine
 
 
-def process_image(image_bytes: bytes, lang: str = "latin", use_gpu: bool = True) -> dict:
+def process_image(image_bytes: bytes, lang: str = "en", use_gpu: bool = True) -> dict:
     """Run OCR on a JPEG image.
 
     Returns:

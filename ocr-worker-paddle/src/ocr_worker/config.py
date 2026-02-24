@@ -14,5 +14,5 @@ class Config:
         self.backend_url = os.environ.get("BACKEND_URL", "http://localhost:8080").rstrip("/")
         self.processor_token = os.environ["PROCESSOR_TOKEN"]
         self.db_notify_url = os.environ.get("DB_NOTIFY_URL")
-        self.ocr_lang = os.environ.get("OCR_LANG", "latin")
+        self.ocr_lang = os.environ.get("OCR_LANG", "en")
         self.poll_interval = int(os.environ.get("POLL_INTERVAL", "10"))
