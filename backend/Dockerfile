@@ -4,7 +4,7 @@
 FROM amazoncorretto:25 AS build
 
 WORKDIR /app
-COPY gradlew gradle/ ./
+COPY gradlew ./
 COPY gradle ./gradle
 COPY build.gradle.kts settings.gradle.kts ./
 COPY src ./src
