@@ -1,1 +1,4 @@
-@import 'tailwindcss';
+@import "tailwindcss";
+@import url('https://icomb.place/design-system/verdant-tokens.css');
+@import url('https://icomb.place/design-system/verdant-tailwind.css');
+@import url('https://icomb.place/design-system/verdant-base.css');

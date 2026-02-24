@@ -32,18 +32,20 @@
 	<title>Records &ndash; Archiver</title>
 </svelte:head>
 
-<h1 class="mb-4 text-2xl font-bold">Records</h1>
+<h1 class="mb-6 text-[var(--vui-text-2xl)] font-extrabold tracking-tight">Records</h1>
 
 {#if data.records.empty}
-	<p class="text-zinc-500">No records found.</p>
+	<div class="vui-card">
+		<p class="text-text-muted">No records found.</p>
+	</div>
 {:else}
-	<div class="overflow-x-auto">
-		<table class="w-full text-left text-sm">
+	<div class="vui-card overflow-x-auto p-0">
+		<table class="w-full text-left">
 			<thead>
-				<tr class="border-b border-zinc-200 dark:border-zinc-700">
+				<tr class="border-b border-border">
 					{#each columns as col}
-						<th class="px-3 py-2 font-medium">
-							<a href={sortHref(col.key)} class="hover:underline">
+						<th class="px-4 py-3 text-[11px] font-semibold uppercase tracking-[0.04em] text-text-muted">
+							<a href={sortHref(col.key)} class="vui-transition hover:text-text">
 								{col.label}{sortIndicator(col.key)}
 							</a>
 						</th>
@@ -52,17 +54,17 @@
 			</thead>
 			<tbody>
 				{#each data.records.content as record}
-					<tr class="border-b border-zinc-100 hover:bg-zinc-50 dark:border-zinc-800 dark:hover:bg-zinc-900">
-						<td class="px-3 py-2">
-							<a href="/records/{record.id}" class="text-blue-600 hover:underline dark:text-blue-400">
+					<tr class="border-b border-border vui-transition hover:bg-[rgba(255,255,255,0.02)]">
+						<td class="px-4 py-3">
+							<a href="/records/{record.id}" class="font-medium text-accent vui-transition hover:text-accent-hover">
 								{record.title ?? '(untitled)'}
 							</a>
 						</td>
-						<td class="px-3 py-2 whitespace-nowrap">{record.dateRangeText ?? ''}</td>
-						<td class="px-3 py-2">{record.referenceCode ?? ''}</td>
-						<td class="px-3 py-2">{record.pageCount}</td>
-						<td class="px-3 py-2"><StatusBadge status={record.status} /></td>
-						<td class="px-3 py-2 whitespace-nowrap">{formatDate(record.createdAt)}</td>
+						<td class="px-4 py-3 whitespace-nowrap text-text-sub">{record.dateRangeText ?? ''}</td>
+						<td class="px-4 py-3 text-text-sub">{record.referenceCode ?? ''}</td>
+						<td class="px-4 py-3 text-text-sub tabular-nums">{record.pageCount}</td>
+						<td class="px-4 py-3"><StatusBadge status={record.status} /></td>
+						<td class="px-4 py-3 whitespace-nowrap text-text-muted">{formatDate(record.createdAt)}</td>
 					</tr>
 				{/each}
 			</tbody>

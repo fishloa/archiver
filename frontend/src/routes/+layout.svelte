@@ -1,17 +1,19 @@
 <script lang="ts">
 	import '../app.css';
+	import { Archive } from 'lucide-svelte';
 	import type { Snippet } from 'svelte';
 
 	let { children }: { children: Snippet } = $props();
 </script>
 
-<div class="min-h-screen bg-white text-zinc-900 dark:bg-zinc-950 dark:text-zinc-100">
-	<nav class="border-b border-zinc-200 bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-900">
-		<div class="mx-auto flex max-w-6xl items-center gap-6 px-4 py-3">
-			<a href="/" class="text-lg font-semibold">Archiver</a>
+<div class="min-h-screen bg-bg-deep text-text">
+	<nav class="vui-glass border-b border-border sticky top-0 z-10">
+		<div class="mx-auto flex max-w-6xl items-center gap-3 px-6 py-3">
+			<Archive size={18} strokeWidth={1.8} class="text-accent" />
+			<a href="/" class="text-[var(--vui-text-lg)] font-bold tracking-tight">Archiver</a>
 		</div>
 	</nav>
-	<main class="mx-auto max-w-6xl px-4 py-6">
+	<main class="mx-auto max-w-6xl px-6 py-8">
 		{@render children()}
 	</main>
 </div>

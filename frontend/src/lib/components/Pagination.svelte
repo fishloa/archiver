@@ -1,4 +1,6 @@
 <script lang="ts">
+	import { ArrowLeft, ArrowRight } from 'lucide-svelte';
+
 	interface Props {
 		page: number;
 		totalPages: number;
@@ -15,13 +17,19 @@
 </script>
 
 {#if totalPages > 1}
-	<nav class="flex items-center gap-3 py-4">
+	<nav class="flex items-center gap-3 pt-6">
 		{#if page > 0}
-			<a href={href(page - 1)} class="rounded bg-zinc-200 px-3 py-1 text-sm hover:bg-zinc-300 dark:bg-zinc-700 dark:hover:bg-zinc-600">&larr; Prev</a>
+			<a href={href(page - 1)} class="vui-btn vui-btn-secondary vui-btn-sm">
+				<ArrowLeft size={13} strokeWidth={2} /> Prev
+			</a>
 		{/if}
-		<span class="text-sm text-zinc-500">Page {page + 1} of {totalPages}</span>
+		<span class="text-text-muted text-[var(--vui-text-sm)] tabular-nums">
+			Page {page + 1} of {totalPages}
+		</span>
 		{#if page < totalPages - 1}
-			<a href={href(page + 1)} class="rounded bg-zinc-200 px-3 py-1 text-sm hover:bg-zinc-300 dark:bg-zinc-700 dark:hover:bg-zinc-600">Next &rarr;</a>
+			<a href={href(page + 1)} class="vui-btn vui-btn-secondary vui-btn-sm">
+				Next <ArrowRight size={13} strokeWidth={2} />
+			</a>
 		{/if}
 	</nav>
 {/if}
