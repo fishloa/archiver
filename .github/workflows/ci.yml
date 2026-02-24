@@ -3,6 +3,9 @@ name: CI
 on:
   push:
     branches: [main]
+    paths-ignore:
+      - '*.md'
+      - 'deploy/**'
   pull_request:
     branches: [main]
 
@@ -11,7 +14,32 @@ permissions:
   packages: write
 
 jobs:
+  # Detect which modules changed
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      backend: ${{ steps.filter.outputs.backend }}
+      frontend: ${{ steps.filter.outputs.frontend }}
+      scraper-cz: ${{ steps.filter.outputs.scraper-cz }}
+      ocr-worker-paddle: ${{ steps.filter.outputs.ocr-worker-paddle }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            backend:
+              - 'backend/**'
+            frontend:
+              - 'frontend/**'
+            scraper-cz:
+              - 'scraper-cz/**'
+            ocr-worker-paddle:
+              - 'ocr-worker-paddle/**'
+
   backend:
+    needs: changes
+    if: needs.changes.outputs.backend == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -53,6 +81,8 @@ jobs:
             ghcr.io/fishloa/archiver/backend:${{ github.sha }}
 
   scraper-cz:
+    needs: changes
+    if: needs.changes.outputs.scraper-cz == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -95,8 +125,9 @@ jobs:
             ghcr.io/fishloa/archiver/scraper-cz:${{ github.sha }}
 
   ocr-worker-paddle-docker:
+    needs: changes
+    if: needs.changes.outputs.ocr-worker-paddle == 'true' && github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     steps:
       - uses: actions/checkout@v4
 
@@ -118,6 +149,8 @@ jobs:
             ghcr.io/fishloa/archiver/ocr-worker-paddle:${{ github.sha }}
 
   frontend:
+    needs: changes
+    if: needs.changes.outputs.frontend == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
