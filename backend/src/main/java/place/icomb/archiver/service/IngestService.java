@@ -27,6 +27,7 @@ public class IngestService {
   private final StorageService storageService;
   private final JobService jobService;
   private final JdbcTemplate jdbcTemplate;
+  private final RecordEventService recordEventService;
 
   public IngestService(
       RecordRepository recordRepository,
@@ -34,13 +35,15 @@ public class IngestService {
       PageRepository pageRepository,
       StorageService storageService,
       JobService jobService,
-      JdbcTemplate jdbcTemplate) {
+      JdbcTemplate jdbcTemplate,
+      RecordEventService recordEventService) {
     this.recordRepository = recordRepository;
     this.attachmentRepository = attachmentRepository;
     this.pageRepository = pageRepository;
     this.storageService = storageService;
     this.jobService = jobService;
     this.jdbcTemplate = jdbcTemplate;
+    this.recordEventService = recordEventService;
   }
 
   /**
@@ -81,7 +84,9 @@ public class IngestService {
     record.setRawSourceMetadata(request.rawSourceMetadata());
     record.setUpdatedAt(Instant.now());
 
-    return recordRepository.save(record);
+    record = recordRepository.save(record);
+    recordEventService.recordChanged(record.getId(), existing.isPresent() ? "updated" : "created");
+    return record;
   }
 
   /** Stores a page image, creates the attachment and page records. */
@@ -122,6 +127,7 @@ public class IngestService {
     record.setUpdatedAt(Instant.now());
     recordRepository.save(record);
 
+    recordEventService.recordChanged(recordId, "updated");
     return page;
   }
 
@@ -151,6 +157,7 @@ public class IngestService {
     record.setUpdatedAt(Instant.now());
     recordRepository.save(record);
 
+    recordEventService.recordChanged(recordId, "updated");
     return attachment;
   }
 
@@ -178,6 +185,7 @@ public class IngestService {
     // Fire NOTIFY so listeners can pick up work immediately
     jdbcTemplate.execute("NOTIFY ocr_jobs");
 
+    recordEventService.recordChanged(recordId, "completed");
     return record;
   }
 
@@ -203,6 +211,8 @@ public class IngestService {
 
     // Delete record — pages, attachments, jobs etc. cascade via ON DELETE CASCADE
     recordRepository.delete(record);
+
+    recordEventService.recordChanged(recordId, "deleted");
   }
 
   private static String sha256(byte[] data) {

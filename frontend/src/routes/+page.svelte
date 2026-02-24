@@ -1,9 +1,27 @@
 <script lang="ts">
+	import { onMount } from 'svelte';
+	import { invalidateAll } from '$app/navigation';
 	import Pagination from '$lib/components/Pagination.svelte';
 	import StatusBadge from '$lib/components/StatusBadge.svelte';
 	import { parseSourceMeta, nadTranslation } from '$lib/archives';
 
 	let { data } = $props();
+
+	let connected = $state(false);
+
+	onMount(() => {
+		const es = new EventSource('/api/records/events');
+		es.addEventListener('record', () => {
+			invalidateAll();
+		});
+		es.onopen = () => {
+			connected = true;
+		};
+		es.onerror = () => {
+			connected = false;
+		};
+		return () => es.close();
+	});
 
 	const columns = [
 		{ key: 'title', label: 'Title' },
@@ -42,7 +60,13 @@
 	<title>Records &ndash; Archiver</title>
 </svelte:head>
 
-<h1 class="mb-6 text-[length:var(--vui-text-2xl)] font-extrabold tracking-tight">Records</h1>
+<div class="flex items-center justify-between mb-6">
+	<h1 class="text-[length:var(--vui-text-2xl)] font-extrabold tracking-tight">Records</h1>
+	<span class="flex items-center gap-1.5 text-[length:var(--vui-text-xs)] text-text-muted">
+		<span class="inline-block w-1.5 h-1.5 rounded-full {connected ? 'bg-green-500' : 'bg-red-500'}"></span>
+		{connected ? 'Live' : 'Connecting…'}
+	</span>
+</div>
 
 {#if data.records.empty}
 	<div class="vui-card">
@@ -85,5 +109,10 @@
 		</table>
 	</div>
 
-	<Pagination page={data.records.number} totalPages={data.records.totalPages} />
+	<div class="flex items-center justify-between">
+		<Pagination page={data.records.number} totalPages={data.records.totalPages} />
+		<span class="text-[length:var(--vui-text-xs)] text-text-dim tabular-nums">
+			{data.records.totalElements} records
+		</span>
+	</div>
 {/if}
