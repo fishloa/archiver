@@ -100,13 +100,11 @@ public class ViewerController {
         recordsByStatus, pagesByStatus, "extract_entities", jobsByKind));
 
     // "Complete" aggregates terminal statuses
-    long doneRecords = recordsByStatus.getOrDefault("ocr_complete", 0L)
-        + recordsByStatus.getOrDefault("ocr_done", 0L)
+    long doneRecords = recordsByStatus.getOrDefault("ocr_done", 0L)
         + recordsByStatus.getOrDefault("pdf_done", 0L)
         + recordsByStatus.getOrDefault("entities_done", 0L)
         + recordsByStatus.getOrDefault("complete", 0L);
-    long donePages = pagesByStatus.getOrDefault("ocr_complete", 0L)
-        + pagesByStatus.getOrDefault("ocr_done", 0L)
+    long donePages = pagesByStatus.getOrDefault("ocr_done", 0L)
         + pagesByStatus.getOrDefault("pdf_done", 0L)
         + pagesByStatus.getOrDefault("entities_done", 0L)
         + pagesByStatus.getOrDefault("complete", 0L);

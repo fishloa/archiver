@@ -83,7 +83,7 @@ public class JobService {
 
   /**
    * If every page in the record has OCR text, transition the record status from ocr_pending to
-   * ocr_complete.
+   * ocr_done.
    */
   private void checkRecordOcrComplete(Long recordId) {
     Long pending =
@@ -98,10 +98,10 @@ public class JobService {
     if (pending != null && pending == 0) {
       int updated =
           jdbcTemplate.update(
-              "UPDATE record SET status = 'ocr_complete', updated_at = now() WHERE id = ? AND status = 'ocr_pending'",
+              "UPDATE record SET status = 'ocr_done', updated_at = now() WHERE id = ? AND status = 'ocr_pending'",
               recordId);
       if (updated > 0) {
-        log.info("Record {} transitioned to ocr_complete", recordId);
+        log.info("Record {} transitioned to ocr_done", recordId);
         recordEventService.recordChanged(recordId, "status");
       }
     }

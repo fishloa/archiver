@@ -34,7 +34,7 @@
 		{ value: 'ingesting', label: 'Ingesting' },
 		{ value: 'ingested', label: 'Ingested' },
 		{ value: 'ocr_pending', label: 'OCR Pending' },
-		{ value: 'ocr_complete', label: 'OCR Complete' },
+		{ value: 'ocr_done', label: 'OCR Done' },
 		{ value: 'complete', label: 'Complete' },
 		{ value: 'error', label: 'Error' }
 	];
