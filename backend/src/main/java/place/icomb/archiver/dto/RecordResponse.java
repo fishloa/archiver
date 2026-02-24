@@ -20,6 +20,7 @@ public record RecordResponse(
     String containerNumber,
     String findingAidNumber,
     String indexTerms,
+    String rawSourceMetadata,
     Long pdfAttachmentId,
     int attachmentCount,
     int pageCount,

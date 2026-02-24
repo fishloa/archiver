@@ -1,10 +1,23 @@
 <script lang="ts">
 	import StatusBadge from '$lib/components/StatusBadge.svelte';
-	import { ArrowLeft, Download } from 'lucide-svelte';
+	import { parseSourceMeta, nadTranslation } from '$lib/archives';
+	import { ArrowLeft, Download, ChevronDown } from 'lucide-svelte';
 
 	let { data } = $props();
 	let record = $derived(data.record);
 	let pages = $derived(data.pages);
+
+	let sourceMeta = $derived(parseSourceMeta(record.rawSourceMetadata));
+	let nadNumber = $derived(sourceMeta.nad_number ? String(sourceMeta.nad_number) : null);
+	let fondName = $derived(sourceMeta.fond_name ?? null);
+	let nadEnglish = $derived(nadTranslation(record.sourceSystem, nadNumber));
+
+	let rawOpen = $state(false);
+	let rawFormatted = $derived(
+		record.rawSourceMetadata
+			? JSON.stringify(JSON.parse(record.rawSourceMetadata), null, 2)
+			: null
+	);
 
 	function formatDate(iso: string): string {
 		return new Date(iso).toLocaleString();
@@ -40,6 +53,20 @@
 		<StatusBadge status={record.status} />
 	</div>
 
+	{#if fondName || nadNumber}
+		<div class="mb-4 px-3 py-2 rounded-md bg-surface-alt border border-border">
+			{#if fondName}
+				<div class="text-[length:var(--vui-text-sm)] font-medium text-text-sub">{fondName}</div>
+			{/if}
+			{#if nadEnglish}
+				<div class="text-[length:var(--vui-text-sm)] text-text-muted">{nadEnglish}</div>
+			{/if}
+			{#if nadNumber}
+				<div class="text-[length:var(--vui-text-xs)] text-text-dim mt-0.5">NAD {nadNumber}</div>
+			{/if}
+		</div>
+	{/if}
+
 	{#if record.description}
 		<p class="text-text-sub mb-6">{record.description}</p>
 	{/if}
@@ -60,6 +87,25 @@
 			<a href="/api/records/{record.id}/pdf" class="vui-btn vui-btn-primary" target="_blank">
 				<Download size={13} strokeWidth={2} /> Download PDF
 			</a>
+		</div>
+	{/if}
+
+	{#if rawFormatted}
+		<div class="mt-6 pt-4 border-t border-border">
+			<button
+				class="flex items-center gap-1.5 text-[length:var(--vui-text-sm)] font-medium text-text-muted vui-transition hover:text-text cursor-pointer"
+				onclick={() => rawOpen = !rawOpen}
+			>
+				<ChevronDown
+					size={14}
+					strokeWidth={2}
+					class="vui-transition {rawOpen ? 'rotate-0' : '-rotate-90'}"
+				/>
+				Source Metadata
+			</button>
+			{#if rawOpen}
+				<pre class="mt-2 p-3 rounded-md bg-bg-deep border border-border text-[length:var(--vui-text-xs)] text-text-dim overflow-x-auto font-mono">{rawFormatted}</pre>
+			{/if}
 		</div>
 	{/if}
 </div>

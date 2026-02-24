@@ -1,6 +1,7 @@
 <script lang="ts">
 	import Pagination from '$lib/components/Pagination.svelte';
 	import StatusBadge from '$lib/components/StatusBadge.svelte';
+	import { parseSourceMeta, nadTranslation } from '$lib/archives';
 
 	let { data } = $props();
 
@@ -25,6 +26,15 @@
 
 	function formatDate(iso: string): string {
 		return new Date(iso).toLocaleDateString();
+	}
+
+	function fondLabel(sourceSystem: string | null, raw: string | null): string {
+		const meta = parseSourceMeta(raw);
+		const nad = meta.nad_number ? String(meta.nad_number) : null;
+		const en = nadTranslation(sourceSystem, nad);
+		if (en && nad) return `${en} (NAD ${nad})`;
+		if (meta.fond_name) return meta.fond_name;
+		return '';
 	}
 </script>
 
@@ -54,11 +64,15 @@
 			</thead>
 			<tbody>
 				{#each data.records.content as record}
+					{@const fond = fondLabel(record.sourceSystem, record.rawSourceMetadata)}
 					<tr class="border-b border-border vui-transition hover:bg-[rgba(255,255,255,0.02)]">
 						<td class="px-4 py-3">
 							<a href="/records/{record.id}" class="font-medium text-accent vui-transition hover:text-accent-hover">
 								{record.title ?? '(untitled)'}
 							</a>
+							{#if fond}
+								<div class="text-[length:var(--vui-text-xs)] text-text-dim mt-0.5">{fond}</div>
+							{/if}
 						</td>
 						<td class="px-4 py-3 whitespace-nowrap text-text-sub">{record.dateRangeText ?? ''}</td>
 						<td class="px-4 py-3 text-text-sub">{record.referenceCode ?? ''}</td>

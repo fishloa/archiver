@@ -94,6 +94,7 @@ public class CatalogueController {
         r.getContainerNumber(),
         r.getFindingAidNumber(),
         r.getIndexTerms(),
+        r.getRawSourceMetadata(),
         r.getPdfAttachmentId(),
         r.getAttachmentCount(),
         r.getPageCount(),

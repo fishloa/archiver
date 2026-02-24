@@ -16,6 +16,7 @@ export interface RecordResponse {
 	containerNumber: string | null;
 	findingAidNumber: string | null;
 	indexTerms: string | null;
+	rawSourceMetadata: string | null;
 	pdfAttachmentId: number | null;
 	attachmentCount: number;
 	pageCount: number;
