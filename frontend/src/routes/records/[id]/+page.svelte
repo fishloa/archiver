@@ -104,7 +104,7 @@
 				Source Metadata
 			</button>
 			{#if rawOpen}
-				<pre class="mt-2 p-3 rounded-md bg-bg-deep border border-border text-[length:var(--vui-text-xs)] text-text-dim overflow-x-auto font-mono">{rawFormatted}</pre>
+				<pre class="mt-2 p-3 rounded-md bg-bg-deep border border-border text-[length:var(--vui-text-xs)] text-text-muted overflow-x-auto font-mono">{rawFormatted}</pre>
 			{/if}
 		</div>
 	{/if}

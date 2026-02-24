@@ -10,9 +10,12 @@
 	let connected = $state(false);
 
 	onMount(() => {
+		let debounceTimer: ReturnType<typeof setTimeout> | null = null;
 		const es = new EventSource('/api/records/events');
 		es.addEventListener('record', () => {
-			invalidateAll();
+			// Debounce rapid events (e.g. page-by-page uploads)
+			if (debounceTimer) clearTimeout(debounceTimer);
+			debounceTimer = setTimeout(() => invalidateAll(), 500);
 		});
 		es.onopen = () => {
 			connected = true;
@@ -20,7 +23,10 @@
 		es.onerror = () => {
 			connected = false;
 		};
-		return () => es.close();
+		return () => {
+			if (debounceTimer) clearTimeout(debounceTimer);
+			es.close();
+		};
 	});
 
 	const columns = [
@@ -78,7 +84,7 @@
 			<thead>
 				<tr class="border-b border-border">
 					{#each columns as col}
-						<th class="px-4 py-3 text-[11px] font-semibold uppercase tracking-[0.04em] text-text-muted">
+						<th class="px-5 py-3 text-[11px] font-semibold uppercase tracking-[0.04em] text-text-muted">
 							<a href={sortHref(col.key)} class="vui-transition hover:text-text">
 								{col.label}{sortIndicator(col.key)}
 							</a>
@@ -90,19 +96,19 @@
 				{#each data.records.content as record}
 					{@const fond = fondLabel(record.sourceSystem, record.rawSourceMetadata)}
 					<tr class="border-b border-border vui-transition hover:bg-[rgba(255,255,255,0.02)]">
-						<td class="px-4 py-3">
+						<td class="px-5 py-3.5">
 							<a href="/records/{record.id}" class="font-medium text-accent vui-transition hover:text-accent-hover">
 								{record.title ?? '(untitled)'}
 							</a>
 							{#if fond}
-								<div class="text-[length:var(--vui-text-xs)] text-text-dim mt-0.5">{fond}</div>
+								<div class="text-[length:var(--vui-text-xs)] text-text-muted mt-0.5">{fond}</div>
 							{/if}
 						</td>
-						<td class="px-4 py-3 whitespace-nowrap text-text">{record.dateRangeText ?? ''}</td>
-						<td class="px-4 py-3 text-text">{record.referenceCode ?? ''}</td>
-						<td class="px-4 py-3 text-text tabular-nums">{record.pageCount}</td>
-						<td class="px-4 py-3"><StatusBadge status={record.status} /></td>
-						<td class="px-4 py-3 whitespace-nowrap text-text-muted">{formatDate(record.createdAt)}</td>
+						<td class="px-5 py-3.5 whitespace-nowrap text-text">{record.dateRangeText ?? ''}</td>
+						<td class="px-5 py-3.5 text-text">{record.referenceCode ?? ''}</td>
+						<td class="px-5 py-3.5 text-text tabular-nums">{record.pageCount}</td>
+						<td class="px-5 py-3.5"><StatusBadge status={record.status} /></td>
+						<td class="px-5 py-3.5 whitespace-nowrap text-text-muted">{formatDate(record.createdAt)}</td>
 					</tr>
 				{/each}
 			</tbody>
