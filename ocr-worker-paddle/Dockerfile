@@ -10,7 +10,7 @@ COPY pyproject.toml ./
 COPY src/ src/
 
 RUN pip install --no-cache-dir --upgrade pip setuptools wheel && \
-    pip install --no-cache-dir paddlepaddle-gpu && \
+    pip install --no-cache-dir --timeout 120 --retries 5 paddlepaddle-gpu && \
     pip install --no-cache-dir -e .
 
 # Pre-download German OCR models (use_gpu=False for build, runtime uses GPU)
