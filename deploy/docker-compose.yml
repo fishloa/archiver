@@ -44,7 +44,6 @@ services:
     environment:
       BACKEND_URL: http://backend:8080
       PROCESSOR_TOKEN: ${PROCESSOR_TOKEN}
-      DB_NOTIFY_URL: postgresql://${DB_USER}:${DB_PASSWORD}@${DB_HOST}:5432/${DB_NAME}
       NVIDIA_VISIBLE_DEVICES: all
     depends_on:
       - backend
@@ -55,7 +54,6 @@ services:
   #   environment:
   #     BACKEND_URL: http://backend:8080
   #     PROCESSOR_TOKEN: ${PROCESSOR_TOKEN}
-  #     DB_NOTIFY_URL: postgresql://${DB_USER}:${DB_PASSWORD}@${DB_HOST}:5432/${DB_NAME}
   #   depends_on:
   #     - backend
   #   restart: unless-stopped
@@ -65,7 +63,6 @@ services:
   #   environment:
   #     BACKEND_URL: http://backend:8080
   #     PROCESSOR_TOKEN: ${PROCESSOR_TOKEN}
-  #     DB_NOTIFY_URL: postgresql://${DB_USER}:${DB_PASSWORD}@${DB_HOST}:5432/${DB_NAME}
   #   depends_on:
   #     - backend
   #   restart: unless-stopped

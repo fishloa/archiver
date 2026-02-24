@@ -3,55 +3,18 @@
 Claims ocr_page_paddle jobs from the backend, runs PaddleOCR on
 each page image, and posts the results back.
 
-Uses PostgreSQL LISTEN/NOTIFY for real-time job pickup when a
-DB connection URL is provided, otherwise falls back to polling.
+Subscribes to the backend's SSE job events stream for real-time
+notifications. Falls back to polling on SSE disconnect.
 """
 
 import json
 import logging
-import select
-import sys
 import time
 
 log = logging.getLogger(__name__)
 
 JOB_KIND = "ocr_page_paddle"
 ENGINE_NAME = "ocr_page_paddle"
-
-
-def listen_pg(db_url: str):
-    """Connect to PostgreSQL and LISTEN on ocr_jobs channel.
-
-    Yields each time a notification arrives.
-    Falls back to periodic polling every poll_interval seconds.
-    """
-    import psycopg2
-
-    conn = psycopg2.connect(db_url)
-    conn.set_isolation_level(0)  # autocommit
-    with conn.cursor() as cur:
-        cur.execute("LISTEN ocr_jobs;")
-    log.info("Listening on PostgreSQL channel 'ocr_jobs'")
-
-    try:
-        while True:
-            if select.select([conn], [], [], 30.0) == ([], [], []):
-                # Timeout — poll anyway in case we missed a notify
-                yield
-            else:
-                conn.poll()
-                while conn.notifies:
-                    conn.notifies.pop(0)
-                    yield
-    finally:
-        conn.close()
-
-
-def poll_forever(interval: int):
-    """Simple polling fallback when no DB URL is configured."""
-    while True:
-        yield
-        time.sleep(interval)
 
 
 def job_lang(job: dict, default: str) -> str:
@@ -79,11 +42,9 @@ def process_one(client, job: dict, default_lang: str, use_gpu: bool) -> None:
 
     log.info("Processing job %d: page %d (record %s, lang=%s)", job_id, page_id, record_id, lang)
 
-    # Download the page image
     image_bytes = client.download_page_image(page_id)
     log.info("  Downloaded %d bytes", len(image_bytes))
 
-    # Run OCR
     result = process_image(image_bytes, lang=lang, use_gpu=use_gpu)
     log.info(
         "  OCR: %d regions, %.2f confidence, %d chars",
@@ -92,7 +53,6 @@ def process_one(client, job: dict, default_lang: str, use_gpu: bool) -> None:
         len(result["text"]),
     )
 
-    # Submit results
     client.submit_ocr_result(
         page_id,
         engine=ENGINE_NAME,
@@ -100,16 +60,34 @@ def process_one(client, job: dict, default_lang: str, use_gpu: bool) -> None:
         text_raw=result["text"],
     )
 
-    # Mark job complete
     client.complete_job(job_id)
     log.info("  Job %d completed", job_id)
+
+
+def drain_jobs(client, default_lang: str, use_gpu: bool) -> int:
+    """Claim and process all available jobs. Returns number processed."""
+    count = 0
+    while True:
+        job = client.claim_job(JOB_KIND)
+        if job is None:
+            return count
+        try:
+            process_one(client, job, default_lang, use_gpu)
+            count += 1
+        except Exception as e:
+            log.error("Job %d failed: %s", job["id"], e, exc_info=True)
+            try:
+                client.fail_job(job["id"], str(e)[:500])
+            except Exception:
+                log.error("Failed to report job failure", exc_info=True)
+    return count
 
 
 def wait_for_backend(client, max_retries=30, delay=5):
     """Wait for the backend to become reachable before proceeding."""
     for attempt in range(1, max_retries + 1):
         try:
-            client.claim_job(JOB_KIND)  # just tests connectivity
+            client.claim_job(JOB_KIND)
             log.info("Backend reachable")
             return
         except Exception:
@@ -118,19 +96,36 @@ def wait_for_backend(client, max_retries=30, delay=5):
     raise RuntimeError(f"Backend not reachable after {max_retries * delay}s")
 
 
-def connect_event_source(cfg):
-    """Connect to the notification source with retries."""
-    if cfg.db_notify_url:
-        for attempt in range(1, 13):  # ~60s of retries
-            try:
-                return listen_pg(cfg.db_notify_url)
-            except Exception:
-                log.info("Waiting for database (%d/12)...", attempt)
-                time.sleep(5)
-        raise RuntimeError("Database not reachable after 60s")
-    else:
-        log.info("No DB_NOTIFY_URL — falling back to polling every %ds", cfg.poll_interval)
-        return poll_forever(cfg.poll_interval)
+def run_sse_loop(client, default_lang: str, use_gpu: bool, poll_interval: int):
+    """Main loop: subscribe to SSE, drain jobs on each event, reconnect on failure."""
+    jobs_processed = 0
+    reconnect_delay = 1
+
+    while True:
+        # Drain any jobs that queued while we were disconnected
+        jobs_processed += drain_jobs(client, default_lang, use_gpu)
+
+        try:
+            log.info("Connecting to SSE job events stream...")
+            with client.job_events() as events:
+                reconnect_delay = 1  # reset on successful connect
+                log.info("SSE connected, waiting for events")
+                for event in events:
+                    if event.event == "job":
+                        data = json.loads(event.data)
+                        kind = data.get("kind", "")
+                        if kind == JOB_KIND:
+                            log.info("SSE: job event for %s, draining queue", kind)
+                            jobs_processed += drain_jobs(client, default_lang, use_gpu)
+        except KeyboardInterrupt:
+            log.info("Shutting down (processed %d jobs)", jobs_processed)
+            raise
+        except Exception as e:
+            log.warning("SSE disconnected: %s — polling fallback for %ds", e, reconnect_delay)
+            # Poll once before reconnecting
+            jobs_processed += drain_jobs(client, default_lang, use_gpu)
+            time.sleep(reconnect_delay)
+            reconnect_delay = min(reconnect_delay * 2, poll_interval)
 
 
 def main():
@@ -146,7 +141,6 @@ def main():
     cfg = Config()
     client = ProcessorClient(cfg.backend_url, cfg.processor_token)
 
-    # Detect GPU availability
     use_gpu = True
     try:
         import paddle
@@ -157,54 +151,19 @@ def main():
         log.warning("Could not detect GPU, defaulting to GPU=True (will fail if no GPU)")
 
     log.info(
-        "OCR worker starting (backend=%s, lang=%s, gpu=%s)",
+        "OCR worker starting (backend=%s, lang=%s, gpu=%s, poll=%ds)",
         cfg.backend_url,
         cfg.ocr_lang,
         use_gpu,
+        cfg.poll_interval,
     )
 
-    # Wait for dependencies
     wait_for_backend(client)
-    event_source = connect_event_source(cfg)
 
-    # Drain any pending jobs on startup, then wait for notifications
-    jobs_processed = 0
     try:
-        # First pass: drain queue
-        while True:
-            job = client.claim_job(JOB_KIND)
-            if job is None:
-                break
-            try:
-                process_one(client, job, cfg.ocr_lang, use_gpu)
-                jobs_processed += 1
-            except Exception as e:
-                log.error("Job %d failed: %s", job["id"], e, exc_info=True)
-                try:
-                    client.fail_job(job["id"], str(e)[:500])
-                except Exception:
-                    log.error("Failed to report job failure", exc_info=True)
-
-        log.info("Initial drain complete: %d jobs processed", jobs_processed)
-
-        # Main loop: wait for notifications, then drain
-        for _ in event_source:
-            while True:
-                job = client.claim_job(JOB_KIND)
-                if job is None:
-                    break
-                try:
-                    process_one(client, job, cfg.ocr_lang, use_gpu)
-                    jobs_processed += 1
-                except Exception as e:
-                    log.error("Job %d failed: %s", job["id"], e, exc_info=True)
-                    try:
-                        client.fail_job(job["id"], str(e)[:500])
-                    except Exception:
-                        log.error("Failed to report job failure", exc_info=True)
-
+        run_sse_loop(client, cfg.ocr_lang, use_gpu, cfg.poll_interval)
     except KeyboardInterrupt:
-        log.info("Shutting down (processed %d jobs)", jobs_processed)
+        pass
     finally:
         client.close()
 

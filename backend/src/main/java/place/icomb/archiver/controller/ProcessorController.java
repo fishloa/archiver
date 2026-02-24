@@ -31,14 +31,17 @@ import place.icomb.archiver.model.Page;
 import place.icomb.archiver.repository.AttachmentRepository;
 import place.icomb.archiver.repository.JobRepository;
 import place.icomb.archiver.repository.PageRepository;
+import place.icomb.archiver.service.JobEventService;
 import place.icomb.archiver.service.JobService;
 import place.icomb.archiver.service.StorageService;
+import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 @RestController
 @RequestMapping("/api/processor")
 public class ProcessorController {
 
   private final JobService jobService;
+  private final JobEventService jobEventService;
   private final JobRepository jobRepository;
   private final PageRepository pageRepository;
   private final AttachmentRepository attachmentRepository;
@@ -48,6 +51,7 @@ public class ProcessorController {
 
   public ProcessorController(
       JobService jobService,
+      JobEventService jobEventService,
       JobRepository jobRepository,
       PageRepository pageRepository,
       AttachmentRepository attachmentRepository,
@@ -55,12 +59,23 @@ public class ProcessorController {
       JdbcTemplate jdbcTemplate,
       @Value("${archiver.processor.token}") String processorToken) {
     this.jobService = jobService;
+    this.jobEventService = jobEventService;
     this.jobRepository = jobRepository;
     this.pageRepository = pageRepository;
     this.attachmentRepository = attachmentRepository;
     this.storageService = storageService;
     this.jdbcTemplate = jdbcTemplate;
     this.processorToken = processorToken;
+  }
+
+  // -------------------------------------------------------------------------
+  // SSE job events
+  // -------------------------------------------------------------------------
+
+  @GetMapping(value = "/jobs/events", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
+  public SseEmitter streamJobEvents(@RequestHeader("Authorization") String authHeader) {
+    validateToken(authHeader);
+    return jobEventService.subscribe();
   }
 
   // -------------------------------------------------------------------------

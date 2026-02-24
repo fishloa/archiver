@@ -13,10 +13,13 @@ public class JobService {
 
   private final JobRepository jobRepository;
   private final JdbcTemplate jdbcTemplate;
+  private final JobEventService jobEventService;
 
-  public JobService(JobRepository jobRepository, JdbcTemplate jdbcTemplate) {
+  public JobService(
+      JobRepository jobRepository, JdbcTemplate jdbcTemplate, JobEventService jobEventService) {
     this.jobRepository = jobRepository;
     this.jdbcTemplate = jdbcTemplate;
+    this.jobEventService = jobEventService;
   }
 
   /** Creates a new pending job and fires a NOTIFY on the appropriate channel. */
@@ -32,9 +35,8 @@ public class JobService {
     job.setCreatedAt(Instant.now());
     job = jobRepository.save(job);
 
-    // Fire NOTIFY on the appropriate channel
-    String channel = channelForKind(kind);
-    jdbcTemplate.execute("NOTIFY " + channel);
+    // Notify connected workers via SSE
+    jobEventService.jobEnqueued(kind);
 
     return job;
   }
