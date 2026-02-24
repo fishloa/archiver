@@ -45,6 +45,10 @@
 		{ icon: CircleCheckBig, color: '#34d399', dimBg: 'rgba(52,211,153,0.08)', borderColor: 'rgba(52,211,153,0.35)' }
 	];
 
+	const nodeY = 240;
+	const nodeSpacing = 180;
+	const startX = 100;
+
 	function fmt(n: number): string {
 		return n.toLocaleString();
 	}
@@ -109,9 +113,6 @@
 		</defs>
 
 		<!-- Road / connecting path -->
-		{@const nodeY = 240}
-		{@const nodeSpacing = 180}
-		{@const startX = 100}
 
 		<!-- Road surface -->
 		<path
