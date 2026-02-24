@@ -3,6 +3,8 @@
 # ==========================================================================
 FROM amazoncorretto:25 AS build
 
+RUN yum install -y findutils tar gzip && yum clean all
+
 WORKDIR /app
 COPY gradlew ./
 COPY gradle ./gradle
