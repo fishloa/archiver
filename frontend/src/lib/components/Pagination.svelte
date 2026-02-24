@@ -10,9 +10,13 @@
 	let { page, totalPages, baseUrl = '' }: Props = $props();
 
 	function href(p: number): string {
+		if (baseUrl) {
+			const sep = baseUrl.includes('?') ? '&' : '?';
+			return `${baseUrl}${sep}page=${p}`;
+		}
 		const params = new URLSearchParams(typeof window !== 'undefined' ? window.location.search : '');
 		params.set('page', String(p));
-		return `${baseUrl}?${params}`;
+		return `?${params}`;
 	}
 </script>
 
