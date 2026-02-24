@@ -6,9 +6,9 @@ def changed(module) {
     return changes.length() > 0
 }
 
-def dockerPush(image) {
+def dockerPush(reg, image) {
     withCredentials([usernamePassword(credentialsId: 'dockerregistry.icomb.place', usernameVariable: 'REG_USER', passwordVariable: 'REG_PASS')]) {
-        sh "echo \$REG_PASS | docker login ${registry} -u \$REG_USER --password-stdin"
+        sh "echo \$REG_PASS | docker login ${reg} -u \$REG_USER --password-stdin"
     }
     sh "docker push ${image}"
 }
@@ -42,8 +42,8 @@ pipeline {
                             sh "docker build -t ${prefix}/backend:latest -t ${prefix}/backend:\${GIT_COMMIT} ."
                         }
                         script {
-                            dockerPush("${prefix}/backend:latest")
-                            dockerPush("${prefix}/backend:\${GIT_COMMIT}")
+                            dockerPush(registry, "${prefix}/backend:latest")
+                            dockerPush(registry, "${prefix}/backend:\${GIT_COMMIT}")
                         }
                     }
                 }
@@ -55,8 +55,8 @@ pipeline {
                             sh "docker build -t ${prefix}/frontend:latest -t ${prefix}/frontend:\${GIT_COMMIT} ."
                         }
                         script {
-                            dockerPush("${prefix}/frontend:latest")
-                            dockerPush("${prefix}/frontend:\${GIT_COMMIT}")
+                            dockerPush(registry, "${prefix}/frontend:latest")
+                            dockerPush(registry, "${prefix}/frontend:\${GIT_COMMIT}")
                         }
                     }
                 }
@@ -68,8 +68,8 @@ pipeline {
                             sh "docker build -t ${prefix}/scraper-cz:latest -t ${prefix}/scraper-cz:\${GIT_COMMIT} ."
                         }
                         script {
-                            dockerPush("${prefix}/scraper-cz:latest")
-                            dockerPush("${prefix}/scraper-cz:\${GIT_COMMIT}")
+                            dockerPush(registry, "${prefix}/scraper-cz:latest")
+                            dockerPush(registry, "${prefix}/scraper-cz:\${GIT_COMMIT}")
                         }
                     }
                 }
@@ -81,8 +81,8 @@ pipeline {
                             sh "docker build -t ${prefix}/ocr-worker-paddle:latest -t ${prefix}/ocr-worker-paddle:\${GIT_COMMIT} ."
                         }
                         script {
-                            dockerPush("${prefix}/ocr-worker-paddle:latest")
-                            dockerPush("${prefix}/ocr-worker-paddle:\${GIT_COMMIT}")
+                            dockerPush(registry, "${prefix}/ocr-worker-paddle:latest")
+                            dockerPush(registry, "${prefix}/ocr-worker-paddle:\${GIT_COMMIT}")
                         }
                     }
                 }
