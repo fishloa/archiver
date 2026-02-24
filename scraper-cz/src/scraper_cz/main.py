@@ -194,8 +194,8 @@ def main():
     parser.add_argument(
         "--all-nads",
         action="store_true",
-        help="Scrape all target NADs (1005, 1464, 1075, 1420, 1799). "
-             "Requires a search term.",
+        help="Scrape all digitised items from target NADs (1005, 1464, 1075, "
+             "1420, 1799). No search term needed — enumerates entire fonds.",
     )
     parser.add_argument(
         "--backend-url",
@@ -249,8 +249,8 @@ def main():
         datefmt="%H:%M:%S",
     )
 
-    if not args.term and not args.all:
-        parser.error("Provide a search term or --all FILE")
+    if not args.term and not args.all and not args.all_nads:
+        parser.error("Provide a search term, --all FILE, or --all-nads")
 
     # Apply config overrides
     cfg = Config()
@@ -292,7 +292,8 @@ def main():
             total_skipped += sk
 
         elif args.all_nads:
-            # Iterate over all target NADs
+            # Iterate over all target NADs, enumerating entire fonds
+            search_term = args.term or "*"
             for nad_num, nad_name in TARGET_NADS:
                 log.info(
                     "\n============================================================"
@@ -303,7 +304,7 @@ def main():
 
                 session.reinit()
                 total, records = enumerate_all(
-                    session, args.term,
+                    session, search_term,
                     digi_only=args.digi_only,
                     levels=args.levels,
                     nad=nad_num,

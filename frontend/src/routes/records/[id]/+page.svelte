@@ -56,10 +56,10 @@
 	{#if fondName || nadNumber}
 		<div class="mb-4 px-3 py-2 rounded-md bg-surface-alt border border-border">
 			{#if fondName}
-				<div class="text-[length:var(--vui-text-sm)] font-medium text-text-sub">{fondName}</div>
+				<div class="text-[length:var(--vui-text-sm)] font-medium text-text">{fondName}</div>
 			{/if}
 			{#if nadEnglish}
-				<div class="text-[length:var(--vui-text-sm)] text-text-muted">{nadEnglish}</div>
+				<div class="text-[length:var(--vui-text-sm)] font-semibold text-accent">{nadEnglish}</div>
 			{/if}
 			{#if nadNumber}
 				<div class="text-[length:var(--vui-text-xs)] text-text-dim mt-0.5">NAD {nadNumber}</div>
@@ -68,15 +68,15 @@
 	{/if}
 
 	{#if record.description}
-		<p class="text-text-sub mb-6">{record.description}</p>
+		<p class="text-text mb-6">{record.description}</p>
 	{/if}
 
 	<div class="grid grid-cols-1 gap-x-8 gap-y-2 sm:grid-cols-2">
 		{#each metaFields as field}
 			{#if field.value}
 				<div class="flex gap-2 text-[length:var(--vui-text-sm)]">
-					<span class="font-medium text-text-muted">{field.label}:</span>
-					<span class="text-text-sub">{field.value}</span>
+					<span class="font-semibold text-accent">{field.label}:</span>
+					<span class="text-text">{field.value}</span>
 				</div>
 			{/if}
 		{/each}

@@ -98,9 +98,9 @@
 								<div class="text-[length:var(--vui-text-xs)] text-text-dim mt-0.5">{fond}</div>
 							{/if}
 						</td>
-						<td class="px-4 py-3 whitespace-nowrap text-text-sub">{record.dateRangeText ?? ''}</td>
-						<td class="px-4 py-3 text-text-sub">{record.referenceCode ?? ''}</td>
-						<td class="px-4 py-3 text-text-sub tabular-nums">{record.pageCount}</td>
+						<td class="px-4 py-3 whitespace-nowrap text-text">{record.dateRangeText ?? ''}</td>
+						<td class="px-4 py-3 text-text">{record.referenceCode ?? ''}</td>
+						<td class="px-4 py-3 text-text tabular-nums">{record.pageCount}</td>
 						<td class="px-4 py-3"><StatusBadge status={record.status} /></td>
 						<td class="px-4 py-3 whitespace-nowrap text-text-muted">{formatDate(record.createdAt)}</td>
 					</tr>
