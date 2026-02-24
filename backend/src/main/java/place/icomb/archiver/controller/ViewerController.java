@@ -100,12 +100,16 @@ public class ViewerController {
         recordsByStatus, pagesByStatus, "extract_entities", jobsByKind));
 
     // "Complete" aggregates terminal statuses
-    long doneRecords = recordsByStatus.getOrDefault("ocr_done", 0L)
+    long doneRecords = recordsByStatus.getOrDefault("ocr_complete", 0L)
+        + recordsByStatus.getOrDefault("ocr_done", 0L)
         + recordsByStatus.getOrDefault("pdf_done", 0L)
-        + recordsByStatus.getOrDefault("entities_done", 0L);
-    long donePages = pagesByStatus.getOrDefault("ocr_done", 0L)
+        + recordsByStatus.getOrDefault("entities_done", 0L)
+        + recordsByStatus.getOrDefault("complete", 0L);
+    long donePages = pagesByStatus.getOrDefault("ocr_complete", 0L)
+        + pagesByStatus.getOrDefault("ocr_done", 0L)
         + pagesByStatus.getOrDefault("pdf_done", 0L)
-        + pagesByStatus.getOrDefault("entities_done", 0L);
+        + pagesByStatus.getOrDefault("entities_done", 0L)
+        + pagesByStatus.getOrDefault("complete", 0L);
     Map<String, Object> completeStage = new LinkedHashMap<>();
     completeStage.put("name", "Complete");
     completeStage.put("records", doneRecords);
@@ -181,46 +185,108 @@ public class ViewerController {
       @RequestParam(defaultValue = "0") int page,
       @RequestParam(defaultValue = "20") int size) {
     if (q == null || q.isBlank()) {
-      return ResponseEntity.ok(Map.of("results", List.of(), "total", 0));
+      return ResponseEntity.ok(Map.of("results", List.of(), "total", 0, "page", 0, "size", size));
     }
 
-    long total = pageTextRepository.countByText(q);
-    List<PageText> hits = pageTextRepository.searchByText(q, size, page * size);
+    String termPattern = "%" + q.toLowerCase().replace("%", "\\%") + "%";
+    int offset = page * size;
 
-    List<Map<String, Object>> results =
-        hits.stream()
-            .map(
-                pt -> {
-                  var pageEntity = pageRepository.findById(pt.getPageId()).orElse(null);
-                  var record =
-                      pageEntity != null
-                          ? recordRepository.findById(pageEntity.getRecordId()).orElse(null)
-                          : null;
+    // Combined search: OCR text + record metadata (title, description, referenceCode)
+    long total =
+        jdbcTemplate.queryForObject(
+            """
+            SELECT count(*) FROM (
+              SELECT pt.id FROM page_text pt
+              WHERE pt.text_norm ILIKE '%' || immutable_unaccent(lower(?)) || '%'
+              UNION
+              SELECT -r.id FROM record r
+              WHERE lower(r.title) LIKE ?
+                 OR lower(r.description) LIKE ?
+                 OR lower(r.reference_code) LIKE ?
+            ) sub
+            """,
+            Long.class,
+            q,
+            termPattern,
+            termPattern,
+            termPattern);
 
-                  // Extract snippet around the match
-                  String text = pt.getTextRaw() != null ? pt.getTextRaw() : "";
-                  String snippet = extractSnippet(text, q, 200);
+    // OCR text hits
+    List<PageText> ocrHits = pageTextRepository.searchByText(q, size, offset);
 
-                  Map<String, Object> result = new LinkedHashMap<>();
-                  result.put("pageTextId", pt.getId());
-                  result.put("pageId", pt.getPageId());
-                  result.put("confidence", pt.getConfidence());
-                  result.put("engine", pt.getEngine());
-                  result.put("snippet", snippet);
-                  if (pageEntity != null) {
-                    result.put("seq", pageEntity.getSeq());
-                    result.put("recordId", pageEntity.getRecordId());
-                  }
-                  if (record != null) {
-                    result.put("recordTitle", record.getTitle());
-                    result.put("referenceCode", record.getReferenceCode());
-                  }
-                  return result;
-                })
-            .toList();
+    List<Map<String, Object>> results = new java.util.ArrayList<>();
+    for (PageText pt : ocrHits) {
+      var pageEntity = pageRepository.findById(pt.getPageId()).orElse(null);
+      var record =
+          pageEntity != null
+              ? recordRepository.findById(pageEntity.getRecordId()).orElse(null)
+              : null;
+
+      String text = pt.getTextRaw() != null ? pt.getTextRaw() : "";
+      String snippet = extractSnippet(text, q, 200);
+
+      Map<String, Object> result = new LinkedHashMap<>();
+      result.put("type", "ocr");
+      result.put("pageTextId", pt.getId());
+      result.put("pageId", pt.getPageId());
+      result.put("confidence", pt.getConfidence());
+      result.put("engine", pt.getEngine());
+      result.put("snippet", snippet);
+      if (pageEntity != null) {
+        result.put("seq", pageEntity.getSeq());
+        result.put("recordId", pageEntity.getRecordId());
+      }
+      if (record != null) {
+        result.put("recordTitle", record.getTitle());
+        result.put("referenceCode", record.getReferenceCode());
+      }
+      results.add(result);
+    }
+
+    // If we have room, add metadata matches (records whose title/description/ref match)
+    if (results.size() < size) {
+      int metaLimit = size - results.size();
+      // Exclude records already shown via OCR hits
+      List<Map<String, Object>> metaHits =
+          jdbcTemplate.queryForList(
+              """
+              SELECT r.id, r.title, r.description, r.reference_code, r.status, r.page_count
+              FROM record r
+              WHERE (lower(r.title) LIKE ?
+                  OR lower(r.description) LIKE ?
+                  OR lower(r.reference_code) LIKE ?)
+              ORDER BY r.id DESC
+              LIMIT ?
+              """,
+              termPattern,
+              termPattern,
+              termPattern,
+              metaLimit);
+
+      for (var row : metaHits) {
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("type", "record");
+        result.put("recordId", row.get("id"));
+        result.put("recordTitle", row.get("title"));
+        result.put("referenceCode", row.get("reference_code"));
+        result.put("pageCount", row.get("page_count"));
+        result.put("status", row.get("status"));
+        // Build snippet from whichever field matched
+        String desc = row.get("description") != null ? row.get("description").toString() : "";
+        String title = row.get("title") != null ? row.get("title").toString() : "";
+        if (title.toLowerCase().contains(q.toLowerCase())) {
+          result.put("snippet", title);
+        } else if (desc.toLowerCase().contains(q.toLowerCase())) {
+          result.put("snippet", extractSnippet(desc, q, 200));
+        } else {
+          result.put("snippet", row.get("reference_code"));
+        }
+        results.add(result);
+      }
+    }
 
     return ResponseEntity.ok(
-        Map.of("results", results, "total", total, "page", page, "size", size));
+        Map.of("results", results, "total", total != null ? total : 0, "page", page, "size", size));
   }
 
   @GetMapping("/files/{attachmentId}")

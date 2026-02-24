@@ -50,7 +50,17 @@
 
 	function sortHref(key: string): string {
 		const dir = data.sortBy === key && data.sortDir === 'asc' ? 'desc' : 'asc';
-		return `?sortBy=${key}&sortDir=${dir}`;
+		const params = new URLSearchParams({ sortBy: key, sortDir: dir });
+		if (data.status) params.set('status', data.status);
+		return `?${params}`;
+	}
+
+	function statusHref(status: string): string {
+		const params = new URLSearchParams();
+		if (status) params.set('status', status);
+		params.set('sortBy', data.sortBy);
+		params.set('sortDir', data.sortDir);
+		return `?${params}`;
 	}
 
 	function sortIndicator(key: string): string {
@@ -99,7 +109,7 @@
 	{#each statuses as s}
 		{@const active = data.status === s.value}
 		<a
-			href={s.value ? `?status=${s.value}` : '/'}
+			href={statusHref(s.value)}
 			class="px-3 py-1.5 rounded-full text-[length:var(--vui-text-xs)] font-medium border transition-all
 				{active
 					? 'bg-accent-dim text-accent border-accent-border'

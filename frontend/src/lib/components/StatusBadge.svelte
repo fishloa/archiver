@@ -6,7 +6,10 @@
 	let { status }: Props = $props();
 
 	const variants: Record<string, string> = {
+		ingesting: 'vui-badge-warning',
 		ingested: 'vui-badge-info',
+		ocr_pending: 'vui-badge-purple',
+		ocr_complete: 'vui-badge-success',
 		processing: 'vui-badge-warning',
 		complete: 'vui-badge-success',
 		error: 'vui-badge-danger'

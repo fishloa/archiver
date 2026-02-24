@@ -2,6 +2,8 @@ package place.icomb.archiver.service;
 
 import java.time.Instant;
 import java.util.Optional;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -10,6 +12,8 @@ import place.icomb.archiver.repository.JobRepository;
 
 @Service
 public class JobService {
+
+  private static final Logger log = LoggerFactory.getLogger(JobService.class);
 
   private final JobRepository jobRepository;
   private final JdbcTemplate jdbcTemplate;
@@ -68,7 +72,43 @@ public class JobService {
     job.setFinishedAt(Instant.now());
     job = jobRepository.save(job);
     recordEventService.pipelineChanged(job.getKind(), "completed");
+
+    // Check if all OCR jobs for this record are now complete
+    if (job.getRecordId() != null && isOcrKind(job.getKind())) {
+      checkRecordOcrComplete(job.getRecordId());
+    }
+
     return job;
+  }
+
+  /**
+   * If every page in the record has OCR text, transition the record status from ocr_pending to
+   * ocr_complete.
+   */
+  private void checkRecordOcrComplete(Long recordId) {
+    Long pending =
+        jdbcTemplate.queryForObject(
+            """
+            SELECT count(*) FROM page p
+            WHERE p.record_id = ?
+              AND NOT EXISTS (SELECT 1 FROM page_text pt WHERE pt.page_id = p.id)
+            """,
+            Long.class,
+            recordId);
+    if (pending != null && pending == 0) {
+      int updated =
+          jdbcTemplate.update(
+              "UPDATE record SET status = 'ocr_complete', updated_at = now() WHERE id = ? AND status = 'ocr_pending'",
+              recordId);
+      if (updated > 0) {
+        log.info("Record {} transitioned to ocr_complete", recordId);
+        recordEventService.recordChanged(recordId, "status");
+      }
+    }
+  }
+
+  private static boolean isOcrKind(String kind) {
+    return kind != null && kind.startsWith("ocr_page_");
   }
 
   /** Marks a job as failed with an error message. */

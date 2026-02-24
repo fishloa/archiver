@@ -1,13 +1,14 @@
 <script lang="ts">
-	import { Search } from 'lucide-svelte';
+	import { Search, FileText, Library } from 'lucide-svelte';
 	import Pagination from '$lib/components/Pagination.svelte';
+	import StatusBadge from '$lib/components/StatusBadge.svelte';
 
 	let { data } = $props();
 
 	let query = $state(data.q);
 
 	function highlight(snippet: string, q: string): string {
-		if (!q) return snippet;
+		if (!q || !snippet) return snippet ?? '';
 		const escaped = q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 		return snippet.replace(
 			new RegExp(`(${escaped})`, 'gi'),
@@ -20,7 +21,7 @@
 	<title>{data.q ? `"${data.q}" — Search` : 'Search'} &ndash; Archiver</title>
 </svelte:head>
 
-<h1 class="text-[length:var(--vui-text-2xl)] font-extrabold tracking-tight mb-6">Search OCR Text</h1>
+<h1 class="text-[length:var(--vui-text-2xl)] font-extrabold tracking-tight mb-6">Search</h1>
 
 <form method="get" class="mb-6 flex gap-3">
 	<div class="relative flex-1">
@@ -29,7 +30,7 @@
 			type="text"
 			name="q"
 			bind:value={query}
-			placeholder="Search page text..."
+			placeholder="Search OCR text, titles, descriptions..."
 			class="w-full pl-10 pr-4 py-2.5 rounded-lg bg-surface border border-border text-text placeholder:text-text-sub focus:outline-none focus:ring-2 focus:ring-accent/50 vui-transition"
 		/>
 	</div>
@@ -43,26 +44,53 @@
 
 	<div class="space-y-3">
 		{#each data.results as result}
-			<a
-				href="/records/{result.recordId}/pages/{result.seq}"
-				class="vui-card block vui-transition hover:border-accent/40"
-			>
-				<div class="flex items-baseline gap-2 mb-1.5">
-					<span class="font-semibold text-accent">{result.recordTitle ?? '(untitled)'}</span>
-					<span class="text-[length:var(--vui-text-xs)] text-text-sub tabular-nums">
-						Page {result.seq}
-					</span>
-					{#if result.referenceCode}
-						<span class="text-[length:var(--vui-text-xs)] text-text-sub">{result.referenceCode}</span>
+			{#if result.type === 'record'}
+				<a
+					href="/records/{result.recordId}"
+					class="vui-card block vui-transition hover:border-accent/40"
+				>
+					<div class="flex items-center gap-2 mb-1.5">
+						<Library size={14} strokeWidth={2} class="text-purple flex-shrink-0" />
+						<span class="font-semibold text-accent">{result.recordTitle ?? '(untitled)'}</span>
+						{#if result.referenceCode}
+							<span class="text-[length:var(--vui-text-xs)] text-text-sub">{result.referenceCode}</span>
+						{/if}
+						{#if result.status}
+							<span class="ml-auto"><StatusBadge status={result.status} /></span>
+						{/if}
+					</div>
+					<p class="text-[length:var(--vui-text-sm)] text-text leading-relaxed">
+						{@html highlight(result.snippet ?? '', data.q)}
+					</p>
+					{#if result.pageCount}
+						<span class="text-[length:var(--vui-text-xs)] text-text-muted mt-1 inline-block">
+							{result.pageCount} pages
+						</span>
 					{/if}
-					<span class="text-[length:var(--vui-text-xs)] text-text-sub ml-auto tabular-nums">
-						{((result.confidence ?? 0) * 100).toFixed(0)}%
-					</span>
-				</div>
-				<p class="text-[length:var(--vui-text-sm)] text-text leading-relaxed">
-					{@html highlight(result.snippet, data.q)}
-				</p>
-			</a>
+				</a>
+			{:else}
+				<a
+					href="/records/{result.recordId}/pages/{result.seq}"
+					class="vui-card block vui-transition hover:border-accent/40"
+				>
+					<div class="flex items-center gap-2 mb-1.5">
+						<FileText size={14} strokeWidth={2} class="text-info flex-shrink-0" />
+						<span class="font-semibold text-accent">{result.recordTitle ?? '(untitled)'}</span>
+						<span class="text-[length:var(--vui-text-xs)] text-text-sub tabular-nums">
+							Page {result.seq}
+						</span>
+						{#if result.referenceCode}
+							<span class="text-[length:var(--vui-text-xs)] text-text-sub">{result.referenceCode}</span>
+						{/if}
+						<span class="text-[length:var(--vui-text-xs)] text-text-sub ml-auto tabular-nums">
+							{((result.confidence ?? 0) * 100).toFixed(0)}%
+						</span>
+					</div>
+					<p class="text-[length:var(--vui-text-sm)] text-text leading-relaxed">
+						{@html highlight(result.snippet ?? '', data.q)}
+					</p>
+				</a>
+			{/if}
 		{/each}
 	</div>
 
