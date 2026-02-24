@@ -18,7 +18,8 @@ FROM amazoncorretto:25
 
 WORKDIR /app
 
-RUN groupadd --system archiver && useradd --system --gid archiver archiver
+RUN yum install -y shadow-utils && yum clean all && \
+    groupadd --system archiver && useradd --system --gid archiver archiver
 
 COPY --from=build /app/build/libs/*.jar app.jar
 
