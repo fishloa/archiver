@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { ArrowLeft, ArrowRight } from 'lucide-svelte';
+	import { ArrowLeft, ArrowRight, ChevronDown } from 'lucide-svelte';
 
 	let { data } = $props();
 	let record = $derived(data.record);
@@ -7,6 +7,9 @@
 	let prev = $derived(data.prev);
 	let next = $derived(data.next);
 	let totalPages = $derived(data.totalPages);
+	let pageText = $derived(data.pageText);
+
+	let textOpen = $state(true);
 </script>
 
 <svelte:head>
@@ -17,7 +20,7 @@
 	<a href="/records/{record.id}" class="vui-btn vui-btn-ghost vui-btn-sm">
 		<ArrowLeft size={13} strokeWidth={2} /> {record.title ?? 'Back to record'}
 	</a>
-	<span class="text-[length:var(--vui-text-sm)] text-text-sub tabular-nums">
+	<span class="text-[length:var(--vui-text-sm)] text-text tabular-nums">
 		{page.pageLabel ?? `Page ${page.seq}`} &middot; {page.seq} of {totalPages}
 	</span>
 </div>
@@ -46,5 +49,27 @@
 {:else}
 	<div class="vui-card flex h-96 items-center justify-center">
 		<span class="text-text-sub">No image available</span>
+	</div>
+{/if}
+
+{#if pageText.text}
+	<div class="mt-6 vui-card vui-animate-fade-in">
+		<button
+			class="flex items-center gap-1.5 text-[length:var(--vui-text-sm)] font-semibold text-accent vui-transition hover:text-accent-hover cursor-pointer w-full"
+			onclick={() => textOpen = !textOpen}
+		>
+			<ChevronDown
+				size={14}
+				strokeWidth={2}
+				class="vui-transition {textOpen ? 'rotate-0' : '-rotate-90'}"
+			/>
+			OCR Text
+			<span class="text-text-sub font-normal ml-1">
+				({pageText.engine}, {(pageText.confidence * 100).toFixed(0)}% confidence)
+			</span>
+		</button>
+		{#if textOpen}
+			<pre class="mt-3 p-4 rounded-md bg-bg-deep border border-border text-[length:var(--vui-text-sm)] text-text overflow-x-auto font-mono whitespace-pre-wrap leading-relaxed">{pageText.text}</pre>
+		{/if}
 	</div>
 {/if}

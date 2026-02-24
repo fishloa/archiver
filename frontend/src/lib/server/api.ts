@@ -35,3 +35,42 @@ export async function fetchRecordPages(id: number): Promise<PageResponse[]> {
 	if (!res.ok) throw new Error(`Backend error: ${res.status}`);
 	return res.json();
 }
+
+export interface PageTextResponse {
+	pageId: number;
+	text: string;
+	confidence: number;
+	engine: string;
+}
+
+export async function fetchPageText(pageId: number): Promise<PageTextResponse> {
+	const res = await fetch(`${backendUrl()}/api/pages/${pageId}/text`);
+	if (!res.ok) throw new Error(`Backend error: ${res.status}`);
+	return res.json();
+}
+
+export interface SearchResult {
+	pageTextId: number;
+	pageId: number;
+	confidence: number;
+	engine: string;
+	snippet: string;
+	seq: number;
+	recordId: number;
+	recordTitle: string | null;
+	referenceCode: string | null;
+}
+
+export interface SearchResponse {
+	results: SearchResult[];
+	total: number;
+	page: number;
+	size: number;
+}
+
+export async function searchPages(q: string, page: number = 0, size: number = 20): Promise<SearchResponse> {
+	const params = new URLSearchParams({ q, page: String(page), size: String(size) });
+	const res = await fetch(`${backendUrl()}/api/search?${params}`);
+	if (!res.ok) throw new Error(`Backend error: ${res.status}`);
+	return res.json();
+}
