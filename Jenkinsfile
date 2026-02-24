@@ -6,6 +6,13 @@ def changed(module) {
     return changes.length() > 0
 }
 
+def dockerPush(image) {
+    withCredentials([usernamePassword(credentialsId: 'dockerregistry.icomb.place', usernameVariable: 'REG_USER', passwordVariable: 'REG_PASS')]) {
+        sh "echo \$REG_PASS | docker login ${registry} -u \$REG_USER --password-stdin"
+    }
+    sh "docker push ${image}"
+}
+
 pipeline {
     agent any
 
@@ -26,14 +33,6 @@ pipeline {
             }
         }
 
-        stage('Docker Login') {
-            steps {
-                withCredentials([usernamePassword(credentialsId: 'dockerregistry.icomb.place', usernameVariable: 'REG_USER', passwordVariable: 'REG_PASS')]) {
-                    sh "echo \$REG_PASS | docker login ${registry} -u \$REG_USER --password-stdin"
-                }
-            }
-        }
-
         stage('Build & Push') {
             parallel {
                 stage('backend') {
@@ -42,8 +41,10 @@ pipeline {
                         dir('backend') {
                             sh "docker build -t ${prefix}/backend:latest -t ${prefix}/backend:\${GIT_COMMIT} ."
                         }
-                        sh "docker push ${prefix}/backend:latest"
-                        sh "docker push ${prefix}/backend:\${GIT_COMMIT}"
+                        script {
+                            dockerPush("${prefix}/backend:latest")
+                            dockerPush("${prefix}/backend:\${GIT_COMMIT}")
+                        }
                     }
                 }
 
@@ -53,8 +54,10 @@ pipeline {
                         dir('frontend') {
                             sh "docker build -t ${prefix}/frontend:latest -t ${prefix}/frontend:\${GIT_COMMIT} ."
                         }
-                        sh "docker push ${prefix}/frontend:latest"
-                        sh "docker push ${prefix}/frontend:\${GIT_COMMIT}"
+                        script {
+                            dockerPush("${prefix}/frontend:latest")
+                            dockerPush("${prefix}/frontend:\${GIT_COMMIT}")
+                        }
                     }
                 }
 
@@ -64,8 +67,10 @@ pipeline {
                         dir('scraper-cz') {
                             sh "docker build -t ${prefix}/scraper-cz:latest -t ${prefix}/scraper-cz:\${GIT_COMMIT} ."
                         }
-                        sh "docker push ${prefix}/scraper-cz:latest"
-                        sh "docker push ${prefix}/scraper-cz:\${GIT_COMMIT}"
+                        script {
+                            dockerPush("${prefix}/scraper-cz:latest")
+                            dockerPush("${prefix}/scraper-cz:\${GIT_COMMIT}")
+                        }
                     }
                 }
 
@@ -75,8 +80,10 @@ pipeline {
                         dir('ocr-worker-paddle') {
                             sh "docker build -t ${prefix}/ocr-worker-paddle:latest -t ${prefix}/ocr-worker-paddle:\${GIT_COMMIT} ."
                         }
-                        sh "docker push ${prefix}/ocr-worker-paddle:latest"
-                        sh "docker push ${prefix}/ocr-worker-paddle:\${GIT_COMMIT}"
+                        script {
+                            dockerPush("${prefix}/ocr-worker-paddle:latest")
+                            dockerPush("${prefix}/ocr-worker-paddle:\${GIT_COMMIT}")
+                        }
                     }
                 }
             }
