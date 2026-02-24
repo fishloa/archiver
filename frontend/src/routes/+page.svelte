@@ -52,6 +52,17 @@
 		return new Date(iso).toLocaleDateString();
 	}
 
+	function pageDisplay(record: { pageCount: number; status: string; rawSourceMetadata: string | null }): string {
+		if (record.status === 'ingesting') {
+			const meta = parseSourceMeta(record.rawSourceMetadata);
+			const total = meta.scans;
+			if (typeof total === 'number' && total > 0) {
+				return `${record.pageCount}/${total}`;
+			}
+		}
+		return String(record.pageCount);
+	}
+
 	function fondLabel(sourceSystem: string | null, raw: string | null): string {
 		const meta = parseSourceMeta(raw);
 		const nad = meta.nad_number ? String(meta.nad_number) : null;
@@ -68,7 +79,7 @@
 
 <div class="flex items-center justify-between mb-6">
 	<h1 class="text-[length:var(--vui-text-2xl)] font-extrabold tracking-tight">Records</h1>
-	<span class="flex items-center gap-1.5 text-[length:var(--vui-text-xs)] text-text-muted">
+	<span class="flex items-center gap-1.5 text-[length:var(--vui-text-xs)] text-text-sub">
 		<span class="inline-block w-1.5 h-1.5 rounded-full {connected ? 'bg-green-500' : 'bg-red-500'}"></span>
 		{connected ? 'Live' : 'Connecting…'}
 	</span>
@@ -76,7 +87,7 @@
 
 {#if data.records.empty}
 	<div class="vui-card">
-		<p class="text-text-muted">No records found.</p>
+		<p class="text-text-sub">No records found.</p>
 	</div>
 {:else}
 	<div class="vui-card overflow-x-auto p-0">
@@ -84,7 +95,7 @@
 			<thead>
 				<tr class="border-b border-border">
 					{#each columns as col}
-						<th class="px-5 py-3 text-[11px] font-semibold uppercase tracking-[0.04em] text-text-muted">
+						<th class="px-5 py-3 text-[11px] font-semibold uppercase tracking-[0.04em] text-text-sub">
 							<a href={sortHref(col.key)} class="vui-transition hover:text-text">
 								{col.label}{sortIndicator(col.key)}
 							</a>
@@ -101,14 +112,14 @@
 								{record.title ?? '(untitled)'}
 							</a>
 							{#if fond}
-								<div class="text-[length:var(--vui-text-xs)] text-text-muted mt-0.5">{fond}</div>
+								<div class="text-[length:var(--vui-text-xs)] text-text-sub mt-0.5">{fond}</div>
 							{/if}
 						</td>
 						<td class="px-5 py-3.5 whitespace-nowrap text-text">{record.dateRangeText ?? ''}</td>
 						<td class="px-5 py-3.5 text-text">{record.referenceCode ?? ''}</td>
-						<td class="px-5 py-3.5 text-text tabular-nums">{record.pageCount}</td>
+						<td class="px-5 py-3.5 text-text tabular-nums">{pageDisplay(record)}</td>
 						<td class="px-5 py-3.5"><StatusBadge status={record.status} /></td>
-						<td class="px-5 py-3.5 whitespace-nowrap text-text-muted">{formatDate(record.createdAt)}</td>
+						<td class="px-5 py-3.5 whitespace-nowrap text-text-sub">{formatDate(record.createdAt)}</td>
 					</tr>
 				{/each}
 			</tbody>
@@ -117,7 +128,7 @@
 
 	<div class="flex items-center justify-between">
 		<Pagination page={data.records.number} totalPages={data.records.totalPages} />
-		<span class="text-[length:var(--vui-text-xs)] text-text-dim tabular-nums">
+		<span class="text-[length:var(--vui-text-xs)] text-text-sub tabular-nums">
 			{data.records.totalElements} records
 		</span>
 	</div>

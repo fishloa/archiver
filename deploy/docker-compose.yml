@@ -38,23 +38,22 @@ services:
       - backend
     restart: "no"
 
-  # --- Uncomment as images become available ---
-  # ocr-worker-paddle:
-  #   image: ghcr.io/fishloa/archiver/ocr-worker-paddle:latest
-  #   environment:
-  #     BACKEND_URL: http://backend:8080
-  #     PROCESSOR_TOKEN: ${PROCESSOR_TOKEN}
-  #     DB_NOTIFY_URL: postgresql://${DB_USER}:${DB_PASSWORD}@${DB_HOST}:5432/${DB_NAME}
-  #   deploy:
-  #     resources:
-  #       reservations:
-  #         devices:
-  #           - driver: nvidia
-  #             count: 1
-  #             capabilities: [gpu]
-  #   depends_on:
-  #     - backend
-  #   restart: unless-stopped
+  ocr-worker-paddle:
+    image: ghcr.io/fishloa/archiver/ocr-worker-paddle:latest
+    environment:
+      BACKEND_URL: http://backend:8080
+      PROCESSOR_TOKEN: ${PROCESSOR_TOKEN}
+      DB_NOTIFY_URL: postgresql://${DB_USER}:${DB_PASSWORD}@${DB_HOST}:5432/${DB_NAME}
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    depends_on:
+      - backend
+    restart: unless-stopped
 
   # pdf-worker:
   #   image: ghcr.io/fishloa/archiver/pdf-worker:latest

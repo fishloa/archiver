@@ -94,6 +94,29 @@ jobs:
             ghcr.io/fishloa/archiver/scraper-cz:latest
             ghcr.io/fishloa/archiver/scraper-cz:${{ github.sha }}
 
+  ocr-worker-paddle-docker:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push OCR worker Docker image
+        uses: docker/build-push-action@v6
+        with:
+          context: ocr-worker-paddle
+          file: ocr-worker-paddle/Dockerfile
+          push: true
+          tags: |
+            ghcr.io/fishloa/archiver/ocr-worker-paddle:latest
+            ghcr.io/fishloa/archiver/ocr-worker-paddle:${{ github.sha }}
+
   frontend:
     runs-on: ubuntu-latest
     steps:
