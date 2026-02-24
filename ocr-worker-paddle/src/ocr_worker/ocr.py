@@ -1,4 +1,4 @@
-"""PaddleOCR wrapper."""
+"""PaddleOCR wrapper (v3.x API)."""
 
 import logging
 from io import BytesIO
@@ -16,11 +16,12 @@ def get_engine(lang: str = "german", use_gpu: bool = True) -> PaddleOCR:
     """Get or create the PaddleOCR engine (singleton)."""
     global _engine
     if _engine is None:
-        log.info("Initializing PaddleOCR engine (lang=%s, gpu=%s)...", lang, use_gpu)
+        device = "gpu" if use_gpu else "cpu"
+        log.info("Initializing PaddleOCR engine (lang=%s, device=%s)...", lang, device)
         _engine = PaddleOCR(
-            use_angle_cls=True,
+            use_textline_orientation=True,
             lang=lang,
-            use_gpu=use_gpu,
+            device=device,
         )
         log.info("PaddleOCR engine ready")
     return _engine

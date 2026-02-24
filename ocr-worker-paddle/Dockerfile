@@ -15,6 +15,6 @@ RUN pip install --no-cache-dir --upgrade pip setuptools wheel && \
 
 # Pre-download OCR models so startup is fast
 # Pre-download German OCR models (use_gpu=False only for build - runtime uses GPU)
-RUN python3 -c "from paddleocr import PaddleOCR; PaddleOCR(use_angle_cls=True, lang='german', use_gpu=False)"
+RUN python3 -c "from paddleocr import PaddleOCR; PaddleOCR(use_textline_orientation=True, lang='german', device='cpu')"
 
 CMD ["python3", "-m", "ocr_worker.main"]
