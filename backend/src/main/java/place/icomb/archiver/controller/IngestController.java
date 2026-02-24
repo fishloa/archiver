@@ -6,6 +6,7 @@ import java.util.Map;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -91,6 +92,25 @@ public class IngestController {
             record.getSourceSystem(),
             record.getSourceRecordId(),
             record.getStatus()));
+  }
+
+  @DeleteMapping("/records/{recordId}")
+  public ResponseEntity<Void> deleteRecord(@PathVariable Long recordId) {
+    ingestService.deleteRecord(recordId);
+    return ResponseEntity.noContent().build();
+  }
+
+  @DeleteMapping("/records/by-source/{sourceSystem}/{sourceRecordId}")
+  public ResponseEntity<Void> deleteRecordBySource(
+      @PathVariable String sourceSystem, @PathVariable String sourceRecordId) {
+    return recordRepository
+        .findBySourceSystemAndSourceRecordId(sourceSystem, sourceRecordId)
+        .map(
+            r -> {
+              ingestService.deleteRecord(r.getId());
+              return ResponseEntity.noContent().<Void>build();
+            })
+        .orElse(ResponseEntity.notFound().build());
   }
 
   @GetMapping("/status/{sourceSystem}/{sourceRecordId}")

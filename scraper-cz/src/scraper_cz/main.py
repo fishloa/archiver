@@ -47,12 +47,19 @@ def ingest_record(
     xid = rec["xid"]
     label = f"inv.{rec.get('inv', '?')} sig.{rec.get('sig', '?')}"
 
-    # Check if already ingested
+    # Check existing status
     if not dry_run:
-        status = client.get_status(SOURCE_SYSTEM, xid)
-        if status.get("status") == "complete":
-            log.info("[SKIP] %s — already ingested", label)
+        status_info = client.get_status(SOURCE_SYSTEM, xid)
+        current_status = status_info.get("status")
+        if current_status and current_status not in ("ingesting",):
+            log.info("[SKIP] %s — status=%s", label, current_status)
             return True
+        if current_status == "ingesting":
+            # Previous ingest was incomplete — delete and re-ingest
+            record_id = status_info.get("id")
+            if record_id:
+                log.info("[CLEANUP] %s — deleting incomplete record %s", label, record_id)
+                client.delete_record(record_id)
 
     # Load full record detail
     log.info("[START] %s (xid=%s)", label, xid)

@@ -181,6 +181,30 @@ public class IngestService {
     return record;
   }
 
+  /**
+   * Deletes a record and all associated data (pages, attachments, jobs, files on disk). Nulls
+   * pdf_attachment_id first to avoid circular FK constraint.
+   */
+  @Transactional
+  public void deleteRecord(Long recordId) {
+    Record record =
+        recordRepository
+            .findById(recordId)
+            .orElseThrow(() -> new IllegalArgumentException("Record not found: " + recordId));
+
+    // Break circular FK: record → attachment
+    if (record.getPdfAttachmentId() != null) {
+      record.setPdfAttachmentId(null);
+      recordRepository.save(record);
+    }
+
+    // Delete files on disk
+    storageService.deleteRecordFiles(recordId);
+
+    // Delete record — pages, attachments, jobs etc. cascade via ON DELETE CASCADE
+    recordRepository.delete(record);
+  }
+
   private static String sha256(byte[] data) {
     try {
       MessageDigest digest = MessageDigest.getInstance("SHA-256");

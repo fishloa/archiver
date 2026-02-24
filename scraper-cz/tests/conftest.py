@@ -81,15 +81,23 @@ SAMPLE_SEARCH_RESULTS_HTML = """
 SAMPLE_RECORD_DETAIL_HTML = """
 <html>
 <body>
-<h1>inv. č. 1777, sig. 109-5/5</h1>
-<div class="popis">Heydrich situation report to Bormann, 18 May 1942</div>
-<table>
-  <tr><td>Signatura: 109-5/5</td></tr>
-  <tr><td>Datace: 1942</td></tr>
-  <tr><td>Fond: Úřad říšského protektora</td></tr>
-  <tr><td>NAD: 1799</td></tr>
-  <tr><td>Obsah: Situační zpráva pro Bormanna</td></tr>
-</table>
+<div class="contentLine">
+  Název fondu : Úřad říšského protektora Číslo pomůcky 1234
+</div>
+<div class="detailRecord">
+  <span class="tabularLabel">Inv./přír. číslo:</span>
+  <span class="tabularValue">1777</span>
+  <span class="tabularLabel">Signatura:</span>
+  <span class="tabularValue">109-5/5</span>
+  <span class="tabularLabel">Datace:</span>
+  <span class="tabularValue">1942</span>
+  <span class="tabularLabel">Obsah:</span>
+  <span class="tabularValue">Situační zpráva pro Bormanna</span>
+  <span class="tabularLabel">Název fondu:</span>
+  <span class="tabularValue">Úřad říšského protektora</span>
+  <span class="tabularLabel">Číslo listu NAD:</span>
+  <span class="tabularValue">1799</span>
+</div>
 <div>5 skenů</div>
 <a href="Zoomify.action?entityRef=cz%2Farchives%2FCZ-100000010%2Finventare%2Fdao%2F1234">View scans</a>
 </body>

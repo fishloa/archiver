@@ -159,6 +159,25 @@ class BackendClient:
         self._request("POST", f"/api/ingest/records/{record_id}/complete")
         log.info("Completed ingest for record %s", record_id)
 
+    def delete_record(self, record_id: str) -> None:
+        """Delete a record and all its associated data."""
+        self._request("DELETE", f"/api/ingest/records/{record_id}")
+        log.info("Deleted record %s", record_id)
+
+    def delete_record_by_source(self, source_system: str, source_record_id: str) -> bool:
+        """Delete a record by source system + ID. Returns True if deleted, False if not found."""
+        try:
+            self._request(
+                "DELETE",
+                f"/api/ingest/records/by-source/{source_system}/{source_record_id}",
+            )
+            log.info("Deleted record %s/%s", source_system, source_record_id)
+            return True
+        except httpx.HTTPStatusError as exc:
+            if exc.response.status_code == 404:
+                return False
+            raise
+
     def get_status(self, source_system: str, source_record_id: str) -> dict:
         """Check ingest status. Returns status dict or empty dict if not found."""
         try:

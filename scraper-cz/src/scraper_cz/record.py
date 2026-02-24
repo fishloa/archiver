@@ -71,42 +71,56 @@ def load_record_detail(session: VadeMeCumSession, xid: str) -> dict:
 
 
 def parse_record_detail(html: str, xid: str) -> dict:
-    """Parse a record detail page into a metadata dict."""
-    title_m = re.search(r'<h1[^>]*>(.*?)</h1>', html, re.DOTALL)
-    desc_m = re.search(
-        r'class="[^"]*popis[^"]*"[^>]*>(.*?)</(?:div|p)>', html, re.DOTALL
-    )
-    sig_m = re.search(r'(?:Signatura|Sign\.)[^<]*?:\s*([^<]+)', html)
-    inv_m = re.search(r'inv\.\s*č\.\s*(\d+)', html)
-    date_m = re.search(r'(?:Dat(?:ace|um)|Date)[^<]*?:\s*([^<]+)', html)
-    scan_count_m = re.search(r'(\d+)\s*(?:sken|scan|příloh)', html)
+    """Parse a record detail page into a metadata dict.
 
-    # Additional metadata fields
-    karton_type_m = re.search(r'(?:Typ\s+obalu|Druh\s+obalu)[^<]*?:\s*([^<]+)', html)
-    karton_num_m = re.search(r'(?:Č(?:íslo)?\s+(?:kartonu|obalu))[^<]*?:\s*([^<]+)', html)
-    obsah_m = re.search(r'(?:Obsah|Regest)[^<]*?:\s*([^<]+)', html)
-    hesla_m = re.search(r'(?:Rejstříková\s+hesla|Index\s+terms?)[^<]*?:\s*([^<]+)', html)
-    fond_m = re.search(r'(?:Fond|Sbírka)[^<]*?:\s*([^<]+)', html)
-    nad_m = re.search(r'NAD[^<]*?:\s*(\d+)', html)
-    fa_m = re.search(r'(?:Pomůcka|Finding\s+aid)[^<]*?:\s*([^<]+)', html)
+    VadeMeCum uses <span class="tabularLabel">Label:</span>
+    <span class="tabularValue ...">Value</span> pairs for all metadata.
+    """
+    fields = _extract_tabular_fields(html)
+
+    # Fond/finding aid name from the "contentLine" header area
+    fond_name_m = re.search(
+        r'Název\s+(?:fondu|pomůcky)\s*:\s*(.*?)(?=\s*Číslo\s+pomůcky|\s*$)',
+        _strip_html(html[html.find("contentLine"):html.find("contentLine") + 600])
+        if "contentLine" in html else "",
+    )
+
+    # Scan count from the thumbnail area
+    scan_count_m = re.search(r'(\d+)\s*(?:skenů|sken|scan)', html)
 
     # Entity ref for Zoomify viewer
     entity_ref_m = re.search(r'entityRef=([^&"\']+)', html)
 
+    inv = fields.get("inv")
+    sig = fields.get("sig", "")
+    fond = fond_name_m.group(1).strip() if fond_name_m else fields.get("fond_name", "")
+
+    # Build a useful title from fond name, inv, sig
+    title_parts = [fond] if fond else []
+    if inv:
+        title_parts.append(f"inv. {inv}")
+    if sig:
+        title_parts.append(f"sig. {sig}")
+    title = ", ".join(title_parts) or f"Record {xid[:8]}"
+
     return {
         "xid": xid,
-        "title": _strip_html(title_m.group(1)) if title_m else "",
-        "desc": _strip_html(desc_m.group(1)) if desc_m else "",
-        "inv": int(inv_m.group(1)) if inv_m else None,
-        "sig": sig_m.group(1).strip() if sig_m else "",
-        "datace": date_m.group(1).strip() if date_m else "",
-        "karton_type": karton_type_m.group(1).strip() if karton_type_m else "",
-        "karton_number": karton_num_m.group(1).strip() if karton_num_m else "",
-        "obsah": obsah_m.group(1).strip() if obsah_m else "",
-        "rejstrikova_hesla": hesla_m.group(1).strip() if hesla_m else "",
-        "fond_name": fond_m.group(1).strip() if fond_m else "",
-        "nad_number": int(nad_m.group(1)) if nad_m else None,
-        "finding_aid_number": fa_m.group(1).strip() if fa_m else "",
+        "title": title,
+        "desc": fields.get("obsah", ""),
+        "inv": int(inv) if inv and inv.isdigit() else None,
+        "sig": sig,
+        "datace": fields.get("datace", ""),
+        "karton_type": fields.get("karton_type", ""),
+        "karton_number": fields.get("karton_number", ""),
+        "obsah": fields.get("obsah", ""),
+        "rejstrikova_hesla": fields.get("rejstrikova_hesla", ""),
+        "fond_name": fond,
+        "nad_number": (
+            int(fields["nad_number"])
+            if fields.get("nad_number", "").isdigit()
+            else None
+        ),
+        "finding_aid_number": fields.get("finding_aid_number", ""),
         "scans": int(scan_count_m.group(1)) if scan_count_m else 0,
         "entity_ref": (
             urllib.parse.unquote(htmlmod.unescape(entity_ref_m.group(1)))
@@ -114,6 +128,52 @@ def parse_record_detail(html: str, xid: str) -> dict:
             else None
         ),
     }
+
+
+# Map Czech labels to internal field names
+_LABEL_MAP = {
+    "Signatura": "sig",
+    "Sign.": "sig",
+    "Inv./přír. číslo": "inv",
+    "Inv. číslo": "inv",
+    "Datace": "datace",
+    "Datum": "datace",
+    "Obsah": "obsah",
+    "Regest": "obsah",
+    "Název fondu": "fond_name",
+    "Fond": "fond_name",
+    "Sbírka": "fond_name",
+    "Číslo listu NAD": "nad_number",
+    "NAD": "nad_number",
+    "Číslo pomůcky": "finding_aid_number",
+    "Pomůcka": "finding_aid_number",
+    "Druh ukládací jednotky": "karton_type",
+    "Typ obalu": "karton_type",
+    "Druh obalu": "karton_type",
+    "Ukládací jednotka": "karton_number",
+    "Číslo kartonu": "karton_number",
+    "Rejstříková hesla": "rejstrikova_hesla",
+    "Index terms": "rejstrikova_hesla",
+}
+
+
+def _extract_tabular_fields(html: str) -> dict[str, str]:
+    """Extract label/value pairs from VadeMeCum's tabular layout."""
+    fields: dict[str, str] = {}
+    for m in re.finditer(
+        r'<span\s+class="tabularLabel"[^>]*>\s*(.*?)\s*</span>\s*'
+        r'<span\s+class="tabularValue[^"]*"[^>]*>\s*(.*?)\s*</span>',
+        html,
+        re.DOTALL,
+    ):
+        label = _strip_html(m.group(1)).strip().rstrip(":")
+        value = re.sub(r'\s+', ' ', _strip_html(m.group(2))).strip()
+        if not value:
+            continue
+        key = _LABEL_MAP.get(label)
+        if key and key not in fields:
+            fields[key] = value
+    return fields
 
 
 def extract_entity_ref(html: str) -> str | None:

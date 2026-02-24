@@ -3,9 +3,12 @@ package place.icomb.archiver.service;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.UncheckedIOException;
+import java.nio.file.FileVisitResult;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.SimpleFileVisitor;
 import java.nio.file.StandardOpenOption;
+import java.nio.file.attribute.BasicFileAttributes;
 import org.springframework.core.io.InputStreamResource;
 import org.springframework.core.io.Resource;
 import org.springframework.stereotype.Service;
@@ -64,6 +67,35 @@ public class StorageService {
       return new InputStreamResource(is);
     } catch (IOException e) {
       throw new UncheckedIOException("Failed to stream file: " + attachment.getPath(), e);
+    }
+  }
+
+  /** Deletes all stored files for a record (the entire records/{recordId}/ directory). */
+  public void deleteRecordFiles(Long recordId) {
+    Path recordDir = storageRoot.resolve("records/" + recordId);
+    if (!Files.exists(recordDir)) {
+      return;
+    }
+    try {
+      Files.walkFileTree(
+          recordDir,
+          new SimpleFileVisitor<>() {
+            @Override
+            public FileVisitResult visitFile(Path file, BasicFileAttributes attrs)
+                throws IOException {
+              Files.delete(file);
+              return FileVisitResult.CONTINUE;
+            }
+
+            @Override
+            public FileVisitResult postVisitDirectory(Path dir, IOException exc)
+                throws IOException {
+              Files.delete(dir);
+              return FileVisitResult.CONTINUE;
+            }
+          });
+    } catch (IOException e) {
+      throw new UncheckedIOException("Failed to delete record files: " + recordDir, e);
     }
   }
 
