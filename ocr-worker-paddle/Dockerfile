@@ -1,19 +1,23 @@
-FROM nvidia/cuda:12.6.3-cudnn-runtime-ubuntu24.04
+FROM nvidia/cuda:12.2.2-cudnn8-runtime-ubuntu22.04
 
 ENV DEBIAN_FRONTEND=noninteractive
 RUN apt-get update && apt-get install -y --no-install-recommends \
-        python3 python3-pip python3-venv libgomp1 libglib2.0-0 libgl1 \
+        python3 python3-pip python3-dev libgomp1 libglib2.0-0 libgl1 \
     && rm -rf /var/lib/apt/lists/*
+
+# Upgrade pip and setuptools before anything else
+RUN python3 -m pip install --break-system-packages --no-cache-dir \
+        --upgrade pip setuptools wheel
 
 WORKDIR /app
 COPY pyproject.toml ./
 COPY src/ src/
 
-RUN python3 -m pip install --break-system-packages --no-cache-dir \
-        paddlepaddle-gpu \
-    && python3 -m pip install --break-system-packages --no-cache-dir -e .
+# Install paddlepaddle-gpu first, then the worker package
+RUN pip install --break-system-packages --no-cache-dir paddlepaddle-gpu && \
+    pip install --break-system-packages --no-cache-dir -e .
 
-# Pre-download OCR models on build so startup is fast
+# Pre-download OCR models so startup is fast
 RUN python3 -c "from paddleocr import PaddleOCR; PaddleOCR(use_angle_cls=True, lang='latin', use_gpu=False, show_log=False)"
 
 CMD ["python3", "-m", "ocr_worker.main"]
