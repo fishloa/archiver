@@ -1,0 +1,15 @@
+spring:
+  datasource:
+    url: ${SPRING_DATASOURCE_URL}
+    username: ${SPRING_DATASOURCE_USERNAME:archiver}
+    password: ${SPRING_DATASOURCE_PASSWORD:archiver}
+
+  flyway:
+    enabled: true
+    clean-disabled: false
+
+archiver:
+  storage:
+    root: ${java.io.tmpdir}/archiver-test-storage
+  processor:
+    token: test-processor-token
