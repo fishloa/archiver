@@ -1,4 +1,4 @@
-"""PaddleOCR wrapper (v2.9.x API)."""
+"""PaddleOCR wrapper (v3.x API)."""
 
 import logging
 from io import BytesIO
@@ -16,12 +16,14 @@ def get_engine(lang: str = "german", use_gpu: bool = True) -> PaddleOCR:
     """Get or create the PaddleOCR engine (singleton)."""
     global _engine
     if _engine is None:
-        log.info("Initializing PaddleOCR engine (lang=%s, gpu=%s)...", lang, use_gpu)
+        device = "gpu:0" if use_gpu else "cpu"
+        log.info("Initializing PaddleOCR engine (lang=%s, device=%s)...", lang, device)
         _engine = PaddleOCR(
-            use_angle_cls=True,
+            use_textline_orientation=True,
+            use_doc_orientation_classify=False,
+            use_doc_unwarping=False,
             lang=lang,
-            use_gpu=use_gpu,
-            show_log=False,
+            device=device,
         )
         log.info("PaddleOCR engine ready")
     return _engine
@@ -44,24 +46,23 @@ def process_image(image_bytes: bytes, lang: str = "german", use_gpu: bool = True
         img = img.convert("RGB")
     img_array = np.array(img)
 
-    result = engine.ocr(img_array, cls=True)
+    result = engine.predict(img_array)
 
-    if not result or not result[0]:
+    if not result:
         return {"text": "", "confidence": 0.0, "regions": 0}
 
-    lines = []
-    confidences = []
+    res = result[0]
+    texts = res["rec_texts"]
+    scores = res["rec_scores"]
 
-    for line in result[0]:
-        box, (text, conf) = line
-        lines.append(text)
-        confidences.append(conf)
+    if not texts:
+        return {"text": "", "confidence": 0.0, "regions": 0}
 
-    full_text = "\n".join(lines)
-    avg_confidence = sum(confidences) / len(confidences) if confidences else 0.0
+    full_text = "\n".join(texts)
+    avg_confidence = float(np.mean(scores)) if len(scores) > 0 else 0.0
 
     return {
         "text": full_text,
         "confidence": avg_confidence,
-        "regions": len(lines),
+        "regions": len(texts),
     }

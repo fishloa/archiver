@@ -145,7 +145,7 @@ def main():
     try:
         import paddle
 
-        use_gpu = paddle.device.is_compiled_with_cuda()
+        use_gpu = paddle.device.is_compiled_with_cuda() and paddle.device.cuda.device_count() > 0
         log.info("PaddlePaddle GPU available: %s", use_gpu)
     except Exception:
         log.warning("Could not detect GPU, defaulting to GPU=True (will fail if no GPU)")
