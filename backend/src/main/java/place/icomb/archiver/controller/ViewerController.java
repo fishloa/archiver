@@ -284,7 +284,7 @@ public class ViewerController {
     }
 
     return ResponseEntity.ok(
-        Map.of("results", results, "total", total != null ? total : 0, "page", page, "size", size));
+        Map.of("results", results, "total", total != null ? total : 0L, "page", page, "size", size));
   }
 
   @GetMapping("/files/{attachmentId}")
