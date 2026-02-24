@@ -1,6 +1,7 @@
 ## Stage 1: Download OCR models using CPU-only PaddlePaddle (no CUDA needed)
 FROM python:3.10-slim AS model-downloader
 
+RUN apt-get update && apt-get install -y --no-install-recommends libgl1 libglib2.0-0 && rm -rf /var/lib/apt/lists/*
 RUN pip install --no-cache-dir paddlepaddle==3.3.0 "paddleocr>=3.4,<4"
 RUN python3 -c "from paddleocr import PaddleOCR; PaddleOCR(use_textline_orientation=True, lang='german', device='cpu')"
 
