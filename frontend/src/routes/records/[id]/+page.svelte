@@ -62,7 +62,7 @@
 				<div class="text-[length:var(--vui-text-sm)] font-semibold text-accent">{nadEnglish}</div>
 			{/if}
 			{#if nadNumber}
-				<div class="text-[length:var(--vui-text-xs)] text-text-dim mt-0.5">NAD {nadNumber}</div>
+				<div class="text-[length:var(--vui-text-xs)] text-text-sub mt-0.5">NAD {nadNumber}</div>
 			{/if}
 		</div>
 	{/if}
@@ -93,7 +93,7 @@
 	{#if rawFormatted}
 		<div class="mt-6 pt-4 border-t border-border">
 			<button
-				class="flex items-center gap-1.5 text-[length:var(--vui-text-sm)] font-medium text-text-muted vui-transition hover:text-text cursor-pointer"
+				class="flex items-center gap-1.5 text-[length:var(--vui-text-sm)] font-medium text-text-sub vui-transition hover:text-text cursor-pointer"
 				onclick={() => rawOpen = !rawOpen}
 			>
 				<ChevronDown
@@ -104,7 +104,7 @@
 				Source Metadata
 			</button>
 			{#if rawOpen}
-				<pre class="mt-2 p-3 rounded-md bg-bg-deep border border-border text-[length:var(--vui-text-xs)] text-text-muted overflow-x-auto font-mono">{rawFormatted}</pre>
+				<pre class="mt-2 p-3 rounded-md bg-bg-deep border border-border text-[length:var(--vui-text-xs)] text-text-sub overflow-x-auto font-mono">{rawFormatted}</pre>
 			{/if}
 		</div>
 	{/if}
@@ -127,10 +127,10 @@
 					/>
 				{:else}
 					<div class="flex aspect-[3/4] items-center justify-center bg-surface">
-						<span class="text-text-dim text-[length:var(--vui-text-xs)]">No image</span>
+						<span class="text-text-sub text-[length:var(--vui-text-xs)]">No image</span>
 					</div>
 				{/if}
-				<div class="px-2 py-1.5 text-center text-[length:var(--vui-text-xs)] text-text-muted">
+				<div class="px-2 py-1.5 text-center text-[length:var(--vui-text-xs)] text-text-sub">
 					{page.pageLabel ?? `Page ${page.seq}`}
 				</div>
 			</a>

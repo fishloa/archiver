@@ -23,7 +23,7 @@
 				<ArrowLeft size={13} strokeWidth={2} /> Prev
 			</a>
 		{/if}
-		<span class="text-text-muted text-[length:var(--vui-text-sm)] tabular-nums">
+		<span class="text-text-sub text-[length:var(--vui-text-sm)] tabular-nums">
 			Page {page + 1} of {totalPages}
 		</span>
 		{#if page < totalPages - 1}
