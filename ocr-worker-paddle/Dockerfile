@@ -22,8 +22,9 @@ RUN pip install --no-cache-dir --upgrade pip setuptools wheel && \
         paddlepaddle-gpu==3.3.0 && \
     pip install --no-cache-dir "paddleocr>=3.4,<4" "httpx>=0.27" "httpx-sse>=0.4" "Pillow>=10.0"
 
-# Layer 2: Copy pre-downloaded models from stage 1
+# Layer 2: Copy pre-downloaded models (world-readable for non-root execution)
 COPY --from=model-downloader /root/.paddlex /root/.paddlex
+RUN chmod -R a+rX /root/.paddlex && chmod a+rx /root
 
 # Layer 3: App source — only this rebuilds on code changes
 COPY pyproject.toml ./

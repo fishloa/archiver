@@ -1,6 +1,7 @@
 services:
   backend:
     image: dockerregistry.icomb.place/archiver/backend:latest
+    user: "${CONTAINER_USER:-1012:1012}"
     ports:
       - "8098:8080"
     volumes:
@@ -21,6 +22,7 @@ services:
 
   frontend:
     image: dockerregistry.icomb.place/archiver/frontend:latest
+    user: "${CONTAINER_USER:-1012:1012}"
     ports:
       - "8099:3000"
     environment:
@@ -32,6 +34,7 @@ services:
 
   scraper-cz:
     image: dockerregistry.icomb.place/archiver/scraper-cz:latest
+    user: "${CONTAINER_USER:-1012:1012}"
     environment:
       BACKEND_URL: http://backend:8080
     depends_on:
@@ -40,8 +43,10 @@ services:
 
   ocr-worker-paddle:
     image: dockerregistry.icomb.place/archiver/ocr-worker-paddle:latest
+    user: "${CONTAINER_USER:-1012:1012}"
     runtime: nvidia
     environment:
+      HOME: /tmp
       BACKEND_URL: http://backend:8080
       PROCESSOR_TOKEN: ${PROCESSOR_TOKEN}
       NVIDIA_VISIBLE_DEVICES: all
