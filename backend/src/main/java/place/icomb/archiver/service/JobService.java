@@ -175,20 +175,79 @@ public class JobService {
   }
 
   /**
-   * Audit the pipeline for stuck records:
+   * Comprehensive pipeline audit that detects and fixes stuck records and jobs.
    *
-   * <p>1. Records in {@code ocr_done} with no {@code build_searchable_pdf} job → call
-   * startPostOcrPipeline to enqueue the full post-OCR pipeline and transition to pdf_pending.
-   *
-   * <p>2. Records in {@code pdf_pending} whose {@code build_searchable_pdf} job has already
-   * completed but never triggered the pdf_done transition (e.g. records that were in pdf_pending
-   * before the checkRecordPdfComplete logic existed) → call checkRecordPdfComplete to finish them.
-   *
-   * @return total number of records re-queued or nudged
+   * @return total number of records/jobs fixed
    */
   @Transactional
   public int auditPipeline() {
-    // --- Pass 1: ocr_done records with no build_searchable_pdf job ---
+    int total = 0;
+
+    // --- Pass 1: Reset stale claimed jobs (claimed > 1 hour ago) back to pending ---
+    int staleClaimed =
+        jdbcTemplate.update(
+            """
+            UPDATE job SET status = 'pending', started_at = NULL, attempts = attempts
+            WHERE status = 'claimed'
+              AND started_at < now() - interval '1 hour'
+            """);
+    if (staleClaimed > 0) {
+      log.info("Audit: reset {} stale claimed jobs to pending", staleClaimed);
+    }
+    total += staleClaimed;
+
+    // --- Pass 2: Retry failed jobs (reset to pending, clear error) ---
+    int failedRetried =
+        jdbcTemplate.update(
+            """
+            UPDATE job SET status = 'pending', error = NULL, finished_at = NULL
+            WHERE status = 'failed'
+              AND attempts < 3
+            """);
+    if (failedRetried > 0) {
+      log.info("Audit: retried {} failed jobs (attempts < 3)", failedRetried);
+    }
+    total += failedRetried;
+
+    // --- Pass 3: Stuck ingesting records where all pages are present ---
+    //     The scraper uploaded all pages but never called completeIngest.
+    //     Transition to ocr_pending and enqueue OCR jobs.
+    List<Long> ingestingStuck =
+        jdbcTemplate.queryForList(
+            """
+            SELECT r.id FROM record r
+            WHERE r.status = 'ingesting'
+              AND r.page_count > 0
+              AND r.page_count = (SELECT count(*) FROM page p WHERE p.record_id = r.id)
+              AND r.updated_at < now() - interval '10 minutes'
+            ORDER BY r.id
+            """,
+            Long.class);
+
+    for (Long recordId : ingestingStuck) {
+      log.info("Audit: completing stuck ingest for record {}", recordId);
+      // Replicate IngestService.completeIngest logic
+      var langRow =
+          jdbcTemplate.queryForMap("SELECT lang FROM record WHERE id = ?", recordId);
+      String lang = (String) langRow.get("lang");
+      String ocrPayload = lang != null ? "{\"lang\":\"" + lang + "\"}" : null;
+
+      List<Long> pageIds =
+          jdbcTemplate.queryForList(
+              "SELECT id FROM page WHERE record_id = ? ORDER BY seq", Long.class, recordId);
+      for (Long pageId : pageIds) {
+        enqueueJob("ocr_page_paddle", recordId, pageId, ocrPayload);
+      }
+
+      jdbcTemplate.update(
+          "UPDATE record SET status = 'ocr_pending', updated_at = now() WHERE id = ?", recordId);
+      logPipelineEvent(recordId, "ingest", "completed", "from audit: " + pageIds.size() + " pages");
+      logPipelineEvent(recordId, "ocr", "started", "from audit: " + pageIds.size() + " jobs enqueued");
+      recordEventService.recordChanged(recordId, "status");
+    }
+    total += ingestingStuck.size();
+
+    // --- Pass 4: ocr_done records with no build_searchable_pdf job ---
     List<Long> ocrDoneStuck =
         jdbcTemplate.queryForList(
             """
@@ -207,8 +266,9 @@ public class JobService {
       log.info("Audit: re-queuing post-OCR pipeline for stuck record {}", recordId);
       startPostOcrPipeline(recordId);
     }
+    total += ocrDoneStuck.size();
 
-    // --- Pass 2: pdf_pending records whose build_searchable_pdf job is completed
+    // --- Pass 5: pdf_pending records whose build_searchable_pdf job is completed
     //             but the record never transitioned to pdf_done ---
     List<Long> pdfPendingStuck =
         jdbcTemplate.queryForList(
@@ -234,8 +294,9 @@ public class JobService {
       log.info("Audit: nudging pdf_pending → pdf_done for record {}", recordId);
       checkRecordPdfComplete(recordId);
     }
+    total += pdfPendingStuck.size();
 
-    // --- Pass 3: records with all translation done but no 'completed' event logged ---
+    // --- Pass 6: Backfill missing translation completed events ---
     List<Long> translationDone = jdbcTemplate.queryForList(
         """
         SELECT r.id FROM record r
@@ -248,7 +309,7 @@ public class JobService {
             SELECT 1 FROM job j
             WHERE j.record_id = r.id
               AND j.kind IN ('translate_page', 'translate_record')
-              AND j.status != 'completed'
+              AND j.status NOT IN ('completed', 'failed')
           )
           AND EXISTS (
             SELECT 1 FROM job j
@@ -263,10 +324,14 @@ public class JobService {
       log.info("Audit: logging missing translation completed event for record {}", recordId);
       logPipelineEvent(recordId, "translation", "completed", "retroactive from audit");
     }
+    total += translationDone.size();
 
-    int total = ocrDoneStuck.size() + pdfPendingStuck.size() + translationDone.size();
     log.info(
-        "Pipeline audit complete: {} ocr_done re-queued, {} pdf_pending nudged, {} translation events backfilled ({} total)",
+        "Pipeline audit complete: {} stale jobs reset, {} failed retried, {} ingesting fixed, "
+            + "{} ocr_done re-queued, {} pdf_pending nudged, {} translation events backfilled ({} total)",
+        staleClaimed,
+        failedRetried,
+        ingestingStuck.size(),
         ocrDoneStuck.size(),
         pdfPendingStuck.size(),
         translationDone.size(),
