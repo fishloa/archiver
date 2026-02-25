@@ -22,5 +22,10 @@ UPDATE record SET lang = 'en' WHERE lang = 'english';
 UPDATE record SET lang = 'fr' WHERE lang = 'french';
 UPDATE record SET lang = 'pl' WHERE lang = 'polish';
 
--- Enforce 2-char ISO 639-1 code going forward
+-- Metadata language (catalog/archive language, set by scraper)
+ALTER TABLE record ADD COLUMN metadata_lang TEXT;
+UPDATE record SET metadata_lang = 'cs' WHERE source_system LIKE '%nacr.cz%';
+
+-- Enforce 2-char ISO 639-1 codes going forward
 ALTER TABLE record ADD CONSTRAINT record_lang_iso CHECK (lang IS NULL OR char_length(lang) = 2);
+ALTER TABLE record ADD CONSTRAINT record_metadata_lang_iso CHECK (metadata_lang IS NULL OR char_length(metadata_lang) = 2);

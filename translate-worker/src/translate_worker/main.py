@@ -61,21 +61,15 @@ def process_translate_record(client, translator, job: dict) -> None:
     """Process a single translate_record job."""
     job_id = job["id"]
     record_id = job.get("recordId")
-
-    if record_id is None:
-        # Try to get recordId from payload
-        payload = job.get("payload")
-        if payload:
-            try:
-                data = json.loads(payload) if isinstance(payload, str) else payload
-                record_id = data.get("recordId")
-            except (json.JSONDecodeError, AttributeError):
-                pass
+    metadata_lang = _job_lang(job)  # metadata_lang from scraper, hardcoded per archive
 
     if record_id is None:
         raise ValueError(f"Job {job_id} has no recordId")
 
-    log.info("Processing translate_record job %d: record %d", job_id, record_id)
+    log.info(
+        "Processing translate_record job %d: record %d (metadata_lang=%s)",
+        job_id, record_id, metadata_lang or "auto",
+    )
 
     record = client.get_record(record_id)
     title = record.get("title") or ""
@@ -86,9 +80,9 @@ def process_translate_record(client, translator, job: dict) -> None:
         client.complete_job(job_id, result="no_text")
         return
 
-    # Auto-detect language for metadata (varies by archive)
-    title_en = translator.translate(title) if title.strip() else ""
-    description_en = translator.translate(description) if description.strip() else ""
+    # Use metadata_lang from scraper config; fall back to auto-detection
+    title_en = translator.translate(title, source_lang=metadata_lang) if title.strip() else ""
+    description_en = translator.translate(description, source_lang=metadata_lang) if description.strip() else ""
 
     client.submit_record_translation(record_id, title_en, description_en)
     client.complete_job(job_id)

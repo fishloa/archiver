@@ -95,6 +95,7 @@ class BackendClient:
             "indexTerms": metadata.get("rejstrikova_hesla") or None,
             "rawSourceMetadata": jsonmod.dumps(metadata, ensure_ascii=False),
             "lang": cfg.lang,
+            "metadataLang": cfg.metadata_lang,
         }
         # Remove None values
         body = {k: v for k, v in body.items() if v is not None}

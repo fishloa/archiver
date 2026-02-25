@@ -85,6 +85,9 @@ public class IngestService {
     if (request.lang() != null) {
       record.setLang(request.lang());
     }
+    if (request.metadataLang() != null) {
+      record.setMetadataLang(request.metadataLang());
+    }
     record.setUpdatedAt(Instant.now());
 
     record = recordRepository.save(record);

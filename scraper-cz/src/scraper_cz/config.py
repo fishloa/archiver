@@ -9,6 +9,7 @@ class Config:
     def __init__(self):
         self.backend_url: str = os.environ.get("BACKEND_URL", "")
         self.lang: str = os.environ.get("SCRAPER_LANG", "de")
+        self.metadata_lang: str = os.environ.get("SCRAPER_METADATA_LANG", "cs")
         self.delay: float = float(os.environ.get("SCRAPER_DELAY", "0.5"))
         self.max_retries: int = int(os.environ.get("SCRAPER_MAX_RETRIES", "3"))
         self.user_agent: str = os.environ.get(

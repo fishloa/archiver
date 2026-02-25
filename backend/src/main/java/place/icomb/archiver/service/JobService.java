@@ -121,28 +121,31 @@ public class JobService {
     // Enqueue one build_searchable_pdf job for the whole record
     enqueueJob("build_searchable_pdf", recordId, null, null);
 
-    // Get the record's lang for translation jobs
-    String lang =
-        jdbcTemplate.queryForObject(
-            "SELECT lang FROM record WHERE id = ?", String.class, recordId);
+    // Get the record's language fields
+    var langRow =
+        jdbcTemplate.queryForMap("SELECT lang, metadata_lang FROM record WHERE id = ?", recordId);
+    String contentLang = (String) langRow.get("lang");
+    String metadataLang = (String) langRow.get("metadata_lang");
 
-    // Only enqueue translation if content is not already English
-    if (lang == null || !"en".equals(lang)) {
-      // Enqueue translate_record job for metadata (title, description)
-      enqueueJob("translate_record", recordId, null, null);
+    // Enqueue metadata translation with metadata_lang (hardcoded per scraper)
+    String metaPayload =
+        metadataLang != null ? "{\"lang\":\"" + metadataLang + "\"}" : null;
+    enqueueJob("translate_record", recordId, null, metaPayload);
 
-      // Enqueue translate_page jobs with lang from record
-      String payload = lang != null ? "{\"lang\":\"" + lang + "\"}" : null;
+    // Enqueue OCR text translation (auto-detect language from text)
+    // Skip if content is explicitly marked as English
+    if (contentLang == null || !"en".equals(contentLang)) {
       List<Long> pageIds =
           jdbcTemplate.queryForList(
               "SELECT p.id FROM page p WHERE p.record_id = ? ORDER BY p.seq",
               Long.class,
               recordId);
       for (Long pageId : pageIds) {
-        enqueueJob("translate_page", recordId, pageId, payload);
+        // No lang in payload → translator auto-detects from text content
+        enqueueJob("translate_page", recordId, pageId, null);
       }
     } else {
-      log.info("Record {} is English (lang=en), skipping translation", recordId);
+      log.info("Record {} content is English (lang=en), skipping page translation", recordId);
     }
 
     // Transition to pdf_pending
