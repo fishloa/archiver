@@ -11,6 +11,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -22,6 +23,7 @@ import place.icomb.archiver.repository.AttachmentRepository;
 import place.icomb.archiver.repository.PageRepository;
 import place.icomb.archiver.repository.PageTextRepository;
 import place.icomb.archiver.repository.RecordRepository;
+import place.icomb.archiver.service.JobService;
 import place.icomb.archiver.service.StorageService;
 
 @RestController
@@ -34,6 +36,7 @@ public class ViewerController {
   private final StorageService storageService;
   private final PageTextRepository pageTextRepository;
   private final JdbcTemplate jdbcTemplate;
+  private final JobService jobService;
 
   public ViewerController(
       PageRepository pageRepository,
@@ -41,13 +44,15 @@ public class ViewerController {
       RecordRepository recordRepository,
       StorageService storageService,
       PageTextRepository pageTextRepository,
-      JdbcTemplate jdbcTemplate) {
+      JdbcTemplate jdbcTemplate,
+      JobService jobService) {
     this.pageRepository = pageRepository;
     this.attachmentRepository = attachmentRepository;
     this.recordRepository = recordRepository;
     this.storageService = storageService;
     this.pageTextRepository = pageTextRepository;
     this.jdbcTemplate = jdbcTemplate;
+    this.jobService = jobService;
   }
 
   @GetMapping("/pipeline/stats")
@@ -359,6 +364,64 @@ public class ViewerController {
         List.of(
             Map.of("type", "events", "data", events),
             Map.of("type", "jobs", "data", jobStats)));
+  }
+
+  // -------------------------------------------------------------------------
+  // Admin endpoints
+  // -------------------------------------------------------------------------
+
+  @PostMapping("/admin/audit")
+  public ResponseEntity<Map<String, Object>> runAudit() {
+    int fixed = jobService.auditPipeline();
+    return ResponseEntity.ok(Map.of("fixed", fixed));
+  }
+
+  @GetMapping("/admin/stats")
+  public ResponseEntity<Map<String, Object>> adminStats() {
+    Map<String, Object> stats = new LinkedHashMap<>();
+
+    // Record status counts
+    stats.put("recordsByStatus", jdbcTemplate.queryForList(
+        "SELECT status, count(*) AS cnt FROM record GROUP BY status ORDER BY status"));
+
+    // Job status counts
+    stats.put("jobsByKindAndStatus", jdbcTemplate.queryForList(
+        "SELECT kind, status, count(*) AS cnt FROM job GROUP BY kind, status ORDER BY kind, status"));
+
+    // Stale claimed jobs (> 1 hour)
+    stats.put("staleClaimedJobs", jdbcTemplate.queryForObject(
+        "SELECT count(*) FROM job WHERE status = 'claimed' AND started_at < now() - interval '1 hour'",
+        Long.class));
+
+    // Failed jobs eligible for retry
+    stats.put("failedRetriableJobs", jdbcTemplate.queryForObject(
+        "SELECT count(*) FROM job WHERE status = 'failed' AND attempts < 3",
+        Long.class));
+
+    // Stuck ingesting records
+    stats.put("stuckIngestingRecords", jdbcTemplate.queryForObject(
+        """
+        SELECT count(*) FROM record r
+        WHERE r.status = 'ingesting' AND r.page_count > 0
+          AND r.page_count = (SELECT count(*) FROM page p WHERE p.record_id = r.id)
+          AND r.updated_at < now() - interval '10 minutes'
+        """,
+        Long.class));
+
+    // ocr_done without post-OCR jobs
+    stats.put("ocrDoneNoPostOcrJobs", jdbcTemplate.queryForObject(
+        """
+        SELECT count(*) FROM record r
+        WHERE r.status = 'ocr_done'
+          AND NOT EXISTS (SELECT 1 FROM job j WHERE j.record_id = r.id AND j.kind = 'build_searchable_pdf')
+        """,
+        Long.class));
+
+    // Recent pipeline events
+    stats.put("recentEvents", jdbcTemplate.queryForList(
+        "SELECT record_id, stage, event, detail, created_at FROM pipeline_event ORDER BY created_at DESC LIMIT 20"));
+
+    return ResponseEntity.ok(stats);
   }
 
   private String extractSnippet(String text, String query, int maxLen) {

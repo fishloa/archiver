@@ -122,6 +122,18 @@ export async function fetchRecordTimeline(recordId: number): Promise<RecordTimel
 	return { events, jobs };
 }
 
+export async function fetchAdminStats(): Promise<Record<string, unknown>> {
+	const res = await fetch(`${backendUrl()}/api/admin/stats`);
+	if (!res.ok) throw new Error(`Backend error: ${res.status}`);
+	return res.json();
+}
+
+export async function runAudit(): Promise<{ fixed: number }> {
+	const res = await fetch(`${backendUrl()}/api/admin/audit`, { method: 'POST' });
+	if (!res.ok) throw new Error(`Backend error: ${res.status}`);
+	return res.json();
+}
+
 export async function searchPages(q: string, page: number = 0, size: number = 20): Promise<SearchResponse> {
 	const params = new URLSearchParams({ q, page: String(page), size: String(size) });
 	const res = await fetch(`${backendUrl()}/api/search?${params}`);

@@ -2,6 +2,8 @@ package place.icomb.archiver.service;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.boot.context.event.ApplicationReadyEvent;
+import org.springframework.context.event.EventListener;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
@@ -20,20 +22,23 @@ public class PipelineAuditScheduler {
     this.jobService = jobService;
   }
 
-  /**
-   * Runs every 30 minutes (fixed delay between end of last run and start of next).
-   * Finds and re-queues records stuck in ocr_done or pdf_pending.
-   */
+  /** Run audit immediately on application startup. */
+  @EventListener(ApplicationReadyEvent.class)
+  public void onStartup() {
+    log.info("Running pipeline audit on startup...");
+    runAudit();
+  }
+
+  /** Runs every 30 minutes after the previous run completes. */
   @Scheduled(fixedDelay = 1_800_000)
   public void runAudit() {
-    log.info("Running scheduled pipeline audit...");
     try {
       int count = jobService.auditPipeline();
       if (count > 0) {
-        log.info("Scheduled pipeline audit re-queued/nudged {} record(s)", count);
+        log.info("Pipeline audit fixed {} record(s)/job(s)", count);
       }
     } catch (Exception e) {
-      log.error("Scheduled pipeline audit failed", e);
+      log.error("Pipeline audit failed", e);
     }
   }
 }
