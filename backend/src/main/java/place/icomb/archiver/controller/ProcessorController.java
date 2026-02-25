@@ -331,6 +331,18 @@ public class ProcessorController {
   }
 
   // -------------------------------------------------------------------------
+  // Admin / maintenance
+  // -------------------------------------------------------------------------
+
+  @PostMapping("/audit-pipeline")
+  public ResponseEntity<Map<String, Object>> auditPipeline(
+      @RequestHeader("Authorization") String authHeader) {
+    validateToken(authHeader);
+    int requeued = jobService.auditPipeline();
+    return ResponseEntity.ok(Map.of("requeued", requeued));
+  }
+
+  // -------------------------------------------------------------------------
   // Helpers
   // -------------------------------------------------------------------------
 

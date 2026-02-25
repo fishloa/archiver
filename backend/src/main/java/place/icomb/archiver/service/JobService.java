@@ -165,6 +165,76 @@ public class JobService {
     return kind != null && kind.startsWith("ocr_page_");
   }
 
+  /**
+   * Audit the pipeline for stuck records:
+   *
+   * <p>1. Records in {@code ocr_done} with no {@code build_searchable_pdf} job → call
+   * startPostOcrPipeline to enqueue the full post-OCR pipeline and transition to pdf_pending.
+   *
+   * <p>2. Records in {@code pdf_pending} whose {@code build_searchable_pdf} job has already
+   * completed but never triggered the pdf_done transition (e.g. records that were in pdf_pending
+   * before the checkRecordPdfComplete logic existed) → call checkRecordPdfComplete to finish them.
+   *
+   * @return total number of records re-queued or nudged
+   */
+  @Transactional
+  public int auditPipeline() {
+    // --- Pass 1: ocr_done records with no build_searchable_pdf job ---
+    List<Long> ocrDoneStuck =
+        jdbcTemplate.queryForList(
+            """
+            SELECT r.id FROM record r
+            WHERE r.status = 'ocr_done'
+              AND NOT EXISTS (
+                SELECT 1 FROM job j
+                WHERE j.record_id = r.id
+                  AND j.kind = 'build_searchable_pdf'
+              )
+            ORDER BY r.id
+            """,
+            Long.class);
+
+    for (Long recordId : ocrDoneStuck) {
+      log.info("Audit: re-queuing post-OCR pipeline for stuck record {}", recordId);
+      startPostOcrPipeline(recordId);
+    }
+
+    // --- Pass 2: pdf_pending records whose build_searchable_pdf job is completed
+    //             but the record never transitioned to pdf_done ---
+    List<Long> pdfPendingStuck =
+        jdbcTemplate.queryForList(
+            """
+            SELECT r.id FROM record r
+            WHERE r.status = 'pdf_pending'
+              AND EXISTS (
+                SELECT 1 FROM job j
+                WHERE j.record_id = r.id
+                  AND j.kind = 'build_searchable_pdf'
+                  AND j.status = 'completed'
+              )
+              AND EXISTS (
+                SELECT 1 FROM attachment a
+                WHERE a.record_id = r.id
+                  AND a.role = 'searchable_pdf'
+              )
+            ORDER BY r.id
+            """,
+            Long.class);
+
+    for (Long recordId : pdfPendingStuck) {
+      log.info("Audit: nudging pdf_pending → pdf_done for record {}", recordId);
+      checkRecordPdfComplete(recordId);
+    }
+
+    int total = ocrDoneStuck.size() + pdfPendingStuck.size();
+    log.info(
+        "Pipeline audit complete: {} ocr_done re-queued, {} pdf_pending nudged ({} total)",
+        ocrDoneStuck.size(),
+        pdfPendingStuck.size(),
+        total);
+    return total;
+  }
+
   /** Marks a job as failed with an error message. */
   @Transactional
   public Job failJob(Long jobId, String error) {
