@@ -38,9 +38,9 @@ def process_one(client, job: dict) -> None:
     # Download all page images and build page data
     pages = []
     for pm in pages_meta:
-        page_id = pm["id"]
-        seq = pm.get("seq", pm.get("pageNumber", 0))
-        text = pm.get("ocrText", "") or ""
+        page_id = pm["page_id"]
+        seq = pm.get("seq", 0)
+        text = pm.get("text_raw", "") or ""
 
         log.info("  Downloading image for page %d (seq=%d)", page_id, seq)
         image_bytes = client.download_page_image(page_id)
