@@ -42,9 +42,13 @@ RUN chmod -R a+rX /root/.cache/huggingface/ && chmod a+rx /root
 # (torch._dynamo calls this on import; without it uid 1012 crashes)
 RUN echo "worker:x:1012:1012::/tmp:/bin/sh" >> /etc/passwd
 
-# Layer 3: App source — only this rebuilds on code changes
-COPY pyproject.toml ./
-COPY src/ src/
+# Layer 3: Install shared worker library
+COPY worker-common/ /tmp/worker-common/
+RUN pip install --no-cache-dir /tmp/worker-common/ && rm -rf /tmp/worker-common/
+
+# Layer 4: App source — only this rebuilds on code changes
+COPY translate-worker/pyproject.toml ./
+COPY translate-worker/src/ src/
 RUN pip install --no-cache-dir -e .
 
 CMD ["python3", "-m", "translate_worker.main"]

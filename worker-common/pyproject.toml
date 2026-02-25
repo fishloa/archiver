@@ -1,12 +1,11 @@
 [project]
-name = "pdf-worker"
+name = "worker-common"
 version = "0.1.0"
-description = "Searchable PDF builder worker for the archiver pipeline"
+description = "Shared library for archiver pipeline workers"
 requires-python = ">=3.10"
 dependencies = [
-    "worker-common",
-    "reportlab>=4.0",
-    "Pillow>=10.0",
+    "httpx>=0.27",
+    "httpx-sse>=0.4",
 ]
 
 [project.optional-dependencies]

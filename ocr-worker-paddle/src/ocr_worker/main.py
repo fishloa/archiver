@@ -9,7 +9,8 @@ notifications. Falls back to polling on SSE disconnect.
 
 import json
 import logging
-import time
+
+from worker_common import run_sse_loop, wait_for_backend
 
 log = logging.getLogger(__name__)
 
@@ -31,7 +32,6 @@ def job_lang(job: dict, default: str) -> str:
             data = json.loads(payload) if isinstance(payload, str) else payload
             lang = data.get("lang")
             if lang:
-                # Convert ISO code to PaddleOCR name if needed
                 return ISO_TO_PADDLE.get(lang.lower(), lang)
         except (json.JSONDecodeError, AttributeError):
             pass
@@ -71,70 +71,6 @@ def process_one(client, job: dict, default_lang: str, use_gpu: bool) -> None:
     log.info("  Job %d completed", job_id)
 
 
-def drain_jobs(client, default_lang: str, use_gpu: bool) -> int:
-    """Claim and process all available jobs. Returns number processed."""
-    count = 0
-    while True:
-        job = client.claim_job(JOB_KIND)
-        if job is None:
-            return count
-        try:
-            process_one(client, job, default_lang, use_gpu)
-            count += 1
-        except Exception as e:
-            log.error("Job %d failed: %s", job["id"], e, exc_info=True)
-            try:
-                client.fail_job(job["id"], str(e)[:500])
-            except Exception:
-                log.error("Failed to report job failure", exc_info=True)
-    return count
-
-
-def wait_for_backend(client, max_retries=30, delay=5):
-    """Wait for the backend to become reachable before proceeding."""
-    for attempt in range(1, max_retries + 1):
-        try:
-            client.claim_job(JOB_KIND)
-            log.info("Backend reachable")
-            return
-        except Exception:
-            log.info("Waiting for backend (%d/%d)...", attempt, max_retries)
-            time.sleep(delay)
-    raise RuntimeError(f"Backend not reachable after {max_retries * delay}s")
-
-
-def run_sse_loop(client, default_lang: str, use_gpu: bool, poll_interval: int):
-    """Main loop: subscribe to SSE, drain jobs on each event, reconnect on failure."""
-    jobs_processed = 0
-    reconnect_delay = 1
-
-    while True:
-        # Drain any jobs that queued while we were disconnected
-        jobs_processed += drain_jobs(client, default_lang, use_gpu)
-
-        try:
-            log.info("Connecting to SSE job events stream...")
-            with client.job_events() as events:
-                reconnect_delay = 1  # reset on successful connect
-                log.info("SSE connected, waiting for events")
-                for event in events:
-                    if event.event == "job":
-                        data = json.loads(event.data)
-                        kind = data.get("kind", "")
-                        if kind == JOB_KIND:
-                            log.info("SSE: job event for %s, draining queue", kind)
-                            jobs_processed += drain_jobs(client, default_lang, use_gpu)
-        except KeyboardInterrupt:
-            log.info("Shutting down (processed %d jobs)", jobs_processed)
-            raise
-        except Exception as e:
-            log.warning("SSE disconnected: %s — polling fallback for %ds", e, reconnect_delay)
-            # Poll once before reconnecting
-            jobs_processed += drain_jobs(client, default_lang, use_gpu)
-            time.sleep(reconnect_delay)
-            reconnect_delay = min(reconnect_delay * 2, poll_interval)
-
-
 def main():
     logging.basicConfig(
         level=logging.INFO,
@@ -165,10 +101,15 @@ def main():
         cfg.poll_interval,
     )
 
-    wait_for_backend(client)
+    wait_for_backend(client, JOB_KIND)
 
     try:
-        run_sse_loop(client, cfg.ocr_lang, use_gpu, cfg.poll_interval)
+        run_sse_loop(
+            client,
+            job_kinds=[JOB_KIND],
+            process_fn=lambda job: process_one(client, job, cfg.ocr_lang, use_gpu),
+            poll_interval=cfg.poll_interval,
+        )
     except KeyboardInterrupt:
         pass
     finally:

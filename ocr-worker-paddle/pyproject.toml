@@ -4,8 +4,7 @@ version = "0.1.0"
 description = "PaddleOCR GPU worker for the archiver pipeline"
 requires-python = ">=3.10"
 dependencies = [
-    "httpx>=0.27",
-    "httpx-sse>=0.4",
+    "worker-common",
     "paddleocr>=3.4,<4",
     "Pillow>=10.0",
 ]

@@ -29,9 +29,13 @@ RUN chmod -R a+rX /root/.paddlex && chmod a+rx /root
 # Create passwd entry for non-root uid so getpass.getuser() works
 RUN echo "worker:x:1012:1012::/tmp:/bin/sh" >> /etc/passwd
 
-# Layer 3: App source — only this rebuilds on code changes
-COPY pyproject.toml ./
-COPY src/ src/
+# Layer 3: Install shared worker library
+COPY worker-common/ /tmp/worker-common/
+RUN pip install --no-cache-dir /tmp/worker-common/ && rm -rf /tmp/worker-common/
+
+# Layer 4: App source — only this rebuilds on code changes
+COPY ocr-worker-paddle/pyproject.toml ./
+COPY ocr-worker-paddle/src/ src/
 RUN pip install --no-cache-dir -e .
 
 CMD ["python3", "-m", "ocr_worker.main"]

@@ -10,7 +10,8 @@ notifications. Falls back to polling on SSE disconnect.
 
 import json
 import logging
-import time
+
+from worker_common import run_sse_loop, wait_for_backend
 
 log = logging.getLogger(__name__)
 
@@ -49,7 +50,6 @@ def process_translate_page(client, translator, job: dict) -> None:
         client.complete_job(job_id)
         return
 
-    # Use record.lang from job payload; fall back to auto-detection
     translated = translator.translate(text, source_lang=source_lang)
 
     client.submit_page_translation(page_id, translated)
@@ -61,7 +61,7 @@ def process_translate_record(client, translator, job: dict) -> None:
     """Process a single translate_record job."""
     job_id = job["id"]
     record_id = job.get("recordId")
-    metadata_lang = _job_lang(job)  # metadata_lang from scraper, hardcoded per archive
+    metadata_lang = _job_lang(job)
 
     if record_id is None:
         raise ValueError(f"Job {job_id} has no recordId")
@@ -80,7 +80,6 @@ def process_translate_record(client, translator, job: dict) -> None:
         client.complete_job(job_id)
         return
 
-    # Use metadata_lang from scraper config; fall back to auto-detection
     title_en = translator.translate(title, source_lang=metadata_lang) if title.strip() else ""
     description_en = translator.translate(description, source_lang=metadata_lang) if description.strip() else ""
 
@@ -107,71 +106,6 @@ def process_job(client, translator, job: dict) -> None:
         raise ValueError(f"Unknown job kind: {kind}")
 
 
-def drain_jobs(client, translator) -> int:
-    """Claim and process all available jobs for both kinds. Returns number processed."""
-    count = 0
-    for kind in JOB_KINDS:
-        while True:
-            job = client.claim_job(kind)
-            if job is None:
-                break
-            try:
-                process_job(client, translator, job)
-                count += 1
-            except Exception as e:
-                log.error("Job %d failed: %s", job["id"], e, exc_info=True)
-                try:
-                    client.fail_job(job["id"], str(e)[:500])
-                except Exception:
-                    log.error("Failed to report job failure", exc_info=True)
-    return count
-
-
-def wait_for_backend(client, max_retries=30, delay=5):
-    """Wait for the backend to become reachable before proceeding."""
-    for attempt in range(1, max_retries + 1):
-        try:
-            client.claim_job(JOB_KINDS[0])
-            log.info("Backend reachable")
-            return
-        except Exception:
-            log.info("Waiting for backend (%d/%d)...", attempt, max_retries)
-            time.sleep(delay)
-    raise RuntimeError(f"Backend not reachable after {max_retries * delay}s")
-
-
-def run_sse_loop(client, translator, poll_interval: int):
-    """Main loop: subscribe to SSE, drain jobs on each event, reconnect on failure."""
-    jobs_processed = 0
-    reconnect_delay = 1
-
-    while True:
-        # Drain any jobs that queued while we were disconnected
-        jobs_processed += drain_jobs(client, translator)
-
-        try:
-            log.info("Connecting to SSE job events stream...")
-            with client.job_events() as events:
-                reconnect_delay = 1  # reset on successful connect
-                log.info("SSE connected, waiting for events")
-                for event in events:
-                    if event.event == "job":
-                        data = json.loads(event.data)
-                        kind = data.get("kind", "")
-                        if kind in JOB_KINDS:
-                            log.info("SSE: job event for %s, draining queue", kind)
-                            jobs_processed += drain_jobs(client, translator)
-        except KeyboardInterrupt:
-            log.info("Shutting down (processed %d jobs)", jobs_processed)
-            raise
-        except Exception as e:
-            log.warning("SSE disconnected: %s — polling fallback for %ds", e, reconnect_delay)
-            # Poll once before reconnecting
-            jobs_processed += drain_jobs(client, translator)
-            time.sleep(reconnect_delay)
-            reconnect_delay = min(reconnect_delay * 2, poll_interval)
-
-
 def main():
     logging.basicConfig(
         level=logging.INFO,
@@ -195,10 +129,15 @@ def main():
         cfg.poll_interval,
     )
 
-    wait_for_backend(client)
+    wait_for_backend(client, JOB_KINDS[0])
 
     try:
-        run_sse_loop(client, translator, cfg.poll_interval)
+        run_sse_loop(
+            client,
+            job_kinds=JOB_KINDS,
+            process_fn=lambda job: process_job(client, translator, job),
+            poll_interval=cfg.poll_interval,
+        )
     except KeyboardInterrupt:
         pass
     finally:

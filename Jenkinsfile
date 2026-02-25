@@ -31,9 +31,10 @@ pipeline {
                     env.BUILD_SCRAPER_FINDBUCH = params.BUILD_ALL || changed('scraper-findbuch')
                     env.BUILD_SCRAPER_OESTA = params.BUILD_ALL || changed('scraper-oesta')
                     env.BUILD_SCRAPER_MATRICULA = params.BUILD_ALL || changed('scraper-matricula')
-                    env.BUILD_OCR = params.BUILD_ALL || changed('ocr-worker-paddle')
-                    env.BUILD_PDF = params.BUILD_ALL || changed('pdf-worker')
-                    env.BUILD_TRANSLATE = params.BUILD_ALL || changed('translate-worker')
+                    def workerCommonChanged = changed('worker-common')
+                    env.BUILD_OCR = params.BUILD_ALL || changed('ocr-worker-paddle') || workerCommonChanged
+                    env.BUILD_PDF = params.BUILD_ALL || changed('pdf-worker') || workerCommonChanged
+                    env.BUILD_TRANSLATE = params.BUILD_ALL || changed('translate-worker') || workerCommonChanged
                     echo "backend=${env.BUILD_BACKEND} frontend=${env.BUILD_FRONTEND} scraper-cz=${env.BUILD_SCRAPER} ebadatelna=${env.BUILD_SCRAPER_EBADATELNA} findbuch=${env.BUILD_SCRAPER_FINDBUCH} oesta=${env.BUILD_SCRAPER_OESTA} matricula=${env.BUILD_SCRAPER_MATRICULA} ocr=${env.BUILD_OCR} pdf=${env.BUILD_PDF} translate=${env.BUILD_TRANSLATE}"
                 }
             }
@@ -83,9 +84,7 @@ pipeline {
                 stage('ocr-worker-paddle') {
                     when { expression { env.BUILD_OCR == 'true' } }
                     steps {
-                        dir('ocr-worker-paddle') {
-                            sh "docker build -t ${prefix}/ocr-worker-paddle:latest -t ${prefix}/ocr-worker-paddle:\${GIT_COMMIT} ."
-                        }
+                        sh "docker build -f ocr-worker-paddle/Dockerfile -t ${prefix}/ocr-worker-paddle:latest -t ${prefix}/ocr-worker-paddle:\${GIT_COMMIT} ."
                         script {
                             dockerPush(registry, "${prefix}/ocr-worker-paddle:latest")
                             dockerPush(registry, "${prefix}/ocr-worker-paddle:\${GIT_COMMIT}")
@@ -96,9 +95,7 @@ pipeline {
                 stage('pdf-worker') {
                     when { expression { env.BUILD_PDF == 'true' } }
                     steps {
-                        dir('pdf-worker') {
-                            sh "docker build -t ${prefix}/pdf-worker:latest -t ${prefix}/pdf-worker:\${GIT_COMMIT} ."
-                        }
+                        sh "docker build -f pdf-worker/Dockerfile -t ${prefix}/pdf-worker:latest -t ${prefix}/pdf-worker:\${GIT_COMMIT} ."
                         script {
                             dockerPush(registry, "${prefix}/pdf-worker:latest")
                             dockerPush(registry, "${prefix}/pdf-worker:\${GIT_COMMIT}")
@@ -109,9 +106,7 @@ pipeline {
                 stage('translate-worker') {
                     when { expression { env.BUILD_TRANSLATE == 'true' } }
                     steps {
-                        dir('translate-worker') {
-                            sh "docker build -t ${prefix}/translate-worker:latest -t ${prefix}/translate-worker:\${GIT_COMMIT} ."
-                        }
+                        sh "docker build -f translate-worker/Dockerfile -t ${prefix}/translate-worker:latest -t ${prefix}/translate-worker:\${GIT_COMMIT} ."
                         script {
                             dockerPush(registry, "${prefix}/translate-worker:latest")
                             dockerPush(registry, "${prefix}/translate-worker:\${GIT_COMMIT}")
