@@ -26,6 +26,9 @@ RUN pip install --no-cache-dir --upgrade pip setuptools wheel && \
 COPY --from=model-downloader /root/.paddlex /root/.paddlex
 RUN chmod -R a+rX /root/.paddlex && chmod a+rx /root
 
+# Create passwd entry for non-root uid so getpass.getuser() works
+RUN echo "worker:x:1012:1012::/tmp:/bin/sh" >> /etc/passwd
+
 # Layer 3: App source — only this rebuilds on code changes
 COPY pyproject.toml ./
 COPY src/ src/

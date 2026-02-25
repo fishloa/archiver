@@ -7,6 +7,9 @@ COPY pyproject.toml ./
 RUN pip install --no-cache-dir --upgrade pip setuptools wheel && \
     pip install --no-cache-dir "httpx>=0.27" "httpx-sse>=0.4" "reportlab>=4.0" "Pillow>=10.0"
 
+# Create passwd entry for non-root uid so getpass.getuser() works
+RUN echo "worker:x:1012:1012::/tmp:/bin/sh" >> /etc/passwd
+
 # Copy source and install package
 COPY src/ src/
 RUN pip install --no-cache-dir -e .
