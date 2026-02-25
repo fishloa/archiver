@@ -413,10 +413,36 @@ public class JobService {
     }
     total += embeddingDone.size();
 
+    // --- Pass 10: Backfill embedding for complete records that were never embedded ---
+    List<Long> completeUnembedded =
+        jdbcTemplate.queryForList(
+            """
+        SELECT r.id FROM record r
+        WHERE r.status = 'complete'
+          AND NOT EXISTS (
+            SELECT 1 FROM job j
+            WHERE j.record_id = r.id
+              AND j.kind = 'embed_record'
+          )
+        ORDER BY r.id
+        """,
+            Long.class);
+
+    for (Long recordId : completeUnembedded) {
+      jdbcTemplate.update(
+          "UPDATE record SET status = 'embedding', updated_at = now() WHERE id = ?", recordId);
+      enqueueJob("embed_record", recordId, null, null);
+      logPipelineEvent(recordId, "embedding", "started", "backfill from audit");
+      log.info("Audit: record {} complete → embedding (backfill)", recordId);
+      recordEventService.recordChanged(recordId, "status");
+    }
+    total += completeUnembedded.size();
+
     log.info(
         "Pipeline audit complete: {} stale jobs reset, {} failed retried, {} ingesting fixed, "
             + "{} ocr_done re-queued, {} pdf_pending nudged, {} pdf_done→translating, {} pdf_done→embedding, "
-            + "{} translating→embedding, {} translation events backfilled, {} embedding→complete ({} total)",
+            + "{} translating→embedding, {} translation events backfilled, {} embedding→complete, "
+            + "{} complete→embedding backfill ({} total)",
         staleClaimed,
         failedRetried,
         ingestingStuck.size(),
@@ -427,6 +453,7 @@ public class JobService {
         translatingDone.size(),
         translationEventsMissing.size(),
         embeddingDone.size(),
+        completeUnembedded.size(),
         total);
     return total;
   }
