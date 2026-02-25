@@ -23,6 +23,7 @@ export const load: PageServerLoad = async ({ url }) => {
 	const sources = results.map((c) => ({
 		recordId: c.recordId,
 		pageId: c.pageId,
+		pageSeq: c.pageSeq,
 		title: c.recordTitleEn || c.recordTitle || 'Untitled',
 		referenceCode: c.referenceCode || '',
 		descriptionEn: c.descriptionEn || '',

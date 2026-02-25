@@ -58,12 +58,13 @@
 			<div class="results">
 				{#each data.results as r}
 					<div class="result">
+						{@const pageUrl = r.pageSeq ? `/records/${r.recordId}/pages/${r.pageSeq}` : `/records/${r.recordId}`}
 						<div class="result-url">
-							records/{r.recordId}{#if r.pageId} / page {r.pageId}{/if}
+							records/{r.recordId}{#if r.pageSeq} / page {r.pageSeq}{/if}
 							{#if r.referenceCode}&nbsp;&middot; {r.referenceCode}{/if}
 							&nbsp;&middot; <span class="result-score">{(r.score * 100).toFixed(0)}% match</span>
 						</div>
-						<a href="/records/{r.recordId}" class="result-title">{r.title}</a>
+						<a href={pageUrl} class="result-title">{r.title}{#if r.pageSeq} — Page {r.pageSeq}{/if}</a>
 						<p class="result-snippet">{r.snippet}</p>
 					</div>
 				{/each}

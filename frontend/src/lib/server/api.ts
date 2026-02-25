@@ -159,6 +159,7 @@ export async function searchPages(q: string, page: number = 0, size: number = 20
 export interface SemanticSearchResult {
 	recordId: number;
 	pageId: number | null;
+	pageSeq: number | null;
 	chunkIndex: number;
 	content: string;
 	score: number;

@@ -133,9 +133,11 @@ public class SemanticSearchController {
           SELECT r.record_id, r.page_id, r.chunk_index, r.content,
                  r.hybrid_score AS score, r.sem_score, r.kw_score,
                  rec.title AS record_title, rec.title_en AS record_title_en,
-                 rec.reference_code, rec.description_en
+                 rec.reference_code, rec.description_en,
+                 p.seq AS page_seq
           FROM ranked r
           JOIN record rec ON rec.id = r.record_id
+          LEFT JOIN page p ON p.id = r.page_id
           WHERE r.rn = 1
           ORDER BY r.hybrid_score DESC
           LIMIT ?
@@ -162,6 +164,7 @@ public class SemanticSearchController {
         result.put("recordTitleEn", row.get("record_title_en"));
         result.put("referenceCode", row.get("reference_code"));
         result.put("descriptionEn", row.get("description_en"));
+        result.put("pageSeq", row.get("page_seq"));
         results.add(result);
       }
 
