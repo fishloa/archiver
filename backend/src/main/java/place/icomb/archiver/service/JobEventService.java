@@ -100,7 +100,7 @@ public class JobEventService {
     for (SseEmitter emitter : emitters) {
       try {
         emitter.send(SseEmitter.event().name("job").data(Map.of("kind", kind)));
-      } catch (IOException e) {
+      } catch (Exception e) {
         dead.add(emitter);
       }
     }

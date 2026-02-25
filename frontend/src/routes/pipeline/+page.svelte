@@ -86,7 +86,7 @@
 			<!-- Node + connector column -->
 			<div class="stage-rail">
 				<div class="node-ring" style="border-color: {cfg.color}; box-shadow: 0 0 12px {cfg.dimBg}">
-					<div class="node-dot {stage.records > 0 && !isLast ? 'animate-pulse' : ''}" style="background: {cfg.color}"></div>
+					<div class="node-dot {running > 0 || pending > 0 ? 'animate-pulse' : ''}" style="background: {cfg.color}"></div>
 				</div>
 				{#if !isLast}
 					<div class="connector" style="border-color: {cfg.color}"></div>
