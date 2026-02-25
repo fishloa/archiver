@@ -69,8 +69,25 @@ public class JobEventService {
   /**
    * Returns a map of job kind -> number of connected workers that handle that kind. A worker
    * handling multiple kinds (e.g. translate_page + translate_record) is counted once per kind.
+   *
+   * <p>Sends a heartbeat comment to flush dead emitters before counting — Spring only detects a
+   * broken connection on write, so ghost emitters accumulate between reconnects.
    */
   public Map<String, Integer> getWorkerCounts() {
+    // Flush dead emitters by sending a heartbeat comment
+    List<SseEmitter> dead = new java.util.ArrayList<>();
+    for (SseEmitter emitter : emitters) {
+      try {
+        emitter.send(SseEmitter.event().comment("hb"));
+      } catch (IOException e) {
+        dead.add(emitter);
+      }
+    }
+    for (SseEmitter e : dead) {
+      emitters.remove(e);
+      workerKinds.remove(e);
+    }
+
     Map<String, Integer> counts = new LinkedHashMap<>();
     for (List<String> kinds : workerKinds.values()) {
       for (String kind : kinds) {
