@@ -10,6 +10,7 @@
 	let pageText = $derived(data.pageText);
 
 	let textOpen = $state(true);
+	let showTranslation = $state(false);
 </script>
 
 <svelte:head>
@@ -69,7 +70,25 @@
 			</span>
 		</button>
 		{#if textOpen}
-			<pre class="mt-3 p-4 rounded-md bg-bg-deep border border-border text-[length:var(--vui-text-sm)] text-text overflow-x-auto font-mono whitespace-pre-wrap leading-relaxed">{pageText.text}</pre>
+			{#if pageText.textEn}
+				<div class="mt-3 mb-2 flex gap-2">
+					<button
+						class="text-[length:var(--vui-text-xs)] font-medium px-2.5 py-1 rounded-md border transition-all cursor-pointer
+							{showTranslation
+								? 'bg-surface border-border text-text-sub hover:text-text'
+								: 'bg-accent-dim text-accent border-accent-border'}"
+						onclick={() => showTranslation = false}
+					>Original</button>
+					<button
+						class="text-[length:var(--vui-text-xs)] font-medium px-2.5 py-1 rounded-md border transition-all cursor-pointer
+							{showTranslation
+								? 'bg-accent-dim text-accent border-accent-border'
+								: 'bg-surface border-border text-text-sub hover:text-text'}"
+						onclick={() => showTranslation = true}
+					>English</button>
+				</div>
+			{/if}
+			<pre class="mt-3 p-4 rounded-md bg-bg-deep border border-border text-[length:var(--vui-text-sm)] text-text overflow-x-auto font-mono whitespace-pre-wrap leading-relaxed">{showTranslation && pageText.textEn ? pageText.textEn : pageText.text}</pre>
 		{/if}
 	</div>
 {/if}

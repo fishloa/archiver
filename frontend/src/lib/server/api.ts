@@ -43,6 +43,7 @@ export interface PageTextResponse {
 	text: string;
 	confidence: number;
 	engine: string;
+	textEn: string;
 }
 
 export async function fetchPageText(pageId: number): Promise<PageTextResponse> {

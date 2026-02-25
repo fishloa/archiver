@@ -27,6 +27,8 @@ public class Record {
   private String rawSourceMetadata;
   private String lang;
   private Long pdfAttachmentId;
+  private String titleEn;
+  private String descriptionEn;
   private int attachmentCount;
   private int pageCount;
   private String status;
@@ -193,6 +195,22 @@ public class Record {
 
   public void setPdfAttachmentId(Long pdfAttachmentId) {
     this.pdfAttachmentId = pdfAttachmentId;
+  }
+
+  public String getTitleEn() {
+    return titleEn;
+  }
+
+  public void setTitleEn(String titleEn) {
+    this.titleEn = titleEn;
+  }
+
+  public String getDescriptionEn() {
+    return descriptionEn;
+  }
+
+  public void setDescriptionEn(String descriptionEn) {
+    this.descriptionEn = descriptionEn;
   }
 
   public int getAttachmentCount() {

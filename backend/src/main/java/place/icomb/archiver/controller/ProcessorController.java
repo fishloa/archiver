@@ -34,6 +34,7 @@ import place.icomb.archiver.repository.JobRepository;
 import place.icomb.archiver.repository.PageRepository;
 import place.icomb.archiver.service.JobEventService;
 import place.icomb.archiver.service.JobService;
+import place.icomb.archiver.service.RecordEventService;
 import place.icomb.archiver.service.StorageService;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
@@ -48,6 +49,7 @@ public class ProcessorController {
   private final AttachmentRepository attachmentRepository;
   private final StorageService storageService;
   private final JdbcTemplate jdbcTemplate;
+  private final RecordEventService recordEventService;
   private final String processorToken;
 
   public ProcessorController(
@@ -58,6 +60,7 @@ public class ProcessorController {
       AttachmentRepository attachmentRepository,
       StorageService storageService,
       JdbcTemplate jdbcTemplate,
+      RecordEventService recordEventService,
       @Value("${archiver.processor.token}") String processorToken) {
     this.jobService = jobService;
     this.jobEventService = jobEventService;
@@ -66,6 +69,7 @@ public class ProcessorController {
     this.attachmentRepository = attachmentRepository;
     this.storageService = storageService;
     this.jdbcTemplate = jdbcTemplate;
+    this.recordEventService = recordEventService;
     this.processorToken = processorToken;
   }
 
@@ -263,6 +267,67 @@ public class ProcessorController {
 
     return ResponseEntity.status(HttpStatus.CREATED)
         .body(Map.of("pageId", pageId, "count", request.entities().size()));
+  }
+
+  // -------------------------------------------------------------------------
+  // Record pages with OCR text (for PDF worker)
+  // -------------------------------------------------------------------------
+
+  @GetMapping("/records/{recordId}/pages")
+  public ResponseEntity<java.util.List<java.util.Map<String, Object>>> getRecordPagesWithText(
+      @RequestHeader("Authorization") String authHeader,
+      @PathVariable Long recordId) {
+    validateToken(authHeader);
+    java.util.List<java.util.Map<String, Object>> rows =
+        jdbcTemplate.queryForList(
+            """
+            SELECT p.id AS page_id, p.seq, p.attachment_id, p.width, p.height,
+                   pt.text_raw, pt.confidence
+            FROM page p
+            LEFT JOIN LATERAL (
+                SELECT pt2.text_raw, pt2.confidence
+                FROM page_text pt2
+                WHERE pt2.page_id = p.id
+                ORDER BY pt2.confidence DESC NULLS LAST
+                LIMIT 1
+            ) pt ON true
+            WHERE p.record_id = ?
+            ORDER BY p.seq
+            """,
+            recordId);
+    return ResponseEntity.ok(rows);
+  }
+
+  // -------------------------------------------------------------------------
+  // Translation results
+  // -------------------------------------------------------------------------
+
+  @PostMapping("/pages/{pageId}/translation")
+  public ResponseEntity<Map<String, Object>> submitTranslation(
+      @RequestHeader("Authorization") String authHeader,
+      @PathVariable Long pageId,
+      @RequestBody Map<String, String> body) {
+    validateToken(authHeader);
+    String textEn = body.get("textEn");
+    jdbcTemplate.update("UPDATE page_text SET text_en = ? WHERE page_id = ?", textEn, pageId);
+    return ResponseEntity.ok(Map.of("pageId", pageId, "status", "ok"));
+  }
+
+  @PostMapping("/records/{recordId}/translation")
+  public ResponseEntity<Map<String, Object>> submitRecordTranslation(
+      @RequestHeader("Authorization") String authHeader,
+      @PathVariable Long recordId,
+      @RequestBody Map<String, String> body) {
+    validateToken(authHeader);
+    String titleEn = body.get("titleEn");
+    String descriptionEn = body.get("descriptionEn");
+    jdbcTemplate.update(
+        "UPDATE record SET title_en = ?, description_en = ?, updated_at = now() WHERE id = ?",
+        titleEn,
+        descriptionEn,
+        recordId);
+    recordEventService.recordChanged(recordId, "translation");
+    return ResponseEntity.ok(Map.of("recordId", recordId, "status", "ok"));
   }
 
   // -------------------------------------------------------------------------

@@ -15,6 +15,7 @@ public class PageText {
   private String textRaw;
   @ReadOnlyProperty private String textNorm;
   private String hocr;
+  private String textEn;
   private Instant createdAt;
 
   public PageText() {}
@@ -69,6 +70,14 @@ public class PageText {
 
   public void setHocr(String hocr) {
     this.hocr = hocr;
+  }
+
+  public String getTextEn() {
+    return textEn;
+  }
+
+  public void setTextEn(String textEn) {
+    this.textEn = textEn;
   }
 
   public Instant getCreatedAt() {

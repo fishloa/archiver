@@ -49,9 +49,12 @@
 
 <div class="vui-card mb-6 vui-animate-fade-in">
 	<div class="flex items-start gap-3 mb-4">
-		<h1 class="text-[length:var(--vui-text-2xl)] font-extrabold tracking-tight">{record.title ?? '(untitled)'}</h1>
+		<h1 class="text-[length:var(--vui-text-2xl)] font-extrabold tracking-tight">{record.titleEn ?? record.title ?? '(untitled)'}</h1>
 		<StatusBadge status={record.status} />
 	</div>
+	{#if record.titleEn && record.title}
+		<p class="text-text-sub text-[length:var(--vui-text-sm)] mb-2 italic">{record.title}</p>
+	{/if}
 
 	{#if fondName || nadNumber}
 		<div class="mb-4 px-3 py-2 rounded-md bg-surface-alt border border-border">
@@ -67,8 +70,13 @@
 		</div>
 	{/if}
 
-	{#if record.description}
-		<p class="text-text mb-6">{record.description}</p>
+	{#if record.descriptionEn || record.description}
+		<p class="text-text mb-2">{record.descriptionEn ?? record.description}</p>
+		{#if record.descriptionEn && record.description}
+			<p class="text-text-sub text-[length:var(--vui-text-sm)] mb-6 italic">{record.description}</p>
+		{:else}
+			<div class="mb-6"></div>
+		{/if}
 	{/if}
 
 	<div class="grid grid-cols-1 gap-x-8 gap-y-2 sm:grid-cols-2">

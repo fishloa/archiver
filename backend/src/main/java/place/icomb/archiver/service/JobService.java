@@ -1,6 +1,7 @@
 package place.icomb.archiver.service;
 
 import java.time.Instant;
+import java.util.List;
 import java.util.Optional;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -78,12 +79,17 @@ public class JobService {
       checkRecordOcrComplete(job.getRecordId());
     }
 
+    // Check if PDF build is complete
+    if (job.getRecordId() != null && "build_searchable_pdf".equals(job.getKind())) {
+      checkRecordPdfComplete(job.getRecordId());
+    }
+
     return job;
   }
 
   /**
    * If every page in the record has OCR text, transition the record status from ocr_pending to
-   * ocr_done.
+   * ocr_done, then immediately start the PDF build + translation pipeline.
    */
   private void checkRecordOcrComplete(Long recordId) {
     Long pending =
@@ -103,8 +109,40 @@ public class JobService {
       if (updated > 0) {
         log.info("Record {} transitioned to ocr_done", recordId);
         recordEventService.recordChanged(recordId, "status");
+        startPostOcrPipeline(recordId);
       }
     }
+  }
+
+  /**
+   * Enqueue PDF build and translation jobs, then transition to pdf_pending.
+   */
+  private void startPostOcrPipeline(Long recordId) {
+    // Enqueue one build_searchable_pdf job for the whole record
+    enqueueJob("build_searchable_pdf", recordId, null, null);
+
+    // Enqueue translate_record job for metadata (title, description)
+    enqueueJob("translate_record", recordId, null, null);
+
+    // Enqueue translate_page jobs for each page's OCR text
+    List<Long> pageIds =
+        jdbcTemplate.queryForList(
+            "SELECT p.id FROM page p WHERE p.record_id = ? ORDER BY p.seq",
+            Long.class,
+            recordId);
+    for (Long pageId : pageIds) {
+      enqueueJob("translate_page", recordId, pageId, null);
+    }
+
+    // Transition to pdf_pending
+    jdbcTemplate.update(
+        "UPDATE record SET status = 'pdf_pending', updated_at = now() WHERE id = ? AND status = 'ocr_done'",
+        recordId);
+    log.info(
+        "Record {} → pdf_pending ({} translate jobs + 1 pdf job enqueued)",
+        recordId,
+        pageIds.size());
+    recordEventService.recordChanged(recordId, "status");
   }
 
   private static boolean isOcrKind(String kind) {
@@ -126,6 +164,27 @@ public class JobService {
     return job;
   }
 
+  /**
+   * After a build_searchable_pdf job completes, set the record's pdf_attachment_id and
+   * transition to pdf_done.
+   */
+  private void checkRecordPdfComplete(Long recordId) {
+    // Find the searchable_pdf attachment
+    Long pdfAttId =
+        jdbcTemplate.queryForObject(
+            "SELECT id FROM attachment WHERE record_id = ? AND role = 'searchable_pdf' ORDER BY id DESC LIMIT 1",
+            Long.class,
+            recordId);
+    if (pdfAttId != null) {
+      jdbcTemplate.update(
+          "UPDATE record SET pdf_attachment_id = ?, status = 'pdf_done', updated_at = now() WHERE id = ? AND status = 'pdf_pending'",
+          pdfAttId,
+          recordId);
+      log.info("Record {} → pdf_done (pdf_attachment_id={})", recordId, pdfAttId);
+      recordEventService.recordChanged(recordId, "status");
+    }
+  }
+
   /** Returns the Postgres NOTIFY channel name for a given job kind. */
   private static String channelForKind(String kind) {
     return switch (kind) {
@@ -133,6 +192,7 @@ public class JobService {
       case "build_searchable_pdf" -> "pdf_jobs";
       case "extract_entities" -> "entity_jobs";
       case "generate_thumbs" -> "ocr_jobs";
+      case "translate_page", "translate_record" -> "translate_jobs";
       default -> "ocr_jobs";
     };
   }

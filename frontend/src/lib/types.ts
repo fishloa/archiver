@@ -18,6 +18,8 @@ export interface RecordResponse {
 	indexTerms: string | null;
 	rawSourceMetadata: string | null;
 	pdfAttachmentId: number | null;
+	titleEn: string | null;
+	descriptionEn: string | null;
 	attachmentCount: number;
 	pageCount: number;
 	status: string;

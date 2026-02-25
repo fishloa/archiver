@@ -22,6 +22,8 @@ public record RecordResponse(
     String indexTerms,
     String rawSourceMetadata,
     Long pdfAttachmentId,
+    String titleEn,
+    String descriptionEn,
     int attachmentCount,
     int pageCount,
     String status,

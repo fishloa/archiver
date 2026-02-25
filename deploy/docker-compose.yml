@@ -54,14 +54,26 @@ services:
       - backend
     restart: unless-stopped
 
-  # pdf-worker:
-  #   image: dockerregistry.icomb.place/archiver/pdf-worker:latest
-  #   environment:
-  #     BACKEND_URL: http://backend:8080
-  #     PROCESSOR_TOKEN: ${PROCESSOR_TOKEN}
-  #   depends_on:
-  #     - backend
-  #   restart: unless-stopped
+  pdf-worker:
+    image: dockerregistry.icomb.place/archiver/pdf-worker:latest
+    user: "${CONTAINER_USER:-1012:1012}"
+    environment:
+      BACKEND_URL: http://backend:8080
+      PROCESSOR_TOKEN: ${PROCESSOR_TOKEN}
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+  translate-worker:
+    image: dockerregistry.icomb.place/archiver/translate-worker:latest
+    user: "${CONTAINER_USER:-1012:1012}"
+    environment:
+      HOME: /tmp
+      BACKEND_URL: http://backend:8080
+      PROCESSOR_TOKEN: ${PROCESSOR_TOKEN}
+    depends_on:
+      - backend
+    restart: unless-stopped
 
   # entity-worker:
   #   image: dockerregistry.icomb.place/archiver/entity-worker:latest

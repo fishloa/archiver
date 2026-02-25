@@ -96,6 +96,8 @@ public class ViewerController {
         recordsByStatus, pagesByStatus, "ocr_page_paddle", jobsByKind));
     stages.add(buildStage("PDF Build", "pdf_pending",
         recordsByStatus, pagesByStatus, "build_searchable_pdf", jobsByKind));
+    stages.add(buildStage("Translation", "pdf_pending",
+        recordsByStatus, pagesByStatus, "translate_page", jobsByKind));
     stages.add(buildStage("Entities", "entities_pending",
         recordsByStatus, pagesByStatus, "extract_entities", jobsByKind));
 
@@ -169,12 +171,13 @@ public class ViewerController {
                 Comparator.comparing(
                     PageText::getConfidence, Comparator.nullsFirst(Comparator.naturalOrder())))
             .orElse(texts.get(0));
-    return ResponseEntity.ok(
-        Map.of(
-            "pageId", pageId,
-            "text", best.getTextRaw() != null ? best.getTextRaw() : "",
-            "confidence", best.getConfidence() != null ? best.getConfidence() : 0.0f,
-            "engine", best.getEngine() != null ? best.getEngine() : ""));
+    Map<String, Object> result = new java.util.LinkedHashMap<>();
+    result.put("pageId", pageId);
+    result.put("text", best.getTextRaw() != null ? best.getTextRaw() : "");
+    result.put("confidence", best.getConfidence() != null ? best.getConfidence() : 0.0f);
+    result.put("engine", best.getEngine() != null ? best.getEngine() : "");
+    result.put("textEn", best.getTextEn() != null ? best.getTextEn() : "");
+    return ResponseEntity.ok(result);
   }
 
   @GetMapping("/search")

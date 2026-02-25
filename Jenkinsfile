@@ -28,7 +28,9 @@ pipeline {
                     env.BUILD_FRONTEND = params.BUILD_ALL || changed('frontend')
                     env.BUILD_SCRAPER = params.BUILD_ALL || changed('scraper-cz')
                     env.BUILD_OCR = params.BUILD_ALL || changed('ocr-worker-paddle')
-                    echo "backend=${env.BUILD_BACKEND} frontend=${env.BUILD_FRONTEND} scraper-cz=${env.BUILD_SCRAPER} ocr-worker-paddle=${env.BUILD_OCR}"
+                    env.BUILD_PDF = params.BUILD_ALL || changed('pdf-worker')
+                    env.BUILD_TRANSLATE = params.BUILD_ALL || changed('translate-worker')
+                    echo "backend=${env.BUILD_BACKEND} frontend=${env.BUILD_FRONTEND} scraper-cz=${env.BUILD_SCRAPER} ocr=${env.BUILD_OCR} pdf=${env.BUILD_PDF} translate=${env.BUILD_TRANSLATE}"
                 }
             }
         }
@@ -83,6 +85,32 @@ pipeline {
                         script {
                             dockerPush(registry, "${prefix}/ocr-worker-paddle:latest")
                             dockerPush(registry, "${prefix}/ocr-worker-paddle:\${GIT_COMMIT}")
+                        }
+                    }
+                }
+
+                stage('pdf-worker') {
+                    when { expression { env.BUILD_PDF == 'true' } }
+                    steps {
+                        dir('pdf-worker') {
+                            sh "docker build -t ${prefix}/pdf-worker:latest -t ${prefix}/pdf-worker:\${GIT_COMMIT} ."
+                        }
+                        script {
+                            dockerPush(registry, "${prefix}/pdf-worker:latest")
+                            dockerPush(registry, "${prefix}/pdf-worker:\${GIT_COMMIT}")
+                        }
+                    }
+                }
+
+                stage('translate-worker') {
+                    when { expression { env.BUILD_TRANSLATE == 'true' } }
+                    steps {
+                        dir('translate-worker') {
+                            sh "docker build -t ${prefix}/translate-worker:latest -t ${prefix}/translate-worker:\${GIT_COMMIT} ."
+                        }
+                        script {
+                            dockerPush(registry, "${prefix}/translate-worker:latest")
+                            dockerPush(registry, "${prefix}/translate-worker:\${GIT_COMMIT}")
                         }
                     }
                 }
