@@ -1,5 +1,5 @@
--- Enable pgvector extension for semantic search
-CREATE EXTENSION IF NOT EXISTS vector;
+-- pgvector extension must be created by superuser before this migration runs
+-- (already handled in the pgvector/pgvector Docker image setup)
 
 -- Add 'embedding' to the record status check constraint
 ALTER TABLE record DROP CONSTRAINT record_status_check;
