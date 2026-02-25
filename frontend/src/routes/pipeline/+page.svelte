@@ -51,6 +51,9 @@
 	const nodeSpacing = 160;
 	const startX = 80;
 
+	// Card order: top row = Scraping, OCR, Translation; bottom row = Ingested, PDF Build, Entities; then Complete
+	const cardOrder = [0, 2, 4, 1, 3, 5, 6];
+
 	function fmt(n: number): string {
 		return n.toLocaleString();
 	}
@@ -300,9 +303,10 @@
 </div>
 
 <!-- Detailed stats cards below -->
-<div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 mt-8 vui-stagger">
-	{#each data.stats.stages as stage, i}
-		{@const cfg = stageConfig[i]}
+<div class="grid grid-cols-2 md:grid-cols-3 gap-4 mt-8 vui-stagger">
+	{#each cardOrder as idx, i}
+		{@const stage = data.stats.stages[idx]}
+		{@const cfg = stageConfig[idx]}
 		<div
 			class="vui-card vui-animate-fade-in p-5"
 			style="border-color: {cfg.borderColor}; --delay: {i * 60}ms"

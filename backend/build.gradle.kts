@@ -39,6 +39,9 @@ dependencies {
     // OpenAPI / SpringDoc
     implementation("org.springdoc:springdoc-openapi-starter-webmvc-ui:2.8.4")
 
+    // PDF generation (page export)
+    implementation("org.apache.pdfbox:pdfbox:3.0.4")
+
     // Test
     testImplementation("org.springframework.boot:spring-boot-starter-test")
     testImplementation("org.springframework.boot:spring-boot-testcontainers")

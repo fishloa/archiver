@@ -1,9 +1,11 @@
 package place.icomb.archiver.controller;
 
+import java.io.IOException;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import org.springframework.core.io.ByteArrayResource;
 import org.springframework.core.io.Resource;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
@@ -24,6 +26,7 @@ import place.icomb.archiver.repository.PageRepository;
 import place.icomb.archiver.repository.PageTextRepository;
 import place.icomb.archiver.repository.RecordRepository;
 import place.icomb.archiver.service.JobService;
+import place.icomb.archiver.service.PdfExportService;
 import place.icomb.archiver.service.StorageService;
 
 @RestController
@@ -37,6 +40,7 @@ public class ViewerController {
   private final PageTextRepository pageTextRepository;
   private final JdbcTemplate jdbcTemplate;
   private final JobService jobService;
+  private final PdfExportService pdfExportService;
 
   public ViewerController(
       PageRepository pageRepository,
@@ -45,7 +49,8 @@ public class ViewerController {
       StorageService storageService,
       PageTextRepository pageTextRepository,
       JdbcTemplate jdbcTemplate,
-      JobService jobService) {
+      JobService jobService,
+      PdfExportService pdfExportService) {
     this.pageRepository = pageRepository;
     this.attachmentRepository = attachmentRepository;
     this.recordRepository = recordRepository;
@@ -53,6 +58,7 @@ public class ViewerController {
     this.pageTextRepository = pageTextRepository;
     this.jdbcTemplate = jdbcTemplate;
     this.jobService = jobService;
+    this.pdfExportService = pdfExportService;
   }
 
   @GetMapping("/pipeline/stats")
@@ -201,49 +207,104 @@ public class ViewerController {
       return ResponseEntity.ok(Map.of("results", List.of(), "total", 0, "page", 0, "size", size));
     }
 
-    String termPattern = "%" + q.toLowerCase().replace("%", "\\%") + "%";
+    // Parse query into positive and negative terms
+    // e.g. "czernin -palace -palais" -> include ["czernin"], exclude ["palace", "palais"]
+    List<String> includeTerms = new java.util.ArrayList<>();
+    List<String> excludeTerms = new java.util.ArrayList<>();
+    parseSearchTerms(q, includeTerms, excludeTerms);
+
+    if (includeTerms.isEmpty()) {
+      return ResponseEntity.ok(Map.of("results", List.of(), "total", 0, "page", page, "size", size));
+    }
+
     int offset = page * size;
 
-    // Combined search: OCR text + record metadata (title, description, referenceCode)
+    // Build dynamic OCR search SQL
+    StringBuilder ocrWhere = new StringBuilder();
+    List<Object> ocrParams = new java.util.ArrayList<>();
+    for (int i = 0; i < includeTerms.size(); i++) {
+      if (i > 0) ocrWhere.append(" AND ");
+      ocrWhere.append("pt.text_norm ILIKE '%' || immutable_unaccent(lower(?)) || '%'");
+      ocrParams.add(includeTerms.get(i));
+    }
+    for (String exc : excludeTerms) {
+      ocrWhere.append(" AND pt.text_norm NOT ILIKE '%' || immutable_unaccent(lower(?)) || '%'");
+      ocrParams.add(exc);
+    }
+
+    // Build dynamic metadata search SQL
+    StringBuilder metaWhere = new StringBuilder();
+    List<Object> metaParams = new java.util.ArrayList<>();
+    // Positive terms: each must match at least one metadata field
+    for (int i = 0; i < includeTerms.size(); i++) {
+      if (i > 0) metaWhere.append(" AND ");
+      String pat = "%" + includeTerms.get(i).toLowerCase().replace("%", "\\%") + "%";
+      metaWhere.append("(lower(r.title) LIKE ? OR lower(r.description) LIKE ? OR lower(r.reference_code) LIKE ?)");
+      metaParams.add(pat);
+      metaParams.add(pat);
+      metaParams.add(pat);
+    }
+    // Negative terms: must not match any metadata field
+    for (String exc : excludeTerms) {
+      String pat = "%" + exc.toLowerCase().replace("%", "\\%") + "%";
+      metaWhere.append(" AND lower(COALESCE(r.title,'')) NOT LIKE ?");
+      metaWhere.append(" AND lower(COALESCE(r.description,'')) NOT LIKE ?");
+      metaWhere.append(" AND lower(COALESCE(r.reference_code,'')) NOT LIKE ?");
+      metaParams.add(pat);
+      metaParams.add(pat);
+      metaParams.add(pat);
+    }
+
+    // Count: combined OCR + metadata
+    List<Object> countParams = new java.util.ArrayList<>();
+    countParams.addAll(ocrParams);
+    countParams.addAll(metaParams);
     Long total =
         jdbcTemplate.queryForObject(
-            """
-            SELECT count(*) FROM (
-              SELECT pt.id FROM page_text pt
-              WHERE pt.text_norm ILIKE '%' || immutable_unaccent(lower(?)) || '%'
-              UNION
-              SELECT -r.id FROM record r
-              WHERE lower(r.title) LIKE ?
-                 OR lower(r.description) LIKE ?
-                 OR lower(r.reference_code) LIKE ?
-            ) sub
-            """,
+            "SELECT count(*) FROM ("
+                + " SELECT pt.id FROM page_text pt WHERE " + ocrWhere
+                + " UNION"
+                + " SELECT -r.id FROM record r WHERE " + metaWhere
+                + ") sub",
             Long.class,
-            q,
-            termPattern,
-            termPattern,
-            termPattern);
+            countParams.toArray());
 
     // OCR text hits
-    List<PageText> ocrHits = pageTextRepository.searchByText(q, size, offset);
+    List<Object> ocrQueryParams = new java.util.ArrayList<>(ocrParams);
+    ocrQueryParams.add(size);
+    ocrQueryParams.add(offset);
+    List<Map<String, Object>> ocrRows = jdbcTemplate.queryForList(
+        "SELECT pt.* FROM page_text pt"
+            + " WHERE " + ocrWhere
+            + " ORDER BY pt.confidence DESC NULLS LAST"
+            + " LIMIT ? OFFSET ?",
+        ocrQueryParams.toArray());
+
+    // Use the first include term for snippet extraction
+    String snippetTerm = includeTerms.get(0);
 
     List<Map<String, Object>> results = new java.util.ArrayList<>();
-    for (PageText pt : ocrHits) {
-      var pageEntity = pageRepository.findById(pt.getPageId()).orElse(null);
+    for (var row : ocrRows) {
+      Long ptId = ((Number) row.get("id")).longValue();
+      Long ptPageId = ((Number) row.get("page_id")).longValue();
+      Float confidence = row.get("confidence") != null ? ((Number) row.get("confidence")).floatValue() : null;
+      String engine = row.get("engine") != null ? row.get("engine").toString() : "";
+      String textRaw = row.get("text_raw") != null ? row.get("text_raw").toString() : "";
+
+      var pageEntity = pageRepository.findById(ptPageId).orElse(null);
       var record =
           pageEntity != null
               ? recordRepository.findById(pageEntity.getRecordId()).orElse(null)
               : null;
 
-      String text = pt.getTextRaw() != null ? pt.getTextRaw() : "";
-      String snippet = extractSnippet(text, q, 200);
+      String snippet = extractSnippet(textRaw, snippetTerm, 200);
 
       Map<String, Object> result = new LinkedHashMap<>();
       result.put("type", "ocr");
-      result.put("pageTextId", pt.getId());
-      result.put("pageId", pt.getPageId());
-      result.put("confidence", pt.getConfidence());
-      result.put("engine", pt.getEngine());
+      result.put("pageTextId", ptId);
+      result.put("pageId", ptPageId);
+      result.put("confidence", confidence);
+      result.put("engine", engine);
       result.put("snippet", snippet);
       if (pageEntity != null) {
         result.put("seq", pageEntity.getSeq());
@@ -259,22 +320,16 @@ public class ViewerController {
     // If we have room, add metadata matches (records whose title/description/ref match)
     if (results.size() < size) {
       int metaLimit = size - results.size();
-      // Exclude records already shown via OCR hits
+      List<Object> metaQueryParams = new java.util.ArrayList<>(metaParams);
+      metaQueryParams.add(metaLimit);
       List<Map<String, Object>> metaHits =
           jdbcTemplate.queryForList(
-              """
-              SELECT r.id, r.title, r.description, r.reference_code, r.status, r.page_count
-              FROM record r
-              WHERE (lower(r.title) LIKE ?
-                  OR lower(r.description) LIKE ?
-                  OR lower(r.reference_code) LIKE ?)
-              ORDER BY r.id DESC
-              LIMIT ?
-              """,
-              termPattern,
-              termPattern,
-              termPattern,
-              metaLimit);
+              "SELECT r.id, r.title, r.description, r.reference_code, r.status, r.page_count"
+                  + " FROM record r"
+                  + " WHERE " + metaWhere
+                  + " ORDER BY r.id DESC"
+                  + " LIMIT ?",
+              metaQueryParams.toArray());
 
       for (var row : metaHits) {
         Map<String, Object> result = new LinkedHashMap<>();
@@ -287,10 +342,10 @@ public class ViewerController {
         // Build snippet from whichever field matched
         String desc = row.get("description") != null ? row.get("description").toString() : "";
         String title = row.get("title") != null ? row.get("title").toString() : "";
-        if (title.toLowerCase().contains(q.toLowerCase())) {
+        if (title.toLowerCase().contains(snippetTerm.toLowerCase())) {
           result.put("snippet", title);
-        } else if (desc.toLowerCase().contains(q.toLowerCase())) {
-          result.put("snippet", extractSnippet(desc, q, 200));
+        } else if (desc.toLowerCase().contains(snippetTerm.toLowerCase())) {
+          result.put("snippet", extractSnippet(desc, snippetTerm, 200));
         } else {
           result.put("snippet", row.get("reference_code"));
         }
@@ -300,6 +355,22 @@ public class ViewerController {
 
     return ResponseEntity.ok(
         Map.of("results", results, "total", total != null ? total : 0L, "page", page, "size", size));
+  }
+
+  /**
+   * Parses a search query string into positive (include) and negative (exclude) terms.
+   * Terms prefixed with '-' are exclusions. For example:
+   * "czernin -palace -palais" -> include=["czernin"], exclude=["palace", "palais"]
+   */
+  private void parseSearchTerms(String query, List<String> include, List<String> exclude) {
+    String[] tokens = query.trim().split("\\s+");
+    for (String token : tokens) {
+      if (token.startsWith("-") && token.length() > 1) {
+        exclude.add(token.substring(1));
+      } else if (!token.isEmpty()) {
+        include.add(token);
+      }
+    }
   }
 
   @GetMapping("/files/{attachmentId}")
@@ -345,6 +416,40 @@ public class ViewerController {
         .contentType(MediaType.APPLICATION_PDF)
         .header(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=\"record-" + recordId + ".pdf\"")
         .body(resource);
+  }
+
+  @GetMapping("/records/{recordId}/export-pdf")
+  public ResponseEntity<Resource> exportPdf(
+      @PathVariable Long recordId, @RequestParam String pages) {
+    Record record = recordRepository.findById(recordId).orElse(null);
+    if (record == null) {
+      return ResponseEntity.notFound().build();
+    }
+
+    List<Integer> seqNumbers;
+    try {
+      seqNumbers = pdfExportService.parsePageRange(pages);
+    } catch (IllegalArgumentException | NumberFormatException e) {
+      return ResponseEntity.badRequest().build();
+    }
+
+    if (seqNumbers.isEmpty()) {
+      return ResponseEntity.badRequest().build();
+    }
+
+    try {
+      byte[] pdfBytes = pdfExportService.buildPdf(recordId, seqNumbers);
+      ByteArrayResource resource = new ByteArrayResource(pdfBytes);
+      String filename = "record-" + recordId + "-pages.pdf";
+      return ResponseEntity.ok()
+          .contentType(MediaType.APPLICATION_PDF)
+          .header(
+              HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + filename + "\"")
+          .contentLength(pdfBytes.length)
+          .body(resource);
+    } catch (IOException e) {
+      return ResponseEntity.internalServerError().build();
+    }
   }
 
   @GetMapping("/records/{recordId}/timeline")
