@@ -10,7 +10,8 @@
 		Tags,
 		CircleCheckBig,
 		Loader,
-		AlertTriangle
+		AlertTriangle,
+		Zap
 	} from 'lucide-svelte';
 	import type { PipelineStage } from '$lib/server/api';
 
@@ -74,6 +75,11 @@
 		{@const cfg = stageConfig[i]}
 		{@const hasJobs = stage.jobsPending !== undefined}
 		{@const isLast = i === data.stats.stages.length - 1}
+		{@const running = stage.jobsRunning ?? 0}
+		{@const pending = stage.jobsPending ?? 0}
+		{@const completed = stage.jobsCompleted ?? 0}
+		{@const failed = stage.jobsFailed ?? 0}
+		{@const totalJobs = running + pending + completed + failed}
 
 		<div class="stage" style="--delay: {i * 60}ms">
 			<!-- Node + connector column -->
@@ -88,11 +94,10 @@
 
 			<!-- Card -->
 			<div class="stage-card" style="border-color: {cfg.borderColor}">
-				<!-- Accent bar -->
 				<div class="accent-bar" style="background: {cfg.color}"></div>
 
 				<div class="card-body">
-					<!-- Header row: icon + name + record/page counts -->
+					<!-- Header: icon + name + record/page counts -->
 					<div class="card-header">
 						<div class="card-icon" style="background: {cfg.dimBg}">
 							<svelte:component this={cfg.icon} size={16} color={cfg.color} strokeWidth={2} />
@@ -107,31 +112,36 @@
 						</div>
 					</div>
 
-					<!-- Job stats row -->
+					<!-- Workers / handlers row -->
 					{#if hasJobs}
-						<div class="job-stats">
-							{#if (stage.jobsCompleted ?? 0) > 0}
-								<span class="job-done">
-									<CircleCheckBig size={11} class="inline -mt-0.5" /> {fmt(stage.jobsCompleted ?? 0)} done
+						<div class="handler-row">
+							<div class="handler-stats">
+								<span class="handler-active">
+									<Zap size={11} class="inline -mt-0.5" />
+									{running} active
 								</span>
-							{/if}
-							{#if (stage.jobsRunning ?? 0) > 0}
-								<span class="job-active">
-									<Loader size={11} class="inline -mt-0.5 animate-spin" /> {fmt(stage.jobsRunning ?? 0)} active
+								<span class="handler-queued">
+									{fmt(pending)} queued
 								</span>
-							{/if}
-							{#if (stage.jobsPending ?? 0) > 0}
-								<span class="job-queued">
-									{fmt(stage.jobsPending ?? 0)} queued
-								</span>
-							{/if}
-							{#if (stage.jobsFailed ?? 0) > 0}
-								<span class="job-failed">
-									<AlertTriangle size={11} class="inline -mt-0.5" /> {fmt(stage.jobsFailed ?? 0)} failed
-								</span>
-							{/if}
-							{#if (stage.jobsCompleted ?? 0) === 0 && (stage.jobsRunning ?? 0) === 0 && (stage.jobsPending ?? 0) === 0 && (stage.jobsFailed ?? 0) === 0}
-								<span class="job-none">No jobs</span>
+								{#if failed > 0}
+									<span class="handler-failed">
+										<AlertTriangle size={11} class="inline -mt-0.5" />
+										{fmt(failed)} failed
+									</span>
+								{/if}
+							</div>
+							{#if totalJobs > 0}
+								<div class="progress-row">
+									<div class="progress-bar">
+										<div
+											class="progress-fill"
+											style="width: {totalJobs > 0 ? (completed / totalJobs * 100) : 0}%; background: {cfg.color}"
+										></div>
+									</div>
+									<span class="progress-label">
+										{fmt(completed)}/{fmt(totalJobs)}
+									</span>
+								</div>
 							{/if}
 						</div>
 					{/if}
@@ -266,21 +276,51 @@
 		margin: 0 2px;
 	}
 
-	/* Job stats */
-	.job-stats {
-		display: flex;
-		flex-wrap: wrap;
-		gap: 4px 12px;
+	/* Handler / worker stats */
+	.handler-row {
 		margin-top: 8px;
 		padding-top: 8px;
 		border-top: 1px solid var(--vui-border);
+	}
+
+	.handler-stats {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 4px 14px;
 		font-size: 11px;
 		font-variant-numeric: tabular-nums;
 	}
 
-	.job-done { color: #34d399; }
-	.job-active { color: #f59e0b; }
-	.job-queued { color: var(--vui-text-sub); }
-	.job-failed { color: var(--vui-danger); }
-	.job-none { color: var(--vui-text-muted); }
+	.handler-active { color: #f59e0b; }
+	.handler-queued { color: var(--vui-text-sub); }
+	.handler-failed { color: var(--vui-danger); }
+
+	/* Progress bar */
+	.progress-row {
+		display: flex;
+		align-items: center;
+		gap: 8px;
+		margin-top: 6px;
+	}
+
+	.progress-bar {
+		flex: 1;
+		height: 4px;
+		border-radius: 2px;
+		background: var(--vui-border);
+		overflow: hidden;
+	}
+
+	.progress-fill {
+		height: 100%;
+		border-radius: 2px;
+		transition: width 0.6s ease;
+	}
+
+	.progress-label {
+		font-size: 10px;
+		color: var(--vui-text-muted);
+		font-variant-numeric: tabular-nums;
+		white-space: nowrap;
+	}
 </style>
