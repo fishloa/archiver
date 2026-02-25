@@ -119,6 +119,9 @@ pipeline {
     }
 
     post {
+        success {
+            sh 'curl -s -X POST https://docker.icomb.place/api/stacks/webhooks/b7e3a1d2-5f4c-4e8a-9b1d-3c6f8a2e4d71 || true'
+        }
         always {
             sh "docker logout ${registry} || true"
         }
