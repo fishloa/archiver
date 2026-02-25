@@ -51,19 +51,32 @@
 		{ key: 'pageCount', label: 'Pages' }
 	] as const;
 
+	function buildParams(overrides: Record<string, string | number> = {}): URLSearchParams {
+		const params = new URLSearchParams();
+		const vals = {
+			status: data.status,
+			sortBy: data.sortBy,
+			sortDir: data.sortDir,
+			archiveId: data.archiveId ? String(data.archiveId) : '',
+			...overrides
+		};
+		for (const [k, v] of Object.entries(vals)) {
+			if (v) params.set(k, String(v));
+		}
+		return params;
+	}
+
 	function sortHref(key: string): string {
 		const dir = data.sortBy === key && data.sortDir === 'asc' ? 'desc' : 'asc';
-		const params = new URLSearchParams({ sortBy: key, sortDir: dir });
-		if (data.status) params.set('status', data.status);
-		return `?${params}`;
+		return `?${buildParams({ sortBy: key, sortDir: dir })}`;
 	}
 
 	function statusHref(status: string): string {
-		const params = new URLSearchParams();
-		if (status) params.set('status', status);
-		params.set('sortBy', data.sortBy);
-		params.set('sortDir', data.sortDir);
-		return `?${params}`;
+		return `?${buildParams({ status })}`;
+	}
+
+	function archiveHref(archiveId: number): string {
+		return `?${buildParams({ archiveId: archiveId || '' })}`;
 	}
 
 	function sortIndicator(key: string): string {
@@ -108,19 +121,46 @@
 	</span>
 </div>
 
-<div class="flex gap-2 mb-4">
-	{#each statuses as s}
-		{@const active = data.status === s.value}
-		<a
-			href={statusHref(s.value)}
-			class="px-3 py-1.5 rounded-full text-[length:var(--vui-text-xs)] font-medium border transition-all
-				{active
-					? 'bg-accent-dim text-accent border-accent-border'
-					: 'bg-surface border-border text-text-sub hover:border-border-hover hover:text-text'}"
-		>
-			{s.label}
-		</a>
-	{/each}
+<div class="flex items-center gap-4 mb-4">
+	<div class="flex gap-2">
+		{#each statuses as s}
+			{@const active = data.status === s.value}
+			<a
+				href={statusHref(s.value)}
+				class="px-3 py-1.5 rounded-full text-[length:var(--vui-text-xs)] font-medium border transition-all
+					{active
+						? 'bg-accent-dim text-accent border-accent-border'
+						: 'bg-surface border-border text-text-sub hover:border-border-hover hover:text-text'}"
+			>
+				{s.label}
+			</a>
+		{/each}
+	</div>
+
+	{#if data.archives?.length > 1}
+		<div class="flex gap-2 ml-auto">
+			<a
+				href={archiveHref(0)}
+				class="px-3 py-1.5 rounded-full text-[length:var(--vui-text-xs)] font-medium border transition-all
+					{!data.archiveId
+						? 'bg-accent-dim text-accent border-accent-border'
+						: 'bg-surface border-border text-text-sub hover:border-border-hover hover:text-text'}"
+			>
+				All Archives
+			</a>
+			{#each data.archives as archive}
+				<a
+					href={archiveHref(archive.id)}
+					class="px-3 py-1.5 rounded-full text-[length:var(--vui-text-xs)] font-medium border transition-all
+						{data.archiveId === archive.id
+							? 'bg-accent-dim text-accent border-accent-border'
+							: 'bg-surface border-border text-text-sub hover:border-border-hover hover:text-text'}"
+				>
+					{archive.name}
+				</a>
+			{/each}
+		</div>
+	{/if}
 </div>
 
 {#if data.records.empty}

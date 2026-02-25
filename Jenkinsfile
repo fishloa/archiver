@@ -27,10 +27,14 @@ pipeline {
                     env.BUILD_BACKEND = params.BUILD_ALL || changed('backend')
                     env.BUILD_FRONTEND = params.BUILD_ALL || changed('frontend')
                     env.BUILD_SCRAPER = params.BUILD_ALL || changed('scraper-cz')
+                    env.BUILD_SCRAPER_EBADATELNA = params.BUILD_ALL || changed('scraper-ebadatelna')
+                    env.BUILD_SCRAPER_FINDBUCH = params.BUILD_ALL || changed('scraper-findbuch')
+                    env.BUILD_SCRAPER_OESTA = params.BUILD_ALL || changed('scraper-oesta')
+                    env.BUILD_SCRAPER_MATRICULA = params.BUILD_ALL || changed('scraper-matricula')
                     env.BUILD_OCR = params.BUILD_ALL || changed('ocr-worker-paddle')
                     env.BUILD_PDF = params.BUILD_ALL || changed('pdf-worker')
                     env.BUILD_TRANSLATE = params.BUILD_ALL || changed('translate-worker')
-                    echo "backend=${env.BUILD_BACKEND} frontend=${env.BUILD_FRONTEND} scraper-cz=${env.BUILD_SCRAPER} ocr=${env.BUILD_OCR} pdf=${env.BUILD_PDF} translate=${env.BUILD_TRANSLATE}"
+                    echo "backend=${env.BUILD_BACKEND} frontend=${env.BUILD_FRONTEND} scraper-cz=${env.BUILD_SCRAPER} ebadatelna=${env.BUILD_SCRAPER_EBADATELNA} findbuch=${env.BUILD_SCRAPER_FINDBUCH} oesta=${env.BUILD_SCRAPER_OESTA} matricula=${env.BUILD_SCRAPER_MATRICULA} ocr=${env.BUILD_OCR} pdf=${env.BUILD_PDF} translate=${env.BUILD_TRANSLATE}"
                 }
             }
         }
@@ -111,6 +115,58 @@ pipeline {
                         script {
                             dockerPush(registry, "${prefix}/translate-worker:latest")
                             dockerPush(registry, "${prefix}/translate-worker:\${GIT_COMMIT}")
+                        }
+                    }
+                }
+
+                stage('scraper-ebadatelna') {
+                    when { expression { env.BUILD_SCRAPER_EBADATELNA == 'true' } }
+                    steps {
+                        dir('scraper-ebadatelna') {
+                            sh "docker build -t ${prefix}/scraper-ebadatelna:latest -t ${prefix}/scraper-ebadatelna:\${GIT_COMMIT} ."
+                        }
+                        script {
+                            dockerPush(registry, "${prefix}/scraper-ebadatelna:latest")
+                            dockerPush(registry, "${prefix}/scraper-ebadatelna:\${GIT_COMMIT}")
+                        }
+                    }
+                }
+
+                stage('scraper-findbuch') {
+                    when { expression { env.BUILD_SCRAPER_FINDBUCH == 'true' } }
+                    steps {
+                        dir('scraper-findbuch') {
+                            sh "docker build -t ${prefix}/scraper-findbuch:latest -t ${prefix}/scraper-findbuch:\${GIT_COMMIT} ."
+                        }
+                        script {
+                            dockerPush(registry, "${prefix}/scraper-findbuch:latest")
+                            dockerPush(registry, "${prefix}/scraper-findbuch:\${GIT_COMMIT}")
+                        }
+                    }
+                }
+
+                stage('scraper-oesta') {
+                    when { expression { env.BUILD_SCRAPER_OESTA == 'true' } }
+                    steps {
+                        dir('scraper-oesta') {
+                            sh "docker build -t ${prefix}/scraper-oesta:latest -t ${prefix}/scraper-oesta:\${GIT_COMMIT} ."
+                        }
+                        script {
+                            dockerPush(registry, "${prefix}/scraper-oesta:latest")
+                            dockerPush(registry, "${prefix}/scraper-oesta:\${GIT_COMMIT}")
+                        }
+                    }
+                }
+
+                stage('scraper-matricula') {
+                    when { expression { env.BUILD_SCRAPER_MATRICULA == 'true' } }
+                    steps {
+                        dir('scraper-matricula') {
+                            sh "docker build -t ${prefix}/scraper-matricula:latest -t ${prefix}/scraper-matricula:\${GIT_COMMIT} ."
+                        }
+                        script {
+                            dockerPush(registry, "${prefix}/scraper-matricula:latest")
+                            dockerPush(registry, "${prefix}/scraper-matricula:\${GIT_COMMIT}")
                         }
                     }
                 }

@@ -12,7 +12,8 @@ export async function fetchRecords(
 	size: number,
 	sortBy: string,
 	sortDir: string,
-	status?: string
+	status?: string,
+	archiveId?: number
 ): Promise<SpringPage<RecordResponse>> {
 	const params = new URLSearchParams({
 		page: String(page),
@@ -21,7 +22,20 @@ export async function fetchRecords(
 		sortDir
 	});
 	if (status) params.set('status', status);
+	if (archiveId) params.set('archiveId', String(archiveId));
 	const res = await fetch(`${backendUrl()}/api/records?${params}`);
+	if (!res.ok) throw new Error(`Backend error: ${res.status}`);
+	return res.json();
+}
+
+export interface ArchiveInfo {
+	id: number;
+	name: string;
+	country: string;
+}
+
+export async function fetchArchives(): Promise<ArchiveInfo[]> {
+	const res = await fetch(`${backendUrl()}/api/records/archives`);
 	if (!res.ok) throw new Error(`Backend error: ${res.status}`);
 	return res.json();
 }

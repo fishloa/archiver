@@ -79,6 +79,46 @@ services:
       - backend
     restart: unless-stopped
 
+  scraper-ebadatelna:
+    image: dockerregistry.icomb.place/archiver/scraper-ebadatelna:latest
+    user: "${CONTAINER_USER:-1012:1012}"
+    environment:
+      BACKEND_URL: http://backend:8080
+      EBADATELNA_EMAIL: ${EBADATELNA_EMAIL:-}
+      EBADATELNA_PASSWORD: ${EBADATELNA_PASSWORD:-}
+    depends_on:
+      - backend
+    restart: "no"
+
+  scraper-findbuch:
+    image: dockerregistry.icomb.place/archiver/scraper-findbuch:latest
+    user: "${CONTAINER_USER:-1012:1012}"
+    environment:
+      BACKEND_URL: http://backend:8080
+      FINDBUCH_USERNAME: ${FINDBUCH_USERNAME:-}
+      FINDBUCH_PASSWORD: ${FINDBUCH_PASSWORD:-}
+    depends_on:
+      - backend
+    restart: "no"
+
+  scraper-oesta:
+    image: dockerregistry.icomb.place/archiver/scraper-oesta:latest
+    user: "${CONTAINER_USER:-1012:1012}"
+    environment:
+      BACKEND_URL: http://backend:8080
+    depends_on:
+      - backend
+    restart: "no"
+
+  scraper-matricula:
+    image: dockerregistry.icomb.place/archiver/scraper-matricula:latest
+    user: "${CONTAINER_USER:-1012:1012}"
+    environment:
+      BACKEND_URL: http://backend:8080
+    depends_on:
+      - backend
+    restart: "no"
+
   # entity-worker:
   #   image: dockerregistry.icomb.place/archiver/entity-worker:latest
   #   environment:

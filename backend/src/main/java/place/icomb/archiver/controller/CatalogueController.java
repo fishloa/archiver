@@ -19,6 +19,7 @@ import place.icomb.archiver.dto.PageResponse;
 import place.icomb.archiver.dto.RecordResponse;
 import place.icomb.archiver.model.Page;
 import place.icomb.archiver.model.Record;
+import place.icomb.archiver.repository.ArchiveRepository;
 import place.icomb.archiver.repository.PageRepository;
 import place.icomb.archiver.repository.RecordRepository;
 import place.icomb.archiver.service.RecordEventService;
@@ -28,16 +29,19 @@ import place.icomb.archiver.service.RecordEventService;
 public class CatalogueController {
 
   private final RecordRepository recordRepository;
+  private final ArchiveRepository archiveRepository;
   private final PageRepository pageRepository;
   private final JdbcTemplate jdbcTemplate;
   private final RecordEventService recordEventService;
 
   public CatalogueController(
       RecordRepository recordRepository,
+      ArchiveRepository archiveRepository,
       PageRepository pageRepository,
       JdbcTemplate jdbcTemplate,
       RecordEventService recordEventService) {
     this.recordRepository = recordRepository;
+    this.archiveRepository = archiveRepository;
     this.pageRepository = pageRepository;
     this.jdbcTemplate = jdbcTemplate;
     this.recordEventService = recordEventService;
@@ -53,9 +57,13 @@ public class CatalogueController {
       @RequestParam(defaultValue = "20") int size,
       @RequestParam(defaultValue = "createdAt") String sortBy,
       @RequestParam(defaultValue = "desc") String sortDir,
-      @RequestParam(required = false) String status) {
+      @RequestParam(required = false) String status,
+      @RequestParam(required = false) Long archiveId) {
 
-    if (status == null || status.isBlank()) {
+    boolean hasStatus = status != null && !status.isBlank();
+    boolean hasArchive = archiveId != null;
+
+    if (!hasStatus && !hasArchive) {
       Sort sort =
           sortDir.equalsIgnoreCase("asc")
               ? Sort.by(sortBy).ascending()
@@ -65,30 +73,42 @@ public class CatalogueController {
       return ResponseEntity.ok(records.map(this::toResponse));
     }
 
-    // Filter by status using JdbcTemplate to avoid Spring Data JDBC limitations
+    // Build filtered query using JdbcTemplate
     String col = toSnakeCase(sortBy);
     if (!SORTABLE_COLUMNS.contains(sortBy)) col = "created_at";
     String dir = sortDir.equalsIgnoreCase("asc") ? "ASC" : "DESC";
     int offset = page * size;
 
+    StringBuilder where = new StringBuilder("WHERE 1=1");
+    java.util.List<Object> params = new java.util.ArrayList<>();
+    if (hasStatus) {
+      where.append(" AND status = ?");
+      params.add(status);
+    }
+    if (hasArchive) {
+      where.append(" AND archive_id = ?");
+      params.add(archiveId);
+    }
+
     Long total =
         jdbcTemplate.queryForObject(
-            "SELECT count(*) FROM record WHERE status = ?", Long.class, status);
+            "SELECT count(*) FROM record " + where, Long.class, params.toArray());
     List<Record> rows =
         jdbcTemplate.query(
-            "SELECT * FROM record WHERE status = ? ORDER BY "
-                + col
-                + " "
-                + dir
-                + " LIMIT ? OFFSET ?",
+            "SELECT * FROM record " + where + " ORDER BY " + col + " " + dir + " LIMIT ? OFFSET ?",
             new BeanPropertyRowMapper<>(Record.class),
-            status,
-            size,
-            offset);
+            concatParams(params, size, offset));
     Pageable pageable = PageRequest.of(page, size);
     org.springframework.data.domain.Page<RecordResponse> result =
-        new PageImpl<>(rows.stream().map(this::toResponse).toList(), pageable, total != null ? total : 0);
+        new PageImpl<>(
+            rows.stream().map(this::toResponse).toList(), pageable, total != null ? total : 0);
     return ResponseEntity.ok(result);
+  }
+
+  private static Object[] concatParams(java.util.List<Object> base, Object... extra) {
+    java.util.List<Object> all = new java.util.ArrayList<>(base);
+    java.util.Collections.addAll(all, extra);
+    return all.toArray();
   }
 
   private static String toSnakeCase(String camel) {
@@ -130,6 +150,18 @@ public class CatalogueController {
             .toList();
     return ResponseEntity.ok(response);
   }
+
+  @GetMapping("/archives")
+  public ResponseEntity<List<ArchiveResponse>> listArchives() {
+    List<ArchiveResponse> archives = new java.util.ArrayList<>();
+    archiveRepository
+        .findAll()
+        .forEach(a -> archives.add(new ArchiveResponse(a.getId(), a.getName(), a.getCountry())));
+    archives.sort(java.util.Comparator.comparing(ArchiveResponse::id));
+    return ResponseEntity.ok(archives);
+  }
+
+  public record ArchiveResponse(Long id, String name, String country) {}
 
   private RecordResponse toResponse(Record r) {
     return new RecordResponse(
