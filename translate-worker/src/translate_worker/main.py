@@ -33,8 +33,8 @@ def process_translate_page(client, translator, job: dict) -> None:
         client.complete_job(job_id, result="no_text")
         return
 
-    # Page OCR text is typically German but may contain Czech; auto-detect
-    translated = translator.translate(text, source_lang=None)
+    # Auto-detect source language (could be German, Czech, or other)
+    translated = translator.translate(text)
 
     client.submit_page_translation(page_id, translated)
     client.complete_job(job_id)
@@ -70,9 +70,9 @@ def process_translate_record(client, translator, job: dict) -> None:
         client.complete_job(job_id, result="no_text")
         return
 
-    # Record metadata (title/description) is typically Czech
-    title_en = translator.translate(title, source_lang="cs") if title.strip() else ""
-    description_en = translator.translate(description, source_lang="cs") if description.strip() else ""
+    # Auto-detect language for metadata (varies by archive)
+    title_en = translator.translate(title) if title.strip() else ""
+    description_en = translator.translate(description) if description.strip() else ""
 
     client.submit_record_translation(record_id, title_en, description_en)
     client.complete_job(job_id)
