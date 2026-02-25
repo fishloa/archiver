@@ -99,43 +99,71 @@ public class ViewerController {
     // Build stage objects
     List<Map<String, Object>> stages = new java.util.ArrayList<>();
 
-    stages.add(buildStage("Scraping", "ingesting",
-        recordsByStatus, pagesByStatus, null, jobsByKind));
-    stages.add(buildStage("Ingested", "ingested",
-        recordsByStatus, pagesByStatus, null, jobsByKind));
-    stages.add(buildStage("OCR", "ocr_pending",
-        recordsByStatus, pagesByStatus, new String[]{"ocr_page_paddle"}, jobsByKind));
-    stages.add(buildStage("PDF Build", "pdf_pending",
-        recordsByStatus, pagesByStatus, new String[]{"build_searchable_pdf"}, jobsByKind));
-    stages.add(buildStage("Translation", "translating",
-        recordsByStatus, pagesByStatus, new String[]{"translate_page", "translate_record"}, jobsByKind));
-    stages.add(buildStage("Entities", "entities_pending",
-        recordsByStatus, pagesByStatus, new String[]{"extract_entities"}, jobsByKind));
+    stages.add(
+        buildStage("Scraping", "ingesting", recordsByStatus, pagesByStatus, null, jobsByKind));
+    stages.add(
+        buildStage("Ingested", "ingested", recordsByStatus, pagesByStatus, null, jobsByKind));
+    stages.add(
+        buildStage(
+            "OCR",
+            "ocr_pending",
+            recordsByStatus,
+            pagesByStatus,
+            new String[] {"ocr_page_paddle"},
+            jobsByKind));
+    stages.add(
+        buildStage(
+            "PDF Build",
+            "pdf_pending",
+            recordsByStatus,
+            pagesByStatus,
+            new String[] {"build_searchable_pdf"},
+            jobsByKind));
+    stages.add(
+        buildStage(
+            "Translation",
+            "translating",
+            recordsByStatus,
+            pagesByStatus,
+            new String[] {"translate_page", "translate_record"},
+            jobsByKind));
+    stages.add(
+        buildStage(
+            "Entities",
+            "entities_pending",
+            recordsByStatus,
+            pagesByStatus,
+            new String[] {"extract_entities"},
+            jobsByKind));
 
     // "Complete" aggregates terminal statuses
-    long doneRecords = recordsByStatus.getOrDefault("ocr_done", 0L)
-        + recordsByStatus.getOrDefault("pdf_done", 0L)
-        + recordsByStatus.getOrDefault("entities_done", 0L)
-        + recordsByStatus.getOrDefault("complete", 0L);
-    long donePages = pagesByStatus.getOrDefault("ocr_done", 0L)
-        + pagesByStatus.getOrDefault("pdf_done", 0L)
-        + pagesByStatus.getOrDefault("entities_done", 0L)
-        + pagesByStatus.getOrDefault("complete", 0L);
+    long doneRecords =
+        recordsByStatus.getOrDefault("ocr_done", 0L)
+            + recordsByStatus.getOrDefault("pdf_done", 0L)
+            + recordsByStatus.getOrDefault("entities_done", 0L)
+            + recordsByStatus.getOrDefault("complete", 0L);
+    long donePages =
+        pagesByStatus.getOrDefault("ocr_done", 0L)
+            + pagesByStatus.getOrDefault("pdf_done", 0L)
+            + pagesByStatus.getOrDefault("entities_done", 0L)
+            + pagesByStatus.getOrDefault("complete", 0L);
     Map<String, Object> completeStage = new LinkedHashMap<>();
     completeStage.put("name", "Complete");
     completeStage.put("records", doneRecords);
     completeStage.put("pages", donePages);
     stages.add(completeStage);
 
-    return ResponseEntity.ok(Map.of(
-        "stages", stages,
-        "totals", Map.of("records", totalRecords, "pages", totalPages)));
+    return ResponseEntity.ok(
+        Map.of("stages", stages, "totals", Map.of("records", totalRecords, "pages", totalPages)));
   }
 
   private Map<String, Object> buildStage(
-      String name, String recordStatus,
-      Map<String, Long> recordsByStatus, Map<String, Long> pagesByStatus,
-      String[] jobKinds, Map<String, Map<String, Long>> jobsByKind) {
+      String name,
+      String recordStatus,
+      Map<String, Long> recordsByStatus,
+      Map<String, Long> pagesByStatus,
+      String[] jobKinds,
+      Map<String, Map<String, Long>> jobsByKind) {
     Map<String, Object> stage = new LinkedHashMap<>();
     stage.put("name", name);
     stage.put("records", recordsByStatus.getOrDefault(recordStatus, 0L));
@@ -215,7 +243,8 @@ public class ViewerController {
     parseSearchTerms(q, includeTerms, excludeTerms);
 
     if (includeTerms.isEmpty()) {
-      return ResponseEntity.ok(Map.of("results", List.of(), "total", 0, "page", page, "size", size));
+      return ResponseEntity.ok(
+          Map.of("results", List.of(), "total", 0, "page", page, "size", size));
     }
 
     int offset = page * size;
@@ -240,7 +269,8 @@ public class ViewerController {
     for (int i = 0; i < includeTerms.size(); i++) {
       if (i > 0) metaWhere.append(" AND ");
       String pat = "%" + includeTerms.get(i).toLowerCase().replace("%", "\\%") + "%";
-      metaWhere.append("(lower(r.title) LIKE ? OR lower(r.description) LIKE ? OR lower(r.reference_code) LIKE ?)");
+      metaWhere.append(
+          "(lower(r.title) LIKE ? OR lower(r.description) LIKE ? OR lower(r.reference_code) LIKE ?)");
       metaParams.add(pat);
       metaParams.add(pat);
       metaParams.add(pat);
@@ -263,9 +293,11 @@ public class ViewerController {
     Long total =
         jdbcTemplate.queryForObject(
             "SELECT count(*) FROM ("
-                + " SELECT pt.id FROM page_text pt WHERE " + ocrWhere
+                + " SELECT pt.id FROM page_text pt WHERE "
+                + ocrWhere
                 + " UNION"
-                + " SELECT -r.id FROM record r WHERE " + metaWhere
+                + " SELECT -r.id FROM record r WHERE "
+                + metaWhere
                 + ") sub",
             Long.class,
             countParams.toArray());
@@ -274,12 +306,14 @@ public class ViewerController {
     List<Object> ocrQueryParams = new java.util.ArrayList<>(ocrParams);
     ocrQueryParams.add(size);
     ocrQueryParams.add(offset);
-    List<Map<String, Object>> ocrRows = jdbcTemplate.queryForList(
-        "SELECT pt.* FROM page_text pt"
-            + " WHERE " + ocrWhere
-            + " ORDER BY pt.confidence DESC NULLS LAST"
-            + " LIMIT ? OFFSET ?",
-        ocrQueryParams.toArray());
+    List<Map<String, Object>> ocrRows =
+        jdbcTemplate.queryForList(
+            "SELECT pt.* FROM page_text pt"
+                + " WHERE "
+                + ocrWhere
+                + " ORDER BY pt.confidence DESC NULLS LAST"
+                + " LIMIT ? OFFSET ?",
+            ocrQueryParams.toArray());
 
     // Use the first include term for snippet extraction
     String snippetTerm = includeTerms.get(0);
@@ -288,7 +322,8 @@ public class ViewerController {
     for (var row : ocrRows) {
       Long ptId = ((Number) row.get("id")).longValue();
       Long ptPageId = ((Number) row.get("page_id")).longValue();
-      Float confidence = row.get("confidence") != null ? ((Number) row.get("confidence")).floatValue() : null;
+      Float confidence =
+          row.get("confidence") != null ? ((Number) row.get("confidence")).floatValue() : null;
       String engine = row.get("engine") != null ? row.get("engine").toString() : "";
       String textRaw = row.get("text_raw") != null ? row.get("text_raw").toString() : "";
 
@@ -327,7 +362,8 @@ public class ViewerController {
           jdbcTemplate.queryForList(
               "SELECT r.id, r.title, r.description, r.reference_code, r.status, r.page_count"
                   + " FROM record r"
-                  + " WHERE " + metaWhere
+                  + " WHERE "
+                  + metaWhere
                   + " ORDER BY r.id DESC"
                   + " LIMIT ?",
               metaQueryParams.toArray());
@@ -355,13 +391,14 @@ public class ViewerController {
     }
 
     return ResponseEntity.ok(
-        Map.of("results", results, "total", total != null ? total : 0L, "page", page, "size", size));
+        Map.of(
+            "results", results, "total", total != null ? total : 0L, "page", page, "size", size));
   }
 
   /**
-   * Parses a search query string into positive (include) and negative (exclude) terms.
-   * Terms prefixed with '-' are exclusions. For example:
-   * "czernin -palace -palais" -> include=["czernin"], exclude=["palace", "palais"]
+   * Parses a search query string into positive (include) and negative (exclude) terms. Terms
+   * prefixed with '-' are exclusions. For example: "czernin -palace -palais" ->
+   * include=["czernin"], exclude=["palace", "palais"]
    */
   private void parseSearchTerms(String query, List<String> include, List<String> exclude) {
     String[] tokens = query.trim().split("\\s+");
@@ -444,8 +481,7 @@ public class ViewerController {
       String filename = "record-" + recordId + "-pages.pdf";
       return ResponseEntity.ok()
           .contentType(MediaType.APPLICATION_PDF)
-          .header(
-              HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + filename + "\"")
+          .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + filename + "\"")
           .contentLength(pdfBytes.length)
           .body(resource);
     } catch (IOException e) {
@@ -456,13 +492,15 @@ public class ViewerController {
   @GetMapping("/records/{recordId}/timeline")
   public ResponseEntity<List<Map<String, Object>>> getRecordTimeline(@PathVariable Long recordId) {
     // Pipeline events
-    List<Map<String, Object>> events = jdbcTemplate.queryForList(
-        "SELECT stage, event, detail, created_at FROM pipeline_event WHERE record_id = ? ORDER BY created_at ASC",
-        recordId);
+    List<Map<String, Object>> events =
+        jdbcTemplate.queryForList(
+            "SELECT stage, event, detail, created_at FROM pipeline_event WHERE record_id = ? ORDER BY created_at ASC",
+            recordId);
 
     // Also include job-level timing as supplementary data
-    List<Map<String, Object>> jobStats = jdbcTemplate.queryForList(
-        """
+    List<Map<String, Object>> jobStats =
+        jdbcTemplate.queryForList(
+            """
         SELECT kind, status, count(*) AS cnt,
                min(created_at) AS first_created,
                min(started_at) AS first_started,
@@ -471,12 +509,11 @@ public class ViewerController {
         GROUP BY kind, status
         ORDER BY kind, status
         """,
-        recordId);
+            recordId);
 
     return ResponseEntity.ok(
         List.of(
-            Map.of("type", "events", "data", events),
-            Map.of("type", "jobs", "data", jobStats)));
+            Map.of("type", "events", "data", events), Map.of("type", "jobs", "data", jobStats)));
   }
 
   // -------------------------------------------------------------------------
@@ -494,45 +531,58 @@ public class ViewerController {
     Map<String, Object> stats = new LinkedHashMap<>();
 
     // Record status counts
-    stats.put("recordsByStatus", jdbcTemplate.queryForList(
-        "SELECT status, count(*) AS cnt FROM record GROUP BY status ORDER BY status"));
+    stats.put(
+        "recordsByStatus",
+        jdbcTemplate.queryForList(
+            "SELECT status, count(*) AS cnt FROM record GROUP BY status ORDER BY status"));
 
     // Job status counts
-    stats.put("jobsByKindAndStatus", jdbcTemplate.queryForList(
-        "SELECT kind, status, count(*) AS cnt FROM job GROUP BY kind, status ORDER BY kind, status"));
+    stats.put(
+        "jobsByKindAndStatus",
+        jdbcTemplate.queryForList(
+            "SELECT kind, status, count(*) AS cnt FROM job GROUP BY kind, status ORDER BY kind, status"));
 
     // Stale claimed jobs (> 1 hour)
-    stats.put("staleClaimedJobs", jdbcTemplate.queryForObject(
-        "SELECT count(*) FROM job WHERE status = 'claimed' AND started_at < now() - interval '1 hour'",
-        Long.class));
+    stats.put(
+        "staleClaimedJobs",
+        jdbcTemplate.queryForObject(
+            "SELECT count(*) FROM job WHERE status = 'claimed' AND started_at < now() - interval '1 hour'",
+            Long.class));
 
     // Failed jobs eligible for retry
-    stats.put("failedRetriableJobs", jdbcTemplate.queryForObject(
-        "SELECT count(*) FROM job WHERE status = 'failed' AND attempts < 3",
-        Long.class));
+    stats.put(
+        "failedRetriableJobs",
+        jdbcTemplate.queryForObject(
+            "SELECT count(*) FROM job WHERE status = 'failed' AND attempts < 3", Long.class));
 
     // Stuck ingesting records
-    stats.put("stuckIngestingRecords", jdbcTemplate.queryForObject(
-        """
+    stats.put(
+        "stuckIngestingRecords",
+        jdbcTemplate.queryForObject(
+            """
         SELECT count(*) FROM record r
         WHERE r.status = 'ingesting' AND r.page_count > 0
           AND r.page_count = (SELECT count(*) FROM page p WHERE p.record_id = r.id)
           AND r.updated_at < now() - interval '10 minutes'
         """,
-        Long.class));
+            Long.class));
 
     // ocr_done without post-OCR jobs
-    stats.put("ocrDoneNoPostOcrJobs", jdbcTemplate.queryForObject(
-        """
+    stats.put(
+        "ocrDoneNoPostOcrJobs",
+        jdbcTemplate.queryForObject(
+            """
         SELECT count(*) FROM record r
         WHERE r.status = 'ocr_done'
           AND NOT EXISTS (SELECT 1 FROM job j WHERE j.record_id = r.id AND j.kind = 'build_searchable_pdf')
         """,
-        Long.class));
+            Long.class));
 
     // Recent pipeline events
-    stats.put("recentEvents", jdbcTemplate.queryForList(
-        "SELECT record_id, stage, event, detail, created_at FROM pipeline_event ORDER BY created_at DESC LIMIT 20"));
+    stats.put(
+        "recentEvents",
+        jdbcTemplate.queryForList(
+            "SELECT record_id, stage, event, detail, created_at FROM pipeline_event ORDER BY created_at DESC LIMIT 20"));
 
     return ResponseEntity.ok(stats);
   }

@@ -85,8 +85,8 @@ public class JobService {
     }
 
     // Check if all translation jobs for this record are done
-    if (job.getRecordId() != null && (
-            "translate_page".equals(job.getKind()) || "translate_record".equals(job.getKind()))) {
+    if (job.getRecordId() != null
+        && ("translate_page".equals(job.getKind()) || "translate_record".equals(job.getKind()))) {
       checkRecordTranslationComplete(job.getRecordId());
     }
 
@@ -121,9 +121,7 @@ public class JobService {
     }
   }
 
-  /**
-   * Enqueue PDF build and translation jobs, then transition to pdf_pending.
-   */
+  /** Enqueue PDF build and translation jobs, then transition to pdf_pending. */
   private void startPostOcrPipeline(Long recordId) {
     // Enqueue one build_searchable_pdf job for the whole record
     enqueueJob("build_searchable_pdf", recordId, null, null);
@@ -135,8 +133,7 @@ public class JobService {
     String metadataLang = (String) langRow.get("metadata_lang");
 
     // Enqueue metadata translation with metadata_lang (hardcoded per scraper)
-    String metaPayload =
-        metadataLang != null ? "{\"lang\":\"" + metadataLang + "\"}" : null;
+    String metaPayload = metadataLang != null ? "{\"lang\":\"" + metadataLang + "\"}" : null;
     enqueueJob("translate_record", recordId, null, metaPayload);
 
     // Enqueue OCR text translation (auto-detect language from text)
@@ -145,9 +142,7 @@ public class JobService {
     if (contentLang == null || !"en".equals(contentLang)) {
       List<Long> pageIds =
           jdbcTemplate.queryForList(
-              "SELECT p.id FROM page p WHERE p.record_id = ? ORDER BY p.seq",
-              Long.class,
-              recordId);
+              "SELECT p.id FROM page p WHERE p.record_id = ? ORDER BY p.seq", Long.class, recordId);
       for (Long pageId : pageIds) {
         // No lang in payload → translator auto-detects from text content
         enqueueJob("translate_page", recordId, pageId, null);
@@ -227,8 +222,7 @@ public class JobService {
     for (Long recordId : ingestingStuck) {
       log.info("Audit: completing stuck ingest for record {}", recordId);
       // Replicate IngestService.completeIngest logic
-      var langRow =
-          jdbcTemplate.queryForMap("SELECT lang FROM record WHERE id = ?", recordId);
+      var langRow = jdbcTemplate.queryForMap("SELECT lang FROM record WHERE id = ?", recordId);
       String lang = (String) langRow.get("lang");
       String ocrPayload = lang != null ? "{\"lang\":\"" + lang + "\"}" : null;
 
@@ -242,7 +236,8 @@ public class JobService {
       jdbcTemplate.update(
           "UPDATE record SET status = 'ocr_pending', updated_at = now() WHERE id = ?", recordId);
       logPipelineEvent(recordId, "ingest", "completed", "from audit: " + pageIds.size() + " pages");
-      logPipelineEvent(recordId, "ocr", "started", "from audit: " + pageIds.size() + " jobs enqueued");
+      logPipelineEvent(
+          recordId, "ocr", "started", "from audit: " + pageIds.size() + " jobs enqueued");
       recordEventService.recordChanged(recordId, "status");
     }
     total += ingestingStuck.size();
@@ -298,24 +293,30 @@ public class JobService {
 
     // --- Pass 6: Migrate pdf_done records to translating or complete ---
     //     Records stuck in pdf_done from before the translating status was added.
-    List<Long> pdfDoneStuck = jdbcTemplate.queryForList(
-        """
+    List<Long> pdfDoneStuck =
+        jdbcTemplate.queryForList(
+            """
         SELECT r.id FROM record r
         WHERE r.status = 'pdf_done'
         ORDER BY r.id
         """,
-        Long.class);
+            Long.class);
 
     int pdfDoneToTranslating = 0;
     int pdfDoneToComplete = 0;
     for (Long recordId : pdfDoneStuck) {
-      Long pendingTranslation = jdbcTemplate.queryForObject(
-          "SELECT count(*) FROM job WHERE record_id = ? AND kind IN ('translate_page', 'translate_record') AND status != 'completed'",
-          Long.class, recordId);
+      Long pendingTranslation =
+          jdbcTemplate.queryForObject(
+              "SELECT count(*) FROM job WHERE record_id = ? AND kind IN ('translate_page', 'translate_record') AND status != 'completed'",
+              Long.class,
+              recordId);
       if (pendingTranslation != null && pendingTranslation > 0) {
         jdbcTemplate.update(
             "UPDATE record SET status = 'translating', updated_at = now() WHERE id = ?", recordId);
-        log.info("Audit: record {} pdf_done → translating ({} jobs remaining)", recordId, pendingTranslation);
+        log.info(
+            "Audit: record {} pdf_done → translating ({} jobs remaining)",
+            recordId,
+            pendingTranslation);
         pdfDoneToTranslating++;
       } else {
         jdbcTemplate.update(
@@ -328,8 +329,9 @@ public class JobService {
     total += pdfDoneStuck.size();
 
     // --- Pass 7: Stuck translating records where all translation jobs are actually done ---
-    List<Long> translatingDone = jdbcTemplate.queryForList(
-        """
+    List<Long> translatingDone =
+        jdbcTemplate.queryForList(
+            """
         SELECT r.id FROM record r
         WHERE r.status = 'translating'
           AND NOT EXISTS (
@@ -340,7 +342,7 @@ public class JobService {
           )
         ORDER BY r.id
         """,
-        Long.class);
+            Long.class);
 
     for (Long recordId : translatingDone) {
       jdbcTemplate.update(
@@ -352,8 +354,9 @@ public class JobService {
     total += translatingDone.size();
 
     // --- Pass 8: Backfill missing translation completed events ---
-    List<Long> translationEventsMissing = jdbcTemplate.queryForList(
-        """
+    List<Long> translationEventsMissing =
+        jdbcTemplate.queryForList(
+            """
         SELECT r.id FROM record r
         WHERE r.status = 'complete'
           AND NOT EXISTS (
@@ -368,7 +371,7 @@ public class JobService {
           )
         ORDER BY r.id
         """,
-        Long.class);
+            Long.class);
 
     for (Long recordId : translationEventsMissing) {
       log.info("Audit: logging missing translation completed event for record {}", recordId);
@@ -409,8 +412,8 @@ public class JobService {
   }
 
   /**
-   * After a build_searchable_pdf job completes, set the record's pdf_attachment_id and
-   * transition to pdf_done.
+   * After a build_searchable_pdf job completes, set the record's pdf_attachment_id and transition
+   * to pdf_done.
    */
   private void checkRecordPdfComplete(Long recordId) {
     // Find the searchable_pdf attachment
@@ -429,22 +432,29 @@ public class JobService {
         log.info("Record {} → pdf_done (pdf_attachment_id={})", recordId, pdfAttId);
         logPipelineEvent(recordId, "pdf_build", "completed", "attachment_id=" + pdfAttId);
         // Check if translation is still running → move to 'translating', otherwise 'complete'
-        Long pendingTranslation = jdbcTemplate.queryForObject(
-            "SELECT count(*) FROM job WHERE record_id = ? AND kind IN ('translate_page', 'translate_record') AND status != 'completed'",
-            Long.class, recordId);
+        Long pendingTranslation =
+            jdbcTemplate.queryForObject(
+                "SELECT count(*) FROM job WHERE record_id = ? AND kind IN ('translate_page', 'translate_record') AND status != 'completed'",
+                Long.class,
+                recordId);
         if (pendingTranslation != null && pendingTranslation > 0) {
           jdbcTemplate.update(
               "UPDATE record SET status = 'translating', updated_at = now() WHERE id = ? AND status = 'pdf_done'",
               recordId);
-          log.info("Record {} → translating ({} translation jobs remaining)", recordId, pendingTranslation);
+          log.info(
+              "Record {} → translating ({} translation jobs remaining)",
+              recordId,
+              pendingTranslation);
         } else {
           jdbcTemplate.update(
               "UPDATE record SET status = 'complete', updated_at = now() WHERE id = ? AND status = 'pdf_done'",
               recordId);
           // Check if there were any translation jobs at all
-          Long totalTranslation = jdbcTemplate.queryForObject(
-              "SELECT count(*) FROM job WHERE record_id = ? AND kind IN ('translate_page', 'translate_record')",
-              Long.class, recordId);
+          Long totalTranslation =
+              jdbcTemplate.queryForObject(
+                  "SELECT count(*) FROM job WHERE record_id = ? AND kind IN ('translate_page', 'translate_record')",
+                  Long.class,
+                  recordId);
           if (totalTranslation != null && totalTranslation > 0) {
             log.info("Record {} → complete (translation finished before pdf)", recordId);
             logPipelineEvent(recordId, "translation", "completed", "finished before pdf");
@@ -460,19 +470,25 @@ public class JobService {
   private void logPipelineEvent(Long recordId, String stage, String event, String detail) {
     jdbcTemplate.update(
         "INSERT INTO pipeline_event (record_id, stage, event, detail, created_at) VALUES (?, ?, ?, ?, now())",
-        recordId, stage, event, detail);
+        recordId,
+        stage,
+        event,
+        detail);
   }
 
   private void checkRecordTranslationComplete(Long recordId) {
-    Long pending = jdbcTemplate.queryForObject(
-        "SELECT count(*) FROM job WHERE record_id = ? AND kind IN ('translate_page', 'translate_record') AND status != 'completed'",
-        Long.class, recordId);
+    Long pending =
+        jdbcTemplate.queryForObject(
+            "SELECT count(*) FROM job WHERE record_id = ? AND kind IN ('translate_page', 'translate_record') AND status != 'completed'",
+            Long.class,
+            recordId);
     if (pending != null && pending == 0) {
       logPipelineEvent(recordId, "translation", "completed", null);
       // If record is in 'translating', transition to 'complete'
-      int updated = jdbcTemplate.update(
-          "UPDATE record SET status = 'complete', updated_at = now() WHERE id = ? AND status = 'translating'",
-          recordId);
+      int updated =
+          jdbcTemplate.update(
+              "UPDATE record SET status = 'complete', updated_at = now() WHERE id = ? AND status = 'translating'",
+              recordId);
       if (updated > 0) {
         log.info("Record {} → complete (all translation done)", recordId);
         recordEventService.recordChanged(recordId, "status");

@@ -20,6 +20,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
+import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 import place.icomb.archiver.dto.EntityHitRequest;
 import place.icomb.archiver.dto.JobClaimRequest;
 import place.icomb.archiver.dto.JobCompleteRequest;
@@ -36,7 +37,6 @@ import place.icomb.archiver.service.JobEventService;
 import place.icomb.archiver.service.JobService;
 import place.icomb.archiver.service.RecordEventService;
 import place.icomb.archiver.service.StorageService;
-import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 @RestController
 @RequestMapping("/api/processor")
@@ -275,8 +275,7 @@ public class ProcessorController {
 
   @GetMapping("/records/{recordId}/pages")
   public ResponseEntity<java.util.List<java.util.Map<String, Object>>> getRecordPagesWithText(
-      @RequestHeader("Authorization") String authHeader,
-      @PathVariable Long recordId) {
+      @RequestHeader("Authorization") String authHeader, @PathVariable Long recordId) {
     validateToken(authHeader);
     java.util.List<java.util.Map<String, Object>> rows =
         jdbcTemplate.queryForList(

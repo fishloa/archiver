@@ -59,8 +59,7 @@ class PipelineAuditTest {
   }
 
   private Long createRecord(Long archiveId, String status, int pageCount) {
-    return jdbc
-        .sql(
+    return jdbc.sql(
             """
             INSERT INTO record (archive_id, source_system, source_record_id, status, page_count,
                 attachment_count, created_at, updated_at)
@@ -76,8 +75,7 @@ class PipelineAuditTest {
   }
 
   private Long createAttachment(Long recordId, String role) {
-    return jdbc
-        .sql(
+    return jdbc.sql(
             """
             INSERT INTO attachment (record_id, role, path, created_at)
             VALUES (:rid, :role, :path, now())
@@ -92,8 +90,7 @@ class PipelineAuditTest {
 
   private Long createPage(Long recordId, int seq) {
     Long attachmentId = createAttachment(recordId, "page_image");
-    return jdbc
-        .sql(
+    return jdbc.sql(
             """
             INSERT INTO page (record_id, seq, attachment_id)
             VALUES (:rid, :seq, :aid)
@@ -107,8 +104,7 @@ class PipelineAuditTest {
   }
 
   private Long createJob(Long recordId, Long pageId, String kind, String status, int attempts) {
-    return jdbc
-        .sql(
+    return jdbc.sql(
             """
             INSERT INTO job (record_id, page_id, kind, status, attempts, created_at)
             VALUES (:rid, :pid, :kind, :status, :attempts, now())
@@ -125,13 +121,13 @@ class PipelineAuditTest {
 
   private Long createJobWithStartedAt(
       Long recordId, Long pageId, String kind, String status, int attempts, String startedAtExpr) {
-    return jdbc
-        .sql(
+    return jdbc.sql(
             """
             INSERT INTO job (record_id, page_id, kind, status, attempts, created_at, started_at)
             VALUES (:rid, :pid, :kind, :status, :attempts, now(), %s)
             RETURNING id
-            """.formatted(startedAtExpr))
+            """
+                .formatted(startedAtExpr))
         .param("rid", recordId)
         .param("pid", pageId)
         .param("kind", kind)
@@ -143,8 +139,7 @@ class PipelineAuditTest {
 
   private Long createJobWithError(
       Long recordId, Long pageId, String kind, String status, int attempts, String error) {
-    return jdbc
-        .sql(
+    return jdbc.sql(
             """
             INSERT INTO job (record_id, page_id, kind, status, attempts, error, created_at, finished_at)
             VALUES (:rid, :pid, :kind, :status, :attempts, :error, now(), now())
@@ -161,24 +156,21 @@ class PipelineAuditTest {
   }
 
   private String getRecordStatus(Long recordId) {
-    return jdbc
-        .sql("SELECT status FROM record WHERE id = :id")
+    return jdbc.sql("SELECT status FROM record WHERE id = :id")
         .param("id", recordId)
         .query(String.class)
         .single();
   }
 
   private String getJobStatus(Long jobId) {
-    return jdbc
-        .sql("SELECT status FROM job WHERE id = :id")
+    return jdbc.sql("SELECT status FROM job WHERE id = :id")
         .param("id", jobId)
         .query(String.class)
         .single();
   }
 
   private long countJobs(Long recordId, String kind, String status) {
-    return jdbc
-        .sql(
+    return jdbc.sql(
             "SELECT count(*) FROM job WHERE record_id = :rid AND kind = :kind AND status = :status")
         .param("rid", recordId)
         .param("kind", kind)
@@ -188,8 +180,7 @@ class PipelineAuditTest {
   }
 
   private long countPipelineEvents(Long recordId, String stage, String event) {
-    return jdbc
-        .sql(
+    return jdbc.sql(
             """
             SELECT count(*) FROM pipeline_event
             WHERE record_id = :rid AND stage = :stage AND event = :event
@@ -334,8 +325,7 @@ class PipelineAuditTest {
     Long recordId = createRecord(archiveId, "pdf_pending", 1);
 
     Long jobId =
-        createJobWithError(
-            recordId, null, "build_searchable_pdf", "failed", 1, "PDF build failed");
+        createJobWithError(recordId, null, "build_searchable_pdf", "failed", 1, "PDF build failed");
 
     int fixed = jobService.auditPipeline();
 
@@ -353,8 +343,7 @@ class PipelineAuditTest {
 
     // Create a record stuck in 'ingesting' with updated_at > 10 minutes ago
     Long recordId =
-        jdbc
-            .sql(
+        jdbc.sql(
                 """
                 INSERT INTO record (archive_id, source_system, source_record_id, status, page_count,
                     attachment_count, created_at, updated_at)
@@ -390,8 +379,7 @@ class PipelineAuditTest {
 
     // page_count = 3 but only 1 page uploaded
     Long recordId =
-        jdbc
-            .sql(
+        jdbc.sql(
                 """
                 INSERT INTO record (archive_id, source_system, source_record_id, status, page_count,
                     attachment_count, created_at, updated_at)
@@ -419,8 +407,7 @@ class PipelineAuditTest {
 
     // updated_at only 5 minutes ago — still within the 10-minute threshold
     Long recordId =
-        jdbc
-            .sql(
+        jdbc.sql(
                 """
                 INSERT INTO record (archive_id, source_system, source_record_id, status, page_count,
                     attachment_count, created_at, updated_at)
@@ -447,8 +434,7 @@ class PipelineAuditTest {
 
     // page_count = 0 — no pages expected, condition page_count > 0 excludes this
     Long recordId =
-        jdbc
-            .sql(
+        jdbc.sql(
                 """
                 INSERT INTO record (archive_id, source_system, source_record_id, status, page_count,
                     attachment_count, created_at, updated_at)
@@ -510,7 +496,8 @@ class PipelineAuditTest {
     createJob(recordId, null, "build_searchable_pdf", "pending", 0);
 
     int fixedBefore =
-        jdbc.sql("SELECT count(*) FROM job WHERE record_id = :rid AND kind = 'build_searchable_pdf'")
+        jdbc.sql(
+                "SELECT count(*) FROM job WHERE record_id = :rid AND kind = 'build_searchable_pdf'")
             .param("rid", recordId)
             .query(Long.class)
             .single()
@@ -522,7 +509,8 @@ class PipelineAuditTest {
     assertThat(getRecordStatus(recordId)).isEqualTo("ocr_done");
 
     long pdfJobCount =
-        jdbc.sql("SELECT count(*) FROM job WHERE record_id = :rid AND kind = 'build_searchable_pdf'")
+        jdbc.sql(
+                "SELECT count(*) FROM job WHERE record_id = :rid AND kind = 'build_searchable_pdf'")
             .param("rid", recordId)
             .query(Long.class)
             .single();
@@ -535,8 +523,7 @@ class PipelineAuditTest {
 
     // Record with lang = 'en' — page translation should be skipped
     Long recordId =
-        jdbc
-            .sql(
+        jdbc.sql(
                 """
                 INSERT INTO record (archive_id, source_system, source_record_id, status, page_count,
                     attachment_count, lang, created_at, updated_at)
@@ -694,7 +681,9 @@ class PipelineAuditTest {
     Long pageId = createPage(recordId, 1);
 
     Long translateJob = createJob(recordId, pageId, "translate_page", "completed", 1);
-    jdbc.sql("UPDATE job SET finished_at = now() WHERE id = :id").param("id", translateJob).update();
+    jdbc.sql("UPDATE job SET finished_at = now() WHERE id = :id")
+        .param("id", translateJob)
+        .update();
 
     // Manually insert the completed event — audit should not add a duplicate
     jdbc.sql(

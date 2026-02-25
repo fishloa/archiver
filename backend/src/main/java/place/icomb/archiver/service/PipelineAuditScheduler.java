@@ -8,8 +8,8 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
 /**
- * Periodically audits the pipeline for records that got stuck between status transitions
- * due to deployments or bugs that pre-date certain pipeline stages.
+ * Periodically audits the pipeline for records that got stuck between status transitions due to
+ * deployments or bugs that pre-date certain pipeline stages.
  */
 @Service
 public class PipelineAuditScheduler {

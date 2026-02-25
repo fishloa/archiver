@@ -202,10 +202,12 @@ public class IngestService {
 
     jdbcTemplate.update(
         "INSERT INTO pipeline_event (record_id, stage, event, detail, created_at) VALUES (?, 'ingest', 'completed', ?, now())",
-        recordId, pages.size() + " pages");
+        recordId,
+        pages.size() + " pages");
     jdbcTemplate.update(
         "INSERT INTO pipeline_event (record_id, stage, event, detail, created_at) VALUES (?, 'ocr', 'started', ?, now())",
-        recordId, pages.size() + " jobs enqueued");
+        recordId,
+        pages.size() + " jobs enqueued");
 
     // Fire NOTIFY so listeners can pick up work immediately
     jdbcTemplate.execute("NOTIFY ocr_jobs");
