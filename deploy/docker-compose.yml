@@ -67,12 +67,12 @@ services:
   translate-worker:
     image: dockerregistry.icomb.place/archiver/translate-worker:latest
     user: "${CONTAINER_USER:-1012:1012}"
+    runtime: nvidia
     environment:
       HOME: /tmp
       LOGNAME: worker
       HF_HOME: /root/.cache/huggingface
-      OMP_NUM_THREADS: "4"
-      MKL_NUM_THREADS: "4"
+      NVIDIA_VISIBLE_DEVICES: all
       BACKEND_URL: http://backend:8080
       PROCESSOR_TOKEN: ${PROCESSOR_TOKEN}
     depends_on:

@@ -15,7 +15,7 @@ MarianMTModel.from_pretrained('Helsinki-NLP/opus-mt-cs-en'); \
 # Make models world-readable for non-root execution
 RUN chmod -R a+rX /root/.cache/huggingface/
 
-## Stage 2: Final image
+## Stage 2: Final image with GPU support
 FROM python:3.11-slim
 
 ENV DEBIAN_FRONTEND=noninteractive
@@ -23,10 +23,10 @@ ENV HOME=/tmp
 
 WORKDIR /app
 
-# Layer 1: Install Python dependencies (CPU torch is fine for MarianMT)
+# Layer 1: Install Python dependencies with CUDA-enabled torch
 RUN pip install --no-cache-dir --upgrade pip setuptools wheel && \
     pip install --no-cache-dir \
-        "torch>=2.6" --index-url https://download.pytorch.org/whl/cpu && \
+        "torch>=2.6" --index-url https://download.pytorch.org/whl/cu126 && \
     pip install --no-cache-dir \
         "transformers>=4.40" \
         "sentencepiece>=0.2" \
