@@ -130,15 +130,29 @@ def parse_detail_page(html: str, record_id: str) -> dict:
             "klid": None,
         })
 
-    # Deduplicate digital objects by (veid, sqnznr), preferring higher deid
-    # (deid=10 is full-size, deid=0 is thumbnail)
-    best = {}
+    # Determine the full-size deid value (from og:image, typically 10)
+    full_deid = None
     for obj in result["digital_objects"]:
-        key = (obj["veid"], obj["sqnznr"])
-        existing = best.get(key)
-        if not existing or int(obj.get("deid") or 0) > int(existing.get("deid") or 0):
-            best[key] = obj
-    result["digital_objects"] = list(best.values())
+        d = int(obj.get("deid") or 0)
+        if d > 0:
+            full_deid = obj["deid"]
+            break
+
+    # Upgrade all thumbnail entries (deid=0) to full-size deid
+    if full_deid:
+        for obj in result["digital_objects"]:
+            if obj.get("deid") == "0" or obj.get("deid") == 0:
+                obj["deid"] = full_deid
+
+    # Deduplicate by (veid, deid, sqnznr)
+    seen = set()
+    unique = []
+    for obj in result["digital_objects"]:
+        key = (obj["veid"], obj["deid"], obj["sqnznr"])
+        if key not in seen:
+            seen.add(key)
+            unique.append(obj)
+    result["digital_objects"] = unique
 
     # Extract parent from archive plan tree (last parent before current)
     tree_links = soup.select("a.rtIn[href*='detail.aspx?ID=']")
