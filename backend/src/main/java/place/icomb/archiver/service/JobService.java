@@ -296,45 +296,99 @@ public class JobService {
     }
     total += pdfPendingStuck.size();
 
-    // --- Pass 6: Backfill missing translation completed events ---
-    List<Long> translationDone = jdbcTemplate.queryForList(
+    // --- Pass 6: Migrate pdf_done records to translating or complete ---
+    //     Records stuck in pdf_done from before the translating status was added.
+    List<Long> pdfDoneStuck = jdbcTemplate.queryForList(
         """
         SELECT r.id FROM record r
-        WHERE r.status IN ('pdf_done', 'complete')
-          AND NOT EXISTS (
-            SELECT 1 FROM pipeline_event pe
-            WHERE pe.record_id = r.id AND pe.stage = 'translation' AND pe.event = 'completed'
-          )
+        WHERE r.status = 'pdf_done'
+        ORDER BY r.id
+        """,
+        Long.class);
+
+    int pdfDoneToTranslating = 0;
+    int pdfDoneToComplete = 0;
+    for (Long recordId : pdfDoneStuck) {
+      Long pendingTranslation = jdbcTemplate.queryForObject(
+          "SELECT count(*) FROM job WHERE record_id = ? AND kind IN ('translate_page', 'translate_record') AND status != 'completed'",
+          Long.class, recordId);
+      if (pendingTranslation != null && pendingTranslation > 0) {
+        jdbcTemplate.update(
+            "UPDATE record SET status = 'translating', updated_at = now() WHERE id = ?", recordId);
+        log.info("Audit: record {} pdf_done → translating ({} jobs remaining)", recordId, pendingTranslation);
+        pdfDoneToTranslating++;
+      } else {
+        jdbcTemplate.update(
+            "UPDATE record SET status = 'complete', updated_at = now() WHERE id = ?", recordId);
+        log.info("Audit: record {} pdf_done → complete (translation done)", recordId);
+        pdfDoneToComplete++;
+      }
+      recordEventService.recordChanged(recordId, "status");
+    }
+    total += pdfDoneStuck.size();
+
+    // --- Pass 7: Stuck translating records where all translation jobs are actually done ---
+    List<Long> translatingDone = jdbcTemplate.queryForList(
+        """
+        SELECT r.id FROM record r
+        WHERE r.status = 'translating'
           AND NOT EXISTS (
             SELECT 1 FROM job j
             WHERE j.record_id = r.id
               AND j.kind IN ('translate_page', 'translate_record')
               AND j.status NOT IN ('completed', 'failed')
           )
+        ORDER BY r.id
+        """,
+        Long.class);
+
+    for (Long recordId : translatingDone) {
+      jdbcTemplate.update(
+          "UPDATE record SET status = 'complete', updated_at = now() WHERE id = ?", recordId);
+      log.info("Audit: record {} translating → complete (all translation done)", recordId);
+      logPipelineEvent(recordId, "translation", "completed", "from audit");
+      recordEventService.recordChanged(recordId, "status");
+    }
+    total += translatingDone.size();
+
+    // --- Pass 8: Backfill missing translation completed events ---
+    List<Long> translationEventsMissing = jdbcTemplate.queryForList(
+        """
+        SELECT r.id FROM record r
+        WHERE r.status = 'complete'
+          AND NOT EXISTS (
+            SELECT 1 FROM pipeline_event pe
+            WHERE pe.record_id = r.id AND pe.stage = 'translation' AND pe.event = 'completed'
+          )
           AND EXISTS (
             SELECT 1 FROM job j
             WHERE j.record_id = r.id
               AND j.kind IN ('translate_page', 'translate_record')
+              AND j.status = 'completed'
           )
         ORDER BY r.id
         """,
         Long.class);
 
-    for (Long recordId : translationDone) {
+    for (Long recordId : translationEventsMissing) {
       log.info("Audit: logging missing translation completed event for record {}", recordId);
       logPipelineEvent(recordId, "translation", "completed", "retroactive from audit");
     }
-    total += translationDone.size();
+    total += translationEventsMissing.size();
 
     log.info(
         "Pipeline audit complete: {} stale jobs reset, {} failed retried, {} ingesting fixed, "
-            + "{} ocr_done re-queued, {} pdf_pending nudged, {} translation events backfilled ({} total)",
+            + "{} ocr_done re-queued, {} pdf_pending nudged, {} pdf_done→translating, {} pdf_done→complete, "
+            + "{} translating→complete, {} translation events backfilled ({} total)",
         staleClaimed,
         failedRetried,
         ingestingStuck.size(),
         ocrDoneStuck.size(),
         pdfPendingStuck.size(),
-        translationDone.size(),
+        pdfDoneToTranslating,
+        pdfDoneToComplete,
+        translatingDone.size(),
+        translationEventsMissing.size(),
         total);
     return total;
   }
@@ -371,9 +425,33 @@ public class JobService {
               "UPDATE record SET pdf_attachment_id = ?, status = 'pdf_done', updated_at = now() WHERE id = ? AND status = 'pdf_pending'",
               pdfAttId,
               recordId);
-      log.info("Record {} → pdf_done (pdf_attachment_id={})", recordId, pdfAttId);
       if (updated > 0) {
+        log.info("Record {} → pdf_done (pdf_attachment_id={})", recordId, pdfAttId);
         logPipelineEvent(recordId, "pdf_build", "completed", "attachment_id=" + pdfAttId);
+        // Check if translation is still running → move to 'translating', otherwise 'complete'
+        Long pendingTranslation = jdbcTemplate.queryForObject(
+            "SELECT count(*) FROM job WHERE record_id = ? AND kind IN ('translate_page', 'translate_record') AND status != 'completed'",
+            Long.class, recordId);
+        if (pendingTranslation != null && pendingTranslation > 0) {
+          jdbcTemplate.update(
+              "UPDATE record SET status = 'translating', updated_at = now() WHERE id = ? AND status = 'pdf_done'",
+              recordId);
+          log.info("Record {} → translating ({} translation jobs remaining)", recordId, pendingTranslation);
+        } else {
+          jdbcTemplate.update(
+              "UPDATE record SET status = 'complete', updated_at = now() WHERE id = ? AND status = 'pdf_done'",
+              recordId);
+          // Check if there were any translation jobs at all
+          Long totalTranslation = jdbcTemplate.queryForObject(
+              "SELECT count(*) FROM job WHERE record_id = ? AND kind IN ('translate_page', 'translate_record')",
+              Long.class, recordId);
+          if (totalTranslation != null && totalTranslation > 0) {
+            log.info("Record {} → complete (translation finished before pdf)", recordId);
+            logPipelineEvent(recordId, "translation", "completed", "finished before pdf");
+          } else {
+            log.info("Record {} → complete (no translation needed)", recordId);
+          }
+        }
       }
       recordEventService.recordChanged(recordId, "status");
     }
@@ -391,6 +469,14 @@ public class JobService {
         Long.class, recordId);
     if (pending != null && pending == 0) {
       logPipelineEvent(recordId, "translation", "completed", null);
+      // If record is in 'translating', transition to 'complete'
+      int updated = jdbcTemplate.update(
+          "UPDATE record SET status = 'complete', updated_at = now() WHERE id = ? AND status = 'translating'",
+          recordId);
+      if (updated > 0) {
+        log.info("Record {} → complete (all translation done)", recordId);
+        recordEventService.recordChanged(recordId, "status");
+      }
     }
   }
 

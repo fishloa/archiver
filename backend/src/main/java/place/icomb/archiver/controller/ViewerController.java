@@ -101,7 +101,7 @@ public class ViewerController {
         recordsByStatus, pagesByStatus, "ocr_page_paddle", jobsByKind));
     stages.add(buildStage("PDF Build", "pdf_pending",
         recordsByStatus, pagesByStatus, "build_searchable_pdf", jobsByKind));
-    stages.add(buildStage("Translation", "pdf_pending",
+    stages.add(buildStage("Translation", "translating",
         recordsByStatus, pagesByStatus, "translate_page", jobsByKind));
     stages.add(buildStage("Entities", "entities_pending",
         recordsByStatus, pagesByStatus, "extract_entities", jobsByKind));
