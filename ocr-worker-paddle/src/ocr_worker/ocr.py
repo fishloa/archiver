@@ -46,7 +46,7 @@ def process_image(image_bytes: bytes, lang: str = "german", use_gpu: bool = True
         img = img.convert("RGB")
 
     # Resize very large images to avoid PaddlePaddle GPU memory crashes
-    max_edge = 4000
+    max_edge = 2500
     w, h = img.size
     if max(w, h) > max_edge:
         scale = max_edge / max(w, h)
