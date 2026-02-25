@@ -144,13 +144,10 @@
 								{:else}
 									<span class="text-muted">no workers</span>
 								{/if}
-								{#if pending > 0}
-									<span class="queue-label">&middot; {fmt(pending)} queued</span>
-								{/if}
 								{#if failed > 0}
 									<span class="failed-label">
 										<AlertTriangle size={10} class="inline -mt-0.5" />
-										{fmt(failed)}
+										{fmt(failed)} failed
 									</span>
 								{/if}
 							</div>
