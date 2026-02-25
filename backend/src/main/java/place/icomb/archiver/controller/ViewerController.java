@@ -98,13 +98,13 @@ public class ViewerController {
     stages.add(buildStage("Ingested", "ingested",
         recordsByStatus, pagesByStatus, null, jobsByKind));
     stages.add(buildStage("OCR", "ocr_pending",
-        recordsByStatus, pagesByStatus, "ocr_page_paddle", jobsByKind));
+        recordsByStatus, pagesByStatus, new String[]{"ocr_page_paddle"}, jobsByKind));
     stages.add(buildStage("PDF Build", "pdf_pending",
-        recordsByStatus, pagesByStatus, "build_searchable_pdf", jobsByKind));
+        recordsByStatus, pagesByStatus, new String[]{"build_searchable_pdf"}, jobsByKind));
     stages.add(buildStage("Translation", "translating",
-        recordsByStatus, pagesByStatus, "translate_page", jobsByKind));
+        recordsByStatus, pagesByStatus, new String[]{"translate_page", "translate_record"}, jobsByKind));
     stages.add(buildStage("Entities", "entities_pending",
-        recordsByStatus, pagesByStatus, "extract_entities", jobsByKind));
+        recordsByStatus, pagesByStatus, new String[]{"extract_entities"}, jobsByKind));
 
     // "Complete" aggregates terminal statuses
     long doneRecords = recordsByStatus.getOrDefault("ocr_done", 0L)
@@ -129,17 +129,24 @@ public class ViewerController {
   private Map<String, Object> buildStage(
       String name, String recordStatus,
       Map<String, Long> recordsByStatus, Map<String, Long> pagesByStatus,
-      String jobKind, Map<String, Map<String, Long>> jobsByKind) {
+      String[] jobKinds, Map<String, Map<String, Long>> jobsByKind) {
     Map<String, Object> stage = new LinkedHashMap<>();
     stage.put("name", name);
     stage.put("records", recordsByStatus.getOrDefault(recordStatus, 0L));
     stage.put("pages", pagesByStatus.getOrDefault(recordStatus, 0L));
-    if (jobKind != null) {
-      Map<String, Long> jobs = jobsByKind.getOrDefault(jobKind, Map.of());
-      stage.put("jobsPending", jobs.getOrDefault("pending", 0L));
-      stage.put("jobsRunning", jobs.getOrDefault("claimed", 0L));
-      stage.put("jobsCompleted", jobs.getOrDefault("completed", 0L));
-      stage.put("jobsFailed", jobs.getOrDefault("failed", 0L));
+    if (jobKinds != null) {
+      long pending = 0, running = 0, completed = 0, failed = 0;
+      for (String kind : jobKinds) {
+        Map<String, Long> jobs = jobsByKind.getOrDefault(kind, Map.of());
+        pending += jobs.getOrDefault("pending", 0L);
+        running += jobs.getOrDefault("claimed", 0L);
+        completed += jobs.getOrDefault("completed", 0L);
+        failed += jobs.getOrDefault("failed", 0L);
+      }
+      stage.put("jobsPending", pending);
+      stage.put("jobsRunning", running);
+      stage.put("jobsCompleted", completed);
+      stage.put("jobsFailed", failed);
     }
     return stage;
   }
