@@ -17,6 +17,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
@@ -78,9 +79,11 @@ public class ProcessorController {
   // -------------------------------------------------------------------------
 
   @GetMapping(value = "/jobs/events", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
-  public SseEmitter streamJobEvents(@RequestHeader("Authorization") String authHeader) {
+  public SseEmitter streamJobEvents(
+      @RequestHeader("Authorization") String authHeader,
+      @RequestParam(value = "kinds", required = false) java.util.List<String> kinds) {
     validateToken(authHeader);
-    return jobEventService.subscribe();
+    return jobEventService.subscribe(kinds);
   }
 
   // -------------------------------------------------------------------------

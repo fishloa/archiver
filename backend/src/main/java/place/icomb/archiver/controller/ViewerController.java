@@ -41,6 +41,7 @@ public class ViewerController {
   private final JdbcTemplate jdbcTemplate;
   private final JobService jobService;
   private final PdfExportService pdfExportService;
+  private final place.icomb.archiver.service.JobEventService jobEventService;
 
   public ViewerController(
       PageRepository pageRepository,
@@ -50,7 +51,8 @@ public class ViewerController {
       PageTextRepository pageTextRepository,
       JdbcTemplate jdbcTemplate,
       JobService jobService,
-      PdfExportService pdfExportService) {
+      PdfExportService pdfExportService,
+      place.icomb.archiver.service.JobEventService jobEventService) {
     this.pageRepository = pageRepository;
     this.attachmentRepository = attachmentRepository;
     this.recordRepository = recordRepository;
@@ -59,6 +61,7 @@ public class ViewerController {
     this.jdbcTemplate = jdbcTemplate;
     this.jobService = jobService;
     this.pdfExportService = pdfExportService;
+    this.jobEventService = jobEventService;
   }
 
   @GetMapping("/pipeline/stats")
@@ -96,13 +99,20 @@ public class ViewerController {
       jobsByKind.computeIfAbsent(kind, k -> new LinkedHashMap<>()).put(status, cnt);
     }
 
+    // Connected worker counts per job kind
+    Map<String, Integer> workerCounts = jobEventService.getWorkerCounts();
+
     // Build stage objects
     List<Map<String, Object>> stages = new java.util.ArrayList<>();
 
     stages.add(
-        buildStage("Scraping", "ingesting", recordsByStatus, pagesByStatus, null, jobsByKind));
+        buildStage(
+            "Scraping", "ingesting", recordsByStatus, pagesByStatus, null, jobsByKind,
+            workerCounts));
     stages.add(
-        buildStage("Ingested", "ingested", recordsByStatus, pagesByStatus, null, jobsByKind));
+        buildStage(
+            "Ingested", "ingested", recordsByStatus, pagesByStatus, null, jobsByKind,
+            workerCounts));
     stages.add(
         buildStage(
             "OCR",
@@ -110,7 +120,8 @@ public class ViewerController {
             recordsByStatus,
             pagesByStatus,
             new String[] {"ocr_page_paddle"},
-            jobsByKind));
+            jobsByKind,
+            workerCounts));
     stages.add(
         buildStage(
             "PDF Build",
@@ -118,7 +129,8 @@ public class ViewerController {
             recordsByStatus,
             pagesByStatus,
             new String[] {"build_searchable_pdf"},
-            jobsByKind));
+            jobsByKind,
+            workerCounts));
     stages.add(
         buildStage(
             "Translation",
@@ -126,7 +138,8 @@ public class ViewerController {
             recordsByStatus,
             pagesByStatus,
             new String[] {"translate_page", "translate_record"},
-            jobsByKind));
+            jobsByKind,
+            workerCounts));
     stages.add(
         buildStage(
             "Entities",
@@ -134,7 +147,8 @@ public class ViewerController {
             recordsByStatus,
             pagesByStatus,
             new String[] {"extract_entities"},
-            jobsByKind));
+            jobsByKind,
+            workerCounts));
 
     // "Complete" aggregates terminal statuses
     long doneRecords =
@@ -163,24 +177,28 @@ public class ViewerController {
       Map<String, Long> recordsByStatus,
       Map<String, Long> pagesByStatus,
       String[] jobKinds,
-      Map<String, Map<String, Long>> jobsByKind) {
+      Map<String, Map<String, Long>> jobsByKind,
+      Map<String, Integer> workerCounts) {
     Map<String, Object> stage = new LinkedHashMap<>();
     stage.put("name", name);
     stage.put("records", recordsByStatus.getOrDefault(recordStatus, 0L));
     stage.put("pages", pagesByStatus.getOrDefault(recordStatus, 0L));
     if (jobKinds != null) {
       long pending = 0, running = 0, completed = 0, failed = 0;
+      int workers = 0;
       for (String kind : jobKinds) {
         Map<String, Long> jobs = jobsByKind.getOrDefault(kind, Map.of());
         pending += jobs.getOrDefault("pending", 0L);
         running += jobs.getOrDefault("claimed", 0L);
         completed += jobs.getOrDefault("completed", 0L);
         failed += jobs.getOrDefault("failed", 0L);
+        workers = Math.max(workers, workerCounts.getOrDefault(kind, 0));
       }
       stage.put("jobsPending", pending);
       stage.put("jobsRunning", running);
       stage.put("jobsCompleted", completed);
       stage.put("jobsFailed", failed);
+      stage.put("workersConnected", workers);
     }
     return stage;
   }

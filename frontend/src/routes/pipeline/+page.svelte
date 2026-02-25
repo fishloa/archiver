@@ -9,9 +9,7 @@
 		Languages,
 		Tags,
 		CircleCheckBig,
-		Loader,
-		AlertTriangle,
-		Zap
+		AlertTriangle
 	} from 'lucide-svelte';
 	import type { PipelineStage } from '$lib/server/api';
 
@@ -32,6 +30,8 @@
 			es.close();
 		};
 	});
+
+	const MAX_WORKER_SLOTS = 12;
 
 	const stageConfig = [
 		{ icon: CloudUpload, color: '#6ec6f0', dimBg: 'rgba(110,198,240,0.08)', borderColor: 'rgba(110,198,240,0.35)' },
@@ -77,9 +77,10 @@
 		{@const isLast = i === data.stats.stages.length - 1}
 		{@const running = stage.jobsRunning ?? 0}
 		{@const pending = stage.jobsPending ?? 0}
-		{@const completed = stage.jobsCompleted ?? 0}
 		{@const failed = stage.jobsFailed ?? 0}
-		{@const totalJobs = running + pending + completed + failed}
+		{@const workers = stage.workersConnected ?? 0}
+		{@const busy = Math.min(running, workers)}
+		{@const idle = Math.max(0, workers - busy)}
 
 		<div class="stage" style="--delay: {i * 60}ms">
 			<!-- Node + connector column -->
@@ -112,37 +113,47 @@
 						</div>
 					</div>
 
-					<!-- Workers / handlers row -->
+					<!-- Workers row -->
 					{#if hasJobs}
-						<div class="handler-row">
-							<div class="handler-stats">
-								<span class="handler-active">
-									<Zap size={11} class="inline -mt-0.5" />
-									{running} active
-								</span>
-								<span class="handler-queued">
-									{fmt(pending)} queued
-								</span>
+						<div class="workers-row">
+							<!-- Worker dots -->
+							<div class="worker-dots">
+								{#each Array(MAX_WORKER_SLOTS) as _, w}
+									{#if w < busy}
+										<!-- Busy worker: spinning -->
+										<div class="worker-dot worker-busy" style="--dot-color: {cfg.color}">
+											<svg viewBox="0 0 20 20" class="worker-spinner">
+												<circle cx="10" cy="10" r="7" fill="none" stroke={cfg.color} stroke-width="2.5" opacity="0.2" />
+												<circle cx="10" cy="10" r="7" fill="none" stroke={cfg.color} stroke-width="2.5" stroke-dasharray="20 24" stroke-linecap="round" class="spin-arc" />
+											</svg>
+										</div>
+									{:else if w < busy + idle}
+										<!-- Idle worker: solid dot -->
+										<div class="worker-dot worker-idle" style="background: {cfg.color}"></div>
+									{:else}
+										<!-- Empty slot -->
+										<div class="worker-dot worker-empty"></div>
+									{/if}
+								{/each}
+							</div>
+
+							<!-- Worker label -->
+							<div class="worker-label">
+								{#if workers > 0}
+									<span style="color: {cfg.color}">{busy}/{workers}</span> busy
+								{:else}
+									<span class="text-muted">no workers</span>
+								{/if}
+								{#if pending > 0}
+									<span class="queue-label">&middot; {fmt(pending)} queued</span>
+								{/if}
 								{#if failed > 0}
-									<span class="handler-failed">
-										<AlertTriangle size={11} class="inline -mt-0.5" />
-										{fmt(failed)} failed
+									<span class="failed-label">
+										<AlertTriangle size={10} class="inline -mt-0.5" />
+										{fmt(failed)}
 									</span>
 								{/if}
 							</div>
-							{#if totalJobs > 0}
-								<div class="progress-row">
-									<div class="progress-bar">
-										<div
-											class="progress-fill"
-											style="width: {totalJobs > 0 ? (completed / totalJobs * 100) : 0}%; background: {cfg.color}"
-										></div>
-									</div>
-									<span class="progress-label">
-										{fmt(completed)}/{fmt(totalJobs)}
-									</span>
-								</div>
-							{/if}
 						</div>
 					{/if}
 				</div>
@@ -276,51 +287,76 @@
 		margin: 0 2px;
 	}
 
-	/* Handler / worker stats */
-	.handler-row {
-		margin-top: 8px;
-		padding-top: 8px;
+	/* Workers row */
+	.workers-row {
+		margin-top: 10px;
+		padding-top: 10px;
 		border-top: 1px solid var(--vui-border);
 	}
 
-	.handler-stats {
+	.worker-dots {
 		display: flex;
+		gap: 5px;
 		flex-wrap: wrap;
-		gap: 4px 14px;
+	}
+
+	.worker-dot {
+		width: 18px;
+		height: 18px;
+		border-radius: 50%;
+		flex-shrink: 0;
+	}
+
+	/* Busy: animated spinner */
+	.worker-busy {
+		position: relative;
+	}
+
+	.worker-spinner {
+		width: 18px;
+		height: 18px;
+	}
+
+	.spin-arc {
+		animation: worker-spin 0.8s linear infinite;
+		transform-origin: center;
+	}
+
+	@keyframes worker-spin {
+		to { transform: rotate(360deg); }
+	}
+
+	/* Idle: solid filled dot */
+	.worker-idle {
+		opacity: 0.4;
+	}
+
+	/* Empty slot: faint ring */
+	.worker-empty {
+		border: 1.5px dashed var(--vui-border);
+		opacity: 0.4;
+	}
+
+	/* Worker label text */
+	.worker-label {
+		margin-top: 6px;
 		font-size: 11px;
 		font-variant-numeric: tabular-nums;
-	}
-
-	.handler-active { color: #f59e0b; }
-	.handler-queued { color: var(--vui-text-sub); }
-	.handler-failed { color: var(--vui-danger); }
-
-	/* Progress bar */
-	.progress-row {
+		color: var(--vui-text-sub);
 		display: flex;
 		align-items: center;
-		gap: 8px;
-		margin-top: 6px;
+		gap: 6px;
 	}
 
-	.progress-bar {
-		flex: 1;
-		height: 4px;
-		border-radius: 2px;
-		background: var(--vui-border);
-		overflow: hidden;
-	}
-
-	.progress-fill {
-		height: 100%;
-		border-radius: 2px;
-		transition: width 0.6s ease;
-	}
-
-	.progress-label {
-		font-size: 10px;
+	.text-muted {
 		color: var(--vui-text-muted);
-		font-variant-numeric: tabular-nums;
-		white-space: nowrap;
+	}
+
+	.queue-label {
+		color: var(--vui-text-muted);
+	}
+
+	.failed-label {
+		color: var(--vui-danger);
 	}
 </style>

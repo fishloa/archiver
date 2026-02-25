@@ -93,6 +93,7 @@ export interface PipelineStage {
 	jobsRunning?: number;
 	jobsCompleted?: number;
 	jobsFailed?: number;
+	workersConnected?: number;
 }
 
 export interface PipelineStats {

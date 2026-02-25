@@ -52,16 +52,24 @@ class ProcessorClient:
         resp.raise_for_status()
 
     @contextmanager
-    def job_events(self, read_timeout: float = 30.0):
+    def job_events(self, read_timeout: float = 30.0, kinds: list[str] | None = None):
         """Connect to the SSE job events stream. Yields an iterator of SSE events.
 
         The read_timeout acts as a periodic poll interval -- when it expires,
         the connection closes and the caller can drain pending jobs.
+
+        If kinds is provided, the worker identifies which job types it handles
+        so the backend can track connected worker counts per stage.
         """
+        params = {}
+        if kinds:
+            params["kinds"] = kinds
         with httpx.Client(
             base_url=self.base_url,
             headers=self._headers,
             timeout=httpx.Timeout(connect=10.0, read=read_timeout, write=10.0, pool=10.0),
         ) as sse_client:
-            with connect_sse(sse_client, "GET", "/api/processor/jobs/events") as source:
+            with connect_sse(
+                sse_client, "GET", "/api/processor/jobs/events", params=params
+            ) as source:
                 yield source.iter_sse()
