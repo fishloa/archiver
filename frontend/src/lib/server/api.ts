@@ -155,3 +155,29 @@ export async function searchPages(q: string, page: number = 0, size: number = 20
 	if (!res.ok) throw new Error(`Backend error: ${res.status}`);
 	return res.json();
 }
+
+export interface SemanticSearchResult {
+	recordId: number;
+	pageId: number | null;
+	chunkIndex: number;
+	content: string;
+	score: number;
+	recordTitle: string | null;
+	recordTitleEn: string | null;
+	referenceCode: string | null;
+	descriptionEn: string | null;
+}
+
+export interface SemanticSearchResponse {
+	results: SemanticSearchResult[];
+}
+
+export async function semanticSearch(query: string, limit: number = 10): Promise<SemanticSearchResponse> {
+	const res = await fetch(`${backendUrl()}/api/search/semantic`, {
+		method: 'POST',
+		headers: { 'Content-Type': 'application/json' },
+		body: JSON.stringify({ query, limit })
+	});
+	if (!res.ok) throw new Error(`Backend error: ${res.status}`);
+	return res.json();
+}

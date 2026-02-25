@@ -90,6 +90,11 @@ public class JobService {
       checkRecordTranslationComplete(job.getRecordId());
     }
 
+    // Check if embedding is complete
+    if (job.getRecordId() != null && "embed_record".equals(job.getKind())) {
+      checkRecordEmbeddingComplete(job.getRecordId());
+    }
+
     return job;
   }
 
@@ -320,8 +325,10 @@ public class JobService {
         pdfDoneToTranslating++;
       } else {
         jdbcTemplate.update(
-            "UPDATE record SET status = 'complete', updated_at = now() WHERE id = ?", recordId);
-        log.info("Audit: record {} pdf_done → complete (translation done)", recordId);
+            "UPDATE record SET status = 'embedding', updated_at = now() WHERE id = ?", recordId);
+        enqueueJob("embed_record", recordId, null, null);
+        logPipelineEvent(recordId, "embedding", "started", "from audit");
+        log.info("Audit: record {} pdf_done → embedding (translation done)", recordId);
         pdfDoneToComplete++;
       }
       recordEventService.recordChanged(recordId, "status");
@@ -346,9 +353,11 @@ public class JobService {
 
     for (Long recordId : translatingDone) {
       jdbcTemplate.update(
-          "UPDATE record SET status = 'complete', updated_at = now() WHERE id = ?", recordId);
-      log.info("Audit: record {} translating → complete (all translation done)", recordId);
+          "UPDATE record SET status = 'embedding', updated_at = now() WHERE id = ?", recordId);
+      log.info("Audit: record {} translating → embedding (all translation done)", recordId);
       logPipelineEvent(recordId, "translation", "completed", "from audit");
+      enqueueJob("embed_record", recordId, null, null);
+      logPipelineEvent(recordId, "embedding", "started", "from audit");
       recordEventService.recordChanged(recordId, "status");
     }
     total += translatingDone.size();
@@ -379,10 +388,35 @@ public class JobService {
     }
     total += translationEventsMissing.size();
 
+    // --- Pass 9: Stuck embedding records where embed job is done ---
+    List<Long> embeddingDone =
+        jdbcTemplate.queryForList(
+            """
+        SELECT r.id FROM record r
+        WHERE r.status = 'embedding'
+          AND EXISTS (
+            SELECT 1 FROM job j
+            WHERE j.record_id = r.id
+              AND j.kind = 'embed_record'
+              AND j.status = 'completed'
+          )
+        ORDER BY r.id
+        """,
+            Long.class);
+
+    for (Long recordId : embeddingDone) {
+      jdbcTemplate.update(
+          "UPDATE record SET status = 'complete', updated_at = now() WHERE id = ?", recordId);
+      log.info("Audit: record {} embedding → complete", recordId);
+      logPipelineEvent(recordId, "embedding", "completed", "from audit");
+      recordEventService.recordChanged(recordId, "status");
+    }
+    total += embeddingDone.size();
+
     log.info(
         "Pipeline audit complete: {} stale jobs reset, {} failed retried, {} ingesting fixed, "
-            + "{} ocr_done re-queued, {} pdf_pending nudged, {} pdf_done→translating, {} pdf_done→complete, "
-            + "{} translating→complete, {} translation events backfilled ({} total)",
+            + "{} ocr_done re-queued, {} pdf_pending nudged, {} pdf_done→translating, {} pdf_done→embedding, "
+            + "{} translating→embedding, {} translation events backfilled, {} embedding→complete ({} total)",
         staleClaimed,
         failedRetried,
         ingestingStuck.size(),
@@ -392,6 +426,7 @@ public class JobService {
         pdfDoneToComplete,
         translatingDone.size(),
         translationEventsMissing.size(),
+        embeddingDone.size(),
         total);
     return total;
   }
@@ -446,20 +481,25 @@ public class JobService {
               recordId,
               pendingTranslation);
         } else {
-          jdbcTemplate.update(
-              "UPDATE record SET status = 'complete', updated_at = now() WHERE id = ? AND status = 'pdf_done'",
-              recordId);
-          // Check if there were any translation jobs at all
-          Long totalTranslation =
-              jdbcTemplate.queryForObject(
-                  "SELECT count(*) FROM job WHERE record_id = ? AND kind IN ('translate_page', 'translate_record')",
-                  Long.class,
+          int embeddingUpdated =
+              jdbcTemplate.update(
+                  "UPDATE record SET status = 'embedding', updated_at = now() WHERE id = ? AND status = 'pdf_done'",
                   recordId);
-          if (totalTranslation != null && totalTranslation > 0) {
-            log.info("Record {} → complete (translation finished before pdf)", recordId);
-            logPipelineEvent(recordId, "translation", "completed", "finished before pdf");
-          } else {
-            log.info("Record {} → complete (no translation needed)", recordId);
+          if (embeddingUpdated > 0) {
+            // Check if there were any translation jobs at all
+            Long totalTranslation =
+                jdbcTemplate.queryForObject(
+                    "SELECT count(*) FROM job WHERE record_id = ? AND kind IN ('translate_page', 'translate_record')",
+                    Long.class,
+                    recordId);
+            if (totalTranslation != null && totalTranslation > 0) {
+              log.info("Record {} → embedding (translation finished before pdf)", recordId);
+              logPipelineEvent(recordId, "translation", "completed", "finished before pdf");
+            } else {
+              log.info("Record {} → embedding (no translation needed)", recordId);
+            }
+            enqueueJob("embed_record", recordId, null, null);
+            logPipelineEvent(recordId, "embedding", "started", null);
           }
         }
       }
@@ -484,15 +524,29 @@ public class JobService {
             recordId);
     if (pending != null && pending == 0) {
       logPipelineEvent(recordId, "translation", "completed", null);
-      // If record is in 'translating', transition to 'complete'
+      // Transition to 'embedding' and enqueue embed job
       int updated =
           jdbcTemplate.update(
-              "UPDATE record SET status = 'complete', updated_at = now() WHERE id = ? AND status = 'translating'",
+              "UPDATE record SET status = 'embedding', updated_at = now() WHERE id = ? AND status = 'translating'",
               recordId);
       if (updated > 0) {
-        log.info("Record {} → complete (all translation done)", recordId);
+        log.info("Record {} → embedding (all translation done)", recordId);
+        enqueueJob("embed_record", recordId, null, null);
+        logPipelineEvent(recordId, "embedding", "started", null);
         recordEventService.recordChanged(recordId, "status");
       }
+    }
+  }
+
+  private void checkRecordEmbeddingComplete(Long recordId) {
+    int updated =
+        jdbcTemplate.update(
+            "UPDATE record SET status = 'complete', updated_at = now() WHERE id = ? AND status = 'embedding'",
+            recordId);
+    if (updated > 0) {
+      log.info("Record {} → complete (embedding done)", recordId);
+      logPipelineEvent(recordId, "embedding", "completed", null);
+      recordEventService.recordChanged(recordId, "status");
     }
   }
 
@@ -504,6 +558,7 @@ public class JobService {
       case "extract_entities" -> "entity_jobs";
       case "generate_thumbs" -> "ocr_jobs";
       case "translate_page", "translate_record" -> "translate_jobs";
+      case "embed_record" -> "embed_jobs";
       default -> "ocr_jobs";
     };
   }

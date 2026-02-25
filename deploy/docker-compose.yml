@@ -18,6 +18,7 @@ services:
       ARCHIVER_ESCALATION_JUNK_RATIO_MAX: "0.25"
       ARCHIVER_ESCALATION_ENABLE_ABBYY: "false"
       SECRET_KEY: ${SECRET_KEY}
+      OPENAI_API_KEY: ${OPENAI_API_KEY}
     restart: unless-stopped
 
   frontend:
@@ -28,6 +29,7 @@ services:
     environment:
       BACKEND_URL: http://backend:8080
       ORIGIN: https://archiver.icomb.place
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
     depends_on:
       - backend
     restart: unless-stopped
@@ -84,6 +86,17 @@ services:
     restart: unless-stopped
     deploy:
       replicas: 2
+
+  embed-worker:
+    image: dockerregistry.icomb.place/archiver/embed-worker:latest
+    user: "${CONTAINER_USER:-1012:1012}"
+    environment:
+      BACKEND_URL: http://backend:8080
+      PROCESSOR_TOKEN: ${PROCESSOR_TOKEN}
+      OPENAI_API_KEY: ${OPENAI_API_KEY}
+    depends_on:
+      - backend
+    restart: unless-stopped
 
   scraper-ebadatelna:
     image: dockerregistry.icomb.place/archiver/scraper-ebadatelna:latest

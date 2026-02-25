@@ -288,10 +288,10 @@ public class ProcessorController {
         jdbcTemplate.queryForList(
             """
             SELECT p.id AS page_id, p.seq, p.attachment_id, p.width, p.height,
-                   pt.text_raw, pt.confidence
+                   pt.text_raw, pt.text_en, pt.confidence
             FROM page p
             LEFT JOIN LATERAL (
-                SELECT pt2.text_raw, pt2.confidence
+                SELECT pt2.text_raw, pt2.text_en, pt2.confidence
                 FROM page_text pt2
                 WHERE pt2.page_id = p.id
                 ORDER BY pt2.confidence DESC NULLS LAST
@@ -334,6 +334,73 @@ public class ProcessorController {
         recordId);
     recordEventService.recordChanged(recordId, "translation");
     return ResponseEntity.ok(Map.of("recordId", recordId, "status", "ok"));
+  }
+
+  // -------------------------------------------------------------------------
+  // Embedding storage
+  // -------------------------------------------------------------------------
+
+  @PostMapping("/embeddings")
+  public ResponseEntity<Map<String, Object>> storeEmbeddings(
+      @RequestHeader("Authorization") String authHeader,
+      @RequestBody Map<String, Object> body) {
+    validateToken(authHeader);
+    Long recordId = ((Number) body.get("recordId")).longValue();
+
+    // Delete existing chunks for this record (re-embedding)
+    jdbcTemplate.update("DELETE FROM text_chunk WHERE record_id = ?", recordId);
+
+    @SuppressWarnings("unchecked")
+    java.util.List<Map<String, Object>> chunks =
+        (java.util.List<Map<String, Object>>) body.get("chunks");
+
+    int stored = 0;
+    for (Map<String, Object> chunk : chunks) {
+      Long pageId = chunk.get("pageId") != null ? ((Number) chunk.get("pageId")).longValue() : null;
+      int chunkIndex = ((Number) chunk.get("chunkIndex")).intValue();
+      String content = (String) chunk.get("content");
+      @SuppressWarnings("unchecked")
+      java.util.List<Number> embeddingList = (java.util.List<Number>) chunk.get("embedding");
+
+      // Convert to pgvector string format: [0.1,0.2,...]
+      StringBuilder vecStr = new StringBuilder("[");
+      for (int i = 0; i < embeddingList.size(); i++) {
+        if (i > 0) vecStr.append(",");
+        vecStr.append(embeddingList.get(i).doubleValue());
+      }
+      vecStr.append("]");
+
+      jdbcTemplate.update(
+          "INSERT INTO text_chunk (record_id, page_id, chunk_index, content, embedding, created_at)"
+              + " VALUES (?, ?, ?, ?, ?::vector, now())",
+          recordId,
+          pageId,
+          chunkIndex,
+          content,
+          vecStr.toString());
+      stored++;
+    }
+
+    return ResponseEntity.status(HttpStatus.CREATED)
+        .body(Map.of("recordId", recordId, "chunksStored", stored));
+  }
+
+  // -------------------------------------------------------------------------
+  // Record metadata (for embed worker)
+  // -------------------------------------------------------------------------
+
+  @GetMapping("/records/{recordId}/metadata")
+  public ResponseEntity<Map<String, Object>> getRecordMetadata(
+      @RequestHeader("Authorization") String authHeader, @PathVariable Long recordId) {
+    validateToken(authHeader);
+    java.util.List<Map<String, Object>> rows =
+        jdbcTemplate.queryForList(
+            "SELECT id, title, description, title_en, description_en, reference_code, lang, metadata_lang FROM record WHERE id = ?",
+            recordId);
+    if (rows.isEmpty()) {
+      return ResponseEntity.notFound().build();
+    }
+    return ResponseEntity.ok(rows.get(0));
   }
 
   // -------------------------------------------------------------------------

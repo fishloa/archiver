@@ -9,14 +9,15 @@
 	let collapsed = $state(false);
 
 	const nav = [
-		{ href: '/search', label: 'Search', icon: Search },
-		{ href: '/', label: 'Records', icon: Library },
+		{ href: '/', label: 'Search', icon: Search },
+		{ href: '/records', label: 'Records', icon: Library },
 		{ href: '/pipeline', label: 'Pipeline', icon: Activity },
 		{ href: '/admin', label: 'Admin', icon: Settings }
 	];
 
 	function isActive(href: string): boolean {
-		if (href === '/') return page.url.pathname === '/' || page.url.pathname.startsWith('/records');
+		if (href === '/') return page.url.pathname === '/' || page.url.pathname === '/ask';
+		if (href === '/records') return page.url.pathname.startsWith('/records');
 		if (href === '/admin') return page.url.pathname.startsWith('/admin');
 		return page.url.pathname.startsWith(href);
 	}

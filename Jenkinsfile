@@ -35,7 +35,8 @@ pipeline {
                     env.BUILD_OCR = params.BUILD_ALL || changed('ocr-worker-paddle') || workerCommonChanged
                     env.BUILD_PDF = params.BUILD_ALL || changed('pdf-worker') || workerCommonChanged
                     env.BUILD_TRANSLATE = params.BUILD_ALL || changed('translate-worker') || workerCommonChanged
-                    echo "backend=${env.BUILD_BACKEND} frontend=${env.BUILD_FRONTEND} scraper-cz=${env.BUILD_SCRAPER} ebadatelna=${env.BUILD_SCRAPER_EBADATELNA} findbuch=${env.BUILD_SCRAPER_FINDBUCH} oesta=${env.BUILD_SCRAPER_OESTA} matricula=${env.BUILD_SCRAPER_MATRICULA} ocr=${env.BUILD_OCR} pdf=${env.BUILD_PDF} translate=${env.BUILD_TRANSLATE}"
+                    env.BUILD_EMBED = params.BUILD_ALL || changed('embed-worker') || workerCommonChanged
+                    echo "backend=${env.BUILD_BACKEND} frontend=${env.BUILD_FRONTEND} scraper-cz=${env.BUILD_SCRAPER} ebadatelna=${env.BUILD_SCRAPER_EBADATELNA} findbuch=${env.BUILD_SCRAPER_FINDBUCH} oesta=${env.BUILD_SCRAPER_OESTA} matricula=${env.BUILD_SCRAPER_MATRICULA} ocr=${env.BUILD_OCR} pdf=${env.BUILD_PDF} translate=${env.BUILD_TRANSLATE} embed=${env.BUILD_EMBED}"
                 }
             }
         }
@@ -110,6 +111,17 @@ pipeline {
                         script {
                             dockerPush(registry, "${prefix}/translate-worker:latest")
                             dockerPush(registry, "${prefix}/translate-worker:\${GIT_COMMIT}")
+                        }
+                    }
+                }
+
+                stage('embed-worker') {
+                    when { expression { env.BUILD_EMBED == 'true' } }
+                    steps {
+                        sh "docker build -f embed-worker/Dockerfile -t ${prefix}/embed-worker:latest -t ${prefix}/embed-worker:\${GIT_COMMIT} ."
+                        script {
+                            dockerPush(registry, "${prefix}/embed-worker:latest")
+                            dockerPush(registry, "${prefix}/embed-worker:\${GIT_COMMIT}")
                         }
                     }
                 }

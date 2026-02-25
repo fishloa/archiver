@@ -1,213 +1,233 @@
 <script lang="ts">
-	import { onMount } from 'svelte';
-	import { invalidateAll } from '$app/navigation';
-	import Pagination from '$lib/components/Pagination.svelte';
-	import StatusBadge from '$lib/components/StatusBadge.svelte';
-	import { parseSourceMeta, nadTranslation } from '$lib/archives';
+	import { goto } from '$app/navigation';
+	import { Search, ChevronLeft, ChevronRight, BrainCircuit } from 'lucide-svelte';
 
 	let { data } = $props();
+	let query = $state(data.q || '');
 
-	let connected = $state(false);
-
-	onMount(() => {
-		let debounceTimer: ReturnType<typeof setTimeout> | null = null;
-		const es = new EventSource('/api/records/events');
-		es.addEventListener('record', () => {
-			// Debounce rapid events (e.g. page-by-page uploads)
-			if (debounceTimer) clearTimeout(debounceTimer);
-			debounceTimer = setTimeout(() => invalidateAll(), 500);
-		});
-		es.onopen = () => {
-			connected = true;
-		};
-		es.onerror = () => {
-			connected = false;
-		};
-		return () => {
-			if (debounceTimer) clearTimeout(debounceTimer);
-			es.close();
-		};
-	});
-
-	const statuses = [
-		{ value: '', label: 'All' },
-		{ value: 'ingesting', label: 'Ingesting' },
-		{ value: 'ingested', label: 'Ingested' },
-		{ value: 'ocr_pending', label: 'OCR Pending' },
-		{ value: 'ocr_done', label: 'OCR Done' },
-		{ value: 'pdf_pending', label: 'PDF Pending' },
-		{ value: 'pdf_done', label: 'PDF Done' },
-		{ value: 'translating', label: 'Translating' },
-		{ value: 'complete', label: 'Complete' },
-		{ value: 'error', label: 'Error' }
-	];
-
-	const columns = [
-		{ key: 'title', label: 'Title' },
-		{ key: 'dateRangeText', label: 'Date' },
-		{ key: 'referenceCode', label: 'Ref Code' },
-		{ key: 'status', label: 'Status' },
-		{ key: 'createdAt', label: 'Added' },
-		{ key: 'pageCount', label: 'Pages' }
-	] as const;
-
-	function buildParams(overrides: Record<string, string | number> = {}): URLSearchParams {
-		const params = new URLSearchParams();
-		const vals = {
-			status: data.status,
-			sortBy: data.sortBy,
-			sortDir: data.sortDir,
-			archiveId: data.archiveId ? String(data.archiveId) : '',
-			...overrides
-		};
-		for (const [k, v] of Object.entries(vals)) {
-			if (v) params.set(k, String(v));
-		}
-		return params;
+	function doSearch(e: Event) {
+		e.preventDefault();
+		if (!query.trim()) return;
+		goto(`/?q=${encodeURIComponent(query.trim())}`);
 	}
 
-	function sortHref(key: string): string {
-		const dir = data.sortBy === key && data.sortDir === 'asc' ? 'desc' : 'asc';
-		return `?${buildParams({ sortBy: key, sortDir: dir })}`;
-	}
-
-	function statusHref(status: string): string {
-		return `?${buildParams({ status })}`;
-	}
-
-	function archiveHref(archiveId: number): string {
-		return `?${buildParams({ archiveId: archiveId || '' })}`;
-	}
-
-	function sortIndicator(key: string): string {
-		if (data.sortBy !== key) return '';
-		return data.sortDir === 'asc' ? ' \u25B2' : ' \u25BC';
-	}
-
-	function formatDate(iso: string): string {
-		return new Date(iso).toLocaleDateString();
-	}
-
-	function pageDisplay(record: { pageCount: number; status: string; rawSourceMetadata: string | null }): string {
-		if (record.status === 'ingesting') {
-			const meta = parseSourceMeta(record.rawSourceMetadata);
-			const total = meta.scans;
-			if (typeof total === 'number' && total > 0) {
-				return `${record.pageCount}/${total}`;
-			}
-		}
-		return String(record.pageCount);
-	}
-
-	function fondLabel(sourceSystem: string | null, raw: string | null): string {
-		const meta = parseSourceMeta(raw);
-		const nad = meta.nad_number ? String(meta.nad_number) : null;
-		const en = nadTranslation(sourceSystem, nad);
-		if (en && nad) return `${en} (NAD ${nad})`;
-		if (meta.fond_name) return meta.fond_name;
-		return '';
-	}
+	const hasResults = $derived(data.results && data.results.length > 0);
+	const showLanding = $derived(!data.q);
 </script>
 
 <svelte:head>
-	<title>Records &ndash; Archiver</title>
+	<title>{data.q ? `${data.q} - Archiver` : 'Archiver'}</title>
 </svelte:head>
 
-<div class="flex items-center justify-between mb-6">
-	<h1 class="text-[length:var(--vui-text-2xl)] font-extrabold tracking-tight">Records</h1>
-	<span class="flex items-center gap-1.5 text-[length:var(--vui-text-xs)] text-text-sub">
-		<span class="inline-block w-1.5 h-1.5 rounded-full {connected ? 'bg-green-500' : 'bg-red-500'}"></span>
-		{connected ? 'Live' : 'Connecting\u2026'}
-	</span>
-</div>
-
-<div class="flex items-center gap-4 mb-4">
-	<div class="flex gap-2">
-		{#each statuses as s}
-			{@const active = data.status === s.value}
-			<a
-				href={statusHref(s.value)}
-				class="px-3 py-1.5 rounded-full text-[length:var(--vui-text-xs)] font-medium border transition-all
-					{active
-						? 'bg-accent-dim text-accent border-accent-border'
-						: 'bg-surface border-border text-text-sub hover:border-border-hover hover:text-text'}"
-			>
-				{s.label}
-			</a>
-		{/each}
-	</div>
-
-	{#if data.archives?.length > 1}
-		<div class="flex gap-2 ml-auto">
-			<a
-				href={archiveHref(0)}
-				class="px-3 py-1.5 rounded-full text-[length:var(--vui-text-xs)] font-medium border transition-all
-					{!data.archiveId
-						? 'bg-accent-dim text-accent border-accent-border'
-						: 'bg-surface border-border text-text-sub hover:border-border-hover hover:text-text'}"
-			>
-				All Archives
-			</a>
-			{#each data.archives as archive}
-				<a
-					href={archiveHref(archive.id)}
-					class="px-3 py-1.5 rounded-full text-[length:var(--vui-text-xs)] font-medium border transition-all
-						{data.archiveId === archive.id
-							? 'bg-accent-dim text-accent border-accent-border'
-							: 'bg-surface border-border text-text-sub hover:border-border-hover hover:text-text'}"
-				>
-					{archive.name}
-				</a>
-			{/each}
-		</div>
-	{/if}
-</div>
-
-{#if data.records.empty}
-	<div class="vui-card">
-		<p class="text-text-sub">No records found.</p>
+{#if showLanding}
+	<div class="landing">
+		<h1 class="logo">Archiver</h1>
+		<form onsubmit={doSearch} class="search-form landing-form">
+			<Search size={18} class="search-icon" />
+			<input
+				type="text"
+				bind:value={query}
+				placeholder="Ask me anything..."
+				class="search-input"
+				autofocus
+			/>
+		</form>
 	</div>
 {:else}
-	<div class="vui-card overflow-x-auto p-0">
-		<table class="w-full text-left">
-			<thead>
-				<tr class="border-b border-border">
-					{#each columns as col}
-						<th class="px-5 py-3 text-[11px] font-semibold uppercase tracking-[0.04em] text-text-sub">
-							<a href={sortHref(col.key)} class="vui-transition hover:text-text">
-								{col.label}{sortIndicator(col.key)}
-							</a>
-						</th>
-					{/each}
-				</tr>
-			</thead>
-			<tbody>
-				{#each data.records.content as record}
-					{@const fond = fondLabel(record.sourceSystem, record.rawSourceMetadata)}
-					<tr class="border-b border-border vui-transition hover:bg-[rgba(255,255,255,0.02)]">
-						<td class="px-5 py-3.5">
-							<a href="/records/{record.id}" class="font-medium text-accent vui-transition hover:text-accent-hover">
-								{record.title ?? '(untitled)'}
-							</a>
-							{#if fond}
-								<div class="text-[length:var(--vui-text-xs)] text-text-sub mt-0.5">{fond}</div>
-							{/if}
-						</td>
-						<td class="px-5 py-3.5 whitespace-nowrap text-text">{record.dateRangeText ?? ''}</td>
-						<td class="px-5 py-3.5 text-text">{record.referenceCode ?? ''}</td>
-						<td class="px-5 py-3.5"><StatusBadge status={record.status} /></td>
-						<td class="px-5 py-3.5 whitespace-nowrap text-text-sub">{formatDate(record.createdAt)}</td>
-						<td class="px-5 py-3.5 text-text tabular-nums text-right">{pageDisplay(record)}</td>
-					</tr>
-				{/each}
-			</tbody>
-		</table>
-	</div>
+	<div class="results-page">
+		<form onsubmit={doSearch} class="search-form results-form">
+			<Search size={16} class="search-icon" />
+			<input
+				type="text"
+				bind:value={query}
+				class="search-input"
+			/>
+		</form>
 
-	<div class="flex items-center justify-between">
-		<Pagination page={data.records.number} totalPages={data.records.totalPages} />
-		<span class="text-[length:var(--vui-text-xs)] text-text-sub tabular-nums">
-			{data.records.totalElements} records
-		</span>
+		{#if data.answer}
+			<div class="ai-card">
+				<div class="ai-head">
+					<BrainCircuit size={14} />
+					<span>AI Overview</span>
+				</div>
+				<p class="ai-text">{data.answer}</p>
+			</div>
+		{/if}
+
+		{#if hasResults}
+			<div class="results">
+				{#each data.results as r}
+					<div class="result">
+						<div class="result-url">
+							records/{r.recordId}{#if r.pageId} / page {r.pageId}{/if}
+							{#if r.referenceCode}&nbsp;&middot; {r.referenceCode}{/if}
+						</div>
+						<a href="/records/{r.recordId}" class="result-title">{r.title}</a>
+						<p class="result-snippet">{r.snippet}</p>
+					</div>
+				{/each}
+			</div>
+
+			<nav class="pager">
+				{#if data.page > 0}
+					<a href="/?q={encodeURIComponent(data.q)}&page={data.page - 1}" class="pager-link">
+						<ChevronLeft size={16} /> Previous
+					</a>
+				{/if}
+				<span class="pager-current">Page {data.page + 1}</span>
+				{#if data.hasMore}
+					<a href="/?q={encodeURIComponent(data.q)}&page={data.page + 1}" class="pager-link">
+						Next <ChevronRight size={16} />
+					</a>
+				{/if}
+			</nav>
+		{:else if data.q}
+			<p class="empty">No results found for <strong>{data.q}</strong></p>
+		{/if}
 	</div>
 {/if}
+
+<style>
+	/* ---- Landing ---- */
+	.landing {
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		justify-content: center;
+		min-height: calc(100vh - 200px);
+		padding-bottom: 140px;
+	}
+
+	.logo {
+		font-size: 56px;
+		font-weight: 300;
+		letter-spacing: -0.03em;
+		color: var(--vui-text);
+		margin-bottom: 32px;
+	}
+
+	/* ---- Search bar ---- */
+	.search-form {
+		position: relative;
+		width: 100%;
+	}
+
+	.landing-form { max-width: 580px; }
+	.results-form { max-width: 560px; margin-bottom: 24px; }
+
+	.search-icon {
+		position: absolute;
+		left: 16px;
+		top: 50%;
+		transform: translateY(-50%);
+		color: var(--vui-text-muted);
+		pointer-events: none;
+	}
+
+	.search-input {
+		width: 100%;
+		padding: 14px 16px 14px 44px;
+		border: 1.5px solid var(--vui-border);
+		border-radius: 24px;
+		background: var(--vui-surface);
+		color: var(--vui-text);
+		font-size: 16px;
+		outline: none;
+	}
+
+	.search-input:focus {
+		border-color: var(--vui-accent);
+	}
+
+	.search-input::placeholder { color: var(--vui-text-muted); }
+
+	/* ---- AI Overview ---- */
+	.ai-card {
+		max-width: 560px;
+		margin-bottom: 28px;
+		padding: 14px;
+		border: 1px solid var(--vui-border);
+		border-radius: 10px;
+		background: var(--vui-surface);
+	}
+
+	.ai-head {
+		display: flex;
+		align-items: center;
+		gap: 6px;
+		font-size: 12px;
+		font-weight: 600;
+		color: var(--vui-accent);
+		margin-bottom: 8px;
+	}
+
+	.ai-text {
+		font-size: 14px;
+		line-height: 1.65;
+		color: var(--vui-text);
+		white-space: pre-wrap;
+		margin: 0;
+	}
+
+	/* ---- Results ---- */
+	.results-page { max-width: 660px; }
+
+	.results {
+		display: flex;
+		flex-direction: column;
+		gap: 28px;
+	}
+
+	.result-url {
+		font-size: 12px;
+		color: var(--vui-text-muted);
+		margin-bottom: 1px;
+	}
+
+	.result-title {
+		font-size: 20px;
+		font-weight: 400;
+		color: var(--vui-accent);
+		text-decoration: none;
+		line-height: 1.3;
+	}
+
+	.result-title:hover { text-decoration: underline; }
+
+	.result-snippet {
+		margin: 4px 0 0;
+		font-size: 14px;
+		line-height: 1.55;
+		color: var(--vui-text-sub);
+	}
+
+	.empty {
+		margin-top: 40px;
+		color: var(--vui-text-sub);
+	}
+
+	/* ---- Pagination ---- */
+	.pager {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		gap: 16px;
+		margin: 36px 0 24px;
+	}
+
+	.pager-link {
+		display: flex;
+		align-items: center;
+		gap: 4px;
+		color: var(--vui-accent);
+		text-decoration: none;
+		font-size: 14px;
+	}
+
+	.pager-link:hover { text-decoration: underline; }
+
+	.pager-current {
+		font-size: 13px;
+		color: var(--vui-text-muted);
+	}
+</style>

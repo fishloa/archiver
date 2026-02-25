@@ -142,11 +142,11 @@ public class ViewerController {
             workerCounts));
     stages.add(
         buildStage(
-            "Entities",
-            "entities_pending",
+            "Embedding",
+            "embedding",
             recordsByStatus,
             pagesByStatus,
-            new String[] {"extract_entities"},
+            new String[] {"embed_record"},
             jobsByKind,
             workerCounts));
 
@@ -154,11 +154,13 @@ public class ViewerController {
     long doneRecords =
         recordsByStatus.getOrDefault("ocr_done", 0L)
             + recordsByStatus.getOrDefault("pdf_done", 0L)
+            + recordsByStatus.getOrDefault("entities_pending", 0L)
             + recordsByStatus.getOrDefault("entities_done", 0L)
             + recordsByStatus.getOrDefault("complete", 0L);
     long donePages =
         pagesByStatus.getOrDefault("ocr_done", 0L)
             + pagesByStatus.getOrDefault("pdf_done", 0L)
+            + pagesByStatus.getOrDefault("entities_pending", 0L)
             + pagesByStatus.getOrDefault("entities_done", 0L)
             + pagesByStatus.getOrDefault("complete", 0L);
     Map<String, Object> completeStage = new LinkedHashMap<>();

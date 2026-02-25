@@ -32,6 +32,8 @@ archiver:
     root: ${ARCHIVER_STORAGE_ROOT:/tmp/archiver-storage}
   processor:
     token: ${ARCHIVER_PROCESSOR_TOKEN:dev-processor-token}
+  openai:
+    api-key: ${OPENAI_API_KEY:}
 
 management:
   endpoints:

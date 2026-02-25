@@ -7,7 +7,7 @@
 		ScanText,
 		FileText,
 		Languages,
-		Tags,
+		BrainCircuit,
 		CircleCheckBig,
 		AlertTriangle
 	} from 'lucide-svelte';
@@ -39,7 +39,7 @@
 		{ icon: ScanText, color: '#f59e0b', dimBg: 'rgba(245,158,11,0.08)', borderColor: 'rgba(245,158,11,0.35)' },
 		{ icon: FileText, color: '#f472b6', dimBg: 'rgba(244,114,182,0.08)', borderColor: 'rgba(244,114,182,0.35)' },
 		{ icon: Languages, color: '#38bdf8', dimBg: 'rgba(56,189,248,0.08)', borderColor: 'rgba(56,189,248,0.35)' },
-		{ icon: Tags, color: '#c084fc', dimBg: 'rgba(192,132,252,0.08)', borderColor: 'rgba(192,132,252,0.35)' },
+		{ icon: BrainCircuit, color: '#c084fc', dimBg: 'rgba(192,132,252,0.08)', borderColor: 'rgba(192,132,252,0.35)' },
 		{ icon: CircleCheckBig, color: '#34d399', dimBg: 'rgba(52,211,153,0.08)', borderColor: 'rgba(52,211,153,0.35)' }
 	];
 
