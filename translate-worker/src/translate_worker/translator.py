@@ -12,7 +12,7 @@ log = logging.getLogger(__name__)
 
 # Model identifiers
 MODEL_DE_EN = "Helsinki-NLP/opus-mt-de-en"
-MODEL_CS_EN = "Helsinki-NLP/opus-mt-tc-big-cs-en"
+MODEL_CS_EN = "Helsinki-NLP/opus-mt-cs-en"
 
 # MarianMT has a max token limit of 512; chunk text conservatively at ~400 chars
 MAX_CHUNK_CHARS = 400

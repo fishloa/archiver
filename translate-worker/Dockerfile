@@ -8,8 +8,8 @@ RUN python3 -c "\
 from transformers import MarianMTModel, MarianTokenizer; \
 MarianTokenizer.from_pretrained('Helsinki-NLP/opus-mt-de-en'); \
 MarianMTModel.from_pretrained('Helsinki-NLP/opus-mt-de-en'); \
-MarianTokenizer.from_pretrained('Helsinki-NLP/opus-mt-tc-big-cs-en'); \
-MarianMTModel.from_pretrained('Helsinki-NLP/opus-mt-tc-big-cs-en'); \
+MarianTokenizer.from_pretrained('Helsinki-NLP/opus-mt-cs-en'); \
+MarianMTModel.from_pretrained('Helsinki-NLP/opus-mt-cs-en'); \
 "
 
 # Make models world-readable for non-root execution

@@ -134,6 +134,7 @@ public class JobService {
 
     // Enqueue OCR text translation (auto-detect language from text)
     // Skip if content is explicitly marked as English
+    int translateCount = 0;
     if (contentLang == null || !"en".equals(contentLang)) {
       List<Long> pageIds =
           jdbcTemplate.queryForList(
@@ -144,6 +145,7 @@ public class JobService {
         // No lang in payload → translator auto-detects from text content
         enqueueJob("translate_page", recordId, pageId, null);
       }
+      translateCount = pageIds.size();
     } else {
       log.info("Record {} content is English (lang=en), skipping page translation", recordId);
     }
@@ -155,7 +157,7 @@ public class JobService {
     log.info(
         "Record {} → pdf_pending ({} translate jobs + 1 pdf job enqueued)",
         recordId,
-        pageIds.size());
+        translateCount);
     recordEventService.recordChanged(recordId, "status");
   }
 
