@@ -88,6 +88,9 @@ public class IngestService {
     if (request.metadataLang() != null) {
       record.setMetadataLang(request.metadataLang());
     }
+    if (request.sourceUrl() != null) {
+      record.setSourceUrl(request.sourceUrl());
+    }
     record.setUpdatedAt(Instant.now());
 
     record = recordRepository.save(record);
@@ -129,6 +132,9 @@ public class IngestService {
       page.setPageLabel(metadata.pageLabel());
       page.setWidth(metadata.width());
       page.setHeight(metadata.height());
+      if (metadata.sourceUrl() != null) {
+        page.setSourceUrl(metadata.sourceUrl());
+      }
     }
     page = pageRepository.save(page);
 

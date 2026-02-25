@@ -171,7 +171,8 @@ public class ViewerController {
                         p.getAttachmentId(),
                         p.getPageLabel(),
                         p.getWidth(),
-                        p.getHeight())))
+                        p.getHeight(),
+                        p.getSourceUrl())))
         .orElse(ResponseEntity.notFound().build());
   }
 

@@ -28,4 +28,5 @@ public record RecordResponse(
     int pageCount,
     String status,
     Instant createdAt,
-    Instant updatedAt) {}
+    Instant updatedAt,
+    String sourceUrl) {}

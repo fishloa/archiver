@@ -22,4 +22,5 @@ public record IngestRecordRequest(
     String indexTerms,
     String rawSourceMetadata,
     String lang,
-    String metadataLang) {}
+    String metadataLang,
+    String sourceUrl) {}

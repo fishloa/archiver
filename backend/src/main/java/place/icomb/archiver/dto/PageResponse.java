@@ -7,4 +7,5 @@ public record PageResponse(
     Long attachmentId,
     String pageLabel,
     Integer width,
-    Integer height) {}
+    Integer height,
+    String sourceUrl) {}

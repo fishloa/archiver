@@ -27,6 +27,7 @@ public class Record {
   private String rawSourceMetadata;
   private String lang;
   private String metadataLang;
+  private String sourceUrl;
   private Long pdfAttachmentId;
   private String titleEn;
   private String descriptionEn;
@@ -196,6 +197,14 @@ public class Record {
 
   public void setMetadataLang(String metadataLang) {
     this.metadataLang = metadataLang;
+  }
+
+  public String getSourceUrl() {
+    return sourceUrl;
+  }
+
+  public void setSourceUrl(String sourceUrl) {
+    this.sourceUrl = sourceUrl;
   }
 
   public Long getPdfAttachmentId() {

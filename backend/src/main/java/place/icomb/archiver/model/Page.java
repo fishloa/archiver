@@ -13,6 +13,7 @@ public class Page {
   private String pageLabel;
   private Integer width;
   private Integer height;
+  private String sourceUrl;
 
   public Page() {}
 
@@ -70,5 +71,13 @@ public class Page {
 
   public void setHeight(Integer height) {
     this.height = height;
+  }
+
+  public String getSourceUrl() {
+    return sourceUrl;
+  }
+
+  public void setSourceUrl(String sourceUrl) {
+    this.sourceUrl = sourceUrl;
   }
 }

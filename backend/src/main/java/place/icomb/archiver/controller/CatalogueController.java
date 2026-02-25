@@ -125,7 +125,8 @@ public class CatalogueController {
                         p.getAttachmentId(),
                         p.getPageLabel(),
                         p.getWidth(),
-                        p.getHeight()))
+                        p.getHeight(),
+                        p.getSourceUrl()))
             .toList();
     return ResponseEntity.ok(response);
   }
@@ -157,6 +158,7 @@ public class CatalogueController {
         r.getPageCount(),
         r.getStatus(),
         r.getCreatedAt(),
-        r.getUpdatedAt());
+        r.getUpdatedAt(),
+        r.getSourceUrl());
   }
 }

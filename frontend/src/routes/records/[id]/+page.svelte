@@ -1,7 +1,7 @@
 <script lang="ts">
 	import StatusBadge from '$lib/components/StatusBadge.svelte';
 	import { parseSourceMeta, nadTranslation } from '$lib/archives';
-	import { ArrowLeft, Download, FileDown, ChevronDown, Clock, CircleCheckBig, AlertTriangle, Play } from 'lucide-svelte';
+	import { ArrowLeft, Download, FileDown, ChevronDown, Clock, CircleCheckBig, AlertTriangle, Play, ExternalLink } from 'lucide-svelte';
 	import type { PipelineEvent, JobStat } from '$lib/server/api';
 
 	let { data } = $props();
@@ -166,8 +166,13 @@
 		{/each}
 	</div>
 
-	{#if record.pdfAttachmentId || pages.length > 0}
+	{#if record.pdfAttachmentId || pages.length > 0 || record.sourceUrl}
 		<div class="mt-6 pt-4 border-t border-border flex flex-wrap items-end gap-4">
+			{#if record.sourceUrl}
+				<a href={record.sourceUrl} class="vui-btn vui-btn-ghost vui-btn-sm" target="_blank" rel="noopener noreferrer">
+					<ExternalLink size={13} strokeWidth={2} /> View original
+				</a>
+			{/if}
 			{#if record.pdfAttachmentId}
 				<a href="/api/records/{record.id}/pdf" class="vui-btn vui-btn-primary" target="_blank">
 					<Download size={13} strokeWidth={2} /> Download PDF

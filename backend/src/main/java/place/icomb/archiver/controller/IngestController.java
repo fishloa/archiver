@@ -70,7 +70,8 @@ public class IngestController {
                 page.getAttachmentId(),
                 page.getPageLabel(),
                 page.getWidth(),
-                page.getHeight()));
+                page.getHeight(),
+                page.getSourceUrl()));
   }
 
   @PostMapping(value = "/records/{recordId}/pdf", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)

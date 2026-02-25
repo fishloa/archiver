@@ -25,6 +25,7 @@ export interface RecordResponse {
 	status: string;
 	createdAt: string;
 	updatedAt: string;
+	sourceUrl: string | null;
 }
 
 export interface PageResponse {
@@ -35,6 +36,7 @@ export interface PageResponse {
 	pageLabel: string | null;
 	width: number | null;
 	height: number | null;
+	sourceUrl: string | null;
 }
 
 export interface SpringPage<T> {

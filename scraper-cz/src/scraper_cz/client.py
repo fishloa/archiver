@@ -96,6 +96,7 @@ class BackendClient:
             "rawSourceMetadata": jsonmod.dumps(metadata, ensure_ascii=False),
             "lang": cfg.lang,
             "metadataLang": cfg.metadata_lang,
+            "sourceUrl": f"https://vademecum.nacr.cz/vademecum/permalink?xid={source_record_id}",
         }
         # Remove None values
         body = {k: v for k, v in body.items() if v is not None}
