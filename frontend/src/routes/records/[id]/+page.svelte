@@ -1,7 +1,11 @@
 <script lang="ts">
 	import StatusBadge from '$lib/components/StatusBadge.svelte';
 	import { parseSourceMeta, nadTranslation } from '$lib/archives';
-	import { ArrowLeft, Download, FileDown, ChevronDown, Clock, CircleCheckBig, AlertTriangle, Play, ExternalLink } from 'lucide-svelte';
+	import {
+		ArrowLeft, Download, FileDown, ChevronDown, Clock,
+		CircleCheckBig, AlertTriangle, Play, ExternalLink,
+		FileText, Hash, Calendar, Archive, Bookmark, Layers
+	} from 'lucide-svelte';
 	import type { PipelineEvent, JobStat } from '$lib/server/api';
 
 	let { data } = $props();
@@ -27,6 +31,10 @@
 		return new Date(iso).toLocaleString();
 	}
 
+	function formatShortDate(iso: string): string {
+		return new Date(iso).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
+	}
+
 	function formatDuration(startIso: string, endIso: string): string {
 		const ms = new Date(endIso).getTime() - new Date(startIso).getTime();
 		if (ms < 1000) return `${ms}ms`;
@@ -42,29 +50,18 @@
 
 	const stageOrder = ['ingest', 'ocr', 'pdf_build', 'translation', 'entities'];
 	const stageLabels: Record<string, string> = {
-		ingest: 'Ingest',
-		ocr: 'OCR',
-		pdf_build: 'PDF Build',
-		translation: 'Translation',
-		entities: 'Entities'
+		ingest: 'Ingest', ocr: 'OCR', pdf_build: 'PDF Build',
+		translation: 'Translation', entities: 'Entities'
 	};
 	const stageColors: Record<string, string> = {
-		ingest: '#6ec6f0',
-		ocr: '#f59e0b',
-		pdf_build: '#f472b6',
-		translation: '#38bdf8',
-		entities: '#c084fc'
+		ingest: '#6ec6f0', ocr: '#f59e0b', pdf_build: '#f472b6',
+		translation: '#38bdf8', entities: '#c084fc'
 	};
 
 	interface StageSummary {
-		stage: string;
-		label: string;
-		color: string;
-		started: string | null;
-		completed: string | null;
-		failed: string | null;
-		duration: string | null;
-		detail: string | null;
+		stage: string; label: string; color: string;
+		started: string | null; completed: string | null; failed: string | null;
+		duration: string | null; detail: string | null;
 	}
 
 	let stageSummaries = $derived.by(() => {
@@ -80,262 +77,265 @@
 			const completedAt = completed?.created_at ?? null;
 			const failedAt = failed?.created_at ?? null;
 			let duration: string | null = null;
-			if (startedAt && completedAt) {
-				duration = formatDuration(startedAt, completedAt);
-			} else if (startedAt && failedAt) {
-				duration = formatDuration(startedAt, failedAt);
-			}
+			if (startedAt && completedAt) duration = formatDuration(startedAt, completedAt);
+			else if (startedAt && failedAt) duration = formatDuration(startedAt, failedAt);
 			summaries.push({
-				stage,
-				label: stageLabels[stage] ?? stage,
-				color: stageColors[stage] ?? '#888',
-				started: startedAt,
-				completed: completedAt,
-				failed: failedAt,
-				duration,
+				stage, label: stageLabels[stage] ?? stage, color: stageColors[stage] ?? '#888',
+				started: startedAt, completed: completedAt, failed: failedAt, duration,
 				detail: completed?.detail ?? started?.detail ?? failed?.detail ?? null
 			});
 		}
 		return summaries;
 	});
 
-	let metaFields = $derived([
-		{ label: 'Reference Code', value: record.referenceCode },
-		{ label: 'Date Range', value: record.dateRangeText },
-		{ label: 'Inventory Number', value: record.inventoryNumber },
-		{ label: 'Call Number', value: record.callNumber },
-		{ label: 'Container', value: [record.containerType, record.containerNumber].filter(Boolean).join(' ') || null },
-		{ label: 'Finding Aid', value: record.findingAidNumber },
-		{ label: 'Source', value: [record.sourceSystem, record.sourceRecordId].filter(Boolean).join(' / ') || null },
-		{ label: 'Index Terms', value: record.indexTerms },
-		{ label: 'Added', value: formatDate(record.createdAt) },
-		{ label: 'Updated', value: formatDate(record.updatedAt) }
-	]);
+	// Metadata as structured groups
+	let metaItems = $derived([
+		{ icon: Hash, label: 'Reference', value: record.referenceCode },
+		{ icon: Calendar, label: 'Dates', value: record.dateRangeText },
+		{ icon: Bookmark, label: 'Inventory No.', value: record.inventoryNumber },
+		{ icon: Layers, label: 'Container', value: [record.containerType, record.containerNumber].filter(Boolean).join(' ') || null },
+		{ icon: FileText, label: 'Finding Aid', value: record.findingAidNumber },
+	].filter(f => f.value));
 </script>
 
 <svelte:head>
 	<title>{record.title ?? 'Record'} &ndash; Archiver</title>
 </svelte:head>
 
-<div class="mb-6">
-	<a href="/" class="vui-btn vui-btn-ghost vui-btn-sm">
-		<ArrowLeft size={13} strokeWidth={2} /> All records
-	</a>
-</div>
+<!-- Header -->
+<div class="mb-6 vui-animate-fade-in">
+	<!-- Back + breadcrumb -->
+	<div class="flex items-center gap-2 mb-3 text-[length:var(--vui-text-xs)] text-text-muted">
+		<a href="/" class="vui-btn vui-btn-ghost vui-btn-sm !px-2">
+			<ArrowLeft size={13} strokeWidth={2} />
+		</a>
+		{#if nadEnglish || fondName}
+			<span class="truncate">{nadEnglish ?? fondName}</span>
+			{#if nadNumber}<span class="text-text-muted">(NAD {nadNumber})</span>{/if}
+			<span class="text-text-muted">/</span>
+		{/if}
+		<span class="text-text-sub truncate">{record.referenceCode ?? `Record ${record.id}`}</span>
+	</div>
 
-<div class="vui-card mb-6 vui-animate-fade-in">
-	<div class="flex items-start gap-3 mb-4">
-		<h1 class="text-[length:var(--vui-text-2xl)] font-extrabold tracking-tight">{record.titleEn ?? record.title ?? '(untitled)'}</h1>
+	<!-- Title row -->
+	<div class="flex items-start gap-3">
+		<div class="flex-1 min-w-0">
+			<h1 class="text-[length:var(--vui-text-2xl)] font-extrabold tracking-tight leading-tight">
+				{record.titleEn ?? record.title ?? '(untitled)'}
+			</h1>
+			{#if record.titleEn && record.title}
+				<p class="text-text-sub text-[length:var(--vui-text-sm)] mt-1 italic truncate">{record.title}</p>
+			{/if}
+		</div>
 		<StatusBadge status={record.status} />
 	</div>
-	{#if record.titleEn && record.title}
-		<p class="text-text-sub text-[length:var(--vui-text-sm)] mb-2 italic">{record.title}</p>
-	{/if}
 
-	{#if fondName || nadNumber}
-		<div class="mb-4 px-3 py-2 rounded-md bg-surface-alt border border-border">
-			{#if fondName}
-				<div class="text-[length:var(--vui-text-sm)] font-medium text-text">{fondName}</div>
-			{/if}
-			{#if nadEnglish}
-				<div class="text-[length:var(--vui-text-sm)] font-semibold text-accent">{nadEnglish}</div>
-			{/if}
-			{#if nadNumber}
-				<div class="text-[length:var(--vui-text-xs)] text-text-sub mt-0.5">NAD {nadNumber}</div>
-			{/if}
-		</div>
-	{/if}
-
+	<!-- Description -->
 	{#if record.descriptionEn || record.description}
-		<p class="text-text mb-2">{record.descriptionEn ?? record.description}</p>
-		{#if record.descriptionEn && record.description}
-			<p class="text-text-sub text-[length:var(--vui-text-sm)] mb-6 italic">{record.description}</p>
-		{:else}
-			<div class="mb-6"></div>
-		{/if}
-	{/if}
-
-	<div class="grid grid-cols-1 gap-x-8 gap-y-2 sm:grid-cols-2">
-		{#each metaFields as field}
-			{#if field.value}
-				<div class="flex gap-2 text-[length:var(--vui-text-sm)]">
-					<span class="font-semibold text-accent">{field.label}:</span>
-					<span class="text-text">{field.value}</span>
-				</div>
-			{/if}
-		{/each}
-	</div>
-
-	{#if record.pdfAttachmentId || pages.length > 0 || record.sourceUrl}
-		<div class="mt-6 pt-4 border-t border-border flex flex-wrap items-end gap-4">
-			{#if record.sourceUrl}
-				<a href={record.sourceUrl} class="vui-btn vui-btn-ghost vui-btn-sm" target="_blank" rel="noopener noreferrer">
-					<ExternalLink size={13} strokeWidth={2} /> View original
-				</a>
-			{/if}
-			{#if record.pdfAttachmentId}
-				<a href="/api/records/{record.id}/pdf" class="vui-btn vui-btn-primary" target="_blank">
-					<Download size={13} strokeWidth={2} /> Download PDF
-				</a>
-			{/if}
-			{#if pages.length > 0}
-				<div class="flex items-end gap-2">
-					<div class="flex flex-col gap-1">
-						<label for="export-pages" class="text-[length:var(--vui-text-xs)] font-medium text-text-sub">
-							Export pages
-						</label>
-						<input
-							id="export-pages"
-							type="text"
-							bind:value={exportPages}
-							placeholder="e.g. 1,3,5-10,15"
-							class="px-2.5 py-1.5 rounded-md border border-border bg-bg-deep text-text text-[length:var(--vui-text-sm)] placeholder:text-text-muted focus:outline-none focus:ring-1 focus:ring-accent w-48"
-						/>
-					</div>
-					<a
-						href={exportPages.trim() ? `/api/records/${record.id}/export-pdf?pages=${encodeURIComponent(exportPages.trim())}` : undefined}
-						class="vui-btn vui-btn-ghost vui-btn-sm {exportPages.trim() ? '' : 'opacity-50 pointer-events-none'}"
-						target="_blank"
-					>
-						<FileDown size={13} strokeWidth={2} /> Export Selection
-					</a>
-				</div>
-			{/if}
-		</div>
-	{/if}
-
-	{#if rawFormatted}
-		<div class="mt-6 pt-4 border-t border-border">
-			<button
-				class="flex items-center gap-1.5 text-[length:var(--vui-text-sm)] font-medium text-text-sub vui-transition hover:text-text cursor-pointer"
-				onclick={() => rawOpen = !rawOpen}
-			>
-				<ChevronDown
-					size={14}
-					strokeWidth={2}
-					class="vui-transition {rawOpen ? 'rotate-0' : '-rotate-90'}"
-				/>
-				Source Metadata
-			</button>
-			{#if rawOpen}
-				<pre class="mt-2 p-3 rounded-md bg-bg-deep border border-border text-[length:var(--vui-text-xs)] text-text-sub overflow-x-auto font-mono">{rawFormatted}</pre>
+		<div class="mt-3 text-[length:var(--vui-text-sm)] leading-relaxed">
+			<p class="text-text">{record.descriptionEn ?? record.description}</p>
+			{#if record.descriptionEn && record.description}
+				<p class="text-text-muted mt-1 italic">{record.description}</p>
 			{/if}
 		</div>
 	{/if}
 </div>
 
-{#if stageSummaries.length > 0}
-	<div class="vui-card mb-6 vui-animate-fade-in">
-		<button
-			class="flex items-center gap-1.5 text-[length:var(--vui-text-sm)] font-semibold text-text-sub vui-transition hover:text-text cursor-pointer w-full"
-			onclick={() => timelineOpen = !timelineOpen}
-		>
-			<ChevronDown
-				size={14}
-				strokeWidth={2}
-				class="vui-transition {timelineOpen ? 'rotate-0' : '-rotate-90'}"
-			/>
-			<Clock size={14} strokeWidth={2} />
-			Pipeline Timeline
-			<span class="ml-auto text-[length:var(--vui-text-xs)] text-text-muted font-normal">
-				{stageSummaries.filter(s => s.completed).length}/{stageSummaries.length} stages complete
-			</span>
-		</button>
+<!-- Action bar -->
+{#if record.sourceUrl || record.pdfAttachmentId || pages.length > 0}
+	<div class="flex flex-wrap items-center gap-3 mb-6 py-3 px-4 rounded-lg bg-surface border border-border vui-animate-fade-in">
+		{#if record.sourceUrl}
+			<a href={record.sourceUrl} class="vui-btn vui-btn-ghost vui-btn-sm" target="_blank" rel="noopener noreferrer">
+				<ExternalLink size={13} strokeWidth={2} /> Source
+			</a>
+		{/if}
+		{#if record.pdfAttachmentId}
+			<a href="/api/records/{record.id}/pdf" class="vui-btn vui-btn-primary vui-btn-sm" target="_blank">
+				<Download size={13} strokeWidth={2} /> Download PDF
+			</a>
+		{/if}
+		{#if pages.length > 0}
+			<div class="flex items-center gap-2 ml-auto">
+				<input
+					type="text"
+					bind:value={exportPages}
+					placeholder="Pages: 1,3,5-10"
+					class="px-2.5 py-1.5 rounded-md border border-border bg-bg-deep text-text text-[length:var(--vui-text-sm)] placeholder:text-text-muted focus:outline-none focus:ring-1 focus:ring-accent w-40"
+				/>
+				<a
+					href={exportPages.trim() ? `/api/records/${record.id}/export-pdf?pages=${encodeURIComponent(exportPages.trim())}` : undefined}
+					class="vui-btn vui-btn-ghost vui-btn-sm {exportPages.trim() ? '' : 'opacity-40 pointer-events-none'}"
+					target="_blank"
+				>
+					<FileDown size={13} strokeWidth={2} /> Export
+				</a>
+			</div>
+		{/if}
+	</div>
+{/if}
 
-		{#if timelineOpen}
-			<div class="mt-4 space-y-1">
-				{#each stageSummaries as stage}
-					<div class="flex items-center gap-3 py-2 px-3 rounded-md bg-bg-deep border border-border">
-						<!-- Status icon -->
-						<div class="flex-shrink-0">
-							{#if stage.failed}
-								<AlertTriangle size={14} color="var(--vui-danger)" strokeWidth={2} />
-							{:else if stage.completed}
-								<CircleCheckBig size={14} color="#34d399" strokeWidth={2} />
-							{:else if stage.started}
-								<Play size={14} color={stage.color} strokeWidth={2} class="animate-pulse" />
-							{/if}
-						</div>
-
-						<!-- Stage name -->
-						<div class="w-24 flex-shrink-0">
-							<span class="font-semibold text-[length:var(--vui-text-sm)]" style="color: {stage.color}">
-								{stage.label}
-							</span>
-						</div>
-
-						<!-- Timing -->
-						<div class="flex-1 flex items-center gap-4 text-[length:var(--vui-text-xs)] text-text-sub tabular-nums">
-							{#if stage.started}
-								<span>Started {formatDate(stage.started)}</span>
-							{/if}
-							{#if stage.completed}
-								<span class="text-[#34d399]">Completed {formatDate(stage.completed)}</span>
-							{/if}
-							{#if stage.failed}
-								<span class="text-danger">Failed {formatDate(stage.failed)}</span>
-							{/if}
-						</div>
-
-						<!-- Duration -->
-						{#if stage.duration}
-							<div class="flex-shrink-0 text-[length:var(--vui-text-xs)] font-medium text-text tabular-nums">
-								{stage.duration}
+<!-- Two-column body -->
+<div class="flex flex-col lg:flex-row gap-6 vui-animate-fade-in">
+	<!-- Main: page thumbnails -->
+	<div class="lg:flex-[2] min-w-0">
+		{#if pages.length > 0}
+			<div class="flex items-baseline justify-between mb-3">
+				<h2 class="text-[length:var(--vui-text-sm)] font-semibold text-text-sub">
+					Pages <span class="text-text-muted font-normal">({pages.length})</span>
+				</h2>
+			</div>
+			<div class="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-3 xl:grid-cols-4">
+				{#each pages as pg, i}
+					<a
+						href="/records/{record.id}/pages/{pg.seq}"
+						class="group vui-card vui-hover-lift overflow-hidden p-0"
+						style="--delay: {Math.min(i * 30, 300)}ms"
+					>
+						{#if pg.attachmentId}
+							<img
+								loading="lazy"
+								src="/api/files/{pg.attachmentId}/thumbnail"
+								alt={pg.pageLabel ?? `Page ${pg.seq}`}
+								class="aspect-[3/4] w-full object-cover vui-transition group-hover:opacity-80"
+							/>
+						{:else}
+							<div class="flex aspect-[3/4] items-center justify-center bg-surface">
+								<span class="text-text-sub text-[length:var(--vui-text-xs)]">No image</span>
 							</div>
 						{/if}
-					</div>
+						<div class="px-2 py-1.5 text-center text-[length:var(--vui-text-xs)] text-text-sub tabular-nums">
+							{pg.pageLabel ?? `Page ${pg.seq}`}
+						</div>
+					</a>
 				{/each}
 			</div>
+		{:else}
+			<div class="vui-card flex items-center justify-center h-48">
+				<span class="text-text-muted">No pages ingested yet</span>
+			</div>
+		{/if}
+	</div>
 
-			<!-- Job breakdown -->
-			{#if timeline.jobs.length > 0}
-				<div class="mt-4 pt-3 border-t border-border">
-					<div class="text-[length:var(--vui-text-xs)] font-semibold text-text-sub mb-2">Job Breakdown</div>
-					<div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
-						{#each timeline.jobs as job}
-							<div class="px-2 py-1.5 rounded bg-bg-deep border border-border text-[length:var(--vui-text-xs)]">
-								<div class="font-medium text-text">{job.kind.replace(/_/g, ' ')}</div>
-								<div class="flex items-center gap-2 text-text-sub">
-									<span class="{job.status === 'completed' ? 'text-[#34d399]' : job.status === 'failed' ? 'text-danger' : 'text-text-sub'}">
-										{job.cnt} {job.status}
-									</span>
-									{#if job.last_finished && job.first_started}
-										<span class="tabular-nums">{formatDuration(job.first_started, job.last_finished)}</span>
+	<!-- Sidebar -->
+	<div class="lg:flex-1 min-w-0 lg:max-w-xs space-y-4">
+		<!-- Metadata -->
+		{#if metaItems.length > 0}
+			<div class="vui-card p-4">
+				<h3 class="text-[length:var(--vui-text-xs)] font-semibold text-text-muted uppercase tracking-wider mb-3">Details</h3>
+				<div class="space-y-2.5">
+					{#each metaItems as item}
+						<div class="flex items-start gap-2.5">
+							<svelte:component this={item.icon} size={14} strokeWidth={1.8} class="text-text-muted mt-0.5 flex-shrink-0" />
+							<div class="min-w-0">
+								<div class="text-[length:var(--vui-text-xs)] text-text-muted">{item.label}</div>
+								<div class="text-[length:var(--vui-text-sm)] text-text break-words">{item.value}</div>
+							</div>
+						</div>
+					{/each}
+				</div>
+				{#if record.indexTerms}
+					<div class="mt-3 pt-3 border-t border-border">
+						<div class="text-[length:var(--vui-text-xs)] text-text-muted mb-1.5">Index Terms</div>
+						<div class="flex flex-wrap gap-1.5">
+							{#each record.indexTerms.split(/[;,]/).map((s: string) => s.trim()).filter(Boolean) as term}
+								<span class="px-2 py-0.5 rounded-full bg-bg-deep border border-border text-[length:var(--vui-text-xs)] text-text-sub">{term}</span>
+							{/each}
+						</div>
+					</div>
+				{/if}
+			</div>
+		{/if}
+
+		<!-- Source info -->
+		<div class="vui-card p-4">
+			<h3 class="text-[length:var(--vui-text-xs)] font-semibold text-text-muted uppercase tracking-wider mb-3">Source</h3>
+			<div class="space-y-2 text-[length:var(--vui-text-xs)]">
+				{#if fondName}
+					<div>
+						<div class="text-text-muted">Fond</div>
+						<div class="text-text">{fondName}</div>
+						{#if nadEnglish}<div class="text-accent font-medium">{nadEnglish}</div>{/if}
+					</div>
+				{/if}
+				<div>
+					<div class="text-text-muted">Archive ID</div>
+					<div class="text-text-sub font-mono break-all">{record.sourceRecordId}</div>
+				</div>
+				<div class="flex gap-4">
+					<div>
+						<div class="text-text-muted">Added</div>
+						<div class="text-text-sub">{formatShortDate(record.createdAt)}</div>
+					</div>
+					<div>
+						<div class="text-text-muted">Updated</div>
+						<div class="text-text-sub">{formatShortDate(record.updatedAt)}</div>
+					</div>
+				</div>
+			</div>
+		</div>
+
+		<!-- Pipeline timeline -->
+		{#if stageSummaries.length > 0}
+			<div class="vui-card p-4">
+				<button
+					class="flex items-center gap-1.5 text-[length:var(--vui-text-xs)] font-semibold text-text-muted uppercase tracking-wider vui-transition hover:text-text cursor-pointer w-full"
+					onclick={() => timelineOpen = !timelineOpen}
+				>
+					<ChevronDown size={12} strokeWidth={2} class="vui-transition {timelineOpen ? 'rotate-0' : '-rotate-90'}" />
+					<Clock size={12} strokeWidth={2} />
+					Pipeline
+					<span class="ml-auto font-normal normal-case tracking-normal">
+						{stageSummaries.filter(s => s.completed).length}/{stageSummaries.length}
+					</span>
+				</button>
+				{#if timelineOpen}
+					<div class="mt-3 space-y-1.5">
+						{#each stageSummaries as stage}
+							<div class="flex items-center gap-2 py-1.5 px-2 rounded bg-bg-deep text-[length:var(--vui-text-xs)]">
+								<div class="flex-shrink-0">
+									{#if stage.failed}
+										<AlertTriangle size={12} color="var(--vui-danger)" strokeWidth={2} />
+									{:else if stage.completed}
+										<CircleCheckBig size={12} color="#34d399" strokeWidth={2} />
+									{:else if stage.started}
+										<Play size={12} color={stage.color} strokeWidth={2} class="animate-pulse" />
 									{/if}
 								</div>
+								<span class="font-medium" style="color: {stage.color}">{stage.label}</span>
+								<span class="ml-auto tabular-nums text-text-muted">{stage.duration ?? ''}</span>
 							</div>
 						{/each}
 					</div>
-				</div>
-			{/if}
+					{#if timeline.jobs.length > 0}
+						<div class="mt-3 pt-2 border-t border-border space-y-1">
+							{#each timeline.jobs as job}
+								<div class="flex items-center justify-between text-[length:var(--vui-text-xs)] text-text-sub">
+									<span>{job.kind.replace(/_/g, ' ')}</span>
+									<span class="tabular-nums {job.status === 'completed' ? 'text-[#34d399]' : job.status === 'failed' ? 'text-danger' : ''}">
+										{job.cnt} {job.status}
+									</span>
+								</div>
+							{/each}
+						</div>
+					{/if}
+				{/if}
+			</div>
+		{/if}
+
+		<!-- Raw metadata -->
+		{#if rawFormatted}
+			<div class="vui-card p-4">
+				<button
+					class="flex items-center gap-1.5 text-[length:var(--vui-text-xs)] font-semibold text-text-muted uppercase tracking-wider vui-transition hover:text-text cursor-pointer w-full"
+					onclick={() => rawOpen = !rawOpen}
+				>
+					<ChevronDown size={12} strokeWidth={2} class="vui-transition {rawOpen ? 'rotate-0' : '-rotate-90'}" />
+					Raw Metadata
+				</button>
+				{#if rawOpen}
+					<pre class="mt-2 p-2 rounded bg-bg-deep border border-border text-[length:10px] text-text-sub overflow-x-auto font-mono leading-relaxed max-h-64 overflow-y-auto">{rawFormatted}</pre>
+				{/if}
+			</div>
 		{/if}
 	</div>
-{/if}
-
-{#if pages.length > 0}
-	<div class="vui-section-header">Pages ({pages.length})</div>
-	<div class="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 vui-stagger">
-		{#each pages as page}
-			<a
-				href="/records/{record.id}/pages/{page.seq}"
-				class="group vui-card vui-hover-lift overflow-hidden p-0"
-			>
-				{#if page.attachmentId}
-					<img
-						loading="lazy"
-						src="/api/files/{page.attachmentId}/thumbnail"
-						alt={page.pageLabel ?? `Page ${page.seq}`}
-						class="aspect-[3/4] w-full object-cover vui-transition group-hover:opacity-80"
-					/>
-				{:else}
-					<div class="flex aspect-[3/4] items-center justify-center bg-surface">
-						<span class="text-text-sub text-[length:var(--vui-text-xs)]">No image</span>
-					</div>
-				{/if}
-				<div class="px-2 py-1.5 text-center text-[length:var(--vui-text-xs)] text-text-sub">
-					{page.pageLabel ?? `Page ${page.seq}`}
-				</div>
-			</a>
-		{/each}
-	</div>
-{/if}
+</div>
