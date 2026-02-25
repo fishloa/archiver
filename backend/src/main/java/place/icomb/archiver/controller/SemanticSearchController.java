@@ -126,8 +126,8 @@ public class SemanticSearchController {
           ),
           ranked AS (
             SELECT *,
-                   sem_score + (kw_score * 0.5) AS hybrid_score,
-                   ROW_NUMBER() OVER (PARTITION BY record_id ORDER BY sem_score + (kw_score * 0.5) DESC) AS rn
+                   sem_score + (kw_score * 1.5) AS hybrid_score,
+                   ROW_NUMBER() OVER (PARTITION BY record_id ORDER BY sem_score + (kw_score * 1.5) DESC) AS rn
             FROM scored
           )
           SELECT r.record_id, r.page_id, r.chunk_index, r.content,
