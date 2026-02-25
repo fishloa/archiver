@@ -121,17 +121,23 @@ public class JobService {
     // Enqueue one build_searchable_pdf job for the whole record
     enqueueJob("build_searchable_pdf", recordId, null, null);
 
+    // Get the record's lang for translation jobs
+    String lang =
+        jdbcTemplate.queryForObject(
+            "SELECT lang FROM record WHERE id = ?", String.class, recordId);
+
     // Enqueue translate_record job for metadata (title, description)
     enqueueJob("translate_record", recordId, null, null);
 
-    // Enqueue translate_page jobs for each page's OCR text
+    // Enqueue translate_page jobs with lang from record
+    String payload = lang != null ? "{\"lang\":\"" + lang + "\"}" : null;
     List<Long> pageIds =
         jdbcTemplate.queryForList(
             "SELECT p.id FROM page p WHERE p.record_id = ? ORDER BY p.seq",
             Long.class,
             recordId);
     for (Long pageId : pageIds) {
-      enqueueJob("translate_page", recordId, pageId, null);
+      enqueueJob("translate_page", recordId, pageId, payload);
     }
 
     // Transition to pdf_pending

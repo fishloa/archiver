@@ -17,13 +17,29 @@ log = logging.getLogger(__name__)
 JOB_KINDS = ("translate_page", "translate_record")
 
 
+def _job_lang(job: dict) -> str | None:
+    """Extract language ISO code from job payload, if present."""
+    payload = job.get("payload")
+    if payload:
+        try:
+            data = json.loads(payload) if isinstance(payload, str) else payload
+            return data.get("lang")
+        except (json.JSONDecodeError, AttributeError):
+            pass
+    return None
+
+
 def process_translate_page(client, translator, job: dict) -> None:
     """Process a single translate_page job."""
     job_id = job["id"]
     page_id = job["pageId"]
     record_id = job.get("recordId", "?")
+    source_lang = _job_lang(job)
 
-    log.info("Processing translate_page job %d: page %d (record %s)", job_id, page_id, record_id)
+    log.info(
+        "Processing translate_page job %d: page %d (record %s, lang=%s)",
+        job_id, page_id, record_id, source_lang or "auto",
+    )
 
     page_data = client.get_page_text(page_id)
     text = page_data.get("text") or ""
@@ -33,8 +49,8 @@ def process_translate_page(client, translator, job: dict) -> None:
         client.complete_job(job_id, result="no_text")
         return
 
-    # Auto-detect source language (could be German, Czech, or other)
-    translated = translator.translate(text)
+    # Use record.lang from job payload; fall back to auto-detection
+    translated = translator.translate(text, source_lang=source_lang)
 
     client.submit_page_translation(page_id, translated)
     client.complete_job(job_id)
