@@ -54,7 +54,7 @@ services:
       - backend
     restart: unless-stopped
     deploy:
-      replicas: 3
+      replicas: 2
 
   pdf-worker:
     image: dockerregistry.icomb.place/archiver/pdf-worker:latest

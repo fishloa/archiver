@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { invalidateAll } from '$app/navigation';
+	import { invalidate } from '$app/navigation';
 	import {
 		CloudUpload,
 		Inbox,
@@ -22,7 +22,7 @@
 		const es = new EventSource('/api/records/events');
 		es.addEventListener('record', () => {
 			if (debounceTimer) clearTimeout(debounceTimer);
-			debounceTimer = setTimeout(() => invalidateAll(), 2000);
+			debounceTimer = setTimeout(() => invalidate('app:pipeline'), 2000);
 		});
 		es.onopen = () => { connected = true; };
 		es.onerror = () => { connected = false; };
