@@ -84,7 +84,7 @@ def run_sse_loop(
         jobs_processed += drain_jobs(client, job_kinds, process_fn)
 
         try:
-            log.info("Connecting to SSE job events stream...")
+            log.info("Connecting to SSE (worker=%s)...", client.worker_id[:8])
             with client.job_events(read_timeout=float(poll_interval), kinds=list(job_kinds)) as events:
                 reconnect_delay = 1
                 log.info("SSE connected, waiting for events (poll every %ds)", poll_interval)

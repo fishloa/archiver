@@ -81,9 +81,10 @@ public class ProcessorController {
   @GetMapping(value = "/jobs/events", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
   public SseEmitter streamJobEvents(
       @RequestHeader("Authorization") String authHeader,
+      @RequestParam(value = "workerId", required = false) String workerId,
       @RequestParam(value = "kinds", required = false) java.util.List<String> kinds) {
     validateToken(authHeader);
-    return jobEventService.subscribe(kinds);
+    return jobEventService.subscribe(workerId, kinds);
   }
 
   // -------------------------------------------------------------------------

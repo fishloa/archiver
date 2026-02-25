@@ -1,6 +1,7 @@
 """Base backend API client for pipeline workers."""
 
 import logging
+import uuid
 from contextlib import contextmanager
 
 import httpx
@@ -18,6 +19,7 @@ class ProcessorClient:
 
     def __init__(self, base_url: str, token: str, user_agent: str = "worker/0.1"):
         self.base_url = base_url
+        self.worker_id = str(uuid.uuid4())
         self._token = token
         self._headers = {
             "Authorization": f"Bearer {token}",
@@ -61,7 +63,7 @@ class ProcessorClient:
         If kinds is provided, the worker identifies which job types it handles
         so the backend can track connected worker counts per stage.
         """
-        params = {}
+        params = {"workerId": self.worker_id}
         if kinds:
             params["kinds"] = kinds
         with httpx.Client(
