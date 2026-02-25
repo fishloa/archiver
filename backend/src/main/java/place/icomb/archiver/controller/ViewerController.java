@@ -429,7 +429,7 @@ public class ViewerController {
     List<Integer> seqNumbers;
     try {
       seqNumbers = pdfExportService.parsePageRange(pages);
-    } catch (IllegalArgumentException | NumberFormatException e) {
+    } catch (IllegalArgumentException e) {
       return ResponseEntity.badRequest().build();
     }
 
