@@ -113,8 +113,8 @@ public class SemanticSearchController {
         keywordBoostExpr = sb.toString();
       }
 
-      // Build full query
-      // params order: [keyword params..., vec, vec, vec, limit]
+      // Build full query — param order must match ? order in SQL:
+      // vec (sem_score), keyword params..., vec (WHERE filter), limit
       String sql =
           """
           WITH scored AS (
@@ -142,10 +142,10 @@ public class SemanticSearchController {
           """
               .formatted(keywordBoostExpr);
 
-      // Assemble params: keyword params first, then vec (x3), then limit
-      List<Object> allParams = new ArrayList<>(params);
-      allParams.add(vecStr.toString()); // for sem_score
-      allParams.add(vecStr.toString()); // for WHERE filter
+      List<Object> allParams = new ArrayList<>();
+      allParams.add(vecStr.toString()); // 1st ?: sem_score
+      allParams.addAll(params);         // keyword ?'s
+      allParams.add(vecStr.toString()); // last vec ?: WHERE filter
       allParams.add(limit);
 
       List<Map<String, Object>> rows = jdbcTemplate.queryForList(sql, allParams.toArray());
