@@ -35,6 +35,8 @@
 		{ value: 'ingested', label: 'Ingested' },
 		{ value: 'ocr_pending', label: 'OCR Pending' },
 		{ value: 'ocr_done', label: 'OCR Done' },
+		{ value: 'pdf_pending', label: 'PDF Pending' },
+		{ value: 'pdf_done', label: 'PDF Done' },
 		{ value: 'complete', label: 'Complete' },
 		{ value: 'error', label: 'Error' }
 	];

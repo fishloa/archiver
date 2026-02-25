@@ -6,6 +6,7 @@
 		Inbox,
 		ScanText,
 		FileText,
+		Languages,
 		Tags,
 		CircleCheckBig,
 		Loader,
@@ -41,13 +42,14 @@
 		{ icon: Inbox, color: '#a78bfa', dimBg: 'rgba(167,139,250,0.08)', borderColor: 'rgba(167,139,250,0.35)' },
 		{ icon: ScanText, color: '#f59e0b', dimBg: 'rgba(245,158,11,0.08)', borderColor: 'rgba(245,158,11,0.35)' },
 		{ icon: FileText, color: '#f472b6', dimBg: 'rgba(244,114,182,0.08)', borderColor: 'rgba(244,114,182,0.35)' },
+		{ icon: Languages, color: '#38bdf8', dimBg: 'rgba(56,189,248,0.08)', borderColor: 'rgba(56,189,248,0.35)' },
 		{ icon: Tags, color: '#c084fc', dimBg: 'rgba(192,132,252,0.08)', borderColor: 'rgba(192,132,252,0.35)' },
 		{ icon: CircleCheckBig, color: '#34d399', dimBg: 'rgba(52,211,153,0.08)', borderColor: 'rgba(52,211,153,0.35)' }
 	];
 
 	const nodeY = 240;
-	const nodeSpacing = 180;
-	const startX = 100;
+	const nodeSpacing = 160;
+	const startX = 80;
 
 	function fmt(n: number): string {
 		return n.toLocaleString();
@@ -80,7 +82,7 @@
 <!-- Pipeline SVG Visualization -->
 <div class="pipeline-wrapper vui-animate-fade-in">
 	<svg
-		viewBox="0 0 1100 420"
+		viewBox="0 0 1140 420"
 		xmlns="http://www.w3.org/2000/svg"
 		class="w-full"
 		style="max-height: 480px"
@@ -117,11 +119,12 @@
 		<!-- Road surface -->
 		<path
 			d="M {startX} {nodeY}
-			   C {startX + 60} {nodeY - 40}, {startX + nodeSpacing - 60} {nodeY + 40}, {startX + nodeSpacing} {nodeY}
-			   C {startX + nodeSpacing + 60} {nodeY - 40}, {startX + 2 * nodeSpacing - 60} {nodeY + 40}, {startX + 2 * nodeSpacing} {nodeY}
-			   C {startX + 2 * nodeSpacing + 60} {nodeY - 40}, {startX + 3 * nodeSpacing - 60} {nodeY + 40}, {startX + 3 * nodeSpacing} {nodeY}
-			   C {startX + 3 * nodeSpacing + 60} {nodeY - 40}, {startX + 4 * nodeSpacing - 60} {nodeY + 40}, {startX + 4 * nodeSpacing} {nodeY}
-			   C {startX + 4 * nodeSpacing + 60} {nodeY - 40}, {startX + 5 * nodeSpacing - 60} {nodeY + 40}, {startX + 5 * nodeSpacing} {nodeY}"
+			   C {startX + 50} {nodeY - 35}, {startX + nodeSpacing - 50} {nodeY + 35}, {startX + nodeSpacing} {nodeY}
+			   C {startX + nodeSpacing + 50} {nodeY - 35}, {startX + 2 * nodeSpacing - 50} {nodeY + 35}, {startX + 2 * nodeSpacing} {nodeY}
+			   C {startX + 2 * nodeSpacing + 50} {nodeY - 35}, {startX + 3 * nodeSpacing - 50} {nodeY + 35}, {startX + 3 * nodeSpacing} {nodeY}
+			   C {startX + 3 * nodeSpacing + 50} {nodeY - 35}, {startX + 4 * nodeSpacing - 50} {nodeY + 35}, {startX + 4 * nodeSpacing} {nodeY}
+			   C {startX + 4 * nodeSpacing + 50} {nodeY - 35}, {startX + 5 * nodeSpacing - 50} {nodeY + 35}, {startX + 5 * nodeSpacing} {nodeY}
+			   C {startX + 5 * nodeSpacing + 50} {nodeY - 35}, {startX + 6 * nodeSpacing - 50} {nodeY + 35}, {startX + 6 * nodeSpacing} {nodeY}"
 			fill="none"
 			stroke="url(#road-grad)"
 			stroke-width="28"
@@ -131,11 +134,12 @@
 		<!-- Dashed center line -->
 		<path
 			d="M {startX} {nodeY}
-			   C {startX + 60} {nodeY - 40}, {startX + nodeSpacing - 60} {nodeY + 40}, {startX + nodeSpacing} {nodeY}
-			   C {startX + nodeSpacing + 60} {nodeY - 40}, {startX + 2 * nodeSpacing - 60} {nodeY + 40}, {startX + 2 * nodeSpacing} {nodeY}
-			   C {startX + 2 * nodeSpacing + 60} {nodeY - 40}, {startX + 3 * nodeSpacing - 60} {nodeY + 40}, {startX + 3 * nodeSpacing} {nodeY}
-			   C {startX + 3 * nodeSpacing + 60} {nodeY - 40}, {startX + 4 * nodeSpacing - 60} {nodeY + 40}, {startX + 4 * nodeSpacing} {nodeY}
-			   C {startX + 4 * nodeSpacing + 60} {nodeY - 40}, {startX + 5 * nodeSpacing - 60} {nodeY + 40}, {startX + 5 * nodeSpacing} {nodeY}"
+			   C {startX + 50} {nodeY - 35}, {startX + nodeSpacing - 50} {nodeY + 35}, {startX + nodeSpacing} {nodeY}
+			   C {startX + nodeSpacing + 50} {nodeY - 35}, {startX + 2 * nodeSpacing - 50} {nodeY + 35}, {startX + 2 * nodeSpacing} {nodeY}
+			   C {startX + 2 * nodeSpacing + 50} {nodeY - 35}, {startX + 3 * nodeSpacing - 50} {nodeY + 35}, {startX + 3 * nodeSpacing} {nodeY}
+			   C {startX + 3 * nodeSpacing + 50} {nodeY - 35}, {startX + 4 * nodeSpacing - 50} {nodeY + 35}, {startX + 4 * nodeSpacing} {nodeY}
+			   C {startX + 4 * nodeSpacing + 50} {nodeY - 35}, {startX + 5 * nodeSpacing - 50} {nodeY + 35}, {startX + 5 * nodeSpacing} {nodeY}
+			   C {startX + 5 * nodeSpacing + 50} {nodeY - 35}, {startX + 6 * nodeSpacing - 50} {nodeY + 35}, {startX + 6 * nodeSpacing} {nodeY}"
 			fill="none"
 			stroke="rgba(255,255,255,0.08)"
 			stroke-width="2"
@@ -178,7 +182,7 @@
 
 			<!-- Node inner dot -->
 			<circle cx={x} cy={nodeY} r="6" fill={cfg.color} opacity="0.8">
-				{#if stage.records > 0 && i < 5}
+				{#if stage.records > 0 && i < 6}
 					<animate
 						attributeName="opacity"
 						values="0.4;1;0.4"
@@ -296,7 +300,7 @@
 </div>
 
 <!-- Detailed stats cards below -->
-<div class="grid grid-cols-2 md:grid-cols-3 gap-4 mt-8 vui-stagger">
+<div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 mt-8 vui-stagger">
 	{#each data.stats.stages as stage, i}
 		{@const cfg = stageConfig[i]}
 		<div
