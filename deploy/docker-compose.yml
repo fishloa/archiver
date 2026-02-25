@@ -53,6 +53,8 @@ services:
     depends_on:
       - backend
     restart: unless-stopped
+    deploy:
+      replicas: 3
 
   pdf-worker:
     image: dockerregistry.icomb.place/archiver/pdf-worker:latest
@@ -63,6 +65,8 @@ services:
     depends_on:
       - backend
     restart: unless-stopped
+    deploy:
+      replicas: 2
 
   translate-worker:
     image: dockerregistry.icomb.place/archiver/translate-worker:latest
@@ -78,6 +82,8 @@ services:
     depends_on:
       - backend
     restart: unless-stopped
+    deploy:
+      replicas: 2
 
   scraper-ebadatelna:
     image: dockerregistry.icomb.place/archiver/scraper-ebadatelna:latest

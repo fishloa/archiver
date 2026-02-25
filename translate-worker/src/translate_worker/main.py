@@ -46,7 +46,7 @@ def process_translate_page(client, translator, job: dict) -> None:
 
     if not text.strip():
         log.info("  Page %d has no text, skipping translation", page_id)
-        client.complete_job(job_id, result="no_text")
+        client.complete_job(job_id)
         return
 
     # Use record.lang from job payload; fall back to auto-detection
@@ -77,7 +77,7 @@ def process_translate_record(client, translator, job: dict) -> None:
 
     if not title.strip() and not description.strip():
         log.info("  Record %d has no title/description, skipping translation", record_id)
-        client.complete_job(job_id, result="no_text")
+        client.complete_job(job_id)
         return
 
     # Use metadata_lang from scraper config; fall back to auto-detection
