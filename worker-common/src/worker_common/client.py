@@ -24,6 +24,7 @@ class ProcessorClient:
         self._headers = {
             "Authorization": f"Bearer {token}",
             "User-Agent": user_agent,
+            "X-Worker-Id": self.worker_id,
         }
         self._client = httpx.Client(
             base_url=base_url,

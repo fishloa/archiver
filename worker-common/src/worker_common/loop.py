@@ -80,6 +80,10 @@ def run_sse_loop(
     reconnect_delay = 1
     kind_set = set(job_kinds)
 
+    # Register worker kinds in headers so backend tracks us via API calls too
+    client._headers["X-Worker-Kinds"] = ",".join(job_kinds)
+    client._client.headers["X-Worker-Kinds"] = ",".join(job_kinds)
+
     while True:
         jobs_processed += drain_jobs(client, job_kinds, process_fn)
 

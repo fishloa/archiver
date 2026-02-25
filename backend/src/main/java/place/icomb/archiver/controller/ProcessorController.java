@@ -94,8 +94,11 @@ public class ProcessorController {
   @PostMapping("/jobs/claim")
   public ResponseEntity<JobResponse> claimJob(
       @RequestHeader("Authorization") String authHeader,
+      @RequestHeader(value = "X-Worker-Id", required = false) String workerId,
+      @RequestHeader(value = "X-Worker-Kinds", required = false) String workerKinds,
       @Valid @RequestBody JobClaimRequest request) {
     validateToken(authHeader);
+    jobEventService.touchWorker(workerId, workerKinds);
     return jobService
         .claimJob(request.kind())
         .map(j -> ResponseEntity.ok(toJobResponse(j)))
