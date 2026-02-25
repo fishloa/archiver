@@ -99,8 +99,87 @@ cd <service> && docker build -t dockerregistry.icomb.place/archiver/<service>:la
 - `backend/src/main/java/.../controller/ProcessorController.java` — worker API endpoints
 - `backend/src/main/java/.../controller/ViewerController.java` — frontend API (search, pipeline stats)
 - `backend/src/main/java/.../controller/CatalogueController.java` — record listing, filtering, SSE
+- `backend/src/main/java/.../controller/ApiController.java` — machine-readable API (`/api/v1/`) for LLM tools
 - `deploy/docker-compose.yml` — production compose file
 - `Jenkinsfile` — CI/CD pipeline with parallel builds
+
+## Machine-Readable API (`/api/v1/`)
+
+Designed for LLM tool use — returns self-contained JSON with full text content and links.
+Base URL: `https://archiver.icomb.place/api/v1`
+
+### List Archives
+
+```
+GET /api/v1/archives
+```
+
+Returns: `[{"id": 4, "name": "Austrian State Archives (OeStA)", "country": "AT"}, ...]`
+
+### Get Document (full content)
+
+```
+GET /api/v1/documents/{recordId}
+```
+
+Returns complete document with metadata, all page OCR text (original + English translation), and links:
+
+```json
+{
+  "id": 302,
+  "archiveId": 4,
+  "title": "Czernin, Hermann",
+  "titleEn": "Czernin, Hermann",
+  "dateRange": "1938-1945",
+  "referenceCode": "AT-OeStA/AdR BKA-I BPDion Wien GALA Czernin Hermann",
+  "status": "complete",
+  "pageCount": 12,
+  "sourceUrl": "https://...",
+  "links": {
+    "pdf": "/api/records/302/pdf",
+    "pages": "/api/records/302/pages",
+    "self": "/api/v1/documents/302"
+  },
+  "pages": [
+    {
+      "seq": 1,
+      "pageLabel": "p0001",
+      "imageUrl": "/api/files/456",
+      "text": "Original OCR text (German/Czech)...",
+      "textEn": "English translation...",
+      "ocrConfidence": 0.92,
+      "ocrEngine": "paddleocr"
+    }
+  ]
+}
+```
+
+### Search Documents
+
+```
+GET /api/v1/search?q=czernin&archiveId=4&page=0&size=20
+```
+
+- `q` (required): search query, supports `-term` exclusion
+- `archiveId` (optional): filter by archive
+- `page` / `size`: pagination (default 0 / 20)
+
+Returns: `{"query": "czernin", "total": 10, "page": 0, "size": 20, "results": [{"id": 302, "title": "...", "documentUrl": "/api/v1/documents/302", ...}]}`
+
+### Browse Documents
+
+```
+GET /api/v1/documents?archiveId=4&page=0&size=20
+```
+
+Same response format as search but lists all records (optionally filtered by archive).
+
+### Notes
+
+- All endpoints accept an optional `baseUrl` parameter (default `/api`) for link generation
+- Image URLs in responses point to `/api/files/{attachmentId}`
+- PDF URLs point to `/api/records/{id}/pdf`
+- Search matches against title, description, reference code, and OCR text content
 
 ## Conventions
 
