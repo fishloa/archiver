@@ -62,18 +62,27 @@ public class SemanticSearchController {
       }
       vecStr.append("]");
 
-      // 3. Search pgvector
+      // 3. Search pgvector — filter by minimum similarity and deduplicate per record
+      //    (keep best chunk per record, require cosine similarity >= 0.25)
       List<Map<String, Object>> rows = jdbcTemplate.queryForList(
           """
-          SELECT tc.record_id, tc.page_id, tc.chunk_index, tc.content,
-                 1 - (tc.embedding <=> ?::vector) AS score,
-                 r.title AS record_title, r.title_en AS record_title_en,
-                 r.reference_code, r.description_en
-          FROM text_chunk tc
-          JOIN record r ON r.id = tc.record_id
-          ORDER BY tc.embedding <=> ?::vector
+          WITH ranked AS (
+            SELECT tc.record_id, tc.page_id, tc.chunk_index, tc.content,
+                   1 - (tc.embedding <=> ?::vector) AS score,
+                   ROW_NUMBER() OVER (PARTITION BY tc.record_id ORDER BY tc.embedding <=> ?::vector) AS rn
+            FROM text_chunk tc
+            WHERE 1 - (tc.embedding <=> ?::vector) >= 0.25
+          )
+          SELECT r.record_id, r.page_id, r.chunk_index, r.content, r.score,
+                 rec.title AS record_title, rec.title_en AS record_title_en,
+                 rec.reference_code, rec.description_en
+          FROM ranked r
+          JOIN record rec ON rec.id = r.record_id
+          WHERE r.rn = 1
+          ORDER BY r.score DESC
           LIMIT ?
           """,
+          vecStr.toString(),
           vecStr.toString(),
           vecStr.toString(),
           limit);

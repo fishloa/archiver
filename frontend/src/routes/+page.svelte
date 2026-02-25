@@ -61,6 +61,7 @@
 						<div class="result-url">
 							records/{r.recordId}{#if r.pageId} / page {r.pageId}{/if}
 							{#if r.referenceCode}&nbsp;&middot; {r.referenceCode}{/if}
+							&nbsp;&middot; <span class="result-score">{(r.score * 100).toFixed(0)}% match</span>
 						</div>
 						<a href="/records/{r.recordId}" class="result-title">{r.title}</a>
 						<p class="result-snippet">{r.snippet}</p>
@@ -182,6 +183,11 @@
 		font-size: 12px;
 		color: var(--vui-text-muted);
 		margin-bottom: 1px;
+	}
+
+	.result-score {
+		color: var(--vui-accent);
+		font-weight: 500;
 	}
 
 	.result-title {
