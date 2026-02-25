@@ -91,6 +91,11 @@ public class IngestService {
     record.setUpdatedAt(Instant.now());
 
     record = recordRepository.save(record);
+    if (!existing.isPresent()) {
+      jdbcTemplate.update(
+          "INSERT INTO pipeline_event (record_id, stage, event, created_at) VALUES (?, 'ingest', 'started', now())",
+          record.getId());
+    }
     recordEventService.recordChanged(record.getId(), existing.isPresent() ? "updated" : "created");
     return record;
   }
@@ -188,6 +193,13 @@ public class IngestService {
     for (Page page : pages) {
       jobService.enqueueJob("ocr_page_paddle", recordId, page.getId(), ocrPayload);
     }
+
+    jdbcTemplate.update(
+        "INSERT INTO pipeline_event (record_id, stage, event, detail, created_at) VALUES (?, 'ingest', 'completed', ?, now())",
+        recordId, pages.size() + " pages");
+    jdbcTemplate.update(
+        "INSERT INTO pipeline_event (record_id, stage, event, detail, created_at) VALUES (?, 'ocr', 'started', ?, now())",
+        recordId, pages.size() + " jobs enqueued");
 
     // Fire NOTIFY so listeners can pick up work immediately
     jdbcTemplate.execute("NOTIFY ocr_jobs");

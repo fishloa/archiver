@@ -335,6 +335,32 @@ public class ViewerController {
         .body(resource);
   }
 
+  @GetMapping("/records/{recordId}/timeline")
+  public ResponseEntity<List<Map<String, Object>>> getRecordTimeline(@PathVariable Long recordId) {
+    // Pipeline events
+    List<Map<String, Object>> events = jdbcTemplate.queryForList(
+        "SELECT stage, event, detail, created_at FROM pipeline_event WHERE record_id = ? ORDER BY created_at ASC",
+        recordId);
+
+    // Also include job-level timing as supplementary data
+    List<Map<String, Object>> jobStats = jdbcTemplate.queryForList(
+        """
+        SELECT kind, status, count(*) AS cnt,
+               min(created_at) AS first_created,
+               min(started_at) AS first_started,
+               max(finished_at) AS last_finished
+        FROM job WHERE record_id = ?
+        GROUP BY kind, status
+        ORDER BY kind, status
+        """,
+        recordId);
+
+    return ResponseEntity.ok(
+        List.of(
+            Map.of("type", "events", "data", events),
+            Map.of("type", "jobs", "data", jobStats)));
+  }
+
   private String extractSnippet(String text, String query, int maxLen) {
     String lower = text.toLowerCase();
     String queryLower = query.toLowerCase();

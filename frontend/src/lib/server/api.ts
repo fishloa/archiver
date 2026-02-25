@@ -92,6 +92,36 @@ export async function fetchPipelineStats(): Promise<PipelineStats> {
 	return res.json();
 }
 
+export interface PipelineEvent {
+	stage: string;
+	event: string;
+	detail: string | null;
+	created_at: string;
+}
+
+export interface JobStat {
+	kind: string;
+	status: string;
+	cnt: number;
+	first_created: string | null;
+	first_started: string | null;
+	last_finished: string | null;
+}
+
+export interface RecordTimeline {
+	events: PipelineEvent[];
+	jobs: JobStat[];
+}
+
+export async function fetchRecordTimeline(recordId: number): Promise<RecordTimeline> {
+	const res = await fetch(`${backendUrl()}/api/records/${recordId}/timeline`);
+	if (!res.ok) throw new Error(`Backend error: ${res.status}`);
+	const data: { type: string; data: unknown }[] = await res.json();
+	const events = (data.find((d) => d.type === 'events')?.data ?? []) as PipelineEvent[];
+	const jobs = (data.find((d) => d.type === 'jobs')?.data ?? []) as JobStat[];
+	return { events, jobs };
+}
+
 export async function searchPages(q: string, page: number = 0, size: number = 20): Promise<SearchResponse> {
 	const params = new URLSearchParams({ q, page: String(page), size: String(size) });
 	const res = await fetch(`${backendUrl()}/api/search?${params}`);

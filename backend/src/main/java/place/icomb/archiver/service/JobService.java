@@ -84,6 +84,12 @@ public class JobService {
       checkRecordPdfComplete(job.getRecordId());
     }
 
+    // Check if all translation jobs for this record are done
+    if (job.getRecordId() != null && (
+            "translate_page".equals(job.getKind()) || "translate_record".equals(job.getKind()))) {
+      checkRecordTranslationComplete(job.getRecordId());
+    }
+
     return job;
   }
 
@@ -108,6 +114,7 @@ public class JobService {
               recordId);
       if (updated > 0) {
         log.info("Record {} transitioned to ocr_done", recordId);
+        logPipelineEvent(recordId, "ocr", "completed", null);
         recordEventService.recordChanged(recordId, "status");
         startPostOcrPipeline(recordId);
       }
@@ -158,6 +165,8 @@ public class JobService {
         "Record {} → pdf_pending ({} translate jobs + 1 pdf job enqueued)",
         recordId,
         translateCount);
+    logPipelineEvent(recordId, "pdf_build", "started", null);
+    logPipelineEvent(recordId, "translation", "started", translateCount + " page jobs enqueued");
     recordEventService.recordChanged(recordId, "status");
   }
 
@@ -226,11 +235,41 @@ public class JobService {
       checkRecordPdfComplete(recordId);
     }
 
-    int total = ocrDoneStuck.size() + pdfPendingStuck.size();
+    // --- Pass 3: records with all translation done but no 'completed' event logged ---
+    List<Long> translationDone = jdbcTemplate.queryForList(
+        """
+        SELECT r.id FROM record r
+        WHERE r.status IN ('pdf_done', 'complete')
+          AND NOT EXISTS (
+            SELECT 1 FROM pipeline_event pe
+            WHERE pe.record_id = r.id AND pe.stage = 'translation' AND pe.event = 'completed'
+          )
+          AND NOT EXISTS (
+            SELECT 1 FROM job j
+            WHERE j.record_id = r.id
+              AND j.kind IN ('translate_page', 'translate_record')
+              AND j.status != 'completed'
+          )
+          AND EXISTS (
+            SELECT 1 FROM job j
+            WHERE j.record_id = r.id
+              AND j.kind IN ('translate_page', 'translate_record')
+          )
+        ORDER BY r.id
+        """,
+        Long.class);
+
+    for (Long recordId : translationDone) {
+      log.info("Audit: logging missing translation completed event for record {}", recordId);
+      logPipelineEvent(recordId, "translation", "completed", "retroactive from audit");
+    }
+
+    int total = ocrDoneStuck.size() + pdfPendingStuck.size() + translationDone.size();
     log.info(
-        "Pipeline audit complete: {} ocr_done re-queued, {} pdf_pending nudged ({} total)",
+        "Pipeline audit complete: {} ocr_done re-queued, {} pdf_pending nudged, {} translation events backfilled ({} total)",
         ocrDoneStuck.size(),
         pdfPendingStuck.size(),
+        translationDone.size(),
         total);
     return total;
   }
@@ -262,12 +301,31 @@ public class JobService {
             Long.class,
             recordId);
     if (pdfAttId != null) {
-      jdbcTemplate.update(
-          "UPDATE record SET pdf_attachment_id = ?, status = 'pdf_done', updated_at = now() WHERE id = ? AND status = 'pdf_pending'",
-          pdfAttId,
-          recordId);
+      int updated =
+          jdbcTemplate.update(
+              "UPDATE record SET pdf_attachment_id = ?, status = 'pdf_done', updated_at = now() WHERE id = ? AND status = 'pdf_pending'",
+              pdfAttId,
+              recordId);
       log.info("Record {} → pdf_done (pdf_attachment_id={})", recordId, pdfAttId);
+      if (updated > 0) {
+        logPipelineEvent(recordId, "pdf_build", "completed", "attachment_id=" + pdfAttId);
+      }
       recordEventService.recordChanged(recordId, "status");
+    }
+  }
+
+  private void logPipelineEvent(Long recordId, String stage, String event, String detail) {
+    jdbcTemplate.update(
+        "INSERT INTO pipeline_event (record_id, stage, event, detail, created_at) VALUES (?, ?, ?, ?, now())",
+        recordId, stage, event, detail);
+  }
+
+  private void checkRecordTranslationComplete(Long recordId) {
+    Long pending = jdbcTemplate.queryForObject(
+        "SELECT count(*) FROM job WHERE record_id = ? AND kind IN ('translate_page', 'translate_record') AND status != 'completed'",
+        Long.class, recordId);
+    if (pending != null && pending == 0) {
+      logPipelineEvent(recordId, "translation", "completed", null);
     }
   }
 
