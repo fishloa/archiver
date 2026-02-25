@@ -69,6 +69,8 @@ services:
     user: "${CONTAINER_USER:-1012:1012}"
     environment:
       HOME: /tmp
+      LOGNAME: worker
+      HF_HOME: /root/.cache/huggingface
       BACKEND_URL: http://backend:8080
       PROCESSOR_TOKEN: ${PROCESSOR_TOKEN}
     depends_on:
