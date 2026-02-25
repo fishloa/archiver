@@ -130,10 +130,10 @@ class Translator:
 
         Args:
             text: The source text to translate.
-            source_lang: 'de' or 'cs'. Detected automatically if None.
+            source_lang: ISO 639-1 code ('de', 'cs', etc). Detected automatically if None.
 
         Returns:
-            Translated English text.
+            Translated English text, or the original text if already English.
         """
         if not text or not text.strip():
             return ""
@@ -142,6 +142,11 @@ class Translator:
 
         if source_lang is None:
             source_lang = self.detect_language(text)
+
+        # Skip translation if text is already in English
+        if source_lang == "en":
+            log.info("Text is already English (%d chars), skipping translation", len(text))
+            return text
 
         model_name = self._get_model_for_lang(source_lang)
         tokenizer, model = self._load_model(model_name)

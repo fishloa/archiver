@@ -1,8 +1,8 @@
 ## Stage 1: Download translation models (CPU-only torch)
-FROM python:3.10-slim AS model-downloader
+FROM python:3.11-slim AS model-downloader
 
-RUN pip install --no-cache-dir torch --index-url https://download.pytorch.org/whl/cpu && \
-    pip install --no-cache-dir transformers sentencepiece
+RUN pip install --no-cache-dir "torch>=2.6" --index-url https://download.pytorch.org/whl/cpu && \
+    pip install --no-cache-dir "transformers>=4.40" sentencepiece
 
 RUN python3 -c "\
 from transformers import MarianMTModel, MarianTokenizer; \
@@ -16,7 +16,7 @@ MarianMTModel.from_pretrained('Helsinki-NLP/opus-mt-tc-big-cs-en'); \
 RUN chmod -R a+rX /root/.cache/huggingface/
 
 ## Stage 2: Final image
-FROM python:3.10-slim
+FROM python:3.11-slim
 
 ENV DEBIAN_FRONTEND=noninteractive
 ENV HOME=/tmp
@@ -26,7 +26,7 @@ WORKDIR /app
 # Layer 1: Install Python dependencies (CPU torch is fine for MarianMT)
 RUN pip install --no-cache-dir --upgrade pip setuptools wheel && \
     pip install --no-cache-dir \
-        torch --index-url https://download.pytorch.org/whl/cpu && \
+        "torch>=2.6" --index-url https://download.pytorch.org/whl/cpu && \
     pip install --no-cache-dir \
         "transformers>=4.40" \
         "sentencepiece>=0.2" \
