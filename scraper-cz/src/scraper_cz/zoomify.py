@@ -7,6 +7,7 @@ from Zoomify tile pyramids served by the VadeMeCum mrimage service.
 import io
 import re
 import math
+import time
 import logging
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
@@ -21,6 +22,24 @@ log = logging.getLogger(__name__)
 
 # Zoomify base path for Czech National Archives
 ZOOMIFY_PATH = "zoomify//cz/archives/CZ-100000010/inventare/dao/images"
+
+
+MAX_RETRIES = 4
+RETRY_BACKOFF = [0.5, 1.0, 2.0, 4.0]
+
+
+def _fetch_with_retry(url: str, user_agent: str, timeout: int = 15) -> bytes | None:
+    """GET *url* with retries and exponential backoff."""
+    for attempt in range(MAX_RETRIES):
+        try:
+            req = urllib.request.Request(url)
+            req.add_header("User-Agent", user_agent)
+            resp = urllib.request.urlopen(req, timeout=timeout)
+            return resp.read()
+        except Exception:
+            if attempt < MAX_RETRIES - 1:
+                time.sleep(RETRY_BACKOFF[attempt])
+    return None
 
 
 def get_tile_info(
@@ -40,37 +59,29 @@ def get_tile_info(
     ua = user_agent or cfg.user_agent
 
     url = f"{MRIMAGE_BASE}/{ZOOMIFY_PATH}/{folder}/{uuid}.jpg/ImageProperties.xml"
-    try:
-        req = urllib.request.Request(url)
-        req.add_header("User-Agent", ua)
-        resp = urllib.request.urlopen(req, timeout=15)
-        xml = resp.read().decode()
-        m = re.search(
-            r'WIDTH="(\d+)"\s+HEIGHT="(\d+)"\s+NUMTILES="(\d+)"'
-            r'\s+NUMIMAGES="\d+"\s+VERSION="[^"]+"\s+TILESIZE="(\d+)"',
-            xml,
-        )
-        if m:
-            return {
-                "width": int(m.group(1)),
-                "height": int(m.group(2)),
-                "num_tiles": int(m.group(3)),
-                "tile_size": int(m.group(4)),
-            }
-    except Exception as e:
-        log.warning("Failed to fetch tile info for %s/%s: %s", folder, uuid, e)
+    data = _fetch_with_retry(url, ua)
+    if data is None:
+        log.warning("Failed to fetch tile info for %s/%s after %d attempts", folder, uuid, MAX_RETRIES)
+        return None
+    xml = data.decode()
+    m = re.search(
+        r'WIDTH="(\d+)"\s+HEIGHT="(\d+)"\s+NUMTILES="(\d+)"'
+        r'\s+NUMIMAGES="\d+"\s+VERSION="[^"]+"\s+TILESIZE="(\d+)"',
+        xml,
+    )
+    if m:
+        return {
+            "width": int(m.group(1)),
+            "height": int(m.group(2)),
+            "num_tiles": int(m.group(3)),
+            "tile_size": int(m.group(4)),
+        }
     return None
 
 
 def _download_tile_direct(url: str, user_agent: str) -> bytes | None:
-    """Download a single Zoomify tile (no session needed)."""
-    try:
-        req = urllib.request.Request(url)
-        req.add_header("User-Agent", user_agent)
-        resp = urllib.request.urlopen(req, timeout=15)
-        return resp.read()
-    except Exception:
-        return None
+    """Download a single Zoomify tile with retries."""
+    return _fetch_with_retry(url, user_agent)
 
 
 def download_and_stitch(
@@ -133,17 +144,30 @@ def download_and_stitch(
 
     # Download tiles concurrently
     tile_results: dict[tuple[int, int], bytes] = {}
+    expected = {(col, row) for _, col, row in tile_jobs}
 
     with ThreadPoolExecutor(max_workers=max_workers) as pool:
         futures = {
-            pool.submit(_download_tile_direct, url, ua): (col, row)
+            pool.submit(_download_tile_direct, url, ua): (url, col, row)
             for url, col, row in tile_jobs
         }
         for future in as_completed(futures):
-            col, row = futures[future]
+            url, col, row = futures[future]
             data = future.result()
             if data:
                 tile_results[(col, row)] = data
+
+    # Retry missing tiles sequentially (connection-refused bursts are bursty)
+    missing = expected - tile_results.keys()
+    if missing:
+        log.info("  Retrying %d/%d missing tiles for %s/%s...", len(missing), len(expected), folder, uuid[:8])
+        time.sleep(1.0)
+        url_map = {(col, row): url for url, col, row in tile_jobs}
+        for col, row in sorted(missing):
+            data = _fetch_with_retry(url_map[(col, row)], ua, timeout=20)
+            if data:
+                tile_results[(col, row)] = data
+            time.sleep(0.1)
 
     if not tile_results:
         log.warning("No tiles downloaded for %s/%s", folder, uuid)

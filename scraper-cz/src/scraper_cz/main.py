@@ -112,7 +112,12 @@ def ingest_record(
 
         img = download_and_stitch(folder, uuid, session=session)
         if img is None:
-            log.warning("  [%d/%d] Failed to stitch image", seq, len(all_uuids))
+            # Retry once after a longer pause
+            log.warning("  [%d/%d] First attempt failed, retrying after 3s...", seq, len(all_uuids))
+            time.sleep(3)
+            img = download_and_stitch(folder, uuid, session=session)
+        if img is None:
+            log.error("  [%d/%d] Failed to stitch image after retry", seq, len(all_uuids))
             continue
 
         page_images.append(img)
