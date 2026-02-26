@@ -12,6 +12,7 @@ import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -22,9 +23,11 @@ import place.icomb.archiver.dto.IngestRecordRequest;
 import place.icomb.archiver.dto.IngestRecordResponse;
 import place.icomb.archiver.dto.PageMetadata;
 import place.icomb.archiver.dto.PageResponse;
+import place.icomb.archiver.model.Archive;
 import place.icomb.archiver.model.Attachment;
 import place.icomb.archiver.model.Page;
 import place.icomb.archiver.model.Record;
+import place.icomb.archiver.repository.ArchiveRepository;
 import place.icomb.archiver.repository.RecordRepository;
 import place.icomb.archiver.service.IngestService;
 
@@ -34,11 +37,69 @@ public class IngestController {
 
   private final IngestService ingestService;
   private final RecordRepository recordRepository;
+  private final ArchiveRepository archiveRepository;
 
-  public IngestController(IngestService ingestService, RecordRepository recordRepository) {
+  public IngestController(
+      IngestService ingestService,
+      RecordRepository recordRepository,
+      ArchiveRepository archiveRepository) {
     this.ingestService = ingestService;
     this.recordRepository = recordRepository;
+    this.archiveRepository = archiveRepository;
   }
+
+  // ── Archive CRUD ──────────────────────────────────────────────────────────
+
+  @GetMapping("/archives")
+  public Iterable<Archive> listArchives() {
+    return archiveRepository.findAll();
+  }
+
+  @GetMapping("/archives/{id}")
+  public ResponseEntity<Archive> getArchive(@PathVariable Long id) {
+    return archiveRepository
+        .findById(id)
+        .map(ResponseEntity::ok)
+        .orElse(ResponseEntity.notFound().build());
+  }
+
+  @PostMapping("/archives")
+  public ResponseEntity<Archive> createArchive(@RequestBody Map<String, String> body) {
+    Archive archive = new Archive();
+    archive.setName(body.get("name"));
+    archive.setCountry(body.get("country"));
+    archive.setCitationTemplate(body.get("citationTemplate"));
+    archive.setCreatedAt(java.time.Instant.now());
+    archive = archiveRepository.save(archive);
+    return ResponseEntity.status(HttpStatus.CREATED).body(archive);
+  }
+
+  @PutMapping("/archives/{id}")
+  public ResponseEntity<Archive> updateArchive(
+      @PathVariable Long id, @RequestBody Map<String, String> body) {
+    return archiveRepository
+        .findById(id)
+        .map(
+            archive -> {
+              if (body.containsKey("name")) archive.setName(body.get("name"));
+              if (body.containsKey("country")) archive.setCountry(body.get("country"));
+              if (body.containsKey("citationTemplate"))
+                archive.setCitationTemplate(body.get("citationTemplate"));
+              return ResponseEntity.ok(archiveRepository.save(archive));
+            })
+        .orElse(ResponseEntity.notFound().build());
+  }
+
+  @DeleteMapping("/archives/{id}")
+  public ResponseEntity<Void> deleteArchive(@PathVariable Long id) {
+    if (archiveRepository.existsById(id)) {
+      archiveRepository.deleteById(id);
+      return ResponseEntity.noContent().build();
+    }
+    return ResponseEntity.notFound().build();
+  }
+
+  // ── Record ingest ───────────────────────────────────────────────────────
 
   @PostMapping("/records")
   public ResponseEntity<IngestRecordResponse> createOrUpdateRecord(

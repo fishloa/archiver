@@ -166,7 +166,15 @@ public class JobService {
     } else if (!hasPages) {
       log.info("Record {} has no pages, skipping page translation", recordId);
     } else {
-      log.info("Record {} content is English (lang=en), skipping page translation", recordId);
+      // English content: copy OCR text directly to text_en so the UI can display it
+      int copied =
+          jdbcTemplate.update(
+              "UPDATE page_text SET text_en = text_raw WHERE page_id IN (SELECT id FROM page WHERE record_id = ?) AND (text_en IS NULL OR text_en = '')",
+              recordId);
+      log.info(
+          "Record {} content is English (lang=en), copied text_raw→text_en for {} pages",
+          recordId,
+          copied);
     }
 
     if (hasPages) {
