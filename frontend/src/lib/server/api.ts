@@ -184,3 +184,16 @@ export async function semanticSearch(query: string, limit: number = 10): Promise
 	if (!res.ok) throw new Error(`Backend error: ${res.status}`);
 	return res.json();
 }
+
+export async function searchFamilyTree(q: string, limit: number = 10): Promise<any[]> {
+	const params = new URLSearchParams({ q, limit: String(limit) });
+	const res = await fetch(`${backendUrl()}/api/family-tree/search?${params}`);
+	if (!res.ok) return [];
+	return res.json();
+}
+
+export async function relatePerson(personId: number): Promise<any | null> {
+	const res = await fetch(`${backendUrl()}/api/family-tree/relate?personId=${personId}`);
+	if (!res.ok) return null;
+	return res.json();
+}

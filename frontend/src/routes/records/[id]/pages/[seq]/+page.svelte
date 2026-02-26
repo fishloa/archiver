@@ -16,13 +16,18 @@
 	<title>{page.pageLabel ?? `Page ${page.seq}`} &ndash; {record.title ?? 'Record'} &ndash; Archiver</title>
 </svelte:head>
 
-<div class="mb-4 flex items-center justify-between">
-	<a href="/records/{record.id}" class="vui-btn vui-btn-ghost vui-btn-sm">
-		<ArrowLeft size={13} strokeWidth={2} /> {record.title ?? 'Back to record'}
-	</a>
-	<span class="text-[length:var(--vui-text-sm)] text-text tabular-nums">
-		{page.pageLabel ?? `Page ${page.seq}`} &middot; {page.seq} of {totalPages}
-	</span>
+<div class="mb-4">
+	<div class="flex items-center justify-between">
+		<a href="/records/{record.id}" class="vui-btn vui-btn-ghost vui-btn-sm">
+			<ArrowLeft size={13} strokeWidth={2} /> {record.title ?? 'Back to record'}
+		</a>
+		<span class="text-[length:var(--vui-text-sm)] text-text tabular-nums">
+			{page.pageLabel ?? `Page ${page.seq}`} &middot; {page.seq} of {totalPages}
+		</span>
+	</div>
+	{#if record.titleEn && record.titleEn !== record.title}
+		<p class="mt-1 ml-9 text-[length:var(--vui-text-sm)] text-emerald-400 italic">{record.titleEn}</p>
+	{/if}
 </div>
 
 <div class="flex justify-center gap-3 mb-4">

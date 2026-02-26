@@ -342,8 +342,7 @@ public class ProcessorController {
 
   @PostMapping("/embeddings")
   public ResponseEntity<Map<String, Object>> storeEmbeddings(
-      @RequestHeader("Authorization") String authHeader,
-      @RequestBody Map<String, Object> body) {
+      @RequestHeader("Authorization") String authHeader, @RequestBody Map<String, Object> body) {
     validateToken(authHeader);
     Long recordId = ((Number) body.get("recordId")).longValue();
 

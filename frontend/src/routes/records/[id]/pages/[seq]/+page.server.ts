@@ -17,7 +17,7 @@ export const load: PageServerLoad = async ({ params }) => {
 		const next = pageIndex < pages.length - 1 ? pages[pageIndex + 1] : null;
 
 		// Fetch OCR text (non-blocking — don't fail if no text yet)
-		let pageText = { pageId: page.id, text: '', confidence: 0, engine: '' };
+		let pageText = { pageId: page.id, text: '', confidence: 0, engine: '', textEn: '' };
 		try {
 			pageText = await fetchPageText(page.id);
 		} catch {

@@ -74,8 +74,7 @@ public class JobEventService {
     // Also track via worker map
     if (workerId != null && !workerId.isBlank()) {
       workers.put(
-          workerId,
-          new WorkerEntry(kinds != null ? List.copyOf(kinds) : List.of(), Instant.now()));
+          workerId, new WorkerEntry(kinds != null ? List.copyOf(kinds) : List.of(), Instant.now()));
     }
 
     Runnable cleanup = () -> emitters.remove(emitter);

@@ -1,7 +1,7 @@
 <script lang="ts">
 	import '../app.css';
 	import { page } from '$app/state';
-	import { Archive, Search, Library, Activity, Settings, PanelLeftClose, PanelLeft } from 'lucide-svelte';
+	import { Archive, Search, Library, Activity, Settings, PanelLeftClose, PanelLeft, GitBranch } from 'lucide-svelte';
 	import type { Snippet } from 'svelte';
 
 	let { children }: { children: Snippet } = $props();
@@ -11,12 +11,13 @@
 	const nav = [
 		{ href: '/', label: 'Search', icon: Search },
 		{ href: '/records', label: 'Records', icon: Library },
+		{ href: '/family-tree', label: 'Family Tree', icon: GitBranch },
 		{ href: '/pipeline', label: 'Pipeline', icon: Activity },
 		{ href: '/admin', label: 'Admin', icon: Settings }
 	];
 
 	function isActive(href: string): boolean {
-		if (href === '/') return page.url.pathname === '/' || page.url.pathname === '/ask';
+		if (href === '/') return page.url.pathname === '/' || page.url.pathname.startsWith('/ask');
 		if (href === '/records') return page.url.pathname.startsWith('/records');
 		if (href === '/admin') return page.url.pathname.startsWith('/admin');
 		return page.url.pathname.startsWith(href);

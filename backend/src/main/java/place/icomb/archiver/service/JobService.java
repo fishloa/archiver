@@ -152,7 +152,9 @@ public class JobService {
       String metaPayload = metadataLang != null ? "{\"lang\":\"" + metadataLang + "\"}" : null;
       enqueueJob("translate_record", recordId, null, metaPayload);
     } else {
-      log.info("Record {} metadata is English (metadata_lang=en), skipping metadata translation", recordId);
+      log.info(
+          "Record {} metadata is English (metadata_lang=en), skipping metadata translation",
+          recordId);
     }
 
     // Enqueue OCR text translation (auto-detect language from text)
@@ -263,7 +265,8 @@ public class JobService {
 
     for (Long recordId : ingestingStuck) {
       log.info("Audit: completing stuck ingest for record {}", recordId);
-      var langRow = jdbcTemplate.queryForMap("SELECT lang, page_count FROM record WHERE id = ?", recordId);
+      var langRow =
+          jdbcTemplate.queryForMap("SELECT lang, page_count FROM record WHERE id = ?", recordId);
       String lang = (String) langRow.get("lang");
       int pc = ((Number) langRow.get("page_count")).intValue();
 
@@ -285,7 +288,8 @@ public class JobService {
         }
         jdbcTemplate.update(
             "UPDATE record SET status = 'ocr_pending', updated_at = now() WHERE id = ?", recordId);
-        logPipelineEvent(recordId, "ingest", "completed", "from audit: " + pageIds.size() + " pages");
+        logPipelineEvent(
+            recordId, "ingest", "completed", "from audit: " + pageIds.size() + " pages");
         logPipelineEvent(
             recordId, "ocr", "started", "from audit: " + pageIds.size() + " jobs enqueued");
         recordEventService.recordChanged(recordId, "status");
@@ -366,7 +370,8 @@ public class JobService {
             "UPDATE record SET status = 'embedding', updated_at = now() WHERE id = ?", recordId);
         enqueueJob("embed_record", recordId, null, null);
         logPipelineEvent(recordId, "embedding", "started", "from audit (0 pages)");
-        log.info("Audit: record {} pdf_pending → embedding (0 pages, no translation pending)", recordId);
+        log.info(
+            "Audit: record {} pdf_pending → embedding (0 pages, no translation pending)", recordId);
       }
       logPipelineEvent(recordId, "pdf_build", "completed", "skipped (no pages)");
       recordEventService.recordChanged(recordId, "status");

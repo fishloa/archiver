@@ -104,7 +104,9 @@ public class ViewerController {
 
     // Per-stage page progress: how many pages have completed within each active stage
     // OCR: pages with page_text vs total pages for records in ocr_pending
-    Map<String, Object> ocrProgress = jdbcTemplate.queryForMap("""
+    Map<String, Object> ocrProgress =
+        jdbcTemplate.queryForMap(
+            """
         SELECT COALESCE(SUM(CASE WHEN EXISTS (SELECT 1 FROM page_text pt WHERE pt.page_id = p.id)
                THEN 1 ELSE 0 END), 0) AS done,
                COUNT(*) AS total
@@ -115,7 +117,9 @@ public class ViewerController {
     long ocrPagesTotal = ((Number) ocrProgress.get("total")).longValue();
 
     // Translation: pages with text_en vs total pages for records in translating status
-    Map<String, Object> transProgress = jdbcTemplate.queryForMap("""
+    Map<String, Object> transProgress =
+        jdbcTemplate.queryForMap(
+            """
         SELECT COALESCE(SUM(CASE WHEN pt.text_en IS NOT NULL AND pt.text_en != ''
                THEN 1 ELSE 0 END), 0) AS done,
                COUNT(*) AS total
@@ -128,7 +132,9 @@ public class ViewerController {
     long transPagesTotal = ((Number) transProgress.get("total")).longValue();
 
     // Scraping: pages already downloaded vs expected page_count for ingesting records
-    Map<String, Object> scrapingProgress = jdbcTemplate.queryForMap("""
+    Map<String, Object> scrapingProgress =
+        jdbcTemplate.queryForMap(
+            """
         SELECT COALESCE(SUM((SELECT count(*) FROM page p WHERE p.record_id = r.id)), 0) AS done,
                COALESCE(SUM(r.page_count), 0) AS total
         FROM record r WHERE r.status = 'ingesting'
@@ -139,20 +145,38 @@ public class ViewerController {
     // Build stage objects
     List<Map<String, Object>> stages = new java.util.ArrayList<>();
 
-    var scrapingStage = buildStage(
-        "Scraping", "ingesting", recordsByStatus, pagesByStatus, null, jobsByKind, workerCounts);
+    var scrapingStage =
+        buildStage(
+            "Scraping",
+            "ingesting",
+            recordsByStatus,
+            pagesByStatus,
+            null,
+            jobsByKind,
+            workerCounts);
     scrapingStage.put("pagesDone", scrapingPagesDone);
     scrapingStage.put("pagesTotal", scrapingPagesTotal);
     stages.add(scrapingStage);
 
     stages.add(
         buildStage(
-            "Ingested", "ingested", recordsByStatus, pagesByStatus, null, jobsByKind,
+            "Ingested",
+            "ingested",
+            recordsByStatus,
+            pagesByStatus,
+            null,
+            jobsByKind,
             workerCounts));
 
-    var ocrStage = buildStage(
-        "OCR", "ocr_pending", recordsByStatus, pagesByStatus,
-        new String[] {"ocr_page_paddle"}, jobsByKind, workerCounts);
+    var ocrStage =
+        buildStage(
+            "OCR",
+            "ocr_pending",
+            recordsByStatus,
+            pagesByStatus,
+            new String[] {"ocr_page_paddle"},
+            jobsByKind,
+            workerCounts);
     ocrStage.put("pagesDone", ocrPagesDone);
     ocrStage.put("pagesTotal", ocrPagesTotal);
     stages.add(ocrStage);
@@ -167,9 +191,15 @@ public class ViewerController {
             jobsByKind,
             workerCounts));
 
-    var transStage = buildStage(
-        "Translation", "translating", recordsByStatus, pagesByStatus,
-        new String[] {"translate_page", "translate_record"}, jobsByKind, workerCounts);
+    var transStage =
+        buildStage(
+            "Translation",
+            "translating",
+            recordsByStatus,
+            pagesByStatus,
+            new String[] {"translate_page", "translate_record"},
+            jobsByKind,
+            workerCounts);
     transStage.put("pagesDone", transPagesDone);
     transStage.put("pagesTotal", transPagesTotal);
     stages.add(transStage);

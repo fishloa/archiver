@@ -29,20 +29,17 @@ public class SemanticSearchController {
 
   private static final Set<String> STOP_WORDS =
       Set.of(
-          "a", "an", "the", "is", "are", "was", "were", "be", "been", "being",
-          "have", "has", "had", "do", "does", "did", "will", "would", "could",
-          "should", "may", "might", "shall", "can", "need", "dare", "ought",
-          "used", "to", "of", "in", "for", "on", "with", "at", "by", "from",
-          "as", "into", "through", "during", "before", "after", "above", "below",
-          "between", "out", "off", "over", "under", "again", "further", "then",
-          "once", "here", "there", "when", "where", "why", "how", "all", "both",
-          "each", "few", "more", "most", "other", "some", "such", "no", "nor",
-          "not", "only", "own", "same", "so", "than", "too", "very", "just",
-          "don", "now", "and", "but", "or", "if", "while", "about", "any",
-          "what", "which", "who", "whom", "this", "that", "these", "those",
-          "i", "me", "my", "we", "our", "you", "your", "he", "him", "his",
-          "she", "her", "it", "its", "they", "them", "their", "see", "get",
-          "got", "find", "found", "know", "think", "tell", "say", "said");
+          "a", "an", "the", "is", "are", "was", "were", "be", "been", "being", "have", "has", "had",
+          "do", "does", "did", "will", "would", "could", "should", "may", "might", "shall", "can",
+          "need", "dare", "ought", "used", "to", "of", "in", "for", "on", "with", "at", "by",
+          "from", "as", "into", "through", "during", "before", "after", "above", "below", "between",
+          "out", "off", "over", "under", "again", "further", "then", "once", "here", "there",
+          "when", "where", "why", "how", "all", "both", "each", "few", "more", "most", "other",
+          "some", "such", "no", "nor", "not", "only", "own", "same", "so", "than", "too", "very",
+          "just", "don", "now", "and", "but", "or", "if", "while", "about", "any", "what", "which",
+          "who", "whom", "this", "that", "these", "those", "i", "me", "my", "we", "our", "you",
+          "your", "he", "him", "his", "she", "her", "it", "its", "they", "them", "their", "see",
+          "get", "got", "find", "found", "know", "think", "tell", "say", "said");
 
   private final JdbcTemplate jdbcTemplate;
   private final String openaiApiKey;
@@ -50,8 +47,7 @@ public class SemanticSearchController {
   private final ObjectMapper objectMapper = new ObjectMapper();
 
   public SemanticSearchController(
-      JdbcTemplate jdbcTemplate,
-      @Value("${archiver.openai.api-key:}") String openaiApiKey) {
+      JdbcTemplate jdbcTemplate, @Value("${archiver.openai.api-key:}") String openaiApiKey) {
     this.jdbcTemplate = jdbcTemplate;
     this.openaiApiKey = openaiApiKey;
   }
@@ -66,8 +62,7 @@ public class SemanticSearchController {
     }
 
     if (openaiApiKey == null || openaiApiKey.isBlank()) {
-      return ResponseEntity.status(503)
-          .body(Map.of("error", "OpenAI API key not configured"));
+      return ResponseEntity.status(503).body(Map.of("error", "OpenAI API key not configured"));
     }
 
     try {
@@ -162,7 +157,7 @@ public class SemanticSearchController {
       List<Object> allParams = new ArrayList<>();
       allParams.add(vecStr.toString()); // candidates: sem_score
       allParams.add(vecStr.toString()); // candidates: ORDER BY
-      allParams.addAll(params);         // keyword ?'s in scored CTE
+      allParams.addAll(params); // keyword ?'s in scored CTE
       allParams.add(limit);
 
       long tDbStart = System.currentTimeMillis();
@@ -207,8 +202,7 @@ public class SemanticSearchController {
             .POST(HttpRequest.BodyPublishers.ofString(jsonBody))
             .build();
 
-    HttpResponse<String> response =
-        httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+    HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
 
     if (response.statusCode() != 200) {
       throw new RuntimeException(

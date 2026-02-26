@@ -217,9 +217,7 @@ public class ApiController {
     queryParams.add(offset);
     List<Record> rows =
         jdbcTemplate.query(
-            "SELECT * FROM record r "
-                + where
-                + " ORDER BY r.created_at DESC LIMIT ? OFFSET ?",
+            "SELECT * FROM record r " + where + " ORDER BY r.created_at DESC LIMIT ? OFFSET ?",
             new BeanPropertyRowMapper<>(Record.class),
             queryParams.toArray());
 
