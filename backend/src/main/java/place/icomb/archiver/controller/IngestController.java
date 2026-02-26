@@ -2,6 +2,7 @@ package place.icomb.archiver.controller;
 
 import jakarta.validation.Valid;
 import java.io.IOException;
+import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -69,6 +70,7 @@ public class IngestController {
     archive.setName(body.get("name"));
     archive.setCountry(body.get("country"));
     archive.setCitationTemplate(body.get("citationTemplate"));
+    archive.setCreatedAt(Instant.now());
     archive = archiveRepository.save(archive);
     return ResponseEntity.status(HttpStatus.CREATED).body(archive);
   }
