@@ -21,7 +21,7 @@
 		const es = new EventSource('/api/records/events');
 		es.addEventListener('record', () => {
 			if (debounceTimer) clearTimeout(debounceTimer);
-			debounceTimer = setTimeout(() => invalidate('app:pipeline'), 2000);
+			debounceTimer = setTimeout(() => invalidate('app:pipeline'), 500);
 		});
 		es.onopen = () => { connected = true; };
 		es.onerror = () => { connected = false; };
