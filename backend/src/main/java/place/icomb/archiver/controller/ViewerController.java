@@ -114,7 +114,7 @@ public class ViewerController {
     long ocrPagesDone = ((Number) ocrProgress.get("done")).longValue();
     long ocrPagesTotal = ((Number) ocrProgress.get("total")).longValue();
 
-    // Translation: pages with text_en vs total pages for records in translating/pdf_pending/pdf_done
+    // Translation: pages with text_en vs total pages for records in translating status
     Map<String, Object> transProgress = jdbcTemplate.queryForMap("""
         SELECT COALESCE(SUM(CASE WHEN pt.text_en IS NOT NULL AND pt.text_en != ''
                THEN 1 ELSE 0 END), 0) AS done,
@@ -122,7 +122,7 @@ public class ViewerController {
         FROM page p
         JOIN record r ON r.id = p.record_id
         LEFT JOIN page_text pt ON pt.page_id = p.id
-        WHERE r.status IN ('pdf_pending', 'pdf_done', 'translating')
+        WHERE r.status = 'translating'
         """);
     long transPagesDone = ((Number) transProgress.get("done")).longValue();
     long transPagesTotal = ((Number) transProgress.get("total")).longValue();
