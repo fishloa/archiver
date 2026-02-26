@@ -89,6 +89,7 @@ public class FamilyTreeController {
     }
     m.put("children", children);
     m.put("spouses", p.spouses);
+    m.put("events", familyTreeService.getLifeEvents(p));
 
     return ResponseEntity.ok(m);
   }

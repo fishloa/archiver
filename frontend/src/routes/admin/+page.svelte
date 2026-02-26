@@ -165,16 +165,17 @@
 			<table class="w-full text-left text-[length:var(--vui-text-sm)]">
 				<thead>
 					<tr class="border-b border-border">
+						<th class="px-3 py-2 text-[11px] font-semibold uppercase tracking-wide text-text-sub">Time</th>
 						<th class="px-3 py-2 text-[11px] font-semibold uppercase tracking-wide text-text-sub">Record</th>
 						<th class="px-3 py-2 text-[11px] font-semibold uppercase tracking-wide text-text-sub">Stage</th>
 						<th class="px-3 py-2 text-[11px] font-semibold uppercase tracking-wide text-text-sub">Event</th>
 						<th class="px-3 py-2 text-[11px] font-semibold uppercase tracking-wide text-text-sub">Detail</th>
-						<th class="px-3 py-2 text-[11px] font-semibold uppercase tracking-wide text-text-sub">Time</th>
 					</tr>
 				</thead>
 				<tbody>
 					{#each recentEvents as ev}
 						<tr class="border-b border-border">
+							<td class="px-3 py-2 text-text-sub whitespace-nowrap tabular-nums">{formatDate(ev.created_at)}</td>
 							<td class="px-3 py-2 max-w-[280px]">
 								<a href="/records/{ev.record_id}" class="text-accent hover:text-accent-hover hover:underline" title={ev.record_title ?? `#${ev.record_id}`}>
 									<span class="text-text-muted">#{ev.record_id}</span>
@@ -190,7 +191,6 @@
 								</span>
 							</td>
 							<td class="px-3 py-2 text-text-sub">{ev.detail ?? ''}</td>
-							<td class="px-3 py-2 text-text-sub whitespace-nowrap tabular-nums">{formatDate(ev.created_at)}</td>
 						</tr>
 					{/each}
 				</tbody>

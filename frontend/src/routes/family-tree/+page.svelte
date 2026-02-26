@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
-	import { Search } from 'lucide-svelte';
+	import { Search, ChevronRight } from 'lucide-svelte';
 
 	let { data } = $props();
 	let query = $state(data.q || '');
@@ -17,10 +17,28 @@
 	function selectPerson(personId: number) {
 		goto(`/family-tree?q=${encodeURIComponent(data.q)}&personId=${personId}`);
 	}
+
+	function navigatePerson(personId: number) {
+		goto(`/family-tree?q=${encodeURIComponent(data.q || data.person?.name || '')}&personId=${personId}`);
+	}
+
+	const eventIcon: Record<string, string> = {
+		birth: '*',
+		death: '\u2020',
+		marriage: '\u221E',
+		'marriage & divorce': '\u221E'
+	};
+
+	const eventColor: Record<string, string> = {
+		birth: 'var(--vui-accent)',
+		death: '#f87171',
+		marriage: '#a78bfa',
+		'marriage & divorce': '#fbbf24'
+	};
 </script>
 
 <svelte:head>
-	<title>{data.q ? `Family Tree - ${data.q}` : 'Family Tree - Archiver'}</title>
+	<title>{data.q ? `Family Tree \u2013 ${data.q}` : 'Family Tree \u2013 Archiver'}</title>
 </svelte:head>
 
 {#if showLanding}
@@ -29,46 +47,109 @@
 		<p class="subtitle">Search the Czernin genealogy and discover relationships to Alexander</p>
 		<form onsubmit={doSearch} class="search-form landing-form">
 			<Search size={18} class="search-icon" />
-			<input
-				type="text"
-				bind:value={query}
-				placeholder="Search by name..."
-				class="search-input"
-				autofocus
-			/>
+			<input type="text" bind:value={query} placeholder="Search by name..." class="search-input" autofocus />
 		</form>
 	</div>
 {:else}
 	<div class="search-layout">
 		<form onsubmit={doSearch} class="search-form results-form">
 			<Search size={16} class="search-icon" />
-			<input
-				type="text"
-				bind:value={query}
-				class="search-input"
-			/>
+			<input type="text" bind:value={query} class="search-input" />
 		</form>
 
-		{#if data.relationship}
-			<div class="relationship-card">
-				<div class="kinship-label">{data.relationship.kinshipLabel}</div>
-				<h3 class="rel-person-name">{data.relationship.personName}</h3>
-				<p class="rel-ref">Relationship to Alexander Friedrich Josef Paul Maria Czernin (Lucki)</p>
-				{#if data.relationship.pathDescription}
-					<p class="rel-path">{data.relationship.pathDescription}</p>
+		<!-- Person detail panel -->
+		{#if data.person}
+			{@const p = data.person}
+			{@const rel = data.relationship}
+			<div class="detail-panel">
+				<div class="detail-header">
+					<div>
+						<h2 class="detail-name">{p.name}</h2>
+						<div class="detail-meta">
+							<span class="detail-section">{p.section}</span>
+							{#if p.code}<span class="detail-code">{p.code}</span>{/if}
+							{#if p.birthYear || p.deathYear}
+								<span class="detail-lifespan">
+									{p.birthYear ?? '?'} &ndash; {p.deathYear ?? '?'}
+								</span>
+							{/if}
+						</div>
+					</div>
+					{#if rel}
+						<div class="detail-kinship">
+							<span class="kinship-badge">{rel.kinshipLabel}</span>
+							<span class="kinship-ref">to Alexander (Lucki)</span>
+						</div>
+					{/if}
+				</div>
+
+				{#if rel?.pathDescription}
+					<p class="detail-path">{rel.pathDescription}</p>
 				{/if}
-				{#if data.relationship.commonAncestorName}
-					<div class="rel-ancestor">
-						<span class="rel-ancestor-label">Common ancestor:</span>
-						<span class="rel-ancestor-name">{data.relationship.commonAncestorName}</span>
-						<span class="rel-steps">
-							({data.relationship.stepsFromPerson} gen. from person, {data.relationship.stepsFromAlexander} from Alexander)
+
+				<!-- Timeline -->
+				{#if p.events && p.events.length > 0}
+					<div class="timeline">
+						{#each p.events as ev, i}
+							<div class="tl-row">
+								<div class="tl-dot-col">
+									<span class="tl-dot" style="background: {eventColor[ev.type] ?? 'var(--vui-text-muted)'}">
+										{eventIcon[ev.type] ?? '\u25CF'}
+									</span>
+									{#if i < p.events.length - 1}
+										<span class="tl-line"></span>
+									{/if}
+								</div>
+								<div class="tl-content">
+									<span class="tl-type" style="color: {eventColor[ev.type] ?? 'var(--vui-text-muted)'}">
+										{ev.type === 'marriage & divorce' ? 'Marriage (divorced)' : ev.type.charAt(0).toUpperCase() + ev.type.slice(1)}
+									</span>
+									{#if ev.year}
+										<span class="tl-year">{ev.year}</span>
+									{/if}
+									<div class="tl-text">{ev.text}</div>
+								</div>
+							</div>
+						{/each}
+					</div>
+				{/if}
+
+				<!-- Family links -->
+				<div class="detail-family">
+					{#if p.parent}
+						<div class="family-row">
+							<span class="family-label">Parent</span>
+							<button class="family-link" onclick={() => navigatePerson(p.parent.id)}>
+								{p.parent.name} <ChevronRight size={14} />
+							</button>
+						</div>
+					{/if}
+					{#if p.children && p.children.length > 0}
+						<div class="family-row">
+							<span class="family-label">Children</span>
+							<div class="family-chips">
+								{#each p.children as child}
+									<button class="family-link" onclick={() => navigatePerson(child.id)}>
+										{child.name} <ChevronRight size={14} />
+									</button>
+								{/each}
+							</div>
+						</div>
+					{/if}
+				</div>
+
+				{#if rel?.commonAncestorName}
+					<div class="detail-ancestor">
+						Common ancestor: <strong>{rel.commonAncestorName}</strong>
+						<span class="ancestor-steps">
+							({rel.stepsFromPerson} gen. from person, {rel.stepsFromAlexander} from Alexander)
 						</span>
 					</div>
 				{/if}
 			</div>
 		{/if}
 
+		<!-- Search results -->
 		{#if hasResults}
 			<div class="results">
 				{#each data.results as result}
@@ -88,8 +169,8 @@
 							{/if}
 							{#if result.birthYear || result.deathYear}
 								<span class="result-dates">
-									{#if result.birthYear}*{result.birthYear}{/if}
-									{#if result.deathYear} +{result.deathYear}{/if}
+									{#if result.birthYear}<span class="date-birth">*{result.birthYear}</span>{/if}
+									{#if result.deathYear}<span class="date-death">&dagger;{result.deathYear}</span>{/if}
 								</span>
 							{/if}
 						</div>
@@ -164,58 +245,223 @@
 		max-width: 700px;
 	}
 
-	/* Relationship card */
-	.relationship-card {
-		padding: 20px;
+	/* ── Detail panel ── */
+	.detail-panel {
+		padding: 24px;
 		border: 1.5px solid var(--vui-accent);
 		border-radius: var(--vui-radius-md);
 		background: var(--vui-accent-dim);
 		margin-bottom: 24px;
 	}
 
-	.kinship-label {
-		font-size: 24px;
+	.detail-header {
+		display: flex;
+		justify-content: space-between;
+		align-items: flex-start;
+		gap: 16px;
+		flex-wrap: wrap;
+		margin-bottom: 12px;
+	}
+
+	.detail-name {
+		font-size: 22px;
 		font-weight: 700;
-		color: var(--vui-accent);
-		margin-bottom: 8px;
-		text-transform: capitalize;
-	}
-
-	.rel-person-name {
-		font-size: 16px;
-		font-weight: 600;
 		color: var(--vui-text);
-		margin: 0 0 4px;
+		margin: 0 0 6px;
 	}
 
-	.rel-ref {
-		font-size: 12px;
-		color: var(--vui-text-muted);
-		margin: 0 0 12px;
-	}
-
-	.rel-path {
-		font-size: 14px;
-		color: var(--vui-text-sub);
-		line-height: 1.6;
-		margin: 0 0 12px;
-	}
-
-	.rel-ancestor {
+	.detail-meta {
 		display: flex;
 		flex-wrap: wrap;
-		align-items: baseline;
-		gap: 6px;
-		padding-top: 12px;
-		border-top: 1px solid var(--vui-border);
+		align-items: center;
+		gap: 8px;
 		font-size: 13px;
 	}
 
-	.rel-ancestor-label { color: var(--vui-text-muted); }
-	.rel-ancestor-name { color: var(--vui-accent); font-weight: 600; }
-	.rel-steps { color: var(--vui-text-muted); font-size: 12px; }
+	.detail-section {
+		padding: 2px 8px;
+		background: var(--vui-surface);
+		border-radius: 4px;
+		border: 1px solid var(--vui-border);
+		color: var(--vui-text-sub);
+		font-weight: 500;
+	}
 
-	/* Results */
+	.detail-code {
+		font-family: monospace;
+		color: var(--vui-text-muted);
+	}
+
+	.detail-lifespan {
+		font-weight: 700;
+		color: var(--vui-text);
+		font-size: 14px;
+	}
+
+	.detail-kinship {
+		text-align: right;
+		flex-shrink: 0;
+	}
+
+	.kinship-badge {
+		display: block;
+		font-size: 18px;
+		font-weight: 700;
+		color: var(--vui-accent);
+		text-transform: capitalize;
+	}
+
+	.kinship-ref {
+		font-size: 11px;
+		color: var(--vui-text-muted);
+	}
+
+	.detail-path {
+		font-size: 14px;
+		color: var(--vui-text-sub);
+		line-height: 1.6;
+		margin: 0 0 16px;
+		padding-bottom: 16px;
+		border-bottom: 1px solid color-mix(in srgb, var(--vui-border) 60%, transparent);
+	}
+
+	/* ── Timeline ── */
+	.timeline {
+		display: flex;
+		flex-direction: column;
+		margin-bottom: 16px;
+	}
+
+	.tl-row {
+		display: flex;
+		gap: 14px;
+		min-height: 48px;
+	}
+
+	.tl-dot-col {
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		width: 28px;
+		flex-shrink: 0;
+	}
+
+	.tl-dot {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		width: 28px;
+		height: 28px;
+		border-radius: 50%;
+		font-size: 14px;
+		font-weight: 700;
+		color: var(--vui-bg-deep);
+		flex-shrink: 0;
+	}
+
+	.tl-line {
+		flex: 1;
+		width: 2px;
+		background: color-mix(in srgb, var(--vui-border) 80%, transparent);
+		min-height: 12px;
+	}
+
+	.tl-content {
+		padding-bottom: 14px;
+		flex: 1;
+		min-width: 0;
+	}
+
+	.tl-type {
+		font-size: 11px;
+		font-weight: 700;
+		text-transform: uppercase;
+		letter-spacing: 0.05em;
+	}
+
+	.tl-year {
+		font-size: 11px;
+		font-weight: 600;
+		color: var(--vui-text);
+		margin-left: 8px;
+	}
+
+	.tl-text {
+		font-size: 14px;
+		color: var(--vui-text);
+		margin-top: 2px;
+		line-height: 1.5;
+		word-break: break-word;
+	}
+
+	/* ── Family links ── */
+	.detail-family {
+		display: flex;
+		flex-direction: column;
+		gap: 8px;
+		padding: 14px 0;
+		border-top: 1px solid color-mix(in srgb, var(--vui-border) 60%, transparent);
+	}
+
+	.family-row {
+		display: flex;
+		align-items: baseline;
+		gap: 10px;
+	}
+
+	.family-label {
+		font-size: 11px;
+		font-weight: 600;
+		text-transform: uppercase;
+		letter-spacing: 0.05em;
+		color: var(--vui-text-muted);
+		min-width: 60px;
+		flex-shrink: 0;
+	}
+
+	.family-chips {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 6px;
+	}
+
+	.family-link {
+		display: inline-flex;
+		align-items: center;
+		gap: 2px;
+		padding: 3px 10px;
+		border: 1px solid var(--vui-border);
+		border-radius: 16px;
+		background: var(--vui-surface);
+		color: var(--vui-accent);
+		font-size: 13px;
+		font-weight: 500;
+		cursor: pointer;
+		font-family: inherit;
+		transition: all 0.15s ease;
+	}
+
+	.family-link:hover {
+		border-color: var(--vui-accent);
+		background: var(--vui-accent-dim);
+	}
+
+	.detail-ancestor {
+		font-size: 12px;
+		color: var(--vui-text-sub);
+		padding-top: 12px;
+		border-top: 1px solid color-mix(in srgb, var(--vui-border) 60%, transparent);
+	}
+
+	.detail-ancestor strong {
+		color: var(--vui-accent);
+	}
+
+	.ancestor-steps {
+		color: var(--vui-text-muted);
+	}
+
+	/* ── Results ── */
 	.results {
 		display: flex;
 		flex-direction: column;
@@ -267,6 +513,7 @@
 		display: flex;
 		flex-wrap: wrap;
 		gap: 8px;
+		align-items: center;
 		font-size: 12px;
 		color: var(--vui-text-muted);
 	}
@@ -280,6 +527,21 @@
 
 	.result-code {
 		font-family: monospace;
+	}
+
+	.result-dates {
+		display: flex;
+		gap: 6px;
+		font-size: 13px;
+		font-weight: 700;
+	}
+
+	.date-birth {
+		color: var(--vui-accent);
+	}
+
+	.date-death {
+		color: #f87171;
 	}
 
 	.empty {

@@ -157,6 +157,67 @@ public class FamilyTreeService {
     return peopleById.get(id);
   }
 
+  public List<Map<String, Object>> getLifeEvents(Person p) {
+    List<Map<String, Object>> events = new ArrayList<>();
+
+    String text = CODE_PREFIX.matcher(p.fullEntry).replaceFirst("");
+    text = text.replaceFirst("^\\[\\d?m\\.?\\]\\s*", "");
+
+    String[] segments = text.split(";");
+    for (String seg : segments) {
+      String s = seg.trim();
+      if (s.isEmpty() || s.startsWith("all children")) continue;
+
+      int starIdx = idxOutsideParens(s, '*');
+      int plusIdx = idxOutsideParens(s, '+');
+
+      if (starIdx >= 0) {
+        String afterStar = s.substring(starIdx + 1);
+        int plusInBirth = idxOutsideParens(afterStar, '+');
+        if (plusInBirth >= 0) {
+          events.add(
+              lifeEvent(
+                  "birth", afterStar.substring(0, plusInBirth).replaceAll(",\\s*$", "").trim()));
+          events.add(lifeEvent("death", afterStar.substring(plusInBirth + 1).trim()));
+        } else {
+          events.add(lifeEvent("birth", afterStar.trim()));
+        }
+      } else if (plusIdx >= 0) {
+        events.add(lifeEvent("death", s.substring(plusIdx + 1).trim()));
+      } else if (s.matches("^\\d?m[\\.:].*") || s.startsWith("m.")) {
+        String mt = s.replaceFirst("^\\d?m[\\.:]\\s*", "").trim();
+        events.add(lifeEvent(s.contains("(div") ? "marriage & divorce" : "marriage", mt));
+      }
+    }
+
+    events.sort(
+        Comparator.comparingInt(
+            e -> {
+              Object y = e.get("year");
+              return y instanceof Integer ? (Integer) y : 9999;
+            }));
+    return events;
+  }
+
+  private int idxOutsideParens(String s, char target) {
+    int depth = 0;
+    for (int i = 0; i < s.length(); i++) {
+      char c = s.charAt(i);
+      if (c == '(') depth++;
+      else if (c == ')') depth = Math.max(0, depth - 1);
+      else if (c == target && depth == 0) return i;
+    }
+    return -1;
+  }
+
+  private Map<String, Object> lifeEvent(String type, String text) {
+    Map<String, Object> m = new LinkedHashMap<>();
+    m.put("type", type);
+    m.put("text", text);
+    m.put("year", extractYear(text));
+    return m;
+  }
+
   public int getPersonCount() {
     return allPeople.size();
   }

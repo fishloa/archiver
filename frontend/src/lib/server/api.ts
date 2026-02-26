@@ -197,3 +197,9 @@ export async function relatePerson(personId: number): Promise<any | null> {
 	if (!res.ok) return null;
 	return res.json();
 }
+
+export async function fetchFamilyPerson(personId: number): Promise<any | null> {
+	const res = await fetch(`${backendUrl()}/api/family-tree/person/${personId}`);
+	if (!res.ok) return null;
+	return res.json();
+}
