@@ -91,30 +91,28 @@ public class SemanticSearchController {
       }
       vecStr.append("]");
 
-      // 4. Hybrid search: semantic similarity + keyword/trigram boost
-      //    - keyword_boost: 0.3 if any keyword fuzzy-matches a word in the content (pg_trgm)
-      //    - This boosts results containing names like "czernin"/"cernin" above generic matches
+      // 4. Hybrid search: semantic + keyword hit counting
+      //    Each keyword that appears in the content (via pg_trgm word_similarity >= 0.5)
+      //    adds 0.5 to the score. This means actual keyword presence dominates.
+      //    A chunk with "czernin" gets +0.5, one without gets +0.0 for that keyword.
       String keywordBoostExpr;
       List<Object> params = new ArrayList<>();
 
       if (keywords.isEmpty()) {
         keywordBoostExpr = "0.0";
       } else {
-        // Build: GREATEST(similarity(lower(content), kw1), similarity(lower(content), kw2), ...)
-        // pg_trgm similarity handles fuzzy matching (czernin ≈ cernin)
-        StringBuilder sb = new StringBuilder("GREATEST(");
+        // Sum of per-keyword hits: each keyword contributes 0.5 if word_similarity >= 0.4
+        // pg_trgm word_similarity handles fuzzy: czernin ≈ cernin (~0.55 similarity)
+        StringBuilder sb = new StringBuilder("(");
         for (int i = 0; i < keywords.size(); i++) {
-          if (i > 0) sb.append(", ");
-          // Use word_similarity for substring matching (finds "czernin" inside long text)
-          sb.append("word_similarity(?, lower(tc.content))");
+          if (i > 0) sb.append(" + ");
+          sb.append("CASE WHEN word_similarity(?, lower(tc.content)) >= 0.4 THEN 0.5 ELSE 0.0 END");
           params.add(keywords.get(i));
         }
         sb.append(")");
         keywordBoostExpr = sb.toString();
       }
 
-      // Build full query — param order must match ? order in SQL:
-      // vec (sem_score), keyword params..., vec (WHERE filter), limit
       String sql =
           """
           WITH scored AS (
@@ -126,8 +124,8 @@ public class SemanticSearchController {
           ),
           ranked AS (
             SELECT *,
-                   sem_score + (kw_score * 1.5) AS hybrid_score,
-                   ROW_NUMBER() OVER (PARTITION BY record_id ORDER BY sem_score + (kw_score * 1.5) DESC) AS rn
+                   sem_score + kw_score AS hybrid_score,
+                   ROW_NUMBER() OVER (PARTITION BY record_id ORDER BY sem_score + kw_score DESC) AS rn
             FROM scored
           )
           SELECT r.record_id, r.page_id, r.chunk_index, r.content,
