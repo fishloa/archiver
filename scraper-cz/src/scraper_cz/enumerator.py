@@ -4,11 +4,14 @@ Combines session, search, and record modules to paginate through
 all results for a given search term.
 """
 
+from __future__ import annotations
+
 import time
 import logging
 
 from .config import get_config
 from .session import VadeMeCumSession, BASE
+from .progress import ProgressTracker
 from . import search as search_mod
 from . import record as record_mod
 
@@ -31,7 +34,7 @@ def enumerate_all(
         digi_only: Only digitised records.
         levels: Search level codes.
         nad: Optional NAD number filter.
-        max_items: Safety cap on total items.
+        max_items: Safety cap on total items.  Use 0 for no cap.
 
     Returns:
         (total_count, list_of_record_dicts)
@@ -54,7 +57,9 @@ def enumerate_all(
 
     log.info("%d total results, got %d on first page", total, len(results))
 
-    if len(all_results) >= total or len(all_results) >= max_items:
+    effective_cap = total if max_items == 0 else min(total, max_items)
+
+    if len(all_results) >= effective_cap:
         return total, all_results
 
     # Get form params for pagination
@@ -82,10 +87,28 @@ def enumerate_all(
     row = page_size + 1  # rows are 1-indexed
     retries = 0
 
-    while len(all_results) < min(total, max_items):
+    while len(all_results) < effective_cap:
         log.info("Page row %d/%d...", row, total)
         try:
             html = search_mod.goto_page(session, row, sp, fp)
+
+            # Detect session expiry in pagination
+            if session.is_expired_response(html):
+                log.warning("Session expired during pagination at row %d, reinitialising...", row)
+                session.reinit()
+                # Re-execute the search from scratch and jump to current row
+                _, html = search_mod.search(
+                    session, term, digi_only=digi_only, levels=levels, nad=nad,
+                )
+                new_sp, new_fp = search_mod.extract_form_params(html)
+                if new_sp:
+                    sp, fp = new_sp, new_fp
+                    html = search_mod.goto_page(session, row, sp, fp)
+                else:
+                    retries += 1
+                    if retries > 3:
+                        break
+                    continue
 
             # Update form params from new page
             new_sp, new_fp = search_mod.extract_form_params(html)
@@ -121,3 +144,64 @@ def enumerate_all(
             time.sleep(cfg.delay * 4)
 
     return total, all_results
+
+
+def probe_for_hidden(
+    session: VadeMeCumSession,
+    zero_scan_records: list[dict],
+    progress: ProgressTracker,
+    nad: int,
+) -> list[dict]:
+    """Probe records that showed 0 scans in search results.
+
+    Loads the permalink page for each record to check the actual
+    scan count.  Records with scans > 0 are "hidden" — they have
+    digitised content that doesn't appear in the digiCheck search.
+
+    Args:
+        session: Active VadeMeCum session.
+        zero_scan_records: Records from enumerate_all() with scans == 0.
+        progress: Progress tracker for crash recovery.
+        nad: NAD number (for progress tracking).
+
+    Returns:
+        List of record dicts that have hidden scans (updated with
+        scan count and entity_ref from the permalink page).
+    """
+    cfg = get_config()
+    hidden: list[dict] = []
+    total = len(zero_scan_records)
+
+    for i, rec in enumerate(zero_scan_records, start=1):
+        xid = rec["xid"]
+
+        if progress.is_probed(nad, xid):
+            continue
+
+        log.info("  Probing [%d/%d] xid=%s...", i, total, xid[:12])
+
+        try:
+            html = session.get_permalink_page_safe(xid)
+            scans = record_mod.extract_scan_count(html)
+            entity_ref = record_mod.extract_entity_ref(html)
+
+            progress.mark_probed(nad, xid)
+
+            if scans > 0:
+                log.info("  HIDDEN: xid=%s has %d scans!", xid[:12], scans)
+                rec = dict(rec, scans=scans, entity_ref=entity_ref)
+                hidden.append(rec)
+                progress.mark_hidden(nad, xid)
+
+            time.sleep(cfg.delay)
+
+        except Exception as e:
+            log.warning("  Error probing xid=%s: %s", xid[:12], e)
+            time.sleep(cfg.delay * 2)
+
+    progress.save()
+    log.info(
+        "Probing complete: %d/%d records had hidden scans",
+        len(hidden), total,
+    )
+    return hidden

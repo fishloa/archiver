@@ -151,6 +151,38 @@ class VadeMeCumSession:
         assert fp is not None, "Session not initialized"
         return fp
 
+    # -- session expiry detection ------------------------------------------
+
+    @staticmethod
+    def is_expired_response(html: str) -> bool:
+        """Detect session expiry from a VadeMeCum HTML response.
+
+        The portal redirects to the login/index page when the session
+        has timed out.  We check for Czech login markers.
+        """
+        return (
+            "Přihlásit se" in html
+            or "sessionExpired" in html
+            or ("index.jsp" in html and "JSESSIONID" not in html)
+        )
+
+    def get_permalink_page_safe(self, xid: str, retries: int = 2) -> str:
+        """Load a permalink page, auto-reinitialising on session expiry.
+
+        Retries up to *retries* times if the response looks like an
+        expired-session redirect.
+        """
+        for attempt in range(retries + 1):
+            html = self.get_permalink_page(xid)
+            if not self.is_expired_response(html):
+                return html
+            log.warning(
+                "Session expired fetching xid=%s (attempt %d/%d), reinitialising...",
+                xid, attempt + 1, retries + 1,
+            )
+            self.reinit()
+        return html  # return last attempt even if still expired
+
     # -- VadeMeCum-specific requests ---------------------------------------
 
     def get_permalink_page(self, xid: str) -> str:

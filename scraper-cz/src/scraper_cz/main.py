@@ -14,7 +14,8 @@ import time
 from .config import Config, set_config, get_config
 from .client import BackendClient, SOURCE_SYSTEM
 from .session import VadeMeCumSession
-from .enumerator import enumerate_all
+from .enumerator import enumerate_all, probe_for_hidden
+from .progress import ProgressTracker
 from .record import (
     load_record_detail,
     collect_all_scan_uuids,
@@ -174,6 +175,96 @@ def run_scrape(
     return success, failed, skipped
 
 
+def run_fond_scrape(
+    nad: int,
+    session: VadeMeCumSession,
+    client: BackendClient | None,
+    known_statuses: dict[str, str],
+    progress: ProgressTracker,
+    dry_run: bool,
+    verbose: bool,
+    no_probe: bool = False,
+    levels: list[str] | None = None,
+) -> tuple[int, int, int]:
+    """Scrape an entire fond by NAD number.
+
+    Phase 1: Enumerate ALL records (no digiCheck filter, max_items=0).
+    Phase 2: Probe records with 0 scans to find hidden digitised content.
+    Phase 3: Ingest all records with scans.
+
+    Returns (success, failed, skipped).
+    """
+    log.info(
+        "\n============================================================"
+        "\n  FOND SCRAPE — NAD %d"
+        "\n============================================================",
+        nad,
+    )
+
+    session.reinit()
+
+    # Phase 1: enumerate without digiCheck
+    total, records = enumerate_all(
+        session, "*",
+        digi_only=False,
+        levels=levels,
+        nad=nad,
+        max_items=0,
+    )
+    log.info("NAD %d: %d/%d records enumerated", nad, len(records), total)
+
+    if not records:
+        return 0, 0, 0
+
+    with_scans = [r for r in records if r.get("scans", 0) > 0]
+    zero_scan = [r for r in records if r.get("scans", 0) == 0]
+    log.info(
+        "NAD %d: %d with scans, %d with 0 scans in search results",
+        nad, len(with_scans), len(zero_scan),
+    )
+
+    # Phase 2: probe for hidden scans
+    hidden: list[dict] = []
+    if not no_probe and zero_scan:
+        already_probed = progress.probed_count(nad)
+        log.info(
+            "NAD %d: probing %d records for hidden scans (%d already probed)...",
+            nad, len(zero_scan), already_probed,
+        )
+        hidden = probe_for_hidden(session, zero_scan, progress, nad)
+        log.info("NAD %d: found %d hidden records with scans", nad, len(hidden))
+
+    # Phase 3: ingest all records with scans
+    all_to_ingest = with_scans + hidden
+    log.info("NAD %d: %d records to ingest", nad, len(all_to_ingest))
+
+    if not all_to_ingest:
+        return 0, 0, 0
+
+    total_scans = sum(r.get("scans", 0) for r in all_to_ingest)
+    new_records = [
+        r for r in all_to_ingest
+        if r["xid"] not in known_statuses
+        or known_statuses.get(r["xid"]) == "ingesting"
+    ]
+    log.info(
+        "NAD %d: %d new/incomplete, %d already done, %d total scans",
+        nad, len(new_records), len(all_to_ingest) - len(new_records), total_scans,
+    )
+
+    s, f, sk = run_scrape(
+        all_to_ingest, session, client, known_statuses, dry_run, verbose,
+    )
+
+    # Mark ingested in progress tracker
+    for rec in all_to_ingest:
+        if known_statuses.get(rec["xid"]) and known_statuses[rec["xid"]] != "ingesting":
+            progress.mark_ingested(nad, rec["xid"])
+    progress.save()
+
+    return s, f, sk
+
+
 def main():
     parser = argparse.ArgumentParser(
         prog="scraper-cz",
@@ -233,6 +324,24 @@ def main():
         help="Maximum number of items to enumerate per NAD (default: 5000)",
     )
     parser.add_argument(
+        "--fond",
+        type=int,
+        nargs="+",
+        metavar="NAD",
+        help="Scrape entire fond(s) by NAD number — enumerates all records, "
+             "probes for hidden scans, and ingests everything",
+    )
+    parser.add_argument(
+        "--no-probe",
+        action="store_true",
+        help="Skip Phase 2 probing for hidden scans (faster, misses hidden docs)",
+    )
+    parser.add_argument(
+        "--progress-file",
+        metavar="FILE",
+        help="Path to JSON progress file for crash recovery",
+    )
+    parser.add_argument(
         "-v", "--verbose",
         action="store_true",
         help="Enable debug logging",
@@ -247,8 +356,8 @@ def main():
         datefmt="%H:%M:%S",
     )
 
-    if not args.term and not args.all and not args.all_nads:
-        parser.error("Provide a search term, --all FILE, or --all-nads")
+    if not args.term and not args.all and not args.all_nads and not args.fond:
+        parser.error("Provide a search term, --all FILE, --all-nads, or --fond NAD")
 
     # Apply config overrides
     cfg = Config()
@@ -273,10 +382,28 @@ def main():
         )
 
     session = VadeMeCumSession()
+    progress = ProgressTracker(args.progress_file)
     total_success, total_failed, total_skipped = 0, 0, 0
 
     try:
-        if args.all:
+        if args.fond:
+            # Full-fond scrape mode
+            for nad_num in args.fond:
+                try:
+                    s, f, sk = run_fond_scrape(
+                        nad_num, session, client, known_statuses, progress,
+                        dry_run=args.dry_run,
+                        verbose=args.verbose,
+                        no_probe=args.no_probe,
+                        levels=args.levels,
+                    )
+                    total_success += s
+                    total_failed += f
+                    total_skipped += sk
+                except Exception as e:
+                    log.error("Error scraping NAD %d: %s", nad_num, e, exc_info=args.verbose)
+
+        elif args.all:
             # Load from JSON file
             log.info("Loading records from %s", args.all)
             with open(args.all) as f:
