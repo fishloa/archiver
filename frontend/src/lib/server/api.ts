@@ -94,6 +94,8 @@ export interface PipelineStage {
 	jobsCompleted?: number;
 	jobsFailed?: number;
 	workersConnected?: number;
+	pagesDone?: number;
+	pagesTotal?: number;
 }
 
 export interface PipelineStats {

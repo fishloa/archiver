@@ -128,8 +128,11 @@ public class JobService {
 
   /** Enqueue PDF build and translation jobs, then transition to pdf_pending. */
   private void startPostOcrPipeline(Long recordId) {
-    // Enqueue one build_searchable_pdf job for the whole record
-    enqueueJob("build_searchable_pdf", recordId, null, null);
+    // Check if this record has any pages
+    Long pageCount =
+        jdbcTemplate.queryForObject(
+            "SELECT count(*) FROM page WHERE record_id = ?", Long.class, recordId);
+    boolean hasPages = pageCount != null && pageCount > 0;
 
     // Get the record's language fields
     var langRow =
@@ -137,14 +140,21 @@ public class JobService {
     String contentLang = (String) langRow.get("lang");
     String metadataLang = (String) langRow.get("metadata_lang");
 
+    // Only enqueue PDF build if record has pages
+    if (hasPages) {
+      enqueueJob("build_searchable_pdf", recordId, null, null);
+    } else {
+      log.info("Record {} has no pages, skipping PDF build", recordId);
+    }
+
     // Enqueue metadata translation with metadata_lang (hardcoded per scraper)
     String metaPayload = metadataLang != null ? "{\"lang\":\"" + metadataLang + "\"}" : null;
     enqueueJob("translate_record", recordId, null, metaPayload);
 
     // Enqueue OCR text translation (auto-detect language from text)
-    // Skip if content is explicitly marked as English
+    // Skip if content is explicitly marked as English or no pages
     int translateCount = 0;
-    if (contentLang == null || !"en".equals(contentLang)) {
+    if (hasPages && (contentLang == null || !"en".equals(contentLang))) {
       List<Long> pageIds =
           jdbcTemplate.queryForList(
               "SELECT p.id FROM page p WHERE p.record_id = ? ORDER BY p.seq", Long.class, recordId);
@@ -153,20 +163,32 @@ public class JobService {
         enqueueJob("translate_page", recordId, pageId, null);
       }
       translateCount = pageIds.size();
+    } else if (!hasPages) {
+      log.info("Record {} has no pages, skipping page translation", recordId);
     } else {
       log.info("Record {} content is English (lang=en), skipping page translation", recordId);
     }
 
-    // Transition to pdf_pending
-    jdbcTemplate.update(
-        "UPDATE record SET status = 'pdf_pending', updated_at = now() WHERE id = ? AND status = 'ocr_done'",
-        recordId);
-    log.info(
-        "Record {} → pdf_pending ({} translate jobs + 1 pdf job enqueued)",
-        recordId,
-        translateCount);
-    logPipelineEvent(recordId, "pdf_build", "started", null);
-    logPipelineEvent(recordId, "translation", "started", translateCount + " page jobs enqueued");
+    if (hasPages) {
+      // Normal flow: transition to pdf_pending
+      jdbcTemplate.update(
+          "UPDATE record SET status = 'pdf_pending', updated_at = now() WHERE id = ? AND status = 'ocr_done'",
+          recordId);
+      log.info(
+          "Record {} → pdf_pending ({} translate jobs + 1 pdf job enqueued)",
+          recordId,
+          translateCount);
+      logPipelineEvent(recordId, "pdf_build", "started", null);
+      logPipelineEvent(recordId, "translation", "started", translateCount + " page jobs enqueued");
+    } else {
+      // No pages: skip PDF entirely, go straight to translating (for metadata translation)
+      jdbcTemplate.update(
+          "UPDATE record SET status = 'translating', updated_at = now() WHERE id = ? AND status = 'ocr_done'",
+          recordId);
+      log.info("Record {} → translating (no pages, metadata-only record)", recordId);
+      logPipelineEvent(recordId, "pdf_build", "completed", "skipped (no pages)");
+      logPipelineEvent(recordId, "translation", "started", "metadata-only");
+    }
     recordEventService.recordChanged(recordId, "status");
   }
 
@@ -212,13 +234,16 @@ public class JobService {
     // --- Pass 3: Stuck ingesting records where all pages are present ---
     //     The scraper uploaded all pages but never called completeIngest.
     //     Transition to ocr_pending and enqueue OCR jobs.
+    //     Also handles 0-page records (metadata-only) — skip OCR, go to ocr_done.
     List<Long> ingestingStuck =
         jdbcTemplate.queryForList(
             """
             SELECT r.id FROM record r
             WHERE r.status = 'ingesting'
-              AND r.page_count > 0
-              AND r.page_count = (SELECT count(*) FROM page p WHERE p.record_id = r.id)
+              AND (r.page_count = 0 OR (
+                r.page_count > 0
+                AND r.page_count = (SELECT count(*) FROM page p WHERE p.record_id = r.id)
+              ))
               AND r.updated_at < now() - interval '10 minutes'
             ORDER BY r.id
             """,
@@ -226,26 +251,56 @@ public class JobService {
 
     for (Long recordId : ingestingStuck) {
       log.info("Audit: completing stuck ingest for record {}", recordId);
-      // Replicate IngestService.completeIngest logic
-      var langRow = jdbcTemplate.queryForMap("SELECT lang FROM record WHERE id = ?", recordId);
+      var langRow = jdbcTemplate.queryForMap("SELECT lang, page_count FROM record WHERE id = ?", recordId);
       String lang = (String) langRow.get("lang");
-      String ocrPayload = lang != null ? "{\"lang\":\"" + lang + "\"}" : null;
+      int pc = ((Number) langRow.get("page_count")).intValue();
 
-      List<Long> pageIds =
-          jdbcTemplate.queryForList(
-              "SELECT id FROM page WHERE record_id = ? ORDER BY seq", Long.class, recordId);
-      for (Long pageId : pageIds) {
-        enqueueJob("ocr_page_paddle", recordId, pageId, ocrPayload);
+      if (pc == 0) {
+        // Metadata-only record — skip OCR entirely
+        jdbcTemplate.update(
+            "UPDATE record SET status = 'ocr_done', updated_at = now() WHERE id = ?", recordId);
+        logPipelineEvent(recordId, "ingest", "completed", "from audit: 0 pages (metadata-only)");
+        logPipelineEvent(recordId, "ocr", "completed", "skipped (no pages)");
+        recordEventService.recordChanged(recordId, "status");
+        startPostOcrPipeline(recordId);
+      } else {
+        String ocrPayload = lang != null ? "{\"lang\":\"" + lang + "\"}" : null;
+        List<Long> pageIds =
+            jdbcTemplate.queryForList(
+                "SELECT id FROM page WHERE record_id = ? ORDER BY seq", Long.class, recordId);
+        for (Long pageId : pageIds) {
+          enqueueJob("ocr_page_paddle", recordId, pageId, ocrPayload);
+        }
+        jdbcTemplate.update(
+            "UPDATE record SET status = 'ocr_pending', updated_at = now() WHERE id = ?", recordId);
+        logPipelineEvent(recordId, "ingest", "completed", "from audit: " + pageIds.size() + " pages");
+        logPipelineEvent(
+            recordId, "ocr", "started", "from audit: " + pageIds.size() + " jobs enqueued");
+        recordEventService.recordChanged(recordId, "status");
       }
-
-      jdbcTemplate.update(
-          "UPDATE record SET status = 'ocr_pending', updated_at = now() WHERE id = ?", recordId);
-      logPipelineEvent(recordId, "ingest", "completed", "from audit: " + pageIds.size() + " pages");
-      logPipelineEvent(
-          recordId, "ocr", "started", "from audit: " + pageIds.size() + " jobs enqueued");
-      recordEventService.recordChanged(recordId, "status");
     }
     total += ingestingStuck.size();
+
+    // --- Pass 3b: ocr_pending records with 0 pages (should never be in this state) ---
+    List<Long> ocrPendingNoPages =
+        jdbcTemplate.queryForList(
+            """
+            SELECT r.id FROM record r
+            WHERE r.status = 'ocr_pending'
+              AND NOT EXISTS (SELECT 1 FROM page p WHERE p.record_id = r.id)
+            ORDER BY r.id
+            """,
+            Long.class);
+
+    for (Long recordId : ocrPendingNoPages) {
+      jdbcTemplate.update(
+          "UPDATE record SET status = 'ocr_done', updated_at = now() WHERE id = ?", recordId);
+      log.info("Audit: record {} ocr_pending → ocr_done (0 pages)", recordId);
+      logPipelineEvent(recordId, "ocr", "completed", "skipped (no pages)");
+      recordEventService.recordChanged(recordId, "status");
+      startPostOcrPipeline(recordId);
+    }
+    total += ocrPendingNoPages.size();
 
     // --- Pass 4: ocr_done records with no build_searchable_pdf job ---
     List<Long> ocrDoneStuck =
@@ -267,6 +322,44 @@ public class JobService {
       startPostOcrPipeline(recordId);
     }
     total += ocrDoneStuck.size();
+
+    // --- Pass 4b: pdf_pending records with 0 pages (skip PDF, go to translating) ---
+    List<Long> noPageRecords =
+        jdbcTemplate.queryForList(
+            """
+            SELECT r.id FROM record r
+            WHERE r.status = 'pdf_pending'
+              AND NOT EXISTS (SELECT 1 FROM page p WHERE p.record_id = r.id)
+            ORDER BY r.id
+            """,
+            Long.class);
+
+    for (Long recordId : noPageRecords) {
+      // Cancel any pending/claimed build_searchable_pdf jobs
+      jdbcTemplate.update(
+          "UPDATE job SET status = 'completed', error = 'skipped (no pages)', finished_at = now() WHERE record_id = ? AND kind = 'build_searchable_pdf' AND status IN ('pending', 'claimed', 'failed')",
+          recordId);
+      // Check if translation is still pending
+      Long pendingTranslation =
+          jdbcTemplate.queryForObject(
+              "SELECT count(*) FROM job WHERE record_id = ? AND kind IN ('translate_page', 'translate_record') AND status != 'completed'",
+              Long.class,
+              recordId);
+      if (pendingTranslation != null && pendingTranslation > 0) {
+        jdbcTemplate.update(
+            "UPDATE record SET status = 'translating', updated_at = now() WHERE id = ?", recordId);
+        log.info("Audit: record {} pdf_pending → translating (0 pages, skip PDF)", recordId);
+      } else {
+        jdbcTemplate.update(
+            "UPDATE record SET status = 'embedding', updated_at = now() WHERE id = ?", recordId);
+        enqueueJob("embed_record", recordId, null, null);
+        logPipelineEvent(recordId, "embedding", "started", "from audit (0 pages)");
+        log.info("Audit: record {} pdf_pending → embedding (0 pages, no translation pending)", recordId);
+      }
+      logPipelineEvent(recordId, "pdf_build", "completed", "skipped (no pages)");
+      recordEventService.recordChanged(recordId, "status");
+    }
+    total += noPageRecords.size();
 
     // --- Pass 5: pdf_pending records whose build_searchable_pdf job is completed
     //             but the record never transitioned to pdf_done ---

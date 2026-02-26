@@ -113,6 +113,21 @@
 						</div>
 					</div>
 
+					<!-- Page progress bar -->
+					{#if stage.pagesTotal && stage.pagesTotal > 0}
+						{@const pct = Math.round((stage.pagesDone ?? 0) / stage.pagesTotal * 100)}
+						<div class="progress-row">
+							<div class="progress-track">
+								<div class="progress-fill" style="width: {pct}%; background: {cfg.color}"></div>
+							</div>
+							<span class="progress-label">
+								<span style="color: {cfg.color}">{fmt(stage.pagesDone ?? 0)}</span>
+								/ {fmt(stage.pagesTotal)} pages
+								<span class="progress-pct" style="color: {cfg.color}">{pct}%</span>
+							</span>
+						</div>
+					{/if}
+
 					<!-- Workers row -->
 					{#if hasJobs}
 						<div class="workers-row">
@@ -282,6 +297,41 @@
 		font-size: 10px;
 		color: var(--vui-text-muted);
 		margin: 0 2px;
+	}
+
+	/* Page progress */
+	.progress-row {
+		margin-top: 10px;
+		padding-top: 10px;
+		border-top: 1px solid var(--vui-border);
+	}
+
+	.progress-track {
+		height: 6px;
+		border-radius: 3px;
+		background: var(--vui-border);
+		overflow: hidden;
+	}
+
+	.progress-fill {
+		height: 100%;
+		border-radius: 3px;
+		transition: width 0.6s ease;
+	}
+
+	.progress-label {
+		display: flex;
+		align-items: center;
+		gap: 4px;
+		margin-top: 4px;
+		font-size: 11px;
+		font-variant-numeric: tabular-nums;
+		color: var(--vui-text-sub);
+	}
+
+	.progress-pct {
+		margin-left: auto;
+		font-weight: 600;
 	}
 
 	/* Workers row */

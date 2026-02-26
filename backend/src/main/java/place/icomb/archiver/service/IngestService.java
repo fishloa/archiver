@@ -189,13 +189,31 @@ public class IngestService {
             .findById(recordId)
             .orElseThrow(() -> new IllegalArgumentException("Record not found: " + recordId));
 
+    // Enqueue OCR jobs for all pages, passing language in payload
+    String ocrPayload = record.getLang() != null ? "{\"lang\":\"" + record.getLang() + "\"}" : null;
+    List<Page> pages = pageRepository.findByRecordId(recordId);
+
+    if (pages.isEmpty()) {
+      // No pages — skip OCR entirely, go straight to ocr_done and start post-OCR pipeline
+      record.setStatus("ocr_done");
+      record.setUpdatedAt(Instant.now());
+      record = recordRepository.save(record);
+
+      jdbcTemplate.update(
+          "INSERT INTO pipeline_event (record_id, stage, event, detail, created_at) VALUES (?, 'ingest', 'completed', '0 pages (metadata-only)', now())",
+          recordId);
+      jdbcTemplate.update(
+          "INSERT INTO pipeline_event (record_id, stage, event, detail, created_at) VALUES (?, 'ocr', 'completed', 'skipped (no pages)', now())",
+          recordId);
+
+      recordEventService.recordChanged(recordId, "completed");
+      return record;
+    }
+
     record.setStatus("ocr_pending");
     record.setUpdatedAt(Instant.now());
     record = recordRepository.save(record);
 
-    // Enqueue OCR jobs for all pages, passing language in payload
-    String ocrPayload = record.getLang() != null ? "{\"lang\":\"" + record.getLang() + "\"}" : null;
-    List<Page> pages = pageRepository.findByRecordId(recordId);
     for (Page page : pages) {
       jobService.enqueueJob("ocr_page_paddle", recordId, page.getId(), ocrPayload);
     }
