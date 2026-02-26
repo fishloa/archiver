@@ -99,6 +99,21 @@
 		selectedIdx = -1;
 	}
 
+	async function navigateToPage(pg: any) {
+		if (!panel) return;
+		panel.pageSeq = pg.seq;
+		panel.pageText = null;
+		ocrOpen = false;
+		try {
+			const textRes = await fetch(`/api/pages/${pg.id}/text`);
+			if (textRes.ok && panel) {
+				panel.pageText = await textRes.json();
+			}
+		} catch (e) {
+			console.error('Failed to load page text:', e);
+		}
+	}
+
 	const panelPage = $derived(
 		panel?.pages && panel.pageSeq
 			? panel.pages.find((p: any) => p.seq === panel!.pageSeq)
@@ -279,10 +294,10 @@
 								<h3 class="panel-section-title">All pages ({panel.pages.length})</h3>
 								<div class="thumb-grid">
 									{#each panel.pages as pg}
-										<a
-											href="/records/{panel.recordId}/pages/{pg.seq}"
+										<button
 											class="thumb"
 											class:thumb-active={pg.seq === panel.pageSeq}
+											onclick={() => navigateToPage(pg)}
 										>
 											<img
 												src="/api/files/{pg.attachmentId}/thumbnail"
@@ -290,7 +305,7 @@
 												loading="lazy"
 											/>
 											<span class="thumb-label">{pg.seq}</span>
-										</a>
+										</button>
 									{/each}
 								</div>
 							</div>
@@ -714,11 +729,15 @@
 		overflow: hidden;
 		border: 2px solid transparent;
 		transition: border-color 0.15s;
+		background: none;
+		padding: 0;
+		cursor: pointer;
+		font-family: inherit;
 	}
 
 	.thumb:hover { border-color: var(--vui-border); }
 
-	.thumb-active { border-color: var(--vui-accent); }
+	.thumb-active { border-color: #34d399; }
 
 	.thumb img {
 		width: 100%;
