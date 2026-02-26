@@ -150,7 +150,7 @@ Worker env vars: `BACKEND_URL`, `PROCESSOR_TOKEN`. GPU workers also need `HOME=/
 - **CI/CD**: Jenkins (`ci.icomb.place`), Jenkinsfile with path-based change detection
 - **Registry**: `dockerregistry.icomb.place` (Nexus)
 - **Hosting**: Portainer stack #183 on zelkova (endpoint 2)
-- **Redeploy**: `curl -X POST https://docker.icomb.place/api/stacks/webhooks/7cab44a1-fefe-4184-bc65-336c45468a45`
+- **Redeploy**: `curl -X POST https://docker.icomb.place/api/stacks/webhooks/b7e3a1d2-5f4c-4e8a-9b1d-3c6f8a2e4d71`
 - Changes to `worker-common/` trigger rebuilds of all workers
 
 ### Docker builds
