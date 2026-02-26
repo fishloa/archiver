@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
-	import { Search, ChevronRight } from 'lucide-svelte';
+	import { Search, ChevronRight, Baby, X, HandHeart } from 'lucide-svelte';
 
 	let { data } = $props();
 	let query = $state(data.q || '');
@@ -22,18 +22,18 @@
 		goto(`/family-tree?q=${encodeURIComponent(data.q || data.person?.name || '')}&personId=${personId}`);
 	}
 
-	const eventIcon: Record<string, string> = {
-		birth: '*',
-		death: '\u2020',
-		marriage: '\u221E',
-		'marriage & divorce': '\u221E'
-	};
-
 	const eventColor: Record<string, string> = {
 		birth: 'var(--vui-accent)',
 		death: '#f87171',
 		marriage: '#a78bfa',
 		'marriage & divorce': '#fbbf24'
+	};
+
+	const eventIconComponent: Record<string, typeof Baby> = {
+		birth: Baby,
+		death: X,
+		marriage: HandHeart,
+		'marriage & divorce': HandHeart
 	};
 </script>
 
@@ -94,7 +94,9 @@
 							<div class="tl-row">
 								<div class="tl-dot-col">
 									<span class="tl-dot" style="background: {eventColor[ev.type] ?? 'var(--vui-text-muted)'}">
-										{eventIcon[ev.type] ?? '\u25CF'}
+										{#if eventIconComponent[ev.type]}
+											<svelte:component this={eventIconComponent[ev.type]} size={14} strokeWidth={2.5} />
+										{/if}
 									</span>
 									{#if i < p.events.length - 1}
 										<span class="tl-line"></span>
