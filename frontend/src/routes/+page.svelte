@@ -328,7 +328,7 @@
 	}
 
 	.landing-form { max-width: 580px; }
-	.results-form { max-width: 560px; margin-bottom: 24px; }
+	.results-form { margin-bottom: 24px; }
 
 	.search-icon {
 		position: absolute;
@@ -366,18 +366,16 @@
 	.results-col {
 		flex: 1;
 		min-width: 0;
-		max-width: 660px;
 		padding-right: 16px;
-		transition: max-width 0.2s ease;
 	}
 
 	.results-col.has-panel {
-		max-width: 420px;
+		flex: 0 0 40%;
+		max-width: 480px;
 	}
 
 	/* ---- AI Overview ---- */
 	.ai-card {
-		max-width: 560px;
 		margin-bottom: 28px;
 		padding: 14px;
 		border: 1px solid var(--vui-border);
@@ -519,7 +517,6 @@
 	.detail-panel {
 		flex: 1;
 		min-width: 380px;
-		max-width: 600px;
 		border-left: 1px solid var(--vui-border);
 		padding: 0 0 40px 24px;
 		overflow-y: auto;
