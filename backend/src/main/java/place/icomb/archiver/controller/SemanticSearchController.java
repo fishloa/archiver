@@ -109,8 +109,8 @@ public class SemanticSearchController {
         for (int i = 0; i < keywords.size(); i++) {
           if (i > 0) sb.append(" + ");
           sb.append(
-              "CASE WHEN lower(tc.content) LIKE '%' || ? || '%'"
-                  + " OR word_similarity(?, lower(tc.content)) >= 0.6"
+              "CASE WHEN lower(c.content) LIKE '%' || ? || '%'"
+                  + " OR word_similarity(?, lower(c.content)) >= 0.6"
                   + " THEN 0.5 ELSE 0.0 END");
           params.add(keywords.get(i)); // for LIKE
           params.add(keywords.get(i)); // for word_similarity
@@ -119,14 +119,22 @@ public class SemanticSearchController {
         keywordBoostExpr = sb.toString();
       }
 
+      // Use ORDER BY <=> LIMIT to leverage the HNSW index (fast ANN lookup),
+      // then apply keyword scoring on the small candidate set.
       String sql =
           """
-          WITH scored AS (
+          WITH candidates AS (
             SELECT tc.record_id, tc.page_id, tc.chunk_index, tc.content,
-                   1 - (tc.embedding <=> ?::vector) AS sem_score,
-                   %s AS kw_score
+                   1 - (tc.embedding <=> ?::vector) AS sem_score
             FROM text_chunk tc
-            WHERE 1 - (tc.embedding <=> ?::vector) >= 0.20
+            ORDER BY tc.embedding <=> ?::vector
+            LIMIT 200
+          ),
+          scored AS (
+            SELECT c.*,
+                   %s AS kw_score
+            FROM candidates c
+            WHERE c.sem_score >= 0.20
           ),
           ranked AS (
             SELECT *,
@@ -149,9 +157,9 @@ public class SemanticSearchController {
               .formatted(keywordBoostExpr);
 
       List<Object> allParams = new ArrayList<>();
-      allParams.add(vecStr.toString()); // 1st ?: sem_score
-      allParams.addAll(params);         // keyword ?'s
-      allParams.add(vecStr.toString()); // last vec ?: WHERE filter
+      allParams.add(vecStr.toString()); // candidates: sem_score
+      allParams.add(vecStr.toString()); // candidates: ORDER BY
+      allParams.addAll(params);         // keyword ?'s in scored CTE
       allParams.add(limit);
 
       List<Map<String, Object>> rows = jdbcTemplate.queryForList(sql, allParams.toArray());
