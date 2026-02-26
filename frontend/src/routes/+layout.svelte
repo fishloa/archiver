@@ -1,19 +1,21 @@
 <script lang="ts">
 	import '../app.css';
 	import { page } from '$app/state';
-	import { Archive, Search, Library, Activity, Settings, PanelLeftClose, PanelLeft, GitBranch } from 'lucide-svelte';
+	import { Archive, Search, Library, Activity, Settings, PanelLeftClose, PanelLeft, GitBranch, LogIn, LogOut } from 'lucide-svelte';
 	import type { Snippet } from 'svelte';
 
-	let { children }: { children: Snippet } = $props();
+	let { children, data }: { children: Snippet; data: any } = $props();
 
 	let collapsed = $state(false);
+	let user = $derived(data?.user);
+	let isAdmin = $derived(user?.role === 'admin');
 
 	const nav = [
 		{ href: '/', label: 'Search', icon: Search },
 		{ href: '/records', label: 'Records', icon: Library },
 		{ href: '/family-tree', label: 'Family Tree', icon: GitBranch },
 		{ href: '/pipeline', label: 'Pipeline', icon: Activity },
-		{ href: '/admin', label: 'Admin', icon: Settings }
+		{ href: '/admin', label: 'Admin', icon: Settings, adminOnly: true }
 	];
 
 	function isActive(href: string): boolean {
@@ -35,22 +37,47 @@
 
 		<ul class="nav-list">
 			{#each nav as item}
-				{@const active = isActive(item.href)}
-				<li>
-					<a
-						href={item.href}
-						class="nav-item"
-						class:active
-						title={collapsed ? item.label : undefined}
-					>
-						<svelte:component this={item.icon} size={20} strokeWidth={active ? 2.2 : 1.8} />
-						{#if !collapsed}
-							<span>{item.label}</span>
-						{/if}
-					</a>
-				</li>
+				{#if !item.adminOnly || isAdmin}
+					{@const active = isActive(item.href)}
+					<li>
+						<a
+							href={item.href}
+							class="nav-item"
+							class:active
+							title={collapsed ? item.label : undefined}
+						>
+							<svelte:component this={item.icon} size={20} strokeWidth={active ? 2.2 : 1.8} />
+							{#if !collapsed}
+								<span>{item.label}</span>
+							{/if}
+						</a>
+					</li>
+				{/if}
 			{/each}
 		</ul>
+
+		<div class="sidebar-footer">
+			{#if user?.authenticated}
+				<div class="user-info" title={user.email}>
+					{#if !collapsed}
+						<span class="user-name">{user.displayName || user.email}</span>
+					{/if}
+				</div>
+				<a href="/oauth2-google/sign_out?rd=/" class="nav-item signout-btn" title={collapsed ? 'Sign out' : undefined}>
+					<LogOut size={16} strokeWidth={1.8} />
+					{#if !collapsed}
+						<span>Sign out</span>
+					{/if}
+				</a>
+			{:else}
+				<a href="/signin" class="nav-item signin-btn" title={collapsed ? 'Sign in' : undefined}>
+					<LogIn size={16} strokeWidth={1.8} />
+					{#if !collapsed}
+						<span>Sign in</span>
+					{/if}
+				</a>
+			{/if}
+		</div>
 
 		<button class="collapse-btn" onclick={() => (collapsed = !collapsed)}>
 			{#if collapsed}
@@ -152,6 +179,30 @@
 		border-left-color: var(--vui-accent);
 	}
 
+	.sidebar-footer {
+		padding: 8px 0;
+		border-top: 1px solid var(--vui-border);
+	}
+
+	.user-info {
+		padding: 6px 18px;
+		overflow: hidden;
+	}
+
+	.user-name {
+		font-size: var(--vui-text-xs);
+		color: var(--vui-text-muted);
+		white-space: nowrap;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		display: block;
+	}
+
+	.signout-btn, .signin-btn {
+		font-size: var(--vui-text-xs);
+		padding: 8px 18px;
+	}
+
 	.collapse-btn {
 		display: flex;
 		align-items: center;
@@ -195,7 +246,8 @@
 			width: 60px;
 		}
 		.sidebar-title,
-		.nav-item span {
+		.nav-item span,
+		.user-info {
 			display: none;
 		}
 		.nav-item {

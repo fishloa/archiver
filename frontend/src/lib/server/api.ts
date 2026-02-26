@@ -7,6 +7,26 @@ function backendUrl(): string {
 	return url;
 }
 
+function authHeaders(email?: string): Record<string, string> {
+	if (email) return { 'X-Auth-Email': email };
+	return {};
+}
+
+export interface AuthUser {
+	authenticated: boolean;
+	email?: string;
+	displayName?: string;
+	role?: string;
+}
+
+export async function fetchCurrentUser(email: string): Promise<AuthUser> {
+	const res = await fetch(`${backendUrl()}/api/auth/me`, {
+		headers: authHeaders(email)
+	});
+	if (!res.ok) return { authenticated: false };
+	return res.json();
+}
+
 export async function fetchRecords(
 	page: number,
 	size: number,
@@ -145,8 +165,11 @@ export async function fetchAdminStats(): Promise<Record<string, unknown>> {
 	return res.json();
 }
 
-export async function runAudit(): Promise<{ fixed: number }> {
-	const res = await fetch(`${backendUrl()}/api/admin/audit`, { method: 'POST' });
+export async function runAudit(email?: string): Promise<{ fixed: number }> {
+	const res = await fetch(`${backendUrl()}/api/admin/audit`, {
+		method: 'POST',
+		headers: authHeaders(email)
+	});
 	if (!res.ok) throw new Error(`Backend error: ${res.status}`);
 	return res.json();
 }
@@ -202,4 +225,71 @@ export async function fetchFamilyPerson(personId: number): Promise<any | null> {
 	const res = await fetch(`${backendUrl()}/api/family-tree/person/${personId}`);
 	if (!res.ok) return null;
 	return res.json();
+}
+
+// ── Admin User CRUD ──
+
+export async function fetchUsers(email: string): Promise<any[]> {
+	const res = await fetch(`${backendUrl()}/api/admin/users`, {
+		headers: authHeaders(email)
+	});
+	if (!res.ok) throw new Error(`Backend error: ${res.status}`);
+	return res.json();
+}
+
+export async function createUser(
+	email: string,
+	body: { displayName: string; role: string; emails: string[] }
+): Promise<any> {
+	const res = await fetch(`${backendUrl()}/api/admin/users`, {
+		method: 'POST',
+		headers: { 'Content-Type': 'application/json', ...authHeaders(email) },
+		body: JSON.stringify(body)
+	});
+	if (!res.ok) throw new Error(`Backend error: ${res.status}`);
+	return res.json();
+}
+
+export async function updateUser(
+	email: string,
+	id: number,
+	body: { displayName?: string; role?: string }
+): Promise<any> {
+	const res = await fetch(`${backendUrl()}/api/admin/users/${id}`, {
+		method: 'PUT',
+		headers: { 'Content-Type': 'application/json', ...authHeaders(email) },
+		body: JSON.stringify(body)
+	});
+	if (!res.ok) throw new Error(`Backend error: ${res.status}`);
+	return res.json();
+}
+
+export async function deleteUser(email: string, id: number): Promise<void> {
+	const res = await fetch(`${backendUrl()}/api/admin/users/${id}`, {
+		method: 'DELETE',
+		headers: authHeaders(email)
+	});
+	if (!res.ok) throw new Error(`Backend error: ${res.status}`);
+}
+
+export async function addUserEmail(email: string, userId: number, newEmail: string): Promise<any> {
+	const res = await fetch(`${backendUrl()}/api/admin/users/${userId}/emails`, {
+		method: 'POST',
+		headers: { 'Content-Type': 'application/json', ...authHeaders(email) },
+		body: JSON.stringify({ email: newEmail })
+	});
+	if (!res.ok) throw new Error(`Backend error: ${res.status}`);
+	return res.json();
+}
+
+export async function removeUserEmail(
+	email: string,
+	userId: number,
+	emailId: number
+): Promise<void> {
+	const res = await fetch(`${backendUrl()}/api/admin/users/${userId}/emails/${emailId}`, {
+		method: 'DELETE',
+		headers: authHeaders(email)
+	});
+	if (!res.ok) throw new Error(`Backend error: ${res.status}`);
 }

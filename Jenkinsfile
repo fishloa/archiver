@@ -26,6 +26,8 @@ pipeline {
                 script {
                     env.BUILD_BACKEND = params.BUILD_ALL || changed('backend')
                     env.BUILD_FRONTEND = params.BUILD_ALL || changed('frontend')
+                    env.BUILD_WEB = params.BUILD_ALL || changed('web')
+                    env.BUILD_OAUTH2_PROXY_APPLE = params.BUILD_ALL || changed('oauth2-proxy-apple')
                     env.BUILD_SCRAPER = params.BUILD_ALL || changed('scraper-cz')
                     env.BUILD_SCRAPER_EBADATELNA = params.BUILD_ALL || changed('scraper-ebadatelna')
                     env.BUILD_SCRAPER_FINDBUCH = params.BUILD_ALL || changed('scraper-findbuch')
@@ -36,7 +38,7 @@ pipeline {
                     env.BUILD_PDF = params.BUILD_ALL || changed('pdf-worker') || workerCommonChanged
                     env.BUILD_TRANSLATE = params.BUILD_ALL || changed('translate-worker') || workerCommonChanged
                     env.BUILD_EMBED = params.BUILD_ALL || changed('embed-worker') || workerCommonChanged
-                    echo "backend=${env.BUILD_BACKEND} frontend=${env.BUILD_FRONTEND} scraper-cz=${env.BUILD_SCRAPER} ebadatelna=${env.BUILD_SCRAPER_EBADATELNA} findbuch=${env.BUILD_SCRAPER_FINDBUCH} oesta=${env.BUILD_SCRAPER_OESTA} matricula=${env.BUILD_SCRAPER_MATRICULA} ocr=${env.BUILD_OCR} pdf=${env.BUILD_PDF} translate=${env.BUILD_TRANSLATE} embed=${env.BUILD_EMBED}"
+                    echo "backend=${env.BUILD_BACKEND} frontend=${env.BUILD_FRONTEND} web=${env.BUILD_WEB} oauth2-proxy-apple=${env.BUILD_OAUTH2_PROXY_APPLE} scraper-cz=${env.BUILD_SCRAPER} ebadatelna=${env.BUILD_SCRAPER_EBADATELNA} findbuch=${env.BUILD_SCRAPER_FINDBUCH} oesta=${env.BUILD_SCRAPER_OESTA} matricula=${env.BUILD_SCRAPER_MATRICULA} ocr=${env.BUILD_OCR} pdf=${env.BUILD_PDF} translate=${env.BUILD_TRANSLATE} embed=${env.BUILD_EMBED}"
                 }
             }
         }
@@ -65,6 +67,30 @@ pipeline {
                         script {
                             dockerPush(registry, "${prefix}/frontend:latest")
                             dockerPush(registry, "${prefix}/frontend:\${GIT_COMMIT}")
+                        }
+                    }
+                }
+
+                stage('web') {
+                    when { expression { env.BUILD_WEB == 'true' } }
+                    steps {
+                        dir('web') {
+                            sh "docker build -t ${prefix}/web:latest -t ${prefix}/web:\${GIT_COMMIT} ."
+                        }
+                        script {
+                            dockerPush(registry, "${prefix}/web:latest")
+                            dockerPush(registry, "${prefix}/web:\${GIT_COMMIT}")
+                        }
+                    }
+                }
+
+                stage('oauth2-proxy-apple') {
+                    when { expression { env.BUILD_OAUTH2_PROXY_APPLE == 'true' } }
+                    steps {
+                        sh "docker build -f oauth2-proxy-apple/Dockerfile -t ${prefix}/oauth2-proxy-apple:latest -t ${prefix}/oauth2-proxy-apple:\${GIT_COMMIT} ."
+                        script {
+                            dockerPush(registry, "${prefix}/oauth2-proxy-apple:latest")
+                            dockerPush(registry, "${prefix}/oauth2-proxy-apple:\${GIT_COMMIT}")
                         }
                     }
                 }

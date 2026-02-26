@@ -1,9 +1,67 @@
 services:
+  web:
+    image: dockerregistry.icomb.place/archiver/web:latest
+    ports:
+      - "8099:8080"
+    depends_on:
+      - frontend
+      - oauth2-proxy-google
+      - oauth2-proxy-apple
+    restart: unless-stopped
+
+  oauth2-proxy-google:
+    image: quay.io/oauth2-proxy/oauth2-proxy:latest
+    environment:
+      OAUTH2_PROXY_PROVIDER: google
+      OAUTH2_PROXY_CLIENT_ID: ${OAUTH2_PROXY_CLIENT_ID}
+      OAUTH2_PROXY_CLIENT_SECRET: ${OAUTH2_PROXY_CLIENT_SECRET}
+      OAUTH2_PROXY_COOKIE_SECRET: ${OAUTH2_PROXY_COOKIE_SECRET}
+      OAUTH2_PROXY_COOKIE_NAME: _oauth2_proxy
+      OAUTH2_PROXY_COOKIE_DOMAINS: archiver.icomb.place
+      OAUTH2_PROXY_COOKIE_SAMESITE: lax
+      OAUTH2_PROXY_COOKIE_CSRF_PER_REQUEST: "true"
+      OAUTH2_PROXY_COOKIE_CSRF_EXPIRE: 5m
+      OAUTH2_PROXY_EMAIL_DOMAINS: "*"
+      OAUTH2_PROXY_HTTP_ADDRESS: 0.0.0.0:4180
+      OAUTH2_PROXY_PROXY_PREFIX: /oauth2-google
+      OAUTH2_PROXY_UPSTREAM: static://200
+      OAUTH2_PROXY_SKIP_PROVIDER_BUTTON: "true"
+      OAUTH2_PROXY_SET_XAUTHREQUEST: "true"
+      OAUTH2_PROXY_SESSION_STORE_TYPE: cookie
+      OAUTH2_PROXY_REDIRECT_URL: https://archiver.icomb.place/oauth2-google/callback
+    restart: unless-stopped
+
+  oauth2-proxy-apple:
+    image: dockerregistry.icomb.place/archiver/oauth2-proxy-apple:latest
+    environment:
+      APPLE_TEAM_ID: ${APPLE_TEAM_ID}
+      APPLE_KEY_ID: ${APPLE_KEY_ID}
+      APPLE_CLIENT_ID: ${APPLE_CLIENT_ID}
+      APPLE_KEY_P8_B64: ${APPLE_KEY_P8_B64}
+      OAUTH2_PROXY_PROVIDER: oidc
+      OAUTH2_PROXY_OIDC_ISSUER_URL: https://appleid.apple.com
+      OAUTH2_PROXY_CLIENT_ID: ${APPLE_CLIENT_ID}
+      OAUTH2_PROXY_COOKIE_SECRET: ${OAUTH2_PROXY_COOKIE_SECRET}
+      OAUTH2_PROXY_COOKIE_NAME: _oauth2_proxy
+      OAUTH2_PROXY_COOKIE_DOMAINS: archiver.icomb.place
+      OAUTH2_PROXY_COOKIE_SAMESITE: lax
+      OAUTH2_PROXY_COOKIE_CSRF_PER_REQUEST: "true"
+      OAUTH2_PROXY_COOKIE_CSRF_EXPIRE: 5m
+      OAUTH2_PROXY_EMAIL_DOMAINS: "*"
+      OAUTH2_PROXY_HTTP_ADDRESS: 0.0.0.0:4181
+      OAUTH2_PROXY_PROXY_PREFIX: /oauth2-apple
+      OAUTH2_PROXY_UPSTREAM: static://200
+      OAUTH2_PROXY_SKIP_PROVIDER_BUTTON: "true"
+      OAUTH2_PROXY_SET_XAUTHREQUEST: "true"
+      OAUTH2_PROXY_SESSION_STORE_TYPE: cookie
+      OAUTH2_PROXY_CODE_CHALLENGE_METHOD: S256
+      OAUTH2_PROXY_OIDC_EXTRA_AUDIENCES: ${APPLE_CLIENT_ID}
+      OAUTH2_PROXY_REDIRECT_URL: https://archiver.icomb.place/oauth2-apple/callback
+    restart: unless-stopped
+
   backend:
     image: dockerregistry.icomb.place/archiver/backend:latest
     user: "${CONTAINER_USER:-1012:1012}"
-    ports:
-      - "8098:8080"
     volumes:
       - archiver_store:/data/archiver_store
     environment:
@@ -24,8 +82,6 @@ services:
   frontend:
     image: dockerregistry.icomb.place/archiver/frontend:latest
     user: "${CONTAINER_USER:-1012:1012}"
-    ports:
-      - "8099:3000"
     environment:
       BACKEND_URL: http://backend:8080
       ORIGIN: https://archiver.icomb.place
