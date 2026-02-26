@@ -34,13 +34,13 @@
 	const MAX_WORKER_SLOTS = 12;
 
 	const stageConfig = [
-		{ icon: CloudUpload, color: '#6ec6f0', dimBg: 'rgba(110,198,240,0.08)', borderColor: 'rgba(110,198,240,0.35)' },
-		{ icon: Inbox, color: '#a78bfa', dimBg: 'rgba(167,139,250,0.08)', borderColor: 'rgba(167,139,250,0.35)' },
-		{ icon: ScanText, color: '#f59e0b', dimBg: 'rgba(245,158,11,0.08)', borderColor: 'rgba(245,158,11,0.35)' },
-		{ icon: FileText, color: '#f472b6', dimBg: 'rgba(244,114,182,0.08)', borderColor: 'rgba(244,114,182,0.35)' },
-		{ icon: Languages, color: '#38bdf8', dimBg: 'rgba(56,189,248,0.08)', borderColor: 'rgba(56,189,248,0.35)' },
-		{ icon: BrainCircuit, color: '#c084fc', dimBg: 'rgba(192,132,252,0.08)', borderColor: 'rgba(192,132,252,0.35)' },
-		{ icon: CircleCheckBig, color: '#34d399', dimBg: 'rgba(52,211,153,0.08)', borderColor: 'rgba(52,211,153,0.35)' }
+		{ icon: CloudUpload, color: '#6ec6f0', dimBg: 'rgba(110,198,240,0.08)', borderColor: 'rgba(110,198,240,0.35)', desc: 'Downloading document metadata and page images from archive catalogs' },
+		{ icon: Inbox, color: '#a78bfa', dimBg: 'rgba(167,139,250,0.08)', borderColor: 'rgba(167,139,250,0.35)', desc: 'Documents received and queued for processing' },
+		{ icon: ScanText, color: '#f59e0b', dimBg: 'rgba(245,158,11,0.08)', borderColor: 'rgba(245,158,11,0.35)', desc: 'Reading each page image with AI to extract text and its position on the page' },
+		{ icon: FileText, color: '#f472b6', dimBg: 'rgba(244,114,182,0.08)', borderColor: 'rgba(244,114,182,0.35)', desc: 'Building searchable PDFs by overlaying extracted text onto the original scanned images' },
+		{ icon: Languages, color: '#38bdf8', dimBg: 'rgba(56,189,248,0.08)', borderColor: 'rgba(56,189,248,0.35)', desc: 'Translating German and Czech text into English using neural machine translation' },
+		{ icon: BrainCircuit, color: '#c084fc', dimBg: 'rgba(192,132,252,0.08)', borderColor: 'rgba(192,132,252,0.35)', desc: 'Generating semantic embeddings from translated text for intelligent search' },
+		{ icon: CircleCheckBig, color: '#34d399', dimBg: 'rgba(52,211,153,0.08)', borderColor: 'rgba(52,211,153,0.35)', desc: 'Fully processed and searchable' }
 	];
 
 	function fmt(n: number): string {
@@ -103,7 +103,10 @@
 						<div class="card-icon" style="background: {cfg.dimBg}">
 							<svelte:component this={cfg.icon} size={16} color={cfg.color} strokeWidth={2} />
 						</div>
-						<div class="card-title" style="color: {cfg.color}">{stage.name}</div>
+						<div>
+							<div class="card-title" style="color: {cfg.color}">{stage.name}</div>
+							<div class="card-desc">{cfg.desc}</div>
+						</div>
 						<div class="card-counts">
 							<span class="count-num" style="color: {cfg.color}">{fmt(stage.records)}</span>
 							<span class="count-label">records</span>
@@ -267,6 +270,13 @@
 		font-size: 14px;
 		font-weight: 700;
 		white-space: nowrap;
+	}
+
+	.card-desc {
+		font-size: 11px;
+		color: var(--vui-text-muted);
+		line-height: 1.4;
+		margin-top: 2px;
 	}
 
 	.card-counts {
