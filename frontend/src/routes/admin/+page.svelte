@@ -18,7 +18,7 @@
 
 	type StatusRow = { status: string; cnt: number };
 	type JobRow = { kind: string; status: string; cnt: number };
-	type EventRow = { record_id: number; stage: string; event: string; detail: string | null; created_at: string };
+	type EventRow = { record_id: number; stage: string; event: string; detail: string | null; created_at: string; record_title: string | null };
 
 	let recordsByStatus = $derived((stats.recordsByStatus ?? []) as StatusRow[]);
 	let jobsByKindAndStatus = $derived((stats.jobsByKindAndStatus ?? []) as JobRow[]);
@@ -175,8 +175,13 @@
 				<tbody>
 					{#each recentEvents as ev}
 						<tr class="border-b border-border">
-							<td class="px-3 py-2">
-								<a href="/records/{ev.record_id}" class="text-accent hover:text-accent-hover">#{ev.record_id}</a>
+							<td class="px-3 py-2 max-w-[280px]">
+								<a href="/records/{ev.record_id}" class="text-accent hover:text-accent-hover hover:underline" title={ev.record_title ?? `#${ev.record_id}`}>
+									<span class="text-text-muted">#{ev.record_id}</span>
+									{#if ev.record_title}
+										<span class="ml-1.5 truncate inline-block max-w-[200px] align-bottom">{ev.record_title}</span>
+									{/if}
+								</a>
 							</td>
 							<td class="px-3 py-2 text-text">{ev.stage}</td>
 							<td class="px-3 py-2">

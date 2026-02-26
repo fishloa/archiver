@@ -666,7 +666,13 @@ public class ViewerController {
     stats.put(
         "recentEvents",
         jdbcTemplate.queryForList(
-            "SELECT record_id, stage, event, detail, created_at FROM pipeline_event ORDER BY created_at DESC LIMIT 20"));
+            """
+        SELECT pe.record_id, pe.stage, pe.event, pe.detail, pe.created_at,
+               r.title AS record_title
+        FROM pipeline_event pe
+        LEFT JOIN record r ON r.id = pe.record_id
+        ORDER BY pe.created_at DESC LIMIT 20
+        """));
 
     return ResponseEntity.ok(stats);
   }
