@@ -81,7 +81,10 @@ public class SemanticSearchController {
       log.info("Semantic search: query='{}', keywords={}", query, keywords);
 
       // 2. Embed the query via OpenAI
+      long t0 = System.currentTimeMillis();
       float[] queryEmbedding = embedText(query);
+      long tEmbed = System.currentTimeMillis();
+      log.info("Embedding took {} ms", tEmbed - t0);
 
       // 3. Build pgvector query string
       StringBuilder vecStr = new StringBuilder("[");
@@ -162,7 +165,10 @@ public class SemanticSearchController {
       allParams.addAll(params);         // keyword ?'s in scored CTE
       allParams.add(limit);
 
+      long tDbStart = System.currentTimeMillis();
       List<Map<String, Object>> rows = jdbcTemplate.queryForList(sql, allParams.toArray());
+      long tDbEnd = System.currentTimeMillis();
+      log.info("DB query took {} ms, returned {} rows", tDbEnd - tDbStart, rows.size());
 
       List<Map<String, Object>> results = new ArrayList<>();
       for (var row : rows) {
