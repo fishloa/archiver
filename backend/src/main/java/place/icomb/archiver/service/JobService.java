@@ -147,9 +147,13 @@ public class JobService {
       log.info("Record {} has no pages, skipping PDF build", recordId);
     }
 
-    // Enqueue metadata translation with metadata_lang (hardcoded per scraper)
-    String metaPayload = metadataLang != null ? "{\"lang\":\"" + metadataLang + "\"}" : null;
-    enqueueJob("translate_record", recordId, null, metaPayload);
+    // Enqueue metadata translation — skip if metadata is already English
+    if (metadataLang == null || !"en".equals(metadataLang)) {
+      String metaPayload = metadataLang != null ? "{\"lang\":\"" + metadataLang + "\"}" : null;
+      enqueueJob("translate_record", recordId, null, metaPayload);
+    } else {
+      log.info("Record {} metadata is English (metadata_lang=en), skipping metadata translation", recordId);
+    }
 
     // Enqueue OCR text translation (auto-detect language from text)
     // Skip if content is explicitly marked as English or no pages
