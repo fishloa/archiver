@@ -69,7 +69,6 @@ public class IngestController {
     archive.setName(body.get("name"));
     archive.setCountry(body.get("country"));
     archive.setCitationTemplate(body.get("citationTemplate"));
-    archive.setCreatedAt(java.time.Instant.now());
     archive = archiveRepository.save(archive);
     return ResponseEntity.status(HttpStatus.CREATED).body(archive);
   }
