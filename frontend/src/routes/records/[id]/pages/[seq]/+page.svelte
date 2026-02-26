@@ -1,5 +1,6 @@
 <script lang="ts">
-	import { ArrowLeft, ArrowRight, ChevronDown } from 'lucide-svelte';
+	import { ArrowLeft, ArrowRight, ChevronDown, Bookmark, BookmarkCheck, Download, X } from 'lucide-svelte';
+	import { isKept, toggleKept, keptCount, keptPagesParam, clearKept } from '$lib/kept-pages.svelte';
 
 	let { data } = $props();
 	let record = $derived(data.record);
@@ -10,6 +11,10 @@
 	let pageText = $derived(data.pageText);
 
 	let originalOpen = $state(false);
+
+	let kept = $derived(isKept(record.id, page.seq));
+	let count = $derived(keptCount(record.id));
+	let pagesParam = $derived(keptPagesParam(record.id));
 </script>
 
 <svelte:head>
@@ -36,12 +41,45 @@
 			<ArrowLeft size={13} strokeWidth={2} /> Prev
 		</a>
 	{/if}
+	<button
+		class="vui-btn vui-btn-sm {kept ? 'vui-btn-primary !bg-emerald-600 !border-emerald-600' : 'vui-btn-secondary'}"
+		onclick={() => toggleKept(record.id, page.seq)}
+		title={kept ? 'Remove from kept pages' : 'Keep this page'}
+	>
+		{#if kept}
+			<BookmarkCheck size={13} strokeWidth={2} /> Kept
+		{:else}
+			<Bookmark size={13} strokeWidth={2} /> Keep
+		{/if}
+	</button>
 	{#if next}
 		<a href="/records/{record.id}/pages/{next.seq}" class="vui-btn vui-btn-secondary vui-btn-sm">
 			Next <ArrowRight size={13} strokeWidth={2} />
 		</a>
 	{/if}
 </div>
+
+{#if count > 0}
+	<div class="flex items-center justify-between gap-3 mb-4 py-2 px-4 rounded-lg bg-surface border border-border text-[length:var(--vui-text-sm)]">
+		<span class="text-text-sub tabular-nums">{count} page{count === 1 ? '' : 's'} kept</span>
+		<div class="flex items-center gap-2">
+			<a
+				href="/api/records/{record.id}/export-pdf?pages={encodeURIComponent(pagesParam)}"
+				class="vui-btn vui-btn-primary vui-btn-sm !bg-emerald-600 !border-emerald-600"
+				target="_blank"
+			>
+				<Download size={13} strokeWidth={2} /> Download kept
+			</a>
+			<button
+				class="vui-btn vui-btn-ghost vui-btn-sm text-text-muted"
+				onclick={() => clearKept(record.id)}
+				title="Clear kept pages"
+			>
+				<X size={13} strokeWidth={2} /> Clear
+			</button>
+		</div>
+	</div>
+{/if}
 
 <!-- Main layout: image left, translation right -->
 <div class="flex flex-col lg:flex-row gap-6 vui-animate-fade-in">

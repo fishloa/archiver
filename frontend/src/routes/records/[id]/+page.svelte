@@ -4,9 +4,11 @@
 	import {
 		ArrowLeft, Download, FileDown, ChevronDown, Clock,
 		CircleCheckBig, AlertTriangle, Play, ExternalLink,
-		FileText, Hash, Calendar, Archive, Bookmark, Layers
+		FileText, Hash, Calendar, Archive, Bookmark, Layers,
+		BookmarkCheck, X
 	} from 'lucide-svelte';
 	import type { PipelineEvent, JobStat } from '$lib/server/api';
+	import { isKept, keptCount, keptPagesParam, clearKept } from '$lib/kept-pages.svelte';
 
 	let { data } = $props();
 	let record = $derived(data.record);
@@ -21,6 +23,9 @@
 	let rawOpen = $state(false);
 	let timelineOpen = $state(false);
 	let exportPages = $state('');
+
+	let kCount = $derived(keptCount(record.id));
+	let kParam = $derived(keptPagesParam(record.id));
 	let rawFormatted = $derived(
 		record.rawSourceMetadata
 			? JSON.stringify(JSON.parse(record.rawSourceMetadata), null, 2)
@@ -154,6 +159,24 @@
 				<Download size={13} strokeWidth={2} /> Download PDF
 			</a>
 		{/if}
+		{#if kCount > 0}
+			<div class="flex items-center gap-2">
+				<a
+					href="/api/records/{record.id}/export-pdf?pages={encodeURIComponent(kParam)}"
+					class="vui-btn vui-btn-sm !bg-emerald-600 !border-emerald-600 !text-white"
+					target="_blank"
+				>
+					<Download size={13} strokeWidth={2} /> Download {kCount} kept
+				</a>
+				<button
+					class="vui-btn vui-btn-ghost vui-btn-sm text-text-muted"
+					onclick={() => clearKept(record.id)}
+					title="Clear kept pages"
+				>
+					<X size={13} strokeWidth={2} />
+				</button>
+			</div>
+		{/if}
 		{#if pages.length > 0}
 			<div class="flex items-center gap-2 ml-auto">
 				<input
@@ -188,9 +211,14 @@
 				{#each pages as pg, i}
 					<a
 						href="/records/{record.id}/pages/{pg.seq}"
-						class="group vui-card vui-hover-lift overflow-hidden p-0"
+						class="group vui-card vui-hover-lift overflow-hidden p-0 relative"
 						style="--delay: {Math.min(i * 30, 300)}ms"
 					>
+						{#if isKept(record.id, pg.seq)}
+							<div class="absolute top-1.5 right-1.5 z-10 rounded-full bg-emerald-600 p-0.5 shadow-sm">
+								<BookmarkCheck size={12} strokeWidth={2.5} class="text-white" />
+							</div>
+						{/if}
 						{#if pg.attachmentId}
 							<img
 								loading="lazy"
