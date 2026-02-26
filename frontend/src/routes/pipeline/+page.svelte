@@ -2,7 +2,7 @@
 	import { onMount } from 'svelte';
 	import { invalidate } from '$app/navigation';
 	import {
-		CloudUpload,
+		CloudDownload,
 		Inbox,
 		ScanText,
 		FileText,
@@ -34,7 +34,7 @@
 	const MAX_WORKER_SLOTS = 12;
 
 	const stageConfig = [
-		{ icon: CloudUpload, color: '#6ec6f0', dimBg: 'rgba(110,198,240,0.08)', borderColor: 'rgba(110,198,240,0.35)', desc: 'Downloading document metadata and page images from archive catalogs' },
+		{ icon: CloudDownload, color: '#6ec6f0', dimBg: 'rgba(110,198,240,0.08)', borderColor: 'rgba(110,198,240,0.35)', desc: 'Downloading document metadata and page images from archive catalogs' },
 		{ icon: Inbox, color: '#a78bfa', dimBg: 'rgba(167,139,250,0.08)', borderColor: 'rgba(167,139,250,0.35)', desc: 'Documents received and queued for processing' },
 		{ icon: ScanText, color: '#f59e0b', dimBg: 'rgba(245,158,11,0.08)', borderColor: 'rgba(245,158,11,0.35)', desc: 'Reading each page image with AI to extract text and its position on the page' },
 		{ icon: FileText, color: '#f472b6', dimBg: 'rgba(244,114,182,0.08)', borderColor: 'rgba(244,114,182,0.35)', desc: 'Building searchable PDFs by overlaying extracted text onto the original scanned images' },
