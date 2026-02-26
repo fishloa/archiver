@@ -101,13 +101,19 @@ public class SemanticSearchController {
       if (keywords.isEmpty()) {
         keywordBoostExpr = "0.0";
       } else {
-        // Sum of per-keyword hits: each keyword contributes 0.5 if word_similarity >= 0.4
-        // pg_trgm word_similarity handles fuzzy: czernin ≈ cernin (~0.55 similarity)
+        // Sum of per-keyword hits using exact substring match (ILIKE).
+        // Each keyword that literally appears in the content adds 0.5.
+        // Also check pg_trgm word_similarity >= 0.6 for fuzzy name variants (czernin/cernin).
+        // This avoids false positives like persecution≈prosecution.
         StringBuilder sb = new StringBuilder("(");
         for (int i = 0; i < keywords.size(); i++) {
           if (i > 0) sb.append(" + ");
-          sb.append("CASE WHEN word_similarity(?, lower(tc.content)) >= 0.4 THEN 0.5 ELSE 0.0 END");
-          params.add(keywords.get(i));
+          sb.append(
+              "CASE WHEN lower(tc.content) LIKE '%' || ? || '%'"
+                  + " OR word_similarity(?, lower(tc.content)) >= 0.6"
+                  + " THEN 0.5 ELSE 0.0 END");
+          params.add(keywords.get(i)); // for LIKE
+          params.add(keywords.get(i)); // for word_similarity
         }
         sb.append(")");
         keywordBoostExpr = sb.toString();
