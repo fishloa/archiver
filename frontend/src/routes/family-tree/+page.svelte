@@ -314,8 +314,9 @@
 	}
 
 	.kinship-ref {
-		font-size: 11px;
-		color: var(--vui-text-muted);
+		font-size: 16px;
+		font-weight: 600;
+		color: var(--vui-accent);
 	}
 
 	.detail-path {
