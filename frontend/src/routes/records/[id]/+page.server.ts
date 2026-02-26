@@ -1,4 +1,5 @@
-import { fetchRecord, fetchRecordPages, fetchRecordTimeline } from '$lib/server/api';
+import { fetchRecord, fetchRecordPages, fetchRecordTimeline, fetchRecordPersonMatches } from '$lib/server/api';
+import type { RecordPersonMatch } from '$lib/server/api';
 import { error } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
 
@@ -12,8 +13,18 @@ export const load: PageServerLoad = async ({ params }) => {
 			fetchRecordPages(id),
 			fetchRecordTimeline(id)
 		]);
-		return { record, pages, timeline };
-	} catch {
+
+		// Fetch person matches (non-blocking)
+		let personMatches: RecordPersonMatch[] = [];
+		try {
+			personMatches = await fetchRecordPersonMatches(id);
+		} catch {
+			// Person matching not available
+		}
+
+		return { record, pages, timeline, personMatches };
+	} catch (e) {
+		if (e && typeof e === 'object' && 'status' in e) throw e;
 		error(404, 'Record not found');
 	}
 };

@@ -11,17 +11,23 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import place.icomb.archiver.model.PagePersonMatch;
 import place.icomb.archiver.service.FamilyTreeService;
 import place.icomb.archiver.service.FamilyTreeService.Person;
+import place.icomb.archiver.service.PersonMatchService;
+import place.icomb.archiver.service.PersonMatchService.RecordPersonMatch;
 
 @RestController
 @RequestMapping("/api/family-tree")
 public class FamilyTreeController {
 
   private final FamilyTreeService familyTreeService;
+  private final PersonMatchService personMatchService;
 
-  public FamilyTreeController(FamilyTreeService familyTreeService) {
+  public FamilyTreeController(
+      FamilyTreeService familyTreeService, PersonMatchService personMatchService) {
     this.familyTreeService = familyTreeService;
+    this.personMatchService = personMatchService;
   }
 
   @GetMapping("/search")
@@ -92,6 +98,52 @@ public class FamilyTreeController {
     m.put("events", familyTreeService.getLifeEvents(p));
 
     return ResponseEntity.ok(m);
+  }
+
+  @GetMapping("/page-matches/{pageId}")
+  public ResponseEntity<List<Map<String, Object>>> pageMatches(@PathVariable Long pageId) {
+    var matches = personMatchService.getPageMatches(pageId);
+    List<Map<String, Object>> response = new ArrayList<>();
+    for (PagePersonMatch m : matches) {
+      Map<String, Object> map = new LinkedHashMap<>();
+      map.put("personId", m.getPersonId());
+      map.put("personName", m.getPersonName());
+      map.put("score", m.getScore());
+      map.put("context", m.getContext());
+      // Enrich with family tree data
+      Person p = familyTreeService.getPerson(m.getPersonId());
+      if (p != null) {
+        map.put("section", p.section);
+        map.put("code", p.fullCode());
+        map.put("birthYear", p.birthYear);
+        map.put("deathYear", p.deathYear);
+      }
+      response.add(map);
+    }
+    return ResponseEntity.ok(response);
+  }
+
+  @GetMapping("/record-matches/{recordId}")
+  public ResponseEntity<List<Map<String, Object>>> recordMatches(@PathVariable Long recordId) {
+    var matches = personMatchService.getRecordMatches(recordId);
+    List<Map<String, Object>> response = new ArrayList<>();
+    for (RecordPersonMatch m : matches) {
+      Map<String, Object> map = new LinkedHashMap<>();
+      map.put("personId", m.personId());
+      map.put("personName", m.personName());
+      map.put("maxScore", m.maxScore());
+      map.put("pageCount", m.pageCount());
+      // Enrich with family tree data
+      Person p = familyTreeService.getPerson(m.personId());
+      if (p != null) {
+        map.put("section", p.section);
+        map.put("code", p.fullCode());
+        map.put("birthYear", p.birthYear);
+        map.put("deathYear", p.deathYear);
+      }
+      response.add(map);
+    }
+    return ResponseEntity.ok(response);
   }
 
   @PostMapping("/reload")

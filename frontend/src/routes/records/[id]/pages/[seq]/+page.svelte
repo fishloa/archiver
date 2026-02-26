@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { ArrowLeft, ArrowRight, ChevronDown, Bookmark, BookmarkCheck, Download, X } from 'lucide-svelte';
+	import { ArrowLeft, ArrowRight, ChevronDown, Bookmark, BookmarkCheck, Download, X, Users } from 'lucide-svelte';
 	import { isKept, toggleKept, keptCount, keptPagesParam, clearKept } from '$lib/kept-pages.svelte';
 
 	let { data } = $props();
@@ -9,12 +9,25 @@
 	let next = $derived(data.next);
 	let totalPages = $derived(data.totalPages);
 	let pageText = $derived(data.pageText);
+	let personMatches = $derived(data.personMatches ?? []);
 
 	let originalOpen = $state(false);
+	let peopleOpen = $state(true);
 
 	let kept = $derived(isKept(record.id, page.seq));
 	let count = $derived(keptCount(record.id));
 	let pagesParam = $derived(keptPagesParam(record.id));
+
+	function lifespan(birth: number | null, death: number | null): string {
+		if (birth && death) return `${birth}–${death}`;
+		if (birth) return `*${birth}`;
+		if (death) return `†${death}`;
+		return '';
+	}
+
+	function scorePercent(score: number): string {
+		return `${Math.round(score * 100)}%`;
+	}
 </script>
 
 <svelte:head>
@@ -108,6 +121,53 @@
 		</div>
 	{/if}
 </div>
+
+<!-- People Mentioned -->
+{#if personMatches.length > 0}
+	<div class="mt-6 vui-card vui-animate-fade-in">
+		<button
+			class="flex items-center gap-1.5 text-[length:var(--vui-text-sm)] font-semibold text-text-sub vui-transition hover:text-text cursor-pointer w-full"
+			onclick={() => peopleOpen = !peopleOpen}
+		>
+			<ChevronDown
+				size={14}
+				strokeWidth={2}
+				class="vui-transition {peopleOpen ? 'rotate-0' : '-rotate-90'}"
+			/>
+			<Users size={14} strokeWidth={2} />
+			People Mentioned
+			<span class="text-text-muted font-normal ml-1">({personMatches.length})</span>
+		</button>
+		{#if peopleOpen}
+			<div class="mt-3 flex flex-wrap gap-2">
+				{#each personMatches as match}
+					<a
+						href="/family-tree?personId={match.personId}"
+						class="group flex items-center gap-2 px-3 py-2 rounded-lg bg-bg-deep border border-border vui-transition hover:border-accent hover:bg-surface"
+					>
+						<div class="min-w-0">
+							<div class="text-[length:var(--vui-text-sm)] font-medium text-text group-hover:text-accent vui-transition">
+								{match.personName}
+							</div>
+							<div class="flex items-center gap-2 text-[length:var(--vui-text-xs)] text-text-muted">
+								{#if match.birthYear || match.deathYear}
+									<span>{lifespan(match.birthYear, match.deathYear)}</span>
+								{/if}
+								<span class="tabular-nums">{scorePercent(match.score)}</span>
+							</div>
+						</div>
+					</a>
+				{/each}
+			</div>
+			{#each personMatches.filter(m => m.context) as match}
+				<div class="mt-2 px-3 py-1.5 rounded bg-bg-deep text-[length:var(--vui-text-xs)] text-text-sub">
+					<span class="font-medium text-text">{match.personName}:</span>
+					<span class="italic">&ldquo;{match.context}&rdquo;</span>
+				</div>
+			{/each}
+		{/if}
+	</div>
+{/if}
 
 <!-- Original OCR text (collapsed) -->
 {#if pageText.text}

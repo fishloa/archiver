@@ -10,7 +10,9 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.stereotype.Service;
 
@@ -44,6 +46,8 @@ public class FamilyTreeService {
   private static final Pattern SPOUSE_PATTERN =
       Pattern.compile("(?:^|;)\\s*(?:\\d?m[\\.:]|m\\.)\\s*(.+?)(?=;\\s*\\dm|$)");
 
+  @Autowired @Lazy private PersonMatchService personMatchService;
+
   @Value("${archiver.family-tree.file:}")
   private String externalFilePath;
 
@@ -73,6 +77,14 @@ public class FamilyTreeService {
           "Family tree loaded: {} people, alexander={}",
           parsed.size(),
           alexander != null ? alexander.id + " " + alexander.name : "NOT FOUND");
+
+      // Clear cached person matches since the family tree data changed
+      try {
+        personMatchService.invalidateAll();
+      } catch (Exception e) {
+        // May fail during startup when DB is not ready yet — that's fine
+        log.debug("Could not invalidate person matches (expected during startup): {}", e.getMessage());
+      }
     } catch (IOException e) {
       log.error("Failed to load genealogy file", e);
     }
@@ -216,6 +228,14 @@ public class FamilyTreeService {
     m.put("text", text);
     m.put("year", extractYear(text));
     return m;
+  }
+
+  public List<Person> getAllPeople() {
+    return allPeople;
+  }
+
+  Set<String> getTitleWords() {
+    return TITLE_WORDS;
   }
 
   public int getPersonCount() {
@@ -517,18 +537,18 @@ public class FamilyTreeService {
     return Math.min(1.0, raw);
   }
 
-  private String normalize(String s) {
+  String normalize(String s) {
     String nfd = Normalizer.normalize(s, Normalizer.Form.NFD);
     return nfd.replaceAll("\\p{Mn}", "").toLowerCase();
   }
 
-  private List<String> tokenize(String s) {
+  List<String> tokenize(String s) {
     return Arrays.stream(s.split("[\\s,;.()]+"))
         .filter(t -> !t.isEmpty() && t.length() > 1 && !TITLE_WORDS.contains(t))
         .toList();
   }
 
-  private int levenshtein(String a, String b) {
+  int levenshtein(String a, String b) {
     int[][] dp = new int[a.length() + 1][b.length() + 1];
     for (int i = 0; i <= a.length(); i++) dp[i][0] = i;
     for (int j = 0; j <= b.length(); j++) dp[0][j] = j;

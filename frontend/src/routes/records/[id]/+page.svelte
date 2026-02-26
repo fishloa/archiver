@@ -5,7 +5,7 @@
 		ArrowLeft, Download, FileDown, ChevronDown, Clock,
 		CircleCheckBig, AlertTriangle, Play, ExternalLink,
 		FileText, Hash, Calendar, Archive, Bookmark, Layers,
-		BookmarkCheck, X
+		BookmarkCheck, X, Users
 	} from 'lucide-svelte';
 	import type { PipelineEvent, JobStat } from '$lib/server/api';
 	import { isKept, keptCount, keptPagesParam, clearKept } from '$lib/kept-pages.svelte';
@@ -14,6 +14,7 @@
 	let record = $derived(data.record);
 	let pages = $derived(data.pages);
 	let timeline = $derived(data.timeline);
+	let personMatches = $derived(data.personMatches ?? []);
 
 	let sourceMeta = $derived(parseSourceMeta(record.rawSourceMetadata));
 	let nadNumber = $derived(sourceMeta.nad_number ? String(sourceMeta.nad_number) : null);
@@ -271,6 +272,38 @@
 						</div>
 					</div>
 				{/if}
+			</div>
+		{/if}
+
+		<!-- People Mentioned -->
+		{#if personMatches.length > 0}
+			<div class="vui-card p-4">
+				<h3 class="text-[length:var(--vui-text-xs)] font-semibold text-text-muted uppercase tracking-wider mb-3 flex items-center gap-1.5">
+					<Users size={12} strokeWidth={2} />
+					People Mentioned
+				</h3>
+				<div class="space-y-2">
+					{#each personMatches as match}
+						<a
+							href="/family-tree?personId={match.personId}"
+							class="group flex items-center justify-between gap-2 px-2.5 py-1.5 -mx-1 rounded-md vui-transition hover:bg-bg-deep"
+						>
+							<div class="min-w-0">
+								<div class="text-[length:var(--vui-text-sm)] text-text group-hover:text-accent vui-transition truncate">
+									{match.personName}
+								</div>
+								{#if match.birthYear || match.deathYear}
+									<div class="text-[length:var(--vui-text-xs)] text-text-muted">
+										{match.birthYear ?? '?'}–{match.deathYear ?? '?'}
+									</div>
+								{/if}
+							</div>
+							<div class="flex-shrink-0 text-[length:var(--vui-text-xs)] text-text-muted tabular-nums">
+								{match.pageCount} pg{match.pageCount === 1 ? '' : 's'}
+							</div>
+						</a>
+					{/each}
+				</div>
 			</div>
 		{/if}
 

@@ -1,4 +1,5 @@
-import { fetchRecord, fetchRecordPages, fetchPageText } from '$lib/server/api';
+import { fetchRecord, fetchRecordPages, fetchPageText, fetchPagePersonMatches } from '$lib/server/api';
+import type { PagePersonMatch } from '$lib/server/api';
 import { error } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
 
@@ -24,7 +25,15 @@ export const load: PageServerLoad = async ({ params }) => {
 			// OCR text not available yet
 		}
 
-		return { record, page, prev, next, totalPages: pages.length, pageText };
+		// Fetch person matches (non-blocking)
+		let personMatches: PagePersonMatch[] = [];
+		try {
+			personMatches = await fetchPagePersonMatches(page.id);
+		} catch {
+			// Person matching not available
+		}
+
+		return { record, page, prev, next, totalPages: pages.length, pageText, personMatches };
 	} catch (e) {
 		if (e && typeof e === 'object' && 'status' in e) throw e;
 		error(404, 'Record not found');

@@ -227,6 +227,40 @@ export async function fetchFamilyPerson(personId: number): Promise<any | null> {
 	return res.json();
 }
 
+export interface PagePersonMatch {
+	personId: number;
+	personName: string;
+	score: number;
+	context: string | null;
+	section: string | null;
+	code: string | null;
+	birthYear: number | null;
+	deathYear: number | null;
+}
+
+export async function fetchPagePersonMatches(pageId: number): Promise<PagePersonMatch[]> {
+	const res = await fetch(`${backendUrl()}/api/family-tree/page-matches/${pageId}`);
+	if (!res.ok) return [];
+	return res.json();
+}
+
+export interface RecordPersonMatch {
+	personId: number;
+	personName: string;
+	maxScore: number;
+	pageCount: number;
+	section: string | null;
+	code: string | null;
+	birthYear: number | null;
+	deathYear: number | null;
+}
+
+export async function fetchRecordPersonMatches(recordId: number): Promise<RecordPersonMatch[]> {
+	const res = await fetch(`${backendUrl()}/api/family-tree/record-matches/${recordId}`);
+	if (!res.ok) return [];
+	return res.json();
+}
+
 // ── Admin User CRUD ──
 
 export async function fetchUsers(email: string): Promise<any[]> {
