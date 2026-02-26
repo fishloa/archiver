@@ -13,6 +13,20 @@
 
 	const hasResults = $derived(data.results && data.results.length > 0);
 	const showLanding = $derived(!data.q);
+
+	// Build page numbers: show up to 10 pages, centered on current
+	const maxPages = $derived(data.hasMore ? data.page + 2 : data.page + 1);
+	const pageNumbers = $derived.by(() => {
+		const pages: number[] = [];
+		const start = Math.max(0, data.page - 4);
+		const end = Math.min(maxPages, start + 10);
+		for (let i = start; i < end; i++) pages.push(i);
+		return pages;
+	});
+
+	function pageUrl(p: number): string {
+		return `/?q=${encodeURIComponent(data.q)}&page=${p}`;
+	}
 </script>
 
 <svelte:head>
@@ -55,6 +69,32 @@
 		{/if}
 
 		{#if hasResults}
+			{#snippet pager()}
+				<nav class="pager">
+					{#if data.page > 0}
+						<a href={pageUrl(data.page - 1)} class="pager-arrow"><ChevronLeft size={16} /></a>
+					{:else}
+						<span class="pager-arrow disabled"><ChevronLeft size={16} /></span>
+					{/if}
+
+					{#each pageNumbers as p}
+						{#if p === data.page}
+							<span class="pager-num active">{p + 1}</span>
+						{:else}
+							<a href={pageUrl(p)} class="pager-num">{p + 1}</a>
+						{/if}
+					{/each}
+
+					{#if data.hasMore}
+						<a href={pageUrl(data.page + 1)} class="pager-arrow"><ChevronRight size={16} /></a>
+					{:else}
+						<span class="pager-arrow disabled"><ChevronRight size={16} /></span>
+					{/if}
+				</nav>
+			{/snippet}
+
+			{@render pager()}
+
 			<div class="results">
 				{#each data.results as r}
 					<div class="result">
@@ -69,19 +109,7 @@
 				{/each}
 			</div>
 
-			<nav class="pager">
-				{#if data.page > 0}
-					<a href="/?q={encodeURIComponent(data.q)}&page={data.page - 1}" class="pager-link">
-						<ChevronLeft size={16} /> Previous
-					</a>
-				{/if}
-				<span class="pager-current">Page {data.page + 1}</span>
-				{#if data.hasMore}
-					<a href="/?q={encodeURIComponent(data.q)}&page={data.page + 1}" class="pager-link">
-						Next <ChevronRight size={16} />
-					</a>
-				{/if}
-			</nav>
+			{@render pager()}
 		{:else if data.q}
 			<p class="empty">No results found for <strong>{data.q}</strong></p>
 		{/if}
@@ -217,23 +245,50 @@
 		display: flex;
 		align-items: center;
 		justify-content: center;
-		gap: 16px;
-		margin: 36px 0 24px;
+		gap: 4px;
+		margin: 20px 0;
 	}
 
-	.pager-link {
+	.pager-arrow {
 		display: flex;
 		align-items: center;
-		gap: 4px;
+		justify-content: center;
+		width: 32px;
+		height: 32px;
+		border-radius: 50%;
 		color: var(--vui-accent);
 		text-decoration: none;
-		font-size: 14px;
 	}
 
-	.pager-link:hover { text-decoration: underline; }
+	.pager-arrow:hover:not(.disabled) {
+		background: var(--vui-surface-hover, rgba(0,0,0,0.05));
+	}
 
-	.pager-current {
-		font-size: 13px;
+	.pager-arrow.disabled {
 		color: var(--vui-text-muted);
+		opacity: 0.4;
+		pointer-events: none;
+	}
+
+	.pager-num {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		min-width: 32px;
+		height: 32px;
+		border-radius: 50%;
+		font-size: 14px;
+		color: var(--vui-accent);
+		text-decoration: none;
+	}
+
+	.pager-num:hover:not(.active) {
+		background: var(--vui-surface-hover, rgba(0,0,0,0.05));
+	}
+
+	.pager-num.active {
+		background: var(--vui-accent);
+		color: white;
+		font-weight: 600;
 	}
 </style>
