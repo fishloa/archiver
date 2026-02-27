@@ -43,6 +43,13 @@ public class SecurityConfig {
                     // Auth endpoint
                     .requestMatchers("/api/auth/**")
                     .permitAll()
+                    // Self-service profile — requires login
+                    .requestMatchers(HttpMethod.PUT, "/api/profile")
+                    .hasAnyRole("USER", "ADMIN")
+                    .requestMatchers(HttpMethod.POST, "/api/profile/**")
+                    .hasAnyRole("USER", "ADMIN")
+                    .requestMatchers(HttpMethod.DELETE, "/api/profile/**")
+                    .hasAnyRole("USER", "ADMIN")
                     // Admin endpoints — admin only
                     .requestMatchers(HttpMethod.POST, "/api/admin/**")
                     .hasRole("ADMIN")

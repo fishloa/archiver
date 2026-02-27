@@ -56,29 +56,6 @@
 			{/each}
 		</ul>
 
-		<div class="sidebar-footer">
-			{#if user?.authenticated}
-				<div class="user-info" title={user.email}>
-					{#if !collapsed}
-						<span class="user-name">{user.displayName || user.email}</span>
-					{/if}
-				</div>
-				<a href="/oauth2-google/sign_out?rd=/" class="nav-item signout-btn" title={collapsed ? 'Sign out' : undefined}>
-					<LogOut size={16} strokeWidth={1.8} />
-					{#if !collapsed}
-						<span>Sign out</span>
-					{/if}
-				</a>
-			{:else}
-				<a href="/signin" class="nav-item signin-btn" title={collapsed ? 'Sign in' : undefined}>
-					<LogIn size={16} strokeWidth={1.8} />
-					{#if !collapsed}
-						<span>Sign in</span>
-					{/if}
-				</a>
-			{/if}
-		</div>
-
 		<button class="collapse-btn" onclick={() => (collapsed = !collapsed)}>
 			{#if collapsed}
 				<PanelLeft size={16} strokeWidth={1.8} />
@@ -89,6 +66,24 @@
 	</nav>
 
 	<main class="main-area">
+		<div class="top-bar">
+			<div class="top-bar-spacer"></div>
+			<div class="auth-controls">
+				{#if user?.authenticated}
+					<a href="/profile" class="user-link" title={user.email}>
+						{user.displayName || user.email}
+					</a>
+					<a href="/oauth2-google/sign_out?rd=/" class="signout-btn" title="Sign out">
+						<LogOut size={16} strokeWidth={1.8} />
+					</a>
+				{:else}
+					<a href="/signin" class="signin-btn">
+						<LogIn size={16} strokeWidth={1.8} />
+						<span>Sign in</span>
+					</a>
+				{/if}
+			</div>
+		</div>
 		<div class="content">
 			{@render children()}
 		</div>
@@ -179,30 +174,6 @@
 		border-left-color: var(--vui-accent);
 	}
 
-	.sidebar-footer {
-		padding: 8px 0;
-		border-top: 1px solid var(--vui-border);
-	}
-
-	.user-info {
-		padding: 6px 18px;
-		overflow: hidden;
-	}
-
-	.user-name {
-		font-size: var(--vui-text-xs);
-		color: var(--vui-text-muted);
-		white-space: nowrap;
-		overflow: hidden;
-		text-overflow: ellipsis;
-		display: block;
-	}
-
-	.signout-btn, .signin-btn {
-		font-size: var(--vui-text-xs);
-		padding: 8px 18px;
-	}
-
 	.collapse-btn {
 		display: flex;
 		align-items: center;
@@ -235,6 +206,64 @@
 		overflow: hidden;
 	}
 
+	.top-bar {
+		display: flex;
+		align-items: center;
+		justify-content: flex-end;
+		padding: 12px 24px;
+		flex-shrink: 0;
+	}
+
+	.top-bar-spacer {
+		flex: 1;
+	}
+
+	.auth-controls {
+		display: flex;
+		align-items: center;
+		gap: 12px;
+	}
+
+	.user-link {
+		font-size: var(--vui-text-sm);
+		font-weight: 500;
+		color: var(--vui-text-sub);
+		text-decoration: none;
+		transition: color 0.15s ease;
+	}
+
+	.user-link:hover {
+		color: var(--vui-accent);
+		text-decoration: none;
+	}
+
+	.auth-controls .signout-btn {
+		display: flex;
+		align-items: center;
+		color: var(--vui-text-muted);
+		transition: color 0.15s ease;
+	}
+
+	.auth-controls .signout-btn:hover {
+		color: var(--vui-text);
+	}
+
+	.auth-controls .signin-btn {
+		display: flex;
+		align-items: center;
+		gap: 6px;
+		font-size: var(--vui-text-sm);
+		font-weight: 500;
+		color: var(--vui-text-sub);
+		text-decoration: none;
+		transition: color 0.15s ease;
+	}
+
+	.auth-controls .signin-btn:hover {
+		color: var(--vui-accent);
+		text-decoration: none;
+	}
+
 	.content {
 		flex: 1;
 		overflow-y: auto;
@@ -246,8 +275,7 @@
 			width: 60px;
 		}
 		.sidebar-title,
-		.nav-item span,
-		.user-info {
+		.nav-item span {
 			display: none;
 		}
 		.nav-item {

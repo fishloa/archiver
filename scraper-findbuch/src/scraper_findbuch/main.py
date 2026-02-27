@@ -11,7 +11,8 @@ import time
 import urllib.parse
 
 from .config import Config, set_config, get_config
-from .client import BackendClient, SOURCE_SYSTEM, wait_for_backend
+from .client import BackendClient, SOURCE_SYSTEM
+from worker_common.http import wait_for_backend
 from .session import FindbuchSession
 from .parser import parse_search_results, get_total_pages, parse_detail_page
 
@@ -260,7 +261,7 @@ def main():
         log.info("Searching findbuch.at for: '%s'", args.term)
 
         # Fetch first page to get total count
-        session._throttle()
+        time.sleep(get_config().delay)
         first_page_html = session.search(encoded_term, page=1)
         total_pages = get_total_pages(first_page_html)
 
@@ -277,7 +278,7 @@ def main():
             if page_num == 1:
                 page_html = first_page_html
             else:
-                session._throttle()
+                time.sleep(get_config().delay)
                 page_html = session.search(encoded_term, page=page_num)
 
             results = parse_search_results(page_html)
