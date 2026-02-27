@@ -29,8 +29,8 @@ def parse_search_results(html: str) -> list[dict]:
             text = link.get_text(strip=True)
             if not href or not text:
                 continue
-            # Skip pagination/navigation links
-            if "/page/" in href or "searchterm" in href:
+            # Skip pagination, navigation, and column-sort links
+            if "/page/" in href or "searchterm" in href or "orderBy" in href:
                 continue
             if href.startswith("/"):
                 href = "https://www.findbuch.at" + href
