@@ -43,6 +43,55 @@ pipeline {
             }
         }
 
+        stage('Test') {
+            parallel {
+                stage('test-backend') {
+                    when { expression { env.BUILD_BACKEND == 'true' } }
+                    steps {
+                        dir('backend') {
+                            sh '''
+                                docker run --rm \
+                                    -v "$(pwd)":/app \
+                                    -v /var/run/docker.sock:/var/run/docker.sock \
+                                    -v archiver-gradle-cache:/root/.gradle \
+                                    --network=host \
+                                    -w /app \
+                                    eclipse-temurin:25-jdk \
+                                    ./gradlew test --no-daemon
+                            '''
+                        }
+                    }
+                }
+                stage('test-frontend') {
+                    when { expression { env.BUILD_FRONTEND == 'true' } }
+                    steps {
+                        dir('frontend') {
+                            sh '''
+                                docker run --rm \
+                                    -v "$(pwd)":/app \
+                                    -v archiver-npm-cache:/root/.npm \
+                                    -w /app \
+                                    node:22-alpine \
+                                    sh -c "npm ci && npm run check"
+                            '''
+                        }
+                    }
+                }
+                stage('test-scraper-cz') {
+                    when { expression { env.BUILD_SCRAPER == 'true' } }
+                    steps {
+                        sh '''
+                            docker run --rm \
+                                -v "$(pwd)":/repo \
+                                -w /repo \
+                                python:3.13-slim \
+                                sh -c "pip install -e worker-common && pip install -e 'scraper-cz[test]' && pytest scraper-cz/tests -v"
+                        '''
+                    }
+                }
+            }
+        }
+
         stage('Build & Push') {
             parallel {
                 stage('backend') {
