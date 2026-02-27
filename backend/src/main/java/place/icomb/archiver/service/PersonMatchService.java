@@ -246,11 +246,8 @@ public class PersonMatchService {
     return null;
   }
 
-  private static final Pattern SURNAME_PATTERN =
-      Pattern.compile(
-          "(?:Graf|Gf|Gfn|Freiherr|Frhr|Furst|Prinz|Pss)\\s+"
-              + "(Czernin[\\w\\s-]*?)(?:,|\\s*\\*|\\s*\\(|$)",
-          Pattern.CASE_INSENSITIVE);
+  /** Family surname — every person in the tree is a Czernin. */
+  private static final String FAMILY_SURNAME = "czernin";
 
   private List<String> getPersonNameTokens(Person person, Set<String> titleWords) {
     List<String> tokens = new ArrayList<>();
@@ -261,18 +258,10 @@ public class PersonMatchService {
       }
     }
 
-    // Extract surname from fullEntry (e.g. "Graf Czernin von Chudenitz" -> "czernin")
-    // The name field only has given names; documents usually reference surname + one given name.
-    if (person.fullEntry != null) {
-      Matcher sm = SURNAME_PATTERN.matcher(person.fullEntry);
-      if (sm.find()) {
-        String surname = familyTreeService.normalize(sm.group(1).trim());
-        for (String t : surname.split("[\\s-]+")) {
-          if (!t.isEmpty() && t.length() > 2 && !titleWords.contains(t) && !tokens.contains(t)) {
-            tokens.add(t);
-          }
-        }
-      }
+    // Every person in this family tree is a Czernin. Documents typically reference
+    // people as "Rudolf Czernin" or "Graf Czernin", so the surname must be matchable.
+    if (!tokens.contains(FAMILY_SURNAME)) {
+      tokens.add(FAMILY_SURNAME);
     }
 
     return tokens;
