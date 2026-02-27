@@ -50,14 +50,12 @@ pipeline {
                     steps {
                         dir('backend') {
                             sh '''
-                                docker run --rm \
-                                    -v "$(pwd)":/app \
+                                tar cf - . | docker run --rm -i \
+                                    --network=host \
                                     -v /var/run/docker.sock:/var/run/docker.sock \
                                     -v archiver-gradle-cache:/root/.gradle \
-                                    --network=host \
-                                    -w /app \
                                     eclipse-temurin:25-jdk \
-                                    ./gradlew test --no-daemon
+                                    sh -c "mkdir -p /app && cd /app && tar xf - && chmod +x gradlew && ./gradlew test --no-daemon"
                             '''
                         }
                     }
@@ -67,12 +65,9 @@ pipeline {
                     steps {
                         dir('frontend') {
                             sh '''
-                                docker run --rm \
-                                    -v "$(pwd)":/app \
-                                    -v archiver-npm-cache:/root/.npm \
-                                    -w /app \
+                                tar cf - . | docker run --rm -i \
                                     node:22-alpine \
-                                    sh -c "npm ci && npm run check"
+                                    sh -c "mkdir -p /app && cd /app && tar xf - && npm ci && npm run check"
                             '''
                         }
                     }
@@ -81,11 +76,9 @@ pipeline {
                     when { expression { env.BUILD_SCRAPER == 'true' } }
                     steps {
                         sh '''
-                            docker run --rm \
-                                -v "$(pwd)":/repo \
-                                -w /repo \
+                            tar cf - worker-common scraper-cz | docker run --rm -i \
                                 python:3.13-slim \
-                                sh -c "pip install -e worker-common && pip install -e 'scraper-cz[test]' && pytest scraper-cz/tests -v"
+                                sh -c "mkdir -p /repo && cd /repo && tar xf - && pip install -e worker-common && pip install -e 'scraper-cz[test]' && pytest scraper-cz/tests -v"
                         '''
                     }
                 }
