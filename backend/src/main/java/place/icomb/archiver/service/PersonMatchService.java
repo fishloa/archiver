@@ -1,6 +1,8 @@
 package place.icomb.archiver.service;
 
 import java.util.*;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -165,9 +167,11 @@ public class PersonMatchService {
     return stored;
   }
 
+  private static final Pattern YEAR_IN_TEXT = Pattern.compile("\\b(1[0-9]{3}|20[0-9]{2})\\b");
+
   /**
    * Get the approximate year of a document from its record's date range. Returns the midpoint of
-   * dateStartYear/dateEndYear, or whichever is available.
+   * dateStartYear/dateEndYear, or falls back to parsing years from dateRangeText.
    */
   private Integer getDocumentYear(Long pageId) {
     var page = pageRepo.findById(pageId).orElse(null);
@@ -179,13 +183,28 @@ public class PersonMatchService {
     Integer end = record.getDateEndYear();
     if (start != null && end != null) return (start + end) / 2;
     if (start != null) return start;
-    return end;
+    if (end != null) return end;
+
+    // Fallback: parse years from dateRangeText (e.g. "1939, 1942 - 1943")
+    String dateText = record.getDateRangeText();
+    if (dateText != null && !dateText.isBlank()) {
+      Matcher m = YEAR_IN_TEXT.matcher(dateText);
+      int minYear = Integer.MAX_VALUE, maxYear = Integer.MIN_VALUE;
+      while (m.find()) {
+        int y = Integer.parseInt(m.group(1));
+        minYear = Math.min(minYear, y);
+        maxYear = Math.max(maxYear, y);
+      }
+      if (minYear != Integer.MAX_VALUE) {
+        return (minYear + maxYear) / 2;
+      }
+    }
+    return null;
   }
 
   /**
    * Adjusts a person's match score based on whether they were plausibly alive when the document was
-   * written. A person alive during the document's date gets a boost; one clearly dead before or
-   * born after gets a penalty.
+   * written. Eliminates people who could not have been alive; boosts those who were.
    */
   private double applyTemporalAdjustment(double score, Person person, Integer docYear) {
     if (docYear == null) return score;
@@ -193,24 +212,25 @@ public class PersonMatchService {
     Integer death = person.deathYear;
     if (birth == null && death == null) return score;
 
-    // Person was alive if: born before docYear and died after docYear (with some margin)
-    int margin = 20; // allow some slack for uncertain dates
-    boolean possiblyAlive = true;
-
-    if (birth != null && birth > docYear + margin) {
-      possiblyAlive = false; // born well after the document
+    // Hard eliminate: born more than 5 years after document (no reasonable margin needed)
+    if (birth != null && birth > docYear + 5) {
+      return 0.0;
     }
-    if (death != null && death < docYear - margin) {
-      possiblyAlive = false; // died well before the document
+    // Hard eliminate: died more than 100 years before document
+    if (death != null && death < docYear - 100) {
+      return 0.0;
     }
 
-    if (possiblyAlive) {
-      // Boost: person was plausibly alive at document time
-      return Math.min(1.0, score * 1.15);
-    } else {
-      // Penalty: person was likely not alive — reduce score significantly
-      return score * 0.6;
+    // Penalty: died before document date (but within 100 years — could be referenced historically)
+    if (death != null && death < docYear) {
+      int yearsBefore = docYear - death;
+      // Gradual penalty: recently deceased get mild penalty, long-dead get heavy
+      double penalty = Math.max(0.3, 1.0 - yearsBefore * 0.02);
+      return score * penalty;
     }
+
+    // Boost: person was plausibly alive at document time
+    return Math.min(1.0, score * 1.15);
   }
 
   private String getBestText(Long pageId) {
@@ -226,6 +246,12 @@ public class PersonMatchService {
     return null;
   }
 
+  private static final Pattern SURNAME_PATTERN =
+      Pattern.compile(
+          "(?:Graf|Gf|Gfn|Freiherr|Frhr|Furst|Prinz|Pss)\\s+"
+              + "(Czernin[\\w\\s-]*?)(?:,|\\s*\\*|\\s*\\(|$)",
+          Pattern.CASE_INSENSITIVE);
+
   private List<String> getPersonNameTokens(Person person, Set<String> titleWords) {
     List<String> tokens = new ArrayList<>();
     String normalized = familyTreeService.normalize(person.name);
@@ -234,17 +260,21 @@ public class PersonMatchService {
         tokens.add(t);
       }
     }
-    // Also add spouse names for matching
-    if (person.spouses != null) {
-      for (String spouse : person.spouses) {
-        String normSpouse = familyTreeService.normalize(spouse);
-        for (String t : normSpouse.split("[\\s,;.()]+")) {
-          if (!t.isEmpty() && t.length() > 2 && !titleWords.contains(t)) {
+
+    // Extract surname from fullEntry (e.g. "Graf Czernin von Chudenitz" -> "czernin")
+    // The name field only has given names; documents usually reference surname + one given name.
+    if (person.fullEntry != null) {
+      Matcher sm = SURNAME_PATTERN.matcher(person.fullEntry);
+      if (sm.find()) {
+        String surname = familyTreeService.normalize(sm.group(1).trim());
+        for (String t : surname.split("[\\s-]+")) {
+          if (!t.isEmpty() && t.length() > 2 && !titleWords.contains(t) && !tokens.contains(t)) {
             tokens.add(t);
           }
         }
       }
     }
+
     return tokens;
   }
 
@@ -280,7 +310,11 @@ public class PersonMatchService {
       }
     }
 
-    return (double) matched / nameTokens.size();
+    // Documents typically use surname + 1-2 given names (e.g. "Rudolf Czernin").
+    // Don't penalize people with many given names — require at least 2 tokens to match
+    // but cap the denominator so matching 2/7 scores the same as 2/3.
+    int requiredTokens = Math.min(nameTokens.size(), 3);
+    return (double) matched / requiredTokens;
   }
 
   private String extractContext(String originalText, List<String> tokens, int tokenIndex) {
