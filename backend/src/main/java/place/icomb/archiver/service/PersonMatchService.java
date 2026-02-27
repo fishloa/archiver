@@ -115,7 +115,8 @@ public class PersonMatchService {
       }
     }
 
-    // Find matches: for each text token, check fuzzy matches against person tokens
+    // Find matches: for each text token, check fuzzy matches against person tokens.
+    // Re-score at each match position to find the best proximity score per person.
     Map<Integer, MatchCandidate> candidates = new HashMap<>();
 
     for (int i = 0; i < textTokens.size(); i++) {
@@ -127,27 +128,27 @@ public class PersonMatchService {
 
         for (PersonToken pt : entry.getValue()) {
           Person person = pt.person;
-          if (candidates.containsKey(person.id)) {
-            candidates.get(person.id).addTokenMatch(i, textToken);
-            continue;
-          }
-
           double score = computeProximityScore(textTokens, i, pt.allNameTokens);
-          if (score >= MIN_SCORE) {
-            // Apply temporal boost/penalty based on document date
-            score = applyTemporalAdjustment(score, person, docYear);
-            if (score >= MIN_SCORE) {
-              candidates.put(person.id, new MatchCandidate(person, score, i));
-            }
+          if (score < MIN_SCORE) continue;
+
+          var existing = candidates.get(person.id);
+          if (existing == null || score > existing.bestScore) {
+            candidates.put(person.id, new MatchCandidate(person, score, i));
           }
         }
       }
     }
 
+    // Apply temporal adjustment after finding best scores
+    candidates.values().removeIf(mc -> {
+      mc.bestScore = applyTemporalAdjustment(mc.bestScore, mc.person, docYear);
+      return mc.bestScore < MIN_SCORE;
+    });
+
     // Sort by score, take top N
     List<MatchCandidate> sorted =
         candidates.values().stream()
-            .sorted(Comparator.comparingDouble(MatchCandidate::score).reversed())
+            .sorted(Comparator.comparingDouble((MatchCandidate mc) -> mc.bestScore).reversed())
             .limit(MAX_MATCHES_PER_PAGE)
             .toList();
 
@@ -158,8 +159,8 @@ public class PersonMatchService {
       match.setPageId(pageId);
       match.setPersonId(mc.person.id);
       match.setPersonName(mc.person.name);
-      match.setScore((float) mc.score());
-      match.setContext(extractContext(text, textTokens, mc.firstTokenIndex));
+      match.setScore((float) mc.bestScore);
+      match.setContext(extractContext(text, textTokens, mc.bestTokenIndex));
       stored.add(matchRepo.save(match));
     }
 
@@ -300,10 +301,9 @@ public class PersonMatchService {
     }
 
     // Documents typically use surname + 1-2 given names (e.g. "Rudolf Czernin").
-    // Don't penalize people with many given names — require at least 2 tokens to match
-    // but cap the denominator so matching 2/7 scores the same as 2/3.
+    // Don't penalize people with many given names — cap denominator at 3.
     int requiredTokens = Math.min(nameTokens.size(), 3);
-    return (double) matched / requiredTokens;
+    return Math.min(1.0, (double) matched / requiredTokens);
   }
 
   private String extractContext(String originalText, List<String> tokens, int tokenIndex) {
@@ -331,20 +331,12 @@ public class PersonMatchService {
   private static class MatchCandidate {
     final Person person;
     double bestScore;
-    int firstTokenIndex;
+    int bestTokenIndex;
 
     MatchCandidate(Person person, double score, int tokenIndex) {
       this.person = person;
       this.bestScore = score;
-      this.firstTokenIndex = tokenIndex;
-    }
-
-    void addTokenMatch(int tokenIndex, String token) {
-      // Keep first occurrence for context extraction
-    }
-
-    double score() {
-      return bestScore;
+      this.bestTokenIndex = tokenIndex;
     }
   }
 
