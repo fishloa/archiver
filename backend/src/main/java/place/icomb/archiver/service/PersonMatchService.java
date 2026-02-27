@@ -265,6 +265,15 @@ public class PersonMatchService {
       tokens.add(FAMILY_SURNAME);
     }
 
+    // Add birthplace as a discriminator — e.g. "Dymokury" helps identify which Rudolf
+    // when the document says "Rudolf Czernin /Dymokur/"
+    if (person.birthPlace != null && !person.birthPlace.isBlank()) {
+      String normPlace = familyTreeService.normalize(person.birthPlace);
+      if (normPlace.length() >= 4 && !tokens.contains(normPlace)) {
+        tokens.add(normPlace);
+      }
+    }
+
     return tokens;
   }
 
