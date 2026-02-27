@@ -21,7 +21,7 @@ public class PersonMatchService {
   private static final int MAX_MATCHES_PER_PAGE = 10;
   private static final double MIN_SCORE = 0.3;
   private static final int CONTEXT_CHARS = 100;
-  private static final int PROXIMITY_WINDOW = 10;
+  private static final int PROXIMITY_WINDOW = 3;
 
   private final FamilyTreeService familyTreeService;
   private final PagePersonMatchRepository matchRepo;
