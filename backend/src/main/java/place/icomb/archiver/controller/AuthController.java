@@ -30,6 +30,8 @@ public class AuthController {
             "displayName",
             user.getDisplayName() != null ? user.getDisplayName() : "",
             "role",
-            user.getRole()));
+            user.getRole(),
+            "lang",
+            user.getLang() != null ? user.getLang() : "en"));
   }
 }

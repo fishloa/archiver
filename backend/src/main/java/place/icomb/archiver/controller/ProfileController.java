@@ -89,11 +89,18 @@ public class ProfileController {
     if (body.containsKey("displayName")) {
       user.setDisplayName((String) body.get("displayName"));
     }
+    if (body.containsKey("lang")) {
+      String lang = (String) body.get("lang");
+      if ("en".equals(lang) || "de".equals(lang)) {
+        user.setLang(lang);
+      }
+    }
     userRepository.save(user);
 
     Map<String, Object> result = new LinkedHashMap<>();
     result.put("id", user.getId());
     result.put("displayName", user.getDisplayName());
+    result.put("lang", user.getLang() != null ? user.getLang() : "en");
     return ResponseEntity.ok(result);
   }
 

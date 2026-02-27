@@ -2,23 +2,25 @@
 	import { enhance } from '$app/forms';
 	import { invalidateAll } from '$app/navigation';
 	import { Mail, Trash2, Plus } from 'lucide-svelte';
+	import { language, t } from '$lib/i18n';
 
 	let { data, form } = $props();
 	let profile = $derived(data.profile);
 	let newEmail = $state('');
 	let saving = $state(false);
+	let lang = $derived($language);
 </script>
 
 <svelte:head>
-	<title>Profile — Archiver</title>
+	<title>{t('profile.title')} — Archiver</title>
 </svelte:head>
 
 <div class="profile-page">
-	<h1>Profile</h1>
+	<h1>{t('profile.title')}</h1>
 
 	<section class="card">
-		<h2>Display Name</h2>
-		<p class="hint">This is shown in the top-right when you're signed in.</p>
+		<h2>{t('profile.displayName')}</h2>
+		<p class="hint">{t('profile.displayNameHint')}</p>
 		<form
 			method="POST"
 			action="?/updateName"
@@ -34,16 +36,16 @@
 			<div class="input-row">
 				<input type="text" name="displayName" value={profile.displayName} class="text-input" />
 				<button type="submit" class="btn-primary" disabled={saving}>
-					{saving ? 'Saving...' : 'Save'}
+					{saving ? t('profile.saving') : t('profile.save')}
 				</button>
 			</div>
 		</form>
 	</section>
 
 	<section class="card">
-		<h2>Email Addresses</h2>
+		<h2>{t('profile.emailAddresses')}</h2>
 		<p class="hint">
-			You can sign in with any of these emails. The email you're currently signed in with cannot be removed.
+			{t('profile.emailHint')}
 		</p>
 
 		<ul class="email-list">
@@ -55,7 +57,7 @@
 						{emailEntry.email}
 					</span>
 					{#if isLogin}
-						<span class="badge">current</span>
+						<span class="badge">{t('profile.current')}</span>
 					{:else}
 						<form
 							method="POST"
@@ -68,7 +70,7 @@
 							}}
 						>
 							<input type="hidden" name="emailId" value={emailEntry.id} />
-							<button type="submit" class="btn-icon-danger" title="Remove email">
+							<button type="submit" class="btn-icon-danger" title={t('profile.removeEmail')}>
 								<Trash2 size={14} strokeWidth={1.8} />
 							</button>
 						</form>
@@ -93,12 +95,12 @@
 					type="email"
 					name="email"
 					bind:value={newEmail}
-					placeholder="Add email address..."
+					placeholder={t('profile.addEmail')}
 					class="text-input"
 				/>
 				<button type="submit" class="btn-primary" disabled={!newEmail.trim()}>
 					<Plus size={16} strokeWidth={2} />
-					Add
+					{t('profile.add')}
 				</button>
 			</div>
 		</form>

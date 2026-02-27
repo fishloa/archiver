@@ -10,6 +10,7 @@ public class AppUser {
   @Id private Long id;
   private String displayName;
   private String role;
+  private String lang;
   private Instant createdAt;
   private Instant updatedAt;
 
@@ -37,6 +38,14 @@ public class AppUser {
 
   public void setRole(String role) {
     this.role = role;
+  }
+
+  public String getLang() {
+    return lang;
+  }
+
+  public void setLang(String lang) {
+    this.lang = lang;
   }
 
   public Instant getCreatedAt() {

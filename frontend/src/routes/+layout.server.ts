@@ -1,9 +1,13 @@
 import { fetchCurrentUser } from '$lib/server/api';
 
 export async function load({ locals }: { locals: App.Locals }) {
+	let user = null;
 	if (locals.userEmail) {
-		const user = await fetchCurrentUser(locals.userEmail);
-		return { user };
+		user = await fetchCurrentUser(locals.userEmail);
 	}
-	return { user: null };
+
+	// If user is logged in and has a lang preference, use it
+	const language = (user as any)?.lang ?? locals.language ?? 'en';
+
+	return { user, language };
 }

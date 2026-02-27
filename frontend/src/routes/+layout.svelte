@@ -3,19 +3,31 @@
 	import { page } from '$app/state';
 	import { Archive, Search, Library, Activity, Settings, PanelLeftClose, PanelLeft, GitBranch, LogIn, LogOut } from 'lucide-svelte';
 	import type { Snippet } from 'svelte';
+	import { language, initLanguage, t } from '$lib/i18n';
+	import LanguageSwitcher from '$lib/components/LanguageSwitcher.svelte';
 
 	let { children, data }: { children: Snippet; data: any } = $props();
+
+	// Initialize language from server-detected preference
+	$effect(() => {
+		if (data?.language) {
+			initLanguage(data.language);
+		}
+	});
 
 	let collapsed = $state(false);
 	let user = $derived(data?.user);
 	let isAdmin = $derived(user?.role === 'admin');
 
-	const nav = [
-		{ href: '/', label: 'Search', icon: Search },
-		{ href: '/records', label: 'Records', icon: Library },
-		{ href: '/family-tree', label: 'Family Tree', icon: GitBranch },
-		{ href: '/pipeline', label: 'Pipeline', icon: Activity },
-		{ href: '/admin', label: 'Admin', icon: Settings, adminOnly: true }
+	// Force reactivity on language changes
+	let lang = $derived($language);
+
+	const navItems = [
+		{ href: '/', labelKey: 'nav.search' as const, icon: Search },
+		{ href: '/records', labelKey: 'nav.records' as const, icon: Library },
+		{ href: '/family-tree', labelKey: 'nav.familyTree' as const, icon: GitBranch },
+		{ href: '/pipeline', labelKey: 'nav.pipeline' as const, icon: Activity },
+		{ href: '/admin', labelKey: 'nav.admin' as const, icon: Settings, adminOnly: true }
 	];
 
 	function isActive(href: string): boolean {
@@ -36,7 +48,7 @@
 		</div>
 
 		<ul class="nav-list">
-			{#each nav as item}
+			{#each navItems as item}
 				{#if !item.adminOnly || isAdmin}
 					{@const active = isActive(item.href)}
 					<li>
@@ -44,11 +56,11 @@
 							href={item.href}
 							class="nav-item"
 							class:active
-							title={collapsed ? item.label : undefined}
+							title={collapsed ? t(item.labelKey) : undefined}
 						>
 							<svelte:component this={item.icon} size={20} strokeWidth={active ? 2.2 : 1.8} />
 							{#if !collapsed}
-								<span>{item.label}</span>
+								{#key lang}<span>{t(item.labelKey)}</span>{/key}
 							{/if}
 						</a>
 					</li>
@@ -69,17 +81,18 @@
 		<div class="top-bar">
 			<div class="top-bar-spacer"></div>
 			<div class="auth-controls">
+				<LanguageSwitcher {user} />
 				{#if user?.authenticated}
 					<a href="/profile" class="user-link" title={user.email}>
 						{user.displayName || user.email}
 					</a>
-					<a href="/oauth2-google/sign_out?rd=/" class="signout-btn" title="Sign out">
+					<a href="/oauth2-google/sign_out?rd=/" class="signout-btn" title={t('nav.signOut')}>
 						<LogOut size={16} strokeWidth={1.8} />
 					</a>
 				{:else}
 					<a href="/signin" class="signin-btn">
 						<LogIn size={16} strokeWidth={1.8} />
-						<span>Sign in</span>
+						{#key lang}<span>{t('nav.signIn')}</span>{/key}
 					</a>
 				{/if}
 			</div>

@@ -12,9 +12,11 @@
 		AlertTriangle
 	} from 'lucide-svelte';
 	import type { PipelineStage } from '$lib/server/api';
+	import { language, t } from '$lib/i18n';
 
 	let { data } = $props();
 	let connected = $state(false);
+	let lang = $derived($language);
 
 	onMount(() => {
 		let debounceTimer: ReturnType<typeof setTimeout> | null = null;
@@ -33,15 +35,15 @@
 
 	const MAX_WORKER_SLOTS = 12;
 
-	const stageConfig = [
-		{ icon: CloudDownload, color: '#6ec6f0', dimBg: 'rgba(110,198,240,0.08)', borderColor: 'rgba(110,198,240,0.35)', desc: 'Downloading document metadata and page images from archive catalogs' },
-		{ icon: Inbox, color: '#a78bfa', dimBg: 'rgba(167,139,250,0.08)', borderColor: 'rgba(167,139,250,0.35)', desc: 'Documents received and queued for processing' },
-		{ icon: ScanText, color: '#f59e0b', dimBg: 'rgba(245,158,11,0.08)', borderColor: 'rgba(245,158,11,0.35)', desc: 'Reading each page image with AI to extract text and its position on the page' },
-		{ icon: FileText, color: '#f472b6', dimBg: 'rgba(244,114,182,0.08)', borderColor: 'rgba(244,114,182,0.35)', desc: 'Building searchable PDFs by overlaying extracted text onto the original scanned images' },
-		{ icon: Languages, color: '#38bdf8', dimBg: 'rgba(56,189,248,0.08)', borderColor: 'rgba(56,189,248,0.35)', desc: 'Translating German and Czech text into English using neural machine translation' },
-		{ icon: BrainCircuit, color: '#c084fc', dimBg: 'rgba(192,132,252,0.08)', borderColor: 'rgba(192,132,252,0.35)', desc: 'Generating semantic embeddings from translated text for intelligent search' },
-		{ icon: CircleCheckBig, color: '#34d399', dimBg: 'rgba(52,211,153,0.08)', borderColor: 'rgba(52,211,153,0.35)', desc: 'Fully processed and searchable' }
-	];
+	const stageConfig = $derived([
+		{ icon: CloudDownload, color: '#6ec6f0', dimBg: 'rgba(110,198,240,0.08)', borderColor: 'rgba(110,198,240,0.35)', desc: t('pipeline.desc.downloading') },
+		{ icon: Inbox, color: '#a78bfa', dimBg: 'rgba(167,139,250,0.08)', borderColor: 'rgba(167,139,250,0.35)', desc: t('pipeline.desc.inbox') },
+		{ icon: ScanText, color: '#f59e0b', dimBg: 'rgba(245,158,11,0.08)', borderColor: 'rgba(245,158,11,0.35)', desc: t('pipeline.desc.ocr') },
+		{ icon: FileText, color: '#f472b6', dimBg: 'rgba(244,114,182,0.08)', borderColor: 'rgba(244,114,182,0.35)', desc: t('pipeline.desc.pdf') },
+		{ icon: Languages, color: '#38bdf8', dimBg: 'rgba(56,189,248,0.08)', borderColor: 'rgba(56,189,248,0.35)', desc: t('pipeline.desc.translation') },
+		{ icon: BrainCircuit, color: '#c084fc', dimBg: 'rgba(192,132,252,0.08)', borderColor: 'rgba(192,132,252,0.35)', desc: t('pipeline.desc.embedding') },
+		{ icon: CircleCheckBig, color: '#34d399', dimBg: 'rgba(52,211,153,0.08)', borderColor: 'rgba(52,211,153,0.35)', desc: t('pipeline.desc.completed') }
+	]);
 
 	function fmt(n: number): string {
 		return n.toLocaleString();
@@ -54,17 +56,17 @@
 
 <div class="flex items-center justify-between mb-8">
 	<h1 class="text-[length:var(--vui-text-2xl)] font-extrabold tracking-tight">
-		Document Pipeline
+		{t('pipeline.title')}
 	</h1>
 	<div class="flex items-center gap-4">
 		<span class="flex items-center gap-1.5 text-[length:var(--vui-text-xs)] text-text-sub">
 			<span
 				class="inline-block w-1.5 h-1.5 rounded-full {connected ? 'bg-green-500' : 'bg-red-500'}"
 			></span>
-			{connected ? 'Live' : 'Connecting\u2026'}
+			{connected ? t('pipeline.live') : t('pipeline.connecting')}
 		</span>
-		<span class="text-[length:var(--vui-text-xs)] text-text-muted tabular-nums">
-			{fmt(data.stats.totals.records)} records &middot; {fmt(data.stats.totals.pages)} pages
+		<span class="text-[length:var(--vui-text-xs)] text-text-sub tabular-nums">
+			{fmt(data.stats.totals.records)} {t('pipeline.records')} &middot; {fmt(data.stats.totals.pages)} {t('pipeline.pages')}
 		</span>
 	</div>
 </div>
@@ -109,10 +111,10 @@
 						</div>
 						<div class="card-counts">
 							<span class="count-num" style="color: {cfg.color}">{fmt(stage.records)}</span>
-							<span class="count-label">records</span>
+							<span class="count-label">{t('pipeline.records')}</span>
 							<span class="count-sep">&middot;</span>
 							<span class="count-num count-pages">{fmt(stage.pages)}</span>
-							<span class="count-label">pages</span>
+							<span class="count-label">{t('pipeline.pages')}</span>
 						</div>
 					</div>
 
@@ -158,14 +160,14 @@
 							<!-- Worker label -->
 							<div class="worker-label">
 								{#if workers > 0}
-									<span style="color: {cfg.color}">{busy}/{workers}</span> busy
+									<span style="color: {cfg.color}">{busy}/{workers}</span> {t('pipeline.busy')}
 								{:else}
-									<span class="text-muted">no workers</span>
+									<span class="text-muted">{t('pipeline.noWorkers')}</span>
 								{/if}
 								{#if failed > 0}
 									<span class="failed-label">
 										<AlertTriangle size={10} class="inline -mt-0.5" />
-										{fmt(failed)} failed
+										{fmt(failed)} {t('pipeline.failed')}
 									</span>
 								{/if}
 							</div>

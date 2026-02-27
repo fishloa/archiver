@@ -1,9 +1,11 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
 	import { Search, ChevronLeft, ChevronRight, BrainCircuit, X, ExternalLink, ChevronDown } from 'lucide-svelte';
+	import { language, t } from '$lib/i18n';
 
 	let { data } = $props();
 	let query = $state(data.q || '');
+	let lang = $derived($language);
 
 	function doSearch(e: Event) {
 		e.preventDefault();
@@ -119,6 +121,26 @@
 			? panel.pages.find((p: any) => p.seq === panel!.pageSeq)
 			: null
 	);
+
+	// Language-aware text display for search panel
+	function panelMainText(pt: any): string | null {
+		if (!pt) return null;
+		if (lang === 'de') return pt.text || pt.textEn || null;
+		return pt.textEn || pt.text || null;
+	}
+	function panelMainLabel(): string {
+		if (lang === 'de') return t('page.originalText');
+		return t('search.englishTranslation');
+	}
+	function panelAltText(pt: any): string | null {
+		if (!pt) return null;
+		if (lang === 'de') return pt.textEn || null;
+		return pt.text || null;
+	}
+	function panelAltLabel(): string {
+		if (lang === 'de') return t('search.englishTranslation');
+		return t('search.originalOcr');
+	}
 </script>
 
 <svelte:head>
@@ -133,7 +155,7 @@
 			<input
 				type="text"
 				bind:value={query}
-				placeholder="Ask me anything..."
+				placeholder={t('search.placeholder')}
 				class="search-input"
 				autofocus
 			/>
@@ -156,7 +178,7 @@
 				<div class="ai-card">
 					<div class="ai-head">
 						<BrainCircuit size={14} />
-						<span>AI Overview</span>
+						<span>{t('search.aiOverview')}</span>
 					</div>
 					<p class="ai-text">{data.answer}</p>
 				</div>
@@ -197,11 +219,11 @@
 							onclick={() => selectResult(r, i)}
 						>
 							<div class="result-url">
-								records/{r.recordId}{#if r.pageSeq} / page {r.pageSeq}{/if}
+								records/{r.recordId}{#if r.pageSeq} / {t('search.page')} {r.pageSeq}{/if}
 								{#if r.referenceCode}&nbsp;&middot; {r.referenceCode}{/if}
 								&nbsp;&middot; <span class="result-score">{(r.score * 100).toFixed(0)}%</span>
 							</div>
-							<div class="result-title">{r.title}{#if r.pageSeq} — Page {r.pageSeq}{/if}</div>
+							<div class="result-title">{r.title}{#if r.pageSeq} — {t('search.page')} {r.pageSeq}{/if}</div>
 							<p class="result-snippet">{r.snippet}</p>
 						</button>
 					{/each}
@@ -209,7 +231,7 @@
 
 				{@render pager()}
 			{:else if data.q}
-				<p class="empty">No results found for <strong>{data.q}</strong></p>
+				<p class="empty">{t('search.noResults')} <strong>{data.q}</strong></p>
 			{/if}
 		</div>
 
@@ -220,12 +242,12 @@
 					<button class="panel-close" onclick={closePanel}><X size={18} /></button>
 					<a href={panel.pageSeq ? `/records/${panel.recordId}/pages/${panel.pageSeq}` : `/records/${panel.recordId}`} class="panel-link">
 						<ExternalLink size={14} />
-						Open full page
+						{t('search.openFullPage')}
 					</a>
 				</div>
 
 				{#if panel.loading}
-					<div class="panel-loading">Loading...</div>
+					<div class="panel-loading">{t('search.loading')}</div>
 				{:else if panel.record}
 					<div class="panel-body">
 						<!-- Title -->
@@ -237,12 +259,12 @@
 						<!-- Meta -->
 						<div class="panel-meta">
 							{#if panel.record.referenceCode}
-								<span class="meta-tag">Ref: {panel.record.referenceCode}</span>
+								<span class="meta-tag">{t('search.ref')}: {panel.record.referenceCode}</span>
 							{/if}
 							{#if panel.record.dateRangeText}
 								<span class="meta-tag">{panel.record.dateRangeText}</span>
 							{/if}
-							<span class="meta-tag">{panel.record.pageCount} pages</span>
+							<span class="meta-tag">{panel.record.pageCount} {t('search.pages')}</span>
 							<span class="meta-tag status">{panel.record.status}</span>
 						</div>
 
@@ -259,39 +281,39 @@
 							<div class="panel-image-wrap">
 								<img
 									src="/api/files/{panelPage.attachmentId}"
-									alt="Page {panel.pageSeq}"
+									alt="{t('search.page')} {panel.pageSeq}"
 									class="panel-image"
 									loading="lazy"
 								/>
 							</div>
 						{/if}
 
-						<!-- Translation -->
-						{#if panel.pageText?.textEn}
+						<!-- Main text pane (language-aware) -->
+						{#if panelMainText(panel.pageText)}
 							<div class="panel-section">
-								<h3 class="panel-section-title">English Translation — Page {panel.pageSeq}</h3>
-								<pre class="panel-text">{panel.pageText.textEn}</pre>
+								<h3 class="panel-section-title">{panelMainLabel()} — {t('search.page')} {panel.pageSeq}</h3>
+								<pre class="panel-text">{panelMainText(panel.pageText)}</pre>
 							</div>
 						{/if}
 
-						<!-- Original OCR (collapsible) -->
-						{#if panel.pageText?.text}
+						<!-- Alt text (collapsible) -->
+						{#if panelAltText(panel.pageText)}
 							<button class="ocr-toggle" onclick={() => ocrOpen = !ocrOpen}>
 								<ChevronDown size={14} class={ocrOpen ? 'rotate' : ''} />
-								Original OCR text
-								{#if panel.pageText.confidence}
+								{panelAltLabel()}
+								{#if lang !== 'de' && panel.pageText?.confidence}
 									<span class="ocr-confidence">{(panel.pageText.confidence * 100).toFixed(0)}%</span>
 								{/if}
 							</button>
 							{#if ocrOpen}
-								<pre class="panel-text ocr-text">{panel.pageText.text}</pre>
+								<pre class="panel-text ocr-text">{panelAltText(panel.pageText)}</pre>
 							{/if}
 						{/if}
 
 						<!-- Page thumbnails -->
 						{#if panel.pages && panel.pages.length > 1}
 							<div class="panel-section">
-								<h3 class="panel-section-title">All pages ({panel.pages.length})</h3>
+								<h3 class="panel-section-title">{t('search.allPages')} ({panel.pages.length})</h3>
 								<div class="thumb-grid">
 									{#each panel.pages as pg}
 										<button
@@ -301,7 +323,7 @@
 										>
 											<img
 												src="/api/files/{pg.attachmentId}/thumbnail"
-												alt="Page {pg.seq}"
+												alt="{t('search.page')} {pg.seq}"
 												loading="lazy"
 											/>
 											<span class="thumb-label">{pg.seq}</span>

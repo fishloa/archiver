@@ -4,8 +4,10 @@
 	import Pagination from '$lib/components/Pagination.svelte';
 	import StatusBadge from '$lib/components/StatusBadge.svelte';
 	import { parseSourceMeta, nadTranslation } from '$lib/archives';
+	import { language, t } from '$lib/i18n';
 
 	let { data } = $props();
+	let lang = $derived($language);
 
 	let connected = $state(false);
 
@@ -29,27 +31,31 @@
 		};
 	});
 
-	const statuses = [
-		{ value: '', label: 'All' },
-		{ value: 'ingesting', label: 'Ingesting' },
-		{ value: 'ingested', label: 'Ingested' },
-		{ value: 'ocr_pending', label: 'OCR Pending' },
-		{ value: 'ocr_done', label: 'OCR Done' },
-		{ value: 'pdf_pending', label: 'PDF Pending' },
-		{ value: 'pdf_done', label: 'PDF Done' },
-		{ value: 'translating', label: 'Translating' },
-		{ value: 'complete', label: 'Complete' },
-		{ value: 'error', label: 'Error' }
-	];
+	const statusKeys: Record<string, string> = {
+		'': 'records.statusAll',
+		'ingesting': 'records.statusIngesting',
+		'ingested': 'records.statusIngested',
+		'ocr_pending': 'records.statusOcrPending',
+		'ocr_done': 'records.statusOcrDone',
+		'pdf_pending': 'records.statusPdfPending',
+		'pdf_done': 'records.statusPdfDone',
+		'translating': 'records.statusTranslating',
+		'complete': 'records.statusComplete',
+		'error': 'records.statusError'
+	};
 
-	const columns = [
-		{ key: 'title', label: 'Title' },
-		{ key: 'dateRangeText', label: 'Date' },
-		{ key: 'referenceCode', label: 'Ref Code' },
-		{ key: 'status', label: 'Status' },
-		{ key: 'createdAt', label: 'Added' },
-		{ key: 'pageCount', label: 'Pages' }
-	] as const;
+	const statuses = $derived(
+		Object.entries(statusKeys).map(([value, key]) => ({ value, label: t(key as any) }))
+	);
+
+	const columnKeys = [
+		{ key: 'title', labelKey: 'records.col.title' as const },
+		{ key: 'dateRangeText', labelKey: 'records.col.date' as const },
+		{ key: 'referenceCode', labelKey: 'records.col.refCode' as const },
+		{ key: 'status', labelKey: 'records.col.status' as const },
+		{ key: 'createdAt', labelKey: 'records.col.added' as const },
+		{ key: 'pageCount', labelKey: 'records.col.pages' as const }
+	];
 
 	function buildParams(overrides: Record<string, string | number> = {}): URLSearchParams {
 		const params = new URLSearchParams();
@@ -110,20 +116,21 @@
 </script>
 
 <svelte:head>
-	<title>Records &ndash; Archiver</title>
+	<title>{t('records.title')} &ndash; Archiver</title>
 </svelte:head>
 
+{#key lang}
 <div class="flex items-center justify-between mb-6">
-	<h1 class="text-[length:var(--vui-text-2xl)] font-extrabold tracking-tight">Records</h1>
+	<h1 class="text-[length:var(--vui-text-2xl)] font-extrabold tracking-tight">{t('records.title')}</h1>
 	<span class="flex items-center gap-1.5 text-[length:var(--vui-text-xs)] text-text-sub">
 		<span class="inline-block w-1.5 h-1.5 rounded-full {connected ? 'bg-green-500' : 'bg-red-500'}"></span>
-		{connected ? 'Live' : 'Connecting\u2026'}
+		{connected ? t('records.live') : t('records.connecting')}
 	</span>
 </div>
 
 <div class="flex items-center gap-3 mb-4">
 	<label class="flex items-center gap-2 text-[length:var(--vui-text-xs)] text-text-sub">
-		<span class="font-medium">Status</span>
+		<span class="font-medium">{t('records.status')}</span>
 		<select
 			class="filter-select"
 			onchange={(e) => { window.location.href = statusHref(e.currentTarget.value); }}
@@ -136,12 +143,12 @@
 
 	{#if data.archives?.length > 1}
 		<label class="flex items-center gap-2 text-[length:var(--vui-text-xs)] text-text-sub">
-			<span class="font-medium">Archive</span>
+			<span class="font-medium">{t('records.archive')}</span>
 			<select
 				class="filter-select"
 				onchange={(e) => { window.location.href = archiveHref(Number(e.currentTarget.value)); }}
 			>
-				<option value="0" selected={!data.archiveId}>All Archives</option>
+				<option value="0" selected={!data.archiveId}>{t('records.allArchives')}</option>
 				{#each data.archives as archive}
 					<option value={archive.id} selected={data.archiveId === archive.id}>{archive.name}</option>
 				{/each}
@@ -152,17 +159,17 @@
 
 {#if data.records.empty}
 	<div class="vui-card">
-		<p class="text-text-sub">No records found.</p>
+		<p class="text-text-sub">{t('records.noRecords')}</p>
 	</div>
 {:else}
 	<div class="vui-card overflow-x-auto p-0">
 		<table class="w-full text-left">
 			<thead>
 				<tr class="border-b border-border">
-					{#each columns as col}
+					{#each columnKeys as col}
 						<th class="px-5 py-3 text-[11px] font-semibold uppercase tracking-[0.04em] text-text-sub">
 							<a href={sortHref(col.key)} class="vui-transition hover:text-text">
-								{col.label}{sortIndicator(col.key)}
+								{t(col.labelKey)}{sortIndicator(col.key)}
 							</a>
 						</th>
 					{/each}
@@ -174,7 +181,7 @@
 					<tr class="border-b border-border vui-transition hover:bg-[rgba(255,255,255,0.02)]">
 						<td class="px-5 py-3.5">
 							<a href="/records/{record.id}" class="font-medium text-accent vui-transition hover:text-accent-hover">
-								{record.title ?? '(untitled)'}
+								{record.title ?? t('records.untitled')}
 							</a>
 							{#if fond}
 								<div class="text-[length:var(--vui-text-xs)] text-text-sub mt-0.5">{fond}</div>
@@ -194,10 +201,11 @@
 	<div class="flex items-center justify-between">
 		<Pagination page={data.records.number} totalPages={data.records.totalPages} />
 		<span class="text-[length:var(--vui-text-xs)] text-text-sub tabular-nums">
-			{data.records.totalElements} records
+			{data.records.totalElements} {t('records.records')}
 		</span>
 	</div>
 {/if}
+{/key}
 
 <style>
 	.filter-select {
