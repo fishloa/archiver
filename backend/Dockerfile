@@ -9,6 +9,9 @@ COPY gradle ./gradle
 COPY build.gradle.kts settings.gradle.kts ./
 COPY src ./src
 
+# Run unit tests first — if they fail, the build (and deploy) stops
+RUN ./gradlew test --no-daemon -x spotlessCheck --tests '*PersonMatchServiceTest'
+
 RUN ./gradlew bootJar --no-daemon -x test -x spotlessCheck
 
 # ==========================================================================

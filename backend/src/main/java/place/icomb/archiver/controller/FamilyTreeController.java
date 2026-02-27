@@ -149,6 +149,13 @@ public class FamilyTreeController {
   @PostMapping("/reload")
   public ResponseEntity<Map<String, Object>> reload() {
     familyTreeService.reload();
+    personMatchService.invalidateAll();
     return ResponseEntity.ok(Map.of("status", "ok", "count", familyTreeService.getPersonCount()));
+  }
+
+  @PostMapping("/invalidate-matches")
+  public ResponseEntity<Map<String, String>> invalidateMatches() {
+    personMatchService.invalidateAll();
+    return ResponseEntity.ok(Map.of("status", "ok"));
   }
 }

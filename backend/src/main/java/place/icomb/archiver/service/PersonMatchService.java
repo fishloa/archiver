@@ -57,7 +57,6 @@ public class PersonMatchService {
     this.objectMapper = new ObjectMapper();
   }
 
-
   public List<PagePersonMatch> getPageMatches(Long pageId) {
     if (matchRepo.existsByPageId(pageId)) {
       return matchRepo.findByPageId(pageId);
@@ -128,7 +127,7 @@ public class PersonMatchService {
       match.setPageId(pageId);
       match.setPersonId(mr.personId);
       match.setPersonName(mr.personName);
-      match.setScore((float) Math.min(1.0, mr.score));
+      match.setScore((float) mr.score);
       match.setContext(mr.context);
       stored.add(matchRepo.save(match));
     }
