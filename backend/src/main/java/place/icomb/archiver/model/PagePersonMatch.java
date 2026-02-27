@@ -2,6 +2,7 @@ package place.icomb.archiver.model;
 
 import java.time.Instant;
 import org.springframework.data.annotation.Id;
+import org.springframework.data.annotation.ReadOnlyProperty;
 import org.springframework.data.relational.core.mapping.Table;
 
 @Table("page_person_match")
@@ -13,7 +14,7 @@ public class PagePersonMatch {
   private String personName;
   private float score;
   private String context;
-  private Instant createdAt;
+  @ReadOnlyProperty private Instant createdAt;
 
   public PagePersonMatch() {}
 
