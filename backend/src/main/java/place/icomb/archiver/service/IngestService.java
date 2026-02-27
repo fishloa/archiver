@@ -179,9 +179,9 @@ public class IngestService {
   }
 
   /**
-   * Reopens a completed/processed record for page repair. Resets status to ingesting, removes
-   * stale PDF attachment, and returns existing page sequence numbers so the caller knows which
-   * pages are already present.
+   * Reopens a completed/processed record for page repair. Resets status to ingesting, removes stale
+   * PDF attachment, and returns existing page sequence numbers so the caller knows which pages are
+   * already present.
    */
   @Transactional
   public Record repairRecord(Long recordId) {
@@ -208,8 +208,8 @@ public class IngestService {
 
   /**
    * Marks the record as ingested, transitions to ocr_pending, and enqueues OCR jobs for all pages.
-   * Pages that already have OCR text (from a previous run / repair) are skipped.
-   * Fires a NOTIFY on the ocr_jobs channel.
+   * Pages that already have OCR text (from a previous run / repair) are skipped. Fires a NOTIFY on
+   * the ocr_jobs channel.
    */
   @Transactional
   public Record completeIngest(Long recordId) {

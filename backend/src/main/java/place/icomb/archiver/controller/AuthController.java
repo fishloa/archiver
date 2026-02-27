@@ -23,9 +23,13 @@ public class AuthController {
 
     return ResponseEntity.ok(
         Map.of(
-            "authenticated", true,
-            "email", auth.getName(),
-            "displayName", user.getDisplayName() != null ? user.getDisplayName() : "",
-            "role", user.getRole()));
+            "authenticated",
+            true,
+            "email",
+            auth.getName(),
+            "displayName",
+            user.getDisplayName() != null ? user.getDisplayName() : "",
+            "role",
+            user.getRole()));
   }
 }

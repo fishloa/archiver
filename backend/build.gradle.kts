@@ -43,6 +43,10 @@ dependencies {
     // PDF generation (page export)
     implementation("org.apache.pdfbox:pdfbox:3.0.4")
 
+    // MCP (Model Context Protocol) server via Spring AI
+    implementation(platform("org.springframework.ai:spring-ai-bom:2.0.0-M2"))
+    implementation("org.springframework.ai:spring-ai-starter-mcp-server-webmvc")
+
     // Test
     testImplementation("org.springframework.boot:spring-boot-starter-test")
     testImplementation("org.springframework.security:spring-security-test")

@@ -323,6 +323,7 @@ class PipelineAuditTest {
   void pass2_failedPdfJob_resetToPending() {
     Long archiveId = createArchive();
     Long recordId = createRecord(archiveId, "pdf_pending", 1);
+    createPage(recordId, 1);
 
     Long jobId =
         createJobWithError(recordId, null, "build_searchable_pdf", "failed", 1, "PDF build failed");
@@ -429,10 +430,10 @@ class PipelineAuditTest {
   }
 
   @Test
-  void pass3_stuckIngesting_zeroPageCount_notTransitioned() {
+  void pass3_stuckIngesting_zeroPageCount_transitionsToTranslating() {
     Long archiveId = createArchive();
 
-    // page_count = 0 — no pages expected, condition page_count > 0 excludes this
+    // page_count = 0 — metadata-only record, audit transitions it through pipeline
     Long recordId =
         jdbc.sql(
                 """
@@ -447,9 +448,16 @@ class PipelineAuditTest {
             .query(Long.class)
             .single();
 
-    jobService.auditPipeline();
+    int fixed = jobService.auditPipeline();
 
-    assertThat(getRecordStatus(recordId)).isEqualTo("ingesting");
+    assertThat(fixed).isGreaterThanOrEqualTo(1);
+    // 0-page record: ingesting → ocr_done → translating (metadata-only, skip PDF)
+    assertThat(getRecordStatus(recordId)).isEqualTo("translating");
+    assertThat(countJobs(recordId, "translate_record", "pending")).isEqualTo(1);
+    assertThat(countPipelineEvents(recordId, "ingest", "completed")).isEqualTo(1);
+    assertThat(countPipelineEvents(recordId, "ocr", "completed")).isEqualTo(1);
+    assertThat(countPipelineEvents(recordId, "pdf_build", "completed")).isEqualTo(1);
+    assertThat(countPipelineEvents(recordId, "translation", "started")).isEqualTo(1);
   }
 
   // ---------------------------------------------------------------------------
@@ -552,7 +560,7 @@ class PipelineAuditTest {
   // ---------------------------------------------------------------------------
 
   @Test
-  void pass5_pdfPendingWithCompletedJob_transitionsToPdfDone() {
+  void pass5_pdfPendingWithCompletedJob_transitionsToEmbedding() {
     Long archiveId = createArchive();
     Long recordId = createRecord(archiveId, "pdf_pending", 1);
     createPage(recordId, 1);
@@ -567,7 +575,8 @@ class PipelineAuditTest {
     int fixed = jobService.auditPipeline();
 
     assertThat(fixed).isGreaterThanOrEqualTo(1);
-    assertThat(getRecordStatus(recordId)).isEqualTo("pdf_done");
+    // checkRecordPdfComplete now transitions beyond pdf_done to embedding (no translations pending)
+    assertThat(getRecordStatus(recordId)).isEqualTo("embedding");
 
     // pdf_attachment_id should be set on the record
     Long pdfAttId =
@@ -579,6 +588,9 @@ class PipelineAuditTest {
 
     // pdf_build completed pipeline event should exist
     assertThat(countPipelineEvents(recordId, "pdf_build", "completed")).isEqualTo(1);
+    // embed_record job should be enqueued
+    assertThat(countJobs(recordId, "embed_record", "pending")).isEqualTo(1);
+    assertThat(countPipelineEvents(recordId, "embedding", "started")).isEqualTo(1);
   }
 
   @Test
@@ -631,7 +643,7 @@ class PipelineAuditTest {
   // ---------------------------------------------------------------------------
 
   @Test
-  void pass6_pdfDoneAllTranslationsCompleted_backfillsEvent() {
+  void pass6_pdfDoneAllTranslationsCompleted_transitionsToEmbedding() {
     Long archiveId = createArchive();
     Long recordId = createRecord(archiveId, "pdf_done", 1);
     Long pageId = createPage(recordId, 1);
@@ -651,7 +663,10 @@ class PipelineAuditTest {
     int fixed = jobService.auditPipeline();
 
     assertThat(fixed).isGreaterThanOrEqualTo(1);
+    // Pass 6 transitions pdf_done → embedding and backfills the translation completed event
+    assertThat(getRecordStatus(recordId)).isEqualTo("embedding");
     assertThat(countPipelineEvents(recordId, "translation", "completed")).isEqualTo(1);
+    assertThat(countJobs(recordId, "embed_record", "pending")).isEqualTo(1);
   }
 
   @Test

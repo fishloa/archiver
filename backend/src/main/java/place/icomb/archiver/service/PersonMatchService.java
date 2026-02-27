@@ -4,10 +4,8 @@ import java.util.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
-import place.icomb.archiver.model.Page;
 import place.icomb.archiver.model.PagePersonMatch;
 import place.icomb.archiver.model.PageText;
-import place.icomb.archiver.model.Record;
 import place.icomb.archiver.repository.PagePersonMatchRepository;
 import place.icomb.archiver.repository.PageRepository;
 import place.icomb.archiver.repository.PageTextRepository;
@@ -67,9 +65,7 @@ public class PersonMatchService {
     // Aggregate by personId
     Map<Integer, RecordPersonMatchBuilder> byPerson = new LinkedHashMap<>();
     for (PagePersonMatch m : allMatches) {
-      byPerson
-          .computeIfAbsent(m.getPersonId(), k -> new RecordPersonMatchBuilder(m))
-          .addMatch(m);
+      byPerson.computeIfAbsent(m.getPersonId(), k -> new RecordPersonMatchBuilder(m)).addMatch(m);
     }
 
     List<RecordPersonMatch> results = new ArrayList<>();
@@ -188,8 +184,8 @@ public class PersonMatchService {
 
   /**
    * Adjusts a person's match score based on whether they were plausibly alive when the document was
-   * written. A person alive during the document's date gets a boost; one clearly dead before or born
-   * after gets a penalty.
+   * written. A person alive during the document's date gets a boost; one clearly dead before or
+   * born after gets a penalty.
    */
   private double applyTemporalAdjustment(double score, Person person, Integer docYear) {
     if (docYear == null) return score;

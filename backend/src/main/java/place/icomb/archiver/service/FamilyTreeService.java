@@ -83,7 +83,8 @@ public class FamilyTreeService {
         personMatchService.invalidateAll();
       } catch (Exception e) {
         // May fail during startup when DB is not ready yet — that's fine
-        log.debug("Could not invalidate person matches (expected during startup): {}", e.getMessage());
+        log.debug(
+            "Could not invalidate person matches (expected during startup): {}", e.getMessage());
       }
     } catch (IOException e) {
       log.error("Failed to load genealogy file", e);

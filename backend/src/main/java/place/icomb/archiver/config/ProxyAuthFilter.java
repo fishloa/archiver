@@ -45,7 +45,8 @@ public class ProxyAuthFilter extends OncePerRequestFilter {
 
   private List<SimpleGrantedAuthority> buildAuthorities(AppUser user) {
     if ("admin".equals(user.getRole())) {
-      return List.of(new SimpleGrantedAuthority("ROLE_USER"), new SimpleGrantedAuthority("ROLE_ADMIN"));
+      return List.of(
+          new SimpleGrantedAuthority("ROLE_USER"), new SimpleGrantedAuthority("ROLE_ADMIN"));
     }
     return List.of(new SimpleGrantedAuthority("ROLE_USER"));
   }

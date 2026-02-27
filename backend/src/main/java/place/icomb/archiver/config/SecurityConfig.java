@@ -29,6 +29,9 @@ public class SecurityConfig {
         .authorizeHttpRequests(
             auth ->
                 auth
+                    // MCP server endpoints — read-only tools, no auth needed
+                    .requestMatchers("/sse", "/mcp/**")
+                    .permitAll()
                     // GET requests are read-only — allow anonymous
                     .requestMatchers(HttpMethod.GET, "/api/**")
                     .permitAll()

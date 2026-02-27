@@ -436,6 +436,22 @@ public class JobService {
       } else {
         jdbcTemplate.update(
             "UPDATE record SET status = 'embedding', updated_at = now() WHERE id = ?", recordId);
+        // Log translation completed if there were translation jobs
+        Long completedTranslation =
+            jdbcTemplate.queryForObject(
+                "SELECT count(*) FROM job WHERE record_id = ? AND kind IN ('translate_page', 'translate_record') AND status = 'completed'",
+                Long.class,
+                recordId);
+        if (completedTranslation != null && completedTranslation > 0) {
+          Long existingEvent =
+              jdbcTemplate.queryForObject(
+                  "SELECT count(*) FROM pipeline_event WHERE record_id = ? AND stage = 'translation' AND event = 'completed'",
+                  Long.class,
+                  recordId);
+          if (existingEvent == null || existingEvent == 0) {
+            logPipelineEvent(recordId, "translation", "completed", "from audit");
+          }
+        }
         enqueueJob("embed_record", recordId, null, null);
         logPipelineEvent(recordId, "embedding", "started", "from audit");
         log.info("Audit: record {} pdf_done → embedding (translation done)", recordId);
