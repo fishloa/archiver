@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { ArrowLeft, ArrowRight, ChevronDown, Bookmark, BookmarkCheck, Download, X, Users } from 'lucide-svelte';
+	import { ArrowLeft, ArrowRight, ChevronDown, Bookmark, BookmarkCheck, Download, X, Users, Baby, Skull } from 'lucide-svelte';
 	import { isKept, toggleKept, keptCount, keptPagesParam, clearKept } from '$lib/kept-pages.svelte';
 
 	let { data } = $props();
@@ -94,7 +94,7 @@
 	</div>
 {/if}
 
-<!-- Main layout: image left, translation right -->
+<!-- Main layout: image left, info right -->
 <div class="flex flex-col lg:flex-row gap-6 vui-animate-fade-in">
 	<!-- Image -->
 	<div class="lg:flex-1 min-w-0">
@@ -111,63 +111,67 @@
 		{/if}
 	</div>
 
-	<!-- English translation pane -->
-	{#if pageText.textEn}
-		<div class="lg:flex-1 min-w-0">
-			<div class="vui-card h-full">
+	<!-- Right-hand side: People Mentioned + Translation -->
+	<div class="lg:flex-1 min-w-0 flex flex-col gap-4">
+		<!-- People Mentioned -->
+		{#if personMatches.length > 0}
+			<div class="vui-card">
+				<button
+					class="flex items-center gap-1.5 text-[length:var(--vui-text-sm)] font-semibold text-text-sub vui-transition hover:text-text cursor-pointer w-full"
+					onclick={() => peopleOpen = !peopleOpen}
+				>
+					<ChevronDown
+						size={14}
+						strokeWidth={2}
+						class="vui-transition {peopleOpen ? 'rotate-0' : '-rotate-90'}"
+					/>
+					<Users size={14} strokeWidth={2} />
+					People Mentioned
+					<span class="text-text-muted font-normal ml-1">({personMatches.length})</span>
+				</button>
+				{#if peopleOpen}
+					<div class="mt-3 flex flex-col gap-2">
+						{#each personMatches as match}
+							<a
+								href="/family-tree?personId={match.personId}"
+								class="group block px-3 py-2 rounded-lg bg-bg-deep border border-border vui-transition hover:border-accent hover:bg-surface"
+							>
+								<div class="text-[length:var(--vui-text-sm)] font-semibold text-accent">
+									{match.personName}
+								</div>
+								<div class="flex items-center gap-3 mt-1 text-[length:var(--vui-text-xs)] text-text-muted">
+									{#if match.birthYear}
+										<span class="flex items-center gap-1">
+											<Baby size={11} strokeWidth={2} class="text-accent" />
+											{match.birthYear}
+										</span>
+									{/if}
+									{#if match.deathYear}
+										<span class="flex items-center gap-1">
+											<Skull size={11} strokeWidth={2} class="text-red-400" />
+											{match.deathYear}
+										</span>
+									{/if}
+									{#if match.section}
+										<span class="text-text-muted">{match.section}</span>
+									{/if}
+								</div>
+							</a>
+						{/each}
+					</div>
+				{/if}
+			</div>
+		{/if}
+
+		<!-- English translation pane -->
+		{#if pageText.textEn}
+			<div class="vui-card flex-1">
 				<h2 class="text-[length:var(--vui-text-sm)] font-semibold text-accent mb-3">English Translation</h2>
 				<pre class="p-4 rounded-md bg-bg-deep border border-border text-[length:var(--vui-text-sm)] text-text overflow-x-auto font-mono whitespace-pre-wrap leading-relaxed max-h-[80vh] overflow-y-auto">{pageText.textEn}</pre>
 			</div>
-		</div>
-	{/if}
-</div>
-
-<!-- People Mentioned -->
-{#if personMatches.length > 0}
-	<div class="mt-6 vui-card vui-animate-fade-in">
-		<button
-			class="flex items-center gap-1.5 text-[length:var(--vui-text-sm)] font-semibold text-text-sub vui-transition hover:text-text cursor-pointer w-full"
-			onclick={() => peopleOpen = !peopleOpen}
-		>
-			<ChevronDown
-				size={14}
-				strokeWidth={2}
-				class="vui-transition {peopleOpen ? 'rotate-0' : '-rotate-90'}"
-			/>
-			<Users size={14} strokeWidth={2} />
-			People Mentioned
-			<span class="text-text-muted font-normal ml-1">({personMatches.length})</span>
-		</button>
-		{#if peopleOpen}
-			<div class="mt-3 flex flex-wrap gap-2">
-				{#each personMatches as match}
-					<a
-						href="/family-tree?personId={match.personId}"
-						class="group flex items-center gap-2 px-3 py-2 rounded-lg bg-bg-deep border border-border vui-transition hover:border-accent hover:bg-surface"
-					>
-						<div class="min-w-0">
-							<div class="text-[length:var(--vui-text-sm)] font-medium text-text group-hover:text-accent vui-transition">
-								{match.personName}
-							</div>
-							<div class="flex items-center gap-2 text-[length:var(--vui-text-xs)] text-text-muted">
-								{#if match.birthYear || match.deathYear}
-									<span>{lifespan(match.birthYear, match.deathYear)}</span>
-								{/if}
-								<span class="tabular-nums">{scorePercent(match.score)}</span>
-							</div>
-						</div>
-					</a>
-				{/each}
-			</div>
-			{#each personMatches.filter(m => m.context) as match}
-				<div class="mt-2 px-3 py-1.5 rounded bg-bg-deep text-[length:var(--vui-text-xs)] text-text-sub">
-					<span class="font-medium text-text">{match.personName}:</span>
-					<span class="italic">&ldquo;{match.context}&rdquo;</span>
-				</div>
-			{/each}
 		{/if}
 	</div>
-{/if}
+</div>
 
 <!-- Original OCR text (collapsed) -->
 {#if pageText.text}

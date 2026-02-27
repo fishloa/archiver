@@ -12,7 +12,7 @@
 	}
 
 	const hasResults = $derived(data.results && data.results.length > 0);
-	const showLanding = $derived(!data.q);
+	const showLanding = $derived(!data.q && !data.personId);
 
 	function selectPerson(personId: number) {
 		goto(`/family-tree?q=${encodeURIComponent(data.q)}&personId=${personId}`);
