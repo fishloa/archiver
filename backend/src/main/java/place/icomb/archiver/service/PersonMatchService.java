@@ -300,6 +300,12 @@ public class PersonMatchService {
       }
     }
 
+    // Require at least 2 matched tokens for multi-token names — matching just the
+    // surname alone (e.g. "czernin") shouldn't be enough to identify a specific person.
+    if (nameTokens.size() >= 2 && matched < 2) {
+      return 0.0;
+    }
+
     // Documents typically use surname + 1-2 given names (e.g. "Rudolf Czernin").
     // Don't penalize people with many given names — cap denominator at 3.
     int requiredTokens = Math.min(nameTokens.size(), 3);
