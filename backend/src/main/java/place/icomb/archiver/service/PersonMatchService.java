@@ -57,10 +57,6 @@ public class PersonMatchService {
     this.objectMapper = new ObjectMapper();
   }
 
-  /** Constructor for unit testing — no repos, no API key. */
-  PersonMatchService(FamilyTreeService familyTreeService) {
-    this(familyTreeService, null, null, null, null, "");
-  }
 
   public List<PagePersonMatch> getPageMatches(Long pageId) {
     if (matchRepo.existsByPageId(pageId)) {

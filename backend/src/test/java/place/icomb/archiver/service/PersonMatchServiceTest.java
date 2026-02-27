@@ -25,7 +25,7 @@ class PersonMatchServiceTest {
     treeService = new FamilyTreeService();
     treeService.reload();
     allPeople = treeService.getAllPeople();
-    matchService = new PersonMatchService(treeService);
+    matchService = new PersonMatchService(treeService, null, null, null, null, "");
   }
 
   @Test
