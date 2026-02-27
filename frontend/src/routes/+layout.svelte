@@ -98,7 +98,9 @@
 			</div>
 		</div>
 		<div class="content">
-			{@render children()}
+			{#key lang}
+				{@render children()}
+			{/key}
 		</div>
 	</main>
 </div>
