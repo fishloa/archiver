@@ -43,6 +43,9 @@ public class SecurityConfig {
                     // Semantic search is a read-only POST
                     .requestMatchers(HttpMethod.POST, "/api/search/semantic")
                     .permitAll()
+                    // Family tree reload — idempotent maintenance
+                    .requestMatchers(HttpMethod.POST, "/api/family-tree/reload")
+                    .permitAll()
                     // Auth endpoint
                     .requestMatchers("/api/auth/**")
                     .permitAll()
