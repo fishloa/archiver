@@ -121,45 +121,32 @@
 	</span>
 </div>
 
-<div class="flex items-center gap-4 mb-4">
-	<div class="flex gap-2">
-		{#each statuses as s}
-			{@const active = data.status === s.value}
-			<a
-				href={statusHref(s.value)}
-				class="px-3 py-1.5 rounded-full text-[length:var(--vui-text-xs)] font-medium border transition-all
-					{active
-						? 'bg-accent-dim text-accent border-accent-border'
-						: 'bg-surface border-border text-text-sub hover:border-border-hover hover:text-text'}"
-			>
-				{s.label}
-			</a>
-		{/each}
-	</div>
+<div class="flex items-center gap-3 mb-4">
+	<label class="flex items-center gap-2 text-[length:var(--vui-text-xs)] text-text-sub">
+		<span class="font-medium">Status</span>
+		<select
+			class="filter-select"
+			onchange={(e) => { window.location.href = statusHref(e.currentTarget.value); }}
+		>
+			{#each statuses as s}
+				<option value={s.value} selected={data.status === s.value}>{s.label}</option>
+			{/each}
+		</select>
+	</label>
 
 	{#if data.archives?.length > 1}
-		<div class="flex gap-2 ml-auto">
-			<a
-				href={archiveHref(0)}
-				class="px-3 py-1.5 rounded-full text-[length:var(--vui-text-xs)] font-medium border transition-all
-					{!data.archiveId
-						? 'bg-accent-dim text-accent border-accent-border'
-						: 'bg-surface border-border text-text-sub hover:border-border-hover hover:text-text'}"
+		<label class="flex items-center gap-2 text-[length:var(--vui-text-xs)] text-text-sub">
+			<span class="font-medium">Archive</span>
+			<select
+				class="filter-select"
+				onchange={(e) => { window.location.href = archiveHref(Number(e.currentTarget.value)); }}
 			>
-				All Archives
-			</a>
-			{#each data.archives as archive}
-				<a
-					href={archiveHref(archive.id)}
-					class="px-3 py-1.5 rounded-full text-[length:var(--vui-text-xs)] font-medium border transition-all
-						{data.archiveId === archive.id
-							? 'bg-accent-dim text-accent border-accent-border'
-							: 'bg-surface border-border text-text-sub hover:border-border-hover hover:text-text'}"
-				>
-					{archive.name}
-				</a>
-			{/each}
-		</div>
+				<option value="0" selected={!data.archiveId}>All Archives</option>
+				{#each data.archives as archive}
+					<option value={archive.id} selected={data.archiveId === archive.id}>{archive.name}</option>
+				{/each}
+			</select>
+		</label>
 	{/if}
 </div>
 
@@ -211,3 +198,33 @@
 		</span>
 	</div>
 {/if}
+
+<style>
+	.filter-select {
+		appearance: none;
+		background-color: var(--vui-surface);
+		border: 1px solid var(--vui-border);
+		border-radius: var(--vui-radius-md);
+		padding: 0.375rem 2rem 0.375rem 0.625rem;
+		font-size: var(--vui-text-xs);
+		font-weight: 500;
+		color: var(--vui-text);
+		cursor: pointer;
+		transition: border-color 0.15s, box-shadow 0.15s;
+		background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23888' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+		background-repeat: no-repeat;
+		background-position: right 0.5rem center;
+	}
+	.filter-select:hover {
+		border-color: var(--vui-border-hover);
+	}
+	.filter-select:focus {
+		outline: none;
+		border-color: var(--vui-accent);
+		box-shadow: 0 0 0 2px var(--vui-accent-glow);
+	}
+	.filter-select option {
+		background: var(--vui-bg);
+		color: var(--vui-text);
+	}
+</style>
