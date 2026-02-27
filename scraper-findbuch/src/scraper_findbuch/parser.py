@@ -48,18 +48,31 @@ def parse_search_results(html: str) -> list[dict]:
                         href = "https://www.findbuch.at" + href
                     results.append({"detail_url": href, "title": text})
 
-    # Strategy 3: Any link that looks like a detail page
+    # Strategy 3: Any link that looks like a findbuch detail page
     if not results:
-        for link in soup.find_all("a", href=True):
+        # Only look inside the main content area, skip footer/nav
+        content = soup.find("div", id="main") or soup.find("main") or soup
+        for link in content.find_all("a", href=True):
             href = link.get("href", "")
             text = link.get_text(strip=True)
-            # Heuristic: detail links are long paths, not navigation
+            # Only accept links to findbuch.at pages (not external sites)
             if (href and text and len(text) > 5
                     and "/page/" not in href
                     and "searchterm" not in href
                     and "login" not in href.lower()
                     and "registration" not in href.lower()
                     and "data-protection" not in href
+                    and "imprint" not in href
+                    and "contact" not in href
+                    and "site-map" not in href
+                    and "forgot" not in href.lower()
+                    and not href.startswith("http://")
+                    and not href.startswith("https://www.facebook")
+                    and not href.startswith("https://www.instagram")
+                    and not href.startswith("https://www.twitter")
+                    and not href.startswith("https://twitter")
+                    and not href.startswith("https://x.com")
+                    and (href.startswith("/") or href.startswith("https://www.findbuch.at/"))
                     and href.count("/") >= 2):
                 if href.startswith("/"):
                     href = "https://www.findbuch.at" + href
