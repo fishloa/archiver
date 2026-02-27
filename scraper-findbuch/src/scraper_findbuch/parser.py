@@ -117,15 +117,13 @@ def get_total_pages(html: str) -> int:
             page_num = int(match.group(1))
             max_page = max(max_page, page_num)
 
-    # Also check for "last page" type links
+    # Fallback: derive from result count text (e.g. "122 results", 11 per page)
     if max_page == 1:
-        # Look for pagination span/div with page numbers
-        for elem in soup.find_all(["span", "a"], string=re.compile(r'^\d+$')):
-            try:
-                n = int(elem.get_text(strip=True))
-                max_page = max(max_page, n)
-            except ValueError:
-                pass
+        count = get_result_count(html)
+        if count > 0:
+            per_page = 11  # findbuch.at uses 11 results per page
+            max_page = (count + per_page - 1) // per_page
+            log.debug("Derived %d pages from %d results", max_page, count)
 
     return max_page
 

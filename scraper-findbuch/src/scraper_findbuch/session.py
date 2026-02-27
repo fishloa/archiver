@@ -91,25 +91,27 @@ class FindbuchSession:
         self._logged_in = True
         log.info("Successfully logged in to findbuch.at as %s", cfg.findbuch_username)
 
-        # Step 2: the search results module has its own login form
-        # (Contao CMS module-level access control). Submit it once to
-        # unlock search results for the session.
-        search_page = self._client.get("/findbuch-search")
-        if "registered users" in search_page.text or "registrierten" in search_page.text:
-            log.info("Unlocking search results module...")
-            result = self._submit_login_form("/findbuch-search", search_page.text)
-            if "registered users" in result and "registrierten" not in result:
-                log.warning("Search results may still be restricted")
-            else:
-                log.info("Search results unlocked")
-
     def search(self, term, page=1):
-        """Search findbuch.at. Returns raw HTML of results page."""
+        """Search findbuch.at. Returns raw HTML of results page.
+
+        On the first call, detects and submits the search module's own
+        Contao login form if results are hidden behind it.
+        """
         url = f"/findbuch-search/searchterm/{term}"
         if page > 1:
             url += f"/page/{page}"
         resp = self._client.get(url)
-        return resp.text
+        html = resp.text
+
+        # Contao CMS module-level access: the search results module may
+        # show its own login form even if we're already logged in site-wide.
+        if "registered users" in html or "registrierten" in html:
+            log.info("Search results restricted — submitting module login form...")
+            html = self._submit_login_form(url, html)
+            if "registered users" in html or "registrierten" in html:
+                log.warning("Search results may still be restricted after login")
+
+        return html
 
     def get_detail(self, detail_url):
         """Fetch a record detail page. Must be logged in. Returns HTML."""

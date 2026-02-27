@@ -14,7 +14,7 @@ from .config import Config, set_config, get_config
 from .client import BackendClient, SOURCE_SYSTEM
 from worker_common.http import wait_for_backend
 from .session import FindbuchSession
-from .parser import parse_search_results, get_total_pages, parse_detail_page
+from .parser import parse_search_results, get_total_pages, get_result_count, parse_detail_page
 
 log = logging.getLogger(__name__)
 
@@ -263,6 +263,9 @@ def main():
         # Fetch first page to get total count
         time.sleep(get_config().delay)
         first_page_html = session.search(encoded_term, page=1)
+        result_count = get_result_count(first_page_html)
+        if result_count:
+            log.info("Search reports %d total results", result_count)
         total_pages = get_total_pages(first_page_html)
 
         if args.max_pages:
