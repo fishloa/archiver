@@ -28,12 +28,12 @@ pipeline {
                     env.BUILD_FRONTEND = params.BUILD_ALL || changed('frontend')
                     env.BUILD_WEB = params.BUILD_ALL || changed('web')
                     env.BUILD_OAUTH2_PROXY_APPLE = params.BUILD_ALL || changed('oauth2-proxy-apple')
-                    env.BUILD_SCRAPER = params.BUILD_ALL || changed('scraper-cz')
-                    env.BUILD_SCRAPER_EBADATELNA = params.BUILD_ALL || changed('scraper-ebadatelna')
-                    env.BUILD_SCRAPER_FINDBUCH = params.BUILD_ALL || changed('scraper-findbuch')
-                    env.BUILD_SCRAPER_OESTA = params.BUILD_ALL || changed('scraper-oesta')
-                    env.BUILD_SCRAPER_MATRICULA = params.BUILD_ALL || changed('scraper-matricula')
                     def workerCommonChanged = changed('worker-common')
+                    env.BUILD_SCRAPER = params.BUILD_ALL || changed('scraper-cz') || workerCommonChanged
+                    env.BUILD_SCRAPER_EBADATELNA = params.BUILD_ALL || changed('scraper-ebadatelna') || workerCommonChanged
+                    env.BUILD_SCRAPER_FINDBUCH = params.BUILD_ALL || changed('scraper-findbuch') || workerCommonChanged
+                    env.BUILD_SCRAPER_OESTA = params.BUILD_ALL || changed('scraper-oesta') || workerCommonChanged
+                    env.BUILD_SCRAPER_MATRICULA = params.BUILD_ALL || changed('scraper-matricula') || workerCommonChanged
                     env.BUILD_OCR = params.BUILD_ALL || changed('ocr-worker-paddle') || workerCommonChanged
                     env.BUILD_PDF = params.BUILD_ALL || changed('pdf-worker') || workerCommonChanged
                     env.BUILD_TRANSLATE = params.BUILD_ALL || changed('translate-worker') || workerCommonChanged
@@ -98,9 +98,7 @@ pipeline {
                 stage('scraper-cz') {
                     when { expression { env.BUILD_SCRAPER == 'true' } }
                     steps {
-                        dir('scraper-cz') {
-                            sh "docker build -t ${prefix}/scraper-cz:latest -t ${prefix}/scraper-cz:\${GIT_COMMIT} ."
-                        }
+                        sh "docker build -f scraper-cz/Dockerfile -t ${prefix}/scraper-cz:latest -t ${prefix}/scraper-cz:\${GIT_COMMIT} ."
                         script {
                             dockerPush(registry, "${prefix}/scraper-cz:latest")
                             dockerPush(registry, "${prefix}/scraper-cz:\${GIT_COMMIT}")
@@ -155,9 +153,7 @@ pipeline {
                 stage('scraper-ebadatelna') {
                     when { expression { env.BUILD_SCRAPER_EBADATELNA == 'true' } }
                     steps {
-                        dir('scraper-ebadatelna') {
-                            sh "docker build -t ${prefix}/scraper-ebadatelna:latest -t ${prefix}/scraper-ebadatelna:\${GIT_COMMIT} ."
-                        }
+                        sh "docker build -f scraper-ebadatelna/Dockerfile -t ${prefix}/scraper-ebadatelna:latest -t ${prefix}/scraper-ebadatelna:\${GIT_COMMIT} ."
                         script {
                             dockerPush(registry, "${prefix}/scraper-ebadatelna:latest")
                             dockerPush(registry, "${prefix}/scraper-ebadatelna:\${GIT_COMMIT}")
@@ -168,9 +164,7 @@ pipeline {
                 stage('scraper-findbuch') {
                     when { expression { env.BUILD_SCRAPER_FINDBUCH == 'true' } }
                     steps {
-                        dir('scraper-findbuch') {
-                            sh "docker build -t ${prefix}/scraper-findbuch:latest -t ${prefix}/scraper-findbuch:\${GIT_COMMIT} ."
-                        }
+                        sh "docker build -f scraper-findbuch/Dockerfile -t ${prefix}/scraper-findbuch:latest -t ${prefix}/scraper-findbuch:\${GIT_COMMIT} ."
                         script {
                             dockerPush(registry, "${prefix}/scraper-findbuch:latest")
                             dockerPush(registry, "${prefix}/scraper-findbuch:\${GIT_COMMIT}")
@@ -181,9 +175,7 @@ pipeline {
                 stage('scraper-oesta') {
                     when { expression { env.BUILD_SCRAPER_OESTA == 'true' } }
                     steps {
-                        dir('scraper-oesta') {
-                            sh "docker build -t ${prefix}/scraper-oesta:latest -t ${prefix}/scraper-oesta:\${GIT_COMMIT} ."
-                        }
+                        sh "docker build -f scraper-oesta/Dockerfile -t ${prefix}/scraper-oesta:latest -t ${prefix}/scraper-oesta:\${GIT_COMMIT} ."
                         script {
                             dockerPush(registry, "${prefix}/scraper-oesta:latest")
                             dockerPush(registry, "${prefix}/scraper-oesta:\${GIT_COMMIT}")
@@ -194,9 +186,7 @@ pipeline {
                 stage('scraper-matricula') {
                     when { expression { env.BUILD_SCRAPER_MATRICULA == 'true' } }
                     steps {
-                        dir('scraper-matricula') {
-                            sh "docker build -t ${prefix}/scraper-matricula:latest -t ${prefix}/scraper-matricula:\${GIT_COMMIT} ."
-                        }
+                        sh "docker build -f scraper-matricula/Dockerfile -t ${prefix}/scraper-matricula:latest -t ${prefix}/scraper-matricula:\${GIT_COMMIT} ."
                         script {
                             dockerPush(registry, "${prefix}/scraper-matricula:latest")
                             dockerPush(registry, "${prefix}/scraper-matricula:\${GIT_COMMIT}")

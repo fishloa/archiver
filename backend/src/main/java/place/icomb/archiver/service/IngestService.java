@@ -179,7 +179,36 @@ public class IngestService {
   }
 
   /**
+   * Reopens a completed/processed record for page repair. Resets status to ingesting, removes
+   * stale PDF attachment, and returns existing page sequence numbers so the caller knows which
+   * pages are already present.
+   */
+  @Transactional
+  public Record repairRecord(Long recordId) {
+    Record record =
+        recordRepository
+            .findById(recordId)
+            .orElseThrow(() -> new IllegalArgumentException("Record not found: " + recordId));
+
+    // Remove old PDF attachment — it will be rebuilt after repair
+    if (record.getPdfAttachmentId() != null) {
+      record.setPdfAttachmentId(null);
+    }
+
+    record.setStatus("ingesting");
+    record.setUpdatedAt(Instant.now());
+    record = recordRepository.save(record);
+
+    jdbcTemplate.update(
+        "INSERT INTO pipeline_event (record_id, stage, event, detail, created_at) VALUES (?, 'ingest', 'repair_started', 'reopened for page repair', now())",
+        recordId);
+    recordEventService.recordChanged(recordId, "status");
+    return record;
+  }
+
+  /**
    * Marks the record as ingested, transitions to ocr_pending, and enqueues OCR jobs for all pages.
+   * Pages that already have OCR text (from a previous run / repair) are skipped.
    * Fires a NOTIFY on the ocr_jobs channel.
    */
   @Transactional
@@ -214,21 +243,37 @@ public class IngestService {
     record.setUpdatedAt(Instant.now());
     record = recordRepository.save(record);
 
+    int enqueued = 0;
     for (Page page : pages) {
+      // Skip pages that already have OCR text (repair scenario)
+      Boolean hasText =
+          jdbcTemplate.queryForObject(
+              "SELECT EXISTS(SELECT 1 FROM page_text WHERE page_id = ?)",
+              Boolean.class,
+              page.getId());
+      if (hasText != null && hasText) {
+        continue;
+      }
       jobService.enqueueJob("ocr_page_paddle", recordId, page.getId(), ocrPayload);
+      enqueued++;
     }
+
+    int skipped = pages.size() - enqueued;
+    String detail = enqueued + " pages" + (skipped > 0 ? " (" + skipped + " already OCR'd)" : "");
 
     jdbcTemplate.update(
         "INSERT INTO pipeline_event (record_id, stage, event, detail, created_at) VALUES (?, 'ingest', 'completed', ?, now())",
         recordId,
-        pages.size() + " pages");
+        detail);
     jdbcTemplate.update(
         "INSERT INTO pipeline_event (record_id, stage, event, detail, created_at) VALUES (?, 'ocr', 'started', ?, now())",
         recordId,
-        pages.size() + " jobs enqueued");
+        enqueued + " jobs enqueued" + (skipped > 0 ? " (" + skipped + " skipped)" : ""));
 
-    // Fire NOTIFY so listeners can pick up work immediately
-    jdbcTemplate.execute("NOTIFY ocr_jobs");
+    if (enqueued > 0) {
+      // Fire NOTIFY so listeners can pick up work immediately
+      jdbcTemplate.execute("NOTIFY ocr_jobs");
+    }
 
     recordEventService.recordChanged(recordId, "completed");
     return record;

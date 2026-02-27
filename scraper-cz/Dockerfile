@@ -9,8 +9,11 @@ RUN apt-get update && \
         zlib1g-dev \
     && rm -rf /var/lib/apt/lists/*
 
-COPY pyproject.toml .
-COPY src/ src/
+COPY worker-common/ /tmp/worker-common/
+RUN pip install --no-cache-dir /tmp/worker-common/ && rm -rf /tmp/worker-common/
+
+COPY scraper-cz/pyproject.toml ./
+COPY scraper-cz/src/ src/
 
 RUN pip install --no-cache-dir .
 

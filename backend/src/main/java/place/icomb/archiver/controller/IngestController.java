@@ -29,6 +29,7 @@ import place.icomb.archiver.model.Attachment;
 import place.icomb.archiver.model.Page;
 import place.icomb.archiver.model.Record;
 import place.icomb.archiver.repository.ArchiveRepository;
+import place.icomb.archiver.repository.PageRepository;
 import place.icomb.archiver.repository.RecordRepository;
 import place.icomb.archiver.service.IngestService;
 
@@ -39,14 +40,17 @@ public class IngestController {
   private final IngestService ingestService;
   private final RecordRepository recordRepository;
   private final ArchiveRepository archiveRepository;
+  private final PageRepository pageRepository;
 
   public IngestController(
       IngestService ingestService,
       RecordRepository recordRepository,
-      ArchiveRepository archiveRepository) {
+      ArchiveRepository archiveRepository,
+      PageRepository pageRepository) {
     this.ingestService = ingestService;
     this.recordRepository = recordRepository;
     this.archiveRepository = archiveRepository;
+    this.pageRepository = pageRepository;
   }
 
   // ── Archive CRUD ──────────────────────────────────────────────────────────
@@ -146,6 +150,21 @@ public class IngestController {
                 "attachmentId", attachment.getId(),
                 "path", attachment.getPath(),
                 "sha256", attachment.getSha256()));
+  }
+
+  @PostMapping("/records/{recordId}/repair")
+  public ResponseEntity<Map<String, Object>> repairRecord(@PathVariable Long recordId) {
+    Record record = ingestService.repairRecord(recordId);
+    List<Integer> existingSeqs =
+        pageRepository.findByRecordId(recordId).stream()
+            .map(Page::getSeq)
+            .sorted()
+            .collect(Collectors.toList());
+    return ResponseEntity.ok(
+        Map.of(
+            "id", record.getId(),
+            "status", record.getStatus(),
+            "existingPages", existingSeqs));
   }
 
   @PostMapping("/records/{recordId}/complete")

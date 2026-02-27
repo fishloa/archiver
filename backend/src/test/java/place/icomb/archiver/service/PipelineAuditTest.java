@@ -21,7 +21,7 @@ class PipelineAuditTest {
 
   @Container
   static PostgreSQLContainer<?> postgres =
-      new PostgreSQLContainer<>("postgres:18-alpine")
+      new PostgreSQLContainer<>("pgvector/pgvector:pg18")
           .withDatabaseName("archiver_test")
           .withUsername("postgres")
           .withPassword("postgres")

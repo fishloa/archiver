@@ -13,7 +13,7 @@ import time
 from PIL import Image
 
 from .config import Config, set_config, get_config
-from .client import BackendClient, SOURCE_SYSTEM
+from .client import BackendClient, SOURCE_SYSTEM, wait_for_backend
 from .session import EBadatelnaSession
 from .pdf import build_pdf
 
@@ -390,6 +390,7 @@ def main():
     client = None
     if not args.dry_run:
         try:
+            wait_for_backend(cfg.require_backend())
             client = BackendClient()
             log.info("Fetching existing record statuses from backend...")
             known_statuses = client.get_all_statuses(SOURCE_SYSTEM)

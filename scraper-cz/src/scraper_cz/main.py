@@ -12,7 +12,7 @@ import sys
 import time
 
 from .config import Config, set_config, get_config
-from .client import BackendClient, SOURCE_SYSTEM
+from .client import BackendClient, SOURCE_SYSTEM, wait_for_backend
 from .session import VadeMeCumSession
 from .enumerator import enumerate_all, probe_for_hidden
 from .progress import ProgressTracker
@@ -24,6 +24,45 @@ from .zoomify import download_and_stitch, image_to_jpeg_bytes
 from .pdf import build_pdf
 
 log = logging.getLogger(__name__)
+
+# Page-level retry settings (on top of tile-level retries in zoomify.py)
+PAGE_MAX_RETRIES = 5
+PAGE_RETRY_BACKOFF = [3, 10, 30, 60, 120]
+
+
+def _download_page_with_retry(
+    folder: str,
+    uuid: str,
+    session: VadeMeCumSession,
+    seq: int,
+    total: int,
+):
+    """Download and stitch a page image with robust retries.
+
+    Retries up to PAGE_MAX_RETRIES times with exponential backoff.
+    On each retry the VadeMeCum session is reinitialised in case it expired.
+
+    Returns a PIL Image or None on failure.
+    """
+    for attempt in range(1, PAGE_MAX_RETRIES + 1):
+        img = download_and_stitch(folder, uuid, session=session)
+        if img is not None:
+            return img
+        if attempt >= PAGE_MAX_RETRIES:
+            break
+        wait = PAGE_RETRY_BACKOFF[attempt - 1]
+        log.warning(
+            "  [%d/%d] Page download attempt %d/%d failed — retrying in %ds",
+            seq, total, attempt, PAGE_MAX_RETRIES, wait,
+        )
+        time.sleep(wait)
+        # Reinit session in case cookies/session expired
+        try:
+            session.reinit()
+        except Exception:
+            pass
+    log.error("  [%d/%d] Failed to download page after %d attempts", seq, total, PAGE_MAX_RETRIES)
+    return None
 
 # Target NADs for the Czech National Archives.
 # Only NADs with digitised content on VadeMeCum are included.
@@ -110,14 +149,8 @@ def ingest_record(
         log.info("  [%d/%d] Downloading tiles for %s/%s...",
                  seq, len(all_uuids), folder, uuid[:8])
 
-        img = download_and_stitch(folder, uuid, session=session)
+        img = _download_page_with_retry(folder, uuid, session, seq, len(all_uuids))
         if img is None:
-            # Retry once after a longer pause
-            log.warning("  [%d/%d] First attempt failed, retrying after 3s...", seq, len(all_uuids))
-            time.sleep(3)
-            img = download_and_stitch(folder, uuid, session=session)
-        if img is None:
-            log.error("  [%d/%d] Failed to stitch image after retry", seq, len(all_uuids))
             continue
 
         page_images.append(img)
@@ -270,6 +303,137 @@ def run_fond_scrape(
     return s, f, sk
 
 
+def run_repair(
+    client: BackendClient,
+    session: VadeMeCumSession,
+    dry_run: bool = False,
+    verbose: bool = False,
+) -> tuple[int, int, int]:
+    """Find records with missing pages and re-download them.
+
+    1. Fetches all records from the backend for this source system.
+    2. Compares actual page count vs expected scan count (from rawSourceMetadata).
+    3. For each incomplete record, calls the repair endpoint, downloads missing
+       pages from VadeMeCum, uploads them, and re-triggers the pipeline.
+
+    Returns (repaired, failed, skipped).
+    """
+    import json as jsonmod
+
+    cfg = get_config()
+    log.info("Fetching all records from backend for repair analysis...")
+    all_records = client.get_all_records(SOURCE_SYSTEM)
+    log.info("Found %d records in backend", len(all_records))
+
+    # Find incomplete records
+    incomplete = []
+    for r in all_records:
+        raw = r.get("rawSourceMetadata")
+        if not raw:
+            continue
+        try:
+            meta = jsonmod.loads(raw) if isinstance(raw, str) else raw
+        except Exception:
+            continue
+        expected = meta.get("scans", 0)
+        actual = r.get("pageCount", 0)
+        status = r.get("status", "")
+        if expected > 0 and actual > 0 and actual < expected and status != "ingesting":
+            incomplete.append({
+                "record_id": r["id"],
+                "xid": r.get("sourceRecordId", ""),
+                "ref": r.get("referenceCode", ""),
+                "expected": expected,
+                "actual": actual,
+                "missing": expected - actual,
+            })
+
+    incomplete.sort(key=lambda x: x["missing"], reverse=True)
+    total_missing = sum(r["missing"] for r in incomplete)
+    log.info(
+        "Found %d incomplete records with %d total missing pages",
+        len(incomplete), total_missing,
+    )
+
+    if dry_run:
+        for r in incomplete[:20]:
+            log.info(
+                "  [DRY-RUN] id=%s ref=%s expected=%d actual=%d missing=%d",
+                r["record_id"], r["ref"], r["expected"], r["actual"], r["missing"],
+            )
+        if len(incomplete) > 20:
+            log.info("  ... and %d more", len(incomplete) - 20)
+        return 0, 0, len(incomplete)
+
+    repaired, failed, skipped = 0, 0, 0
+    for i, rec in enumerate(incomplete, start=1):
+        label = f"id={rec['record_id']} ref={rec['ref']}"
+        log.info(
+            "=== [%d/%d] Repairing %s (missing %d/%d pages) ===",
+            i, len(incomplete), label, rec["missing"], rec["expected"],
+        )
+
+        try:
+            # Step 1: Call repair endpoint to reset record and get existing pages
+            repair_data = client.repair_record(rec["record_id"])
+            existing_seqs = set(repair_data.get("existingPages", []))
+            log.info("  Existing pages: %s", sorted(existing_seqs))
+
+            # Step 2: Load record detail from VadeMeCum
+            xid = rec["xid"]
+            detail = load_record_detail(session, xid)
+            entity_ref = detail.get("entity_ref")
+            scan_count = detail.get("scans", 0)
+
+            if not entity_ref or scan_count == 0:
+                log.warning("  No scans in VadeMeCum for %s — completing as-is", label)
+                client.complete_ingest(rec["record_id"])
+                skipped += 1
+                continue
+
+            # Step 3: Get all scan UUIDs
+            zoom_html = session.get_zoomify_page(entity_ref, scan_index=0)
+            all_uuids = collect_all_scan_uuids(session, entity_ref, scan_count, zoom_html)
+            log.info("  Collected %d/%d scan UUIDs", len(all_uuids), scan_count)
+
+            # Step 4: Download and upload only missing pages
+            uploaded = 0
+            for seq, (folder, uuid) in enumerate(all_uuids, start=1):
+                if seq in existing_seqs:
+                    continue  # Page already exists
+
+                log.info(
+                    "  [%d/%d] Downloading missing page %d...",
+                    uploaded + 1, rec["missing"], seq,
+                )
+
+                img = _download_page_with_retry(folder, uuid, session, seq, rec["expected"])
+                if img is None:
+                    continue
+
+                jpeg_bytes = image_to_jpeg_bytes(img)
+                client.upload_page(
+                    rec["record_id"], seq, jpeg_bytes,
+                    metadata={"folder": folder, "uuid": uuid},
+                )
+                uploaded += 1
+                time.sleep(cfg.delay * 0.2)
+
+            # Step 5: Re-upload PDF with all pages and complete
+            log.info("  Uploaded %d missing pages, completing ingest...", uploaded)
+            client.complete_ingest(rec["record_id"])
+            repaired += 1
+            log.info("[DONE] %s — %d pages added", label, uploaded)
+
+        except Exception as e:
+            log.error("Failed to repair %s: %s", label, e, exc_info=verbose)
+            failed += 1
+
+        time.sleep(cfg.delay)
+
+    return repaired, failed, skipped
+
+
 def main():
     parser = argparse.ArgumentParser(
         prog="scraper-cz",
@@ -347,6 +511,12 @@ def main():
         help="Path to JSON progress file for crash recovery",
     )
     parser.add_argument(
+        "--repair",
+        action="store_true",
+        help="Find records with missing pages and re-download them. "
+             "Compares actual vs expected page counts and fills in the gaps.",
+    )
+    parser.add_argument(
         "-v", "--verbose",
         action="store_true",
         help="Enable debug logging",
@@ -361,8 +531,8 @@ def main():
         datefmt="%H:%M:%S",
     )
 
-    if not args.term and not args.all and not args.all_nads and not args.fond:
-        parser.error("Provide a search term, --all FILE, --all-nads, or --fond NAD")
+    if not args.term and not args.all and not args.all_nads and not args.fond and not args.repair:
+        parser.error("Provide a search term, --all FILE, --all-nads, --fond NAD, or --repair")
 
     # Apply config overrides
     cfg = Config()
@@ -376,6 +546,7 @@ def main():
     known_statuses: dict[str, str] = {}
     client = None
     if not args.dry_run:
+        wait_for_backend(cfg.require_backend())
         client = BackendClient()
         log.info("Fetching existing record statuses from backend...")
         known_statuses = client.get_all_statuses(SOURCE_SYSTEM)
@@ -391,7 +562,18 @@ def main():
     total_success, total_failed, total_skipped = 0, 0, 0
 
     try:
-        if args.fond:
+        if args.repair:
+            # Repair mode: find and fix incomplete records
+            if client is None:
+                wait_for_backend(cfg.require_backend())
+                client = BackendClient()
+            s, f, sk = run_repair(client, session,
+                                  dry_run=args.dry_run, verbose=args.verbose)
+            total_success += s
+            total_failed += f
+            total_skipped += sk
+
+        elif args.fond:
             # Full-fond scrape mode
             for nad_num in args.fond:
                 try:

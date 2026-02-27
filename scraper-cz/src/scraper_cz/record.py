@@ -9,7 +9,7 @@ import logging
 import html as htmlmod
 import urllib.parse
 
-from .session import VadeMeCumSession, BASE, MRIMAGE_BASE
+from .session import VadeMeCumSession
 
 log = logging.getLogger(__name__)
 

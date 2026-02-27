@@ -43,7 +43,7 @@ def parse_search_results(html: str) -> list[dict]:
             if link:
                 href = link.get("href", "")
                 text = link.get_text(strip=True) or row.get_text(strip=True)[:100]
-                if href and not "/page/" in href:
+                if href and "/page/" not in href:
                     if href.startswith("/"):
                         href = "https://www.findbuch.at" + href
                     results.append({"detail_url": href, "title": text})

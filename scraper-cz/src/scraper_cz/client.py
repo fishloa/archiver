@@ -1,10 +1,11 @@
 """Backend API client for the archiver service."""
 
 import json as jsonmod
-import time
 import logging
 
 import httpx
+
+from worker_common.http import ResilientClient
 
 from .config import get_config
 
@@ -20,17 +21,20 @@ DEFAULT_ARCHIVE_ID = 1
 class BackendClient:
     """HTTP client for the archiver backend API.
 
-    All methods communicate with the backend using httpx, with
-    automatic retries on transient failures.
+    All methods communicate with the backend using ``ResilientClient``,
+    which provides automatic retry with exponential backoff on transient
+    failures.
     """
 
     def __init__(self, base_url: str | None = None, max_retries: int | None = None):
         cfg = get_config()
-        self.base_url = (base_url or cfg.require_backend()).rstrip("/")
-        self.max_retries = max_retries if max_retries is not None else cfg.max_retries
-        self._client = httpx.Client(
-            base_url=self.base_url,
+        url = (base_url or cfg.require_backend()).rstrip("/")
+        retries = max_retries if max_retries is not None else cfg.max_retries
+        self._client = ResilientClient(
+            base_url=url,
             timeout=60.0,
+            max_retries=retries,
+            retry_backoff=[2, 4, 8, 16, 30],
             headers={"User-Agent": "scraper-cz/0.1"},
         )
 
@@ -42,30 +46,6 @@ class BackendClient:
 
     def __exit__(self, *exc):
         self.close()
-
-    # -- internal helpers --------------------------------------------------
-
-    def _request(self, method: str, path: str, **kwargs) -> httpx.Response:
-        """Execute a request with retries on transient errors."""
-        last_exc = None
-        for attempt in range(1, self.max_retries + 1):
-            try:
-                resp = self._client.request(method, path, **kwargs)
-                resp.raise_for_status()
-                return resp
-            except (httpx.TransportError, httpx.HTTPStatusError) as exc:
-                last_exc = exc
-                status = getattr(getattr(exc, "response", None), "status_code", None)
-                if status and 400 <= status < 500 and status != 429:
-                    # Client error (not rate-limit) -- do not retry
-                    raise
-                wait = min(2 ** attempt, 30)
-                log.warning(
-                    "Request %s %s attempt %d/%d failed: %s — retrying in %ds",
-                    method, path, attempt, self.max_retries, exc, wait,
-                )
-                time.sleep(wait)
-        raise last_exc  # type: ignore[misc]
 
     # -- public API --------------------------------------------------------
 
@@ -101,7 +81,7 @@ class BackendClient:
         # Remove None values
         body = {k: v for k, v in body.items() if v is not None}
 
-        resp = self._request("POST", "/api/ingest/records", json=body)
+        resp = self._client.post("/api/ingest/records", json=body)
         data = resp.json()
         record_id = data.get("id") or data.get("record_id")
         log.info("Created record %s for %s/%s", record_id, source_system, source_record_id)
@@ -134,8 +114,7 @@ class BackendClient:
                     "application/json",
                 )
 
-        resp = self._request(
-            "POST",
+        resp = self._client.post(
             f"/api/ingest/records/{record_id}/pages",
             files=files,
             params=params,
@@ -148,8 +127,7 @@ class BackendClient:
     def upload_pdf(self, record_id: str, pdf_bytes: bytes) -> str:
         """Upload a complete PDF to a record. Returns attachment_id."""
         files = {"pdf": ("document.pdf", pdf_bytes, "application/pdf")}
-        resp = self._request(
-            "POST",
+        resp = self._client.post(
             f"/api/ingest/records/{record_id}/pdf",
             files=files,
         )
@@ -160,19 +138,18 @@ class BackendClient:
 
     def complete_ingest(self, record_id: str) -> None:
         """Mark a record as fully ingested."""
-        self._request("POST", f"/api/ingest/records/{record_id}/complete")
+        self._client.post(f"/api/ingest/records/{record_id}/complete")
         log.info("Completed ingest for record %s", record_id)
 
     def delete_record(self, record_id: str) -> None:
         """Delete a record and all its associated data."""
-        self._request("DELETE", f"/api/ingest/records/{record_id}")
+        self._client.delete(f"/api/ingest/records/{record_id}")
         log.info("Deleted record %s", record_id)
 
     def delete_record_by_source(self, source_system: str, source_record_id: str) -> bool:
-        """Delete a record by source system + ID. Returns True if deleted, False if not found."""
+        """Delete a record by source system + ID. Returns True if deleted."""
         try:
-            self._request(
-                "DELETE",
+            self._client.delete(
                 f"/api/ingest/records/by-source/{source_system}/{source_record_id}",
             )
             log.info("Deleted record %s/%s", source_system, source_record_id)
@@ -185,8 +162,7 @@ class BackendClient:
     def get_status(self, source_system: str, source_record_id: str) -> dict:
         """Check ingest status. Returns status dict or empty dict if not found."""
         try:
-            resp = self._request(
-                "GET",
+            resp = self._client.get(
                 f"/api/ingest/status/{source_system}/{source_record_id}",
             )
             return resp.json()
@@ -200,5 +176,42 @@ class BackendClient:
 
         Returns a dict mapping sourceRecordId -> status.
         """
-        resp = self._request("GET", f"/api/ingest/status/{source_system}")
+        resp = self._client.get(f"/api/ingest/status/{source_system}")
         return resp.json()
+
+    def repair_record(self, record_id: str) -> dict:
+        """Reopen a record for page repair.
+
+        Resets status to 'ingesting' and returns existing page sequences.
+        Returns dict with 'id', 'status', 'existingPages'.
+        """
+        resp = self._client.post(f"/api/ingest/records/{record_id}/repair")
+        data = resp.json()
+        log.info(
+            "Repair record %s — status=%s, existing pages: %s",
+            record_id, data.get("status"), data.get("existingPages"),
+        )
+        return data
+
+    def get_all_records(self, source_system: str) -> list[dict]:
+        """Fetch all records for a source system with their full metadata.
+
+        Returns a list of record dicts.
+        """
+        all_records = []
+        page = 0
+        while True:
+            resp = self._client.get(
+                "/api/records",
+                params={"page": page, "size": 100},
+            )
+            data = resp.json()
+            content = data.get("content", [])
+            # Filter by source system
+            for r in content:
+                if r.get("sourceSystem") == source_system:
+                    all_records.append(r)
+            if data.get("last", True):
+                break
+            page += 1
+        return all_records

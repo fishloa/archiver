@@ -1,14 +1,14 @@
 """VadeMeCum session management.
 
-Uses urllib (not httpx) to match the working cookie/session handling
-from the original scraper code.
+Uses ``ResilientClient`` from worker-common for all HTTP calls, giving
+automatic retry with exponential backoff on transient errors.
 """
 
 import re
 import logging
-import urllib.request
 import urllib.parse
-import http.cookiejar
+
+from worker_common.http import ResilientClient
 
 from .config import get_config
 
@@ -21,45 +21,39 @@ MRIMAGE_BASE = "https://vademecum.nacr.cz/mrimage/vademecum"
 class VadeMeCumSession:
     """Manages an authenticated session with the VadeMeCum portal.
 
-    Handles cookie jar, CSRF-like tokens (_sourcePage, __fp),
-    and browser UA spoofing.
+    Handles cookies, CSRF-like tokens (_sourcePage, __fp),
+    and browser UA spoofing.  All HTTP calls go through
+    ``ResilientClient`` which retries on transient failures.
     """
 
     def __init__(self, user_agent: str | None = None):
         cfg = get_config()
         self.ua = user_agent or cfg.user_agent
-        self.cookie_jar = http.cookiejar.CookieJar()
-        self.opener = urllib.request.build_opener(
-            urllib.request.HTTPCookieProcessor(self.cookie_jar)
+        self._client = ResilientClient(
+            timeout=30.0,
+            headers={"User-Agent": self.ua},
+            follow_redirects=True,
         )
         self._source_page: str | None = None
         self._fp: str | None = None
         self._init_session()
 
-    # -- low-level HTTP ----------------------------------------------------
+    # -- low-level HTTP --------------------------------------------------------
 
     def _get(self, url: str, referer: str | None = None) -> bytes:
         """GET request, return raw bytes."""
-        req = urllib.request.Request(url)
-        req.add_header("User-Agent", self.ua)
-        if referer:
-            req.add_header("Referer", referer)
-        resp = self.opener.open(req, timeout=30)
-        return resp.read()
+        headers = {"Referer": referer} if referer else {}
+        return self._client.get(url, headers=headers).content
 
     def get_text(self, url: str, referer: str | None = None) -> str:
         """GET request, return decoded text."""
-        return self._get(url, referer).decode("utf-8", errors="replace")
+        headers = {"Referer": referer} if referer else {}
+        return self._client.get(url, headers=headers).text
 
     def _post(self, url: str, params: dict, referer: str | None = None) -> str:
         """POST form-encoded data, return decoded text."""
-        data = urllib.parse.urlencode(params).encode("utf-8")
-        req = urllib.request.Request(url, data=data)
-        req.add_header("User-Agent", self.ua)
-        if referer:
-            req.add_header("Referer", referer)
-        resp = self.opener.open(req, timeout=30)
-        return resp.read().decode("utf-8", errors="replace")
+        headers = {"Referer": referer} if referer else {}
+        return self._client.post(url, data=params, headers=headers).text
 
     def post(self, url: str, params: dict, referer: str | None = None) -> str:
         """Public POST method."""
@@ -72,7 +66,7 @@ class VadeMeCumSession:
         except Exception:
             return None
 
-    # -- session initialization --------------------------------------------
+    # -- session initialization ------------------------------------------------
 
     def _init_session(self) -> None:
         """Load the index page to establish a session and extract form tokens.
@@ -118,9 +112,9 @@ class VadeMeCumSession:
             "yes" if self._extended_sp else "no",
         )
 
-        for cookie in self.cookie_jar:
-            if cookie.name == "JSESSIONID":
-                log.info("Session established: %s...", cookie.value[:16])
+        for name, value in self._client.cookies.items():
+            if name == "JSESSIONID":
+                log.info("Session established: %s...", value[:16])
                 break
 
     def reinit(self) -> None:
@@ -151,7 +145,7 @@ class VadeMeCumSession:
         assert fp is not None, "Session not initialized"
         return fp
 
-    # -- session expiry detection ------------------------------------------
+    # -- session expiry detection ----------------------------------------------
 
     @staticmethod
     def is_expired_response(html: str) -> bool:
@@ -183,7 +177,7 @@ class VadeMeCumSession:
             self.reinit()
         return html  # return last attempt even if still expired
 
-    # -- VadeMeCum-specific requests ---------------------------------------
+    # -- VadeMeCum-specific requests -------------------------------------------
 
     def get_permalink_page(self, xid: str) -> str:
         """Load a record's permalink page."""

@@ -11,7 +11,7 @@ import time
 import urllib.parse
 
 from .config import Config, set_config, get_config
-from .client import BackendClient, SOURCE_SYSTEM
+from .client import BackendClient, SOURCE_SYSTEM, wait_for_backend
 from .session import FindbuchSession
 from .parser import parse_search_results, get_total_pages, parse_detail_page
 
@@ -37,7 +37,6 @@ def ingest_record(
     Returns:
         "ok", "skipped", or "failed".
     """
-    cfg = get_config()
     detail_url = result.get("detail_url", "")
     title = result.get("title", "?")
 
@@ -233,6 +232,7 @@ def main():
     known_statuses: dict[str, str] = {}
     client = None
     if not args.dry_run:
+        wait_for_backend(cfg.require_backend())
         client = BackendClient()
         log.info("Fetching existing record statuses from backend...")
         known_statuses = client.get_all_statuses(SOURCE_SYSTEM)

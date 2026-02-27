@@ -2,10 +2,12 @@
 import base64
 import json
 import re
-import time
 import logging
-import httpx
+
 from bs4 import BeautifulSoup
+
+from worker_common.http import ResilientClient
+
 from .config import get_config
 
 log = logging.getLogger(__name__)
@@ -16,17 +18,17 @@ IMG_BASE = "https://img.data.matricula-online.eu"
 class MatriculaSession:
     """Manages HTTP requests to Matricula Online.
 
-    Handles throttling, browser UA spoofing, and HTML parsing.
+    All HTTP calls go through ``ResilientClient`` for automatic retry
+    with exponential backoff on transient failures.
     """
 
     def __init__(self):
         cfg = get_config()
-        self._client = httpx.Client(
+        self._client = ResilientClient(
             timeout=30.0,
+            delay=cfg.delay,
             headers={"User-Agent": cfg.user_agent},
-            follow_redirects=True,
         )
-        self._delay = cfg.delay
 
     def close(self):
         self._client.close()
@@ -37,23 +39,16 @@ class MatriculaSession:
     def __exit__(self, *exc):
         self.close()
 
-    def _throttle(self):
-        time.sleep(self._delay)
-
     def get_parish_name(self, parish_url):
         """Get the parish name from the page."""
-        self._throttle()
         resp = self._client.get(parish_url)
-        resp.raise_for_status()
         soup = BeautifulSoup(resp.text, "html.parser")
         h1 = soup.find("h1")
         return h1.get_text(strip=True) if h1 else "Unknown Parish"
 
     def list_parishes(self, diocese_url):
         """List all parishes in a diocese. Returns list of (name, url) tuples."""
-        self._throttle()
         resp = self._client.get(diocese_url)
-        resp.raise_for_status()
         soup = BeautifulSoup(resp.text, "html.parser")
         parishes = []
 
@@ -91,9 +86,7 @@ class MatriculaSession:
         Table structure: rows with [checkbox, archival_id, register_type, date_range].
         Register links: /en/oesterreich/wien/{parish}/{register_id}/
         """
-        self._throttle()
         resp = self._client.get(parish_url)
-        resp.raise_for_status()
         soup = BeautifulSoup(resp.text, "html.parser")
 
         # Get parish name
@@ -163,9 +156,7 @@ class MatriculaSession:
 
         Returns list of dicts: [{"label": str, "image_url": str}, ...]
         """
-        self._throttle()
         resp = self._client.get(register_url)
-        resp.raise_for_status()
 
         # Extract the JS config object
         match = re.search(
@@ -253,7 +244,5 @@ class MatriculaSession:
 
     def download_image(self, image_url):
         """Download an image. Returns bytes."""
-        self._throttle()
         resp = self._client.get(image_url)
-        resp.raise_for_status()
         return resp.content

@@ -5,7 +5,6 @@ downloads page images, builds PDFs, and POSTs everything to the backend API.
 """
 
 import argparse
-import json
 import logging
 import sys
 import time
@@ -14,7 +13,7 @@ from io import BytesIO
 from PIL import Image
 
 from .config import Config, set_config, get_config
-from .client import BackendClient, SOURCE_SYSTEM
+from .client import BackendClient, SOURCE_SYSTEM, wait_for_backend
 from .session import MatriculaSession
 from .pdf import build_pdf
 
@@ -316,6 +315,7 @@ def main():
     known_statuses: dict[str, str] = {}
     client = None
     if not args.dry_run:
+        wait_for_backend(cfg.require_backend())
         client = BackendClient()
         log.info("Fetching existing record statuses from backend...")
         try:

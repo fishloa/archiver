@@ -1,8 +1,9 @@
 """HTTP session for ebadatelna.cz API."""
 
-import time
 import logging
-import httpx
+
+
+from worker_common.http import ResilientClient
 
 from .config import get_config
 
@@ -23,13 +24,12 @@ class EBadatelnaSession:
 
     def __init__(self):
         cfg = get_config()
-        self._client = httpx.Client(
+        self._client = ResilientClient(
             base_url=BASE_URL,
             timeout=30.0,
+            delay=cfg.delay,
             headers={"User-Agent": cfg.user_agent},
-            follow_redirects=True,
         )
-        self._delay = cfg.delay
         self._authenticated = False
 
     def close(self):
@@ -40,10 +40,6 @@ class EBadatelnaSession:
 
     def __exit__(self, *exc):
         self.close()
-
-    def _throttle(self):
-        """Apply configured delay between requests."""
-        time.sleep(self._delay)
 
     def login(self):
         """Log in to ebadatelna.cz via AJAX endpoint.
@@ -57,16 +53,13 @@ class EBadatelnaSession:
             return False
 
         # First GET homepage to establish session cookie
-        self._throttle()
         self._client.get("/")
 
         # AJAX login
-        self._throttle()
         resp = self._client.post("/Account/Login", data={
             "email": cfg.ebadatelna_email,
             "password": cfg.ebadatelna_password,
         })
-        resp.raise_for_status()
 
         # The login returns a result — check if successful
         # On success: returns user active status; on failure: returns error HTML
@@ -110,9 +103,7 @@ class EBadatelnaSession:
                 params[f"filter[filters][{i}][value]"] = f["value"]
             params["filter[logic]"] = "and"
 
-        self._throttle()
         resp = self._client.get("/Home/Item_Read", params=params)
-        resp.raise_for_status()
         data = resp.json()
         return data.get("Data", []), data.get("Total", 0)
 
@@ -129,13 +120,11 @@ class EBadatelnaSession:
         Returns:
             Tuple of (data_list, total_count)
         """
-        self._throttle()
         resp = self._client.post("/Home/OcrFulltextRead", data={
             "searchText": search_text,
             "skip": str(skip),
             "take": str(take),
         })
-        resp.raise_for_status()
         data = resp.json()
         return data.get("Data", []), data.get("Total", 0)
 
@@ -152,9 +141,7 @@ class EBadatelnaSession:
         if image_type is not None:
             params["imageType"] = image_type
 
-        self._throttle()
         resp = self._client.get("/Home/GetSignatureImages", params=params)
-        resp.raise_for_status()
         return resp.json()
 
     def get_image(self, page_path):
@@ -166,9 +153,7 @@ class EBadatelnaSession:
         Returns:
             Binary image data (bytes).
         """
-        self._throttle()
         resp = self._client.get("/Home/GetImage", params={"page": page_path})
-        resp.raise_for_status()
         return resp.content
 
     def get_thumbnail(self, page_path):
@@ -180,9 +165,7 @@ class EBadatelnaSession:
         Returns:
             Binary image data (bytes).
         """
-        self._throttle()
         resp = self._client.get("/Home/GetThumbnail", params={"page": page_path})
-        resp.raise_for_status()
         return resp.content
 
     def get_breadcrumbs(self, node_id):
@@ -194,7 +177,5 @@ class EBadatelnaSession:
         Returns:
             HTML string.
         """
-        self._throttle()
         resp = self._client.get("/Home/GetBreadcrumbs", params={"id": node_id})
-        resp.raise_for_status()
         return resp.text
