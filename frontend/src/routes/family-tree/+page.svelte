@@ -4,7 +4,6 @@
 	import { language, t } from '$lib/i18n';
 
 	let { data } = $props();
-	let lang = $derived($language);
 	let query = $state(data.q || '');
 
 	function doSearch(e: Event) {
@@ -45,11 +44,11 @@
 
 {#if showLanding}
 	<div class="landing">
-		<h1 class="heading">{t('family.title')}</h1>
-		<p class="subtitle">{t('family.subtitle')}</p>
+		<h1 class="heading">{$t('family.title')}</h1>
+		<p class="subtitle">{$t('family.subtitle')}</p>
 		<form onsubmit={doSearch} class="search-form landing-form">
 			<Search size={18} class="search-icon" />
-			<input type="text" bind:value={query} placeholder={t('family.searchPlaceholder')} class="search-input" autofocus />
+			<input type="text" bind:value={query} placeholder={$t('family.searchPlaceholder')} class="search-input" autofocus />
 		</form>
 	</div>
 {:else}
@@ -80,7 +79,7 @@
 					{#if rel}
 						<div class="detail-kinship">
 							<span class="kinship-badge">{rel.kinshipLabel}</span>
-							<span class="kinship-ref">{t('family.toAlexander')}</span>
+							<span class="kinship-ref">{$t('family.toAlexander')}</span>
 						</div>
 					{/if}
 				</div>
@@ -122,7 +121,7 @@
 				<div class="detail-family">
 					{#if p.parent}
 						<div class="family-row">
-							<span class="family-label">{t('family.parent')}</span>
+							<span class="family-label">{$t('family.parent')}</span>
 							<button class="family-link" onclick={() => navigatePerson(p.parent.id)}>
 								{p.parent.name} <ChevronRight size={14} />
 							</button>
@@ -130,7 +129,7 @@
 					{/if}
 					{#if p.children && p.children.length > 0}
 						<div class="family-row">
-							<span class="family-label">{t('family.children')}</span>
+							<span class="family-label">{$t('family.children')}</span>
 							<div class="family-chips">
 								{#each p.children as child}
 									<button class="family-link" onclick={() => navigatePerson(child.id)}>
@@ -144,9 +143,9 @@
 
 				{#if rel?.commonAncestorName}
 					<div class="detail-ancestor">
-						{t('family.commonAncestor')}: <strong>{rel.commonAncestorName}</strong>
+						{$t('family.commonAncestor')}: <strong>{rel.commonAncestorName}</strong>
 						<span class="ancestor-steps">
-							({rel.stepsFromPerson} {t('family.genFromPerson')}, {rel.stepsFromAlexander} {t('family.genFromAlexander')})
+							({rel.stepsFromPerson} {$t('family.genFromPerson')}, {rel.stepsFromAlexander} {$t('family.genFromAlexander')})
 						</span>
 					</div>
 				{/if}
@@ -182,7 +181,7 @@
 				{/each}
 			</div>
 		{:else if data.q}
-			<p class="empty">{t('family.noResults')} <strong>{data.q}</strong></p>
+			<p class="empty">{$t('family.noResults')} <strong>{data.q}</strong></p>
 		{/if}
 	</div>
 {/if}

@@ -172,6 +172,8 @@ export const en = {
 	'profile.addEmail': 'Add email address...',
 	'profile.add': 'Add',
 	'profile.removeEmail': 'Remove email',
+	'profile.language': 'Language',
+	'profile.languageHint': 'Choose your preferred language for the interface.',
 
 	// Language
 	'lang.en': 'EN',

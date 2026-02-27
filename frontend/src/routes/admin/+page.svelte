@@ -18,7 +18,6 @@
 	} from 'lucide-svelte';
 
 	let { data, form } = $props();
-	let lang = $derived($language);
 	let stats = $derived(data.stats);
 	let users = $derived(data.users ?? []);
 
@@ -33,10 +32,10 @@
 	let recentEvents = $derived((stats.recentEvents ?? []) as EventRow[]);
 
 	let anomalies = $derived([
-		{ label: t('admin.staleJobs'), count: stats.staleClaimedJobs as number, severity: 'warning' },
-		{ label: t('admin.failedJobs'), count: stats.failedRetriableJobs as number, severity: 'danger' },
-		{ label: t('admin.stuckIngesting'), count: stats.stuckIngestingRecords as number, severity: 'danger' },
-		{ label: t('admin.ocrNoPostJobs'), count: stats.ocrDoneNoPostOcrJobs as number, severity: 'warning' }
+		{ label: $t('admin.staleJobs'), count: stats.staleClaimedJobs as number, severity: 'warning' },
+		{ label: $t('admin.failedJobs'), count: stats.failedRetriableJobs as number, severity: 'danger' },
+		{ label: $t('admin.stuckIngesting'), count: stats.stuckIngestingRecords as number, severity: 'danger' },
+		{ label: $t('admin.ocrNoPostJobs'), count: stats.ocrDoneNoPostOcrJobs as number, severity: 'warning' }
 	]);
 
 	let totalAnomalies = $derived(anomalies.reduce((sum, a) => sum + a.count, 0));
@@ -79,16 +78,16 @@
 </script>
 
 <svelte:head>
-	<title>{t('admin.title')} &ndash; Archiver</title>
+	<title>{$t('admin.title')} &ndash; Archiver</title>
 </svelte:head>
 
 <div class="flex items-center justify-between mb-8">
 	<h1 class="text-[length:var(--vui-text-2xl)] font-extrabold tracking-tight flex items-center gap-3">
 		<ShieldCheck size={24} strokeWidth={2} class="text-accent" />
-		{t('admin.title')}
+		{$t('admin.title')}
 	</h1>
 	<button class="vui-btn vui-btn-ghost vui-btn-sm" onclick={() => invalidateAll()}>
-		<RefreshCw size={13} strokeWidth={2} /> {t('admin.refresh')}
+		<RefreshCw size={13} strokeWidth={2} /> {$t('admin.refresh')}
 	</button>
 </div>
 
@@ -97,10 +96,10 @@
 	<div class="flex items-center justify-between mb-4">
 		<h2 class="text-[length:var(--vui-text-lg)] font-bold flex items-center gap-2">
 			<Users size={18} strokeWidth={2} />
-			{t('admin.users')}
+			{$t('admin.users')}
 		</h2>
 		<button class="vui-btn vui-btn-primary vui-btn-sm" onclick={() => { showAddUser = !showAddUser; }}>
-			<Plus size={13} strokeWidth={2} /> {t('admin.addUser')}
+			<Plus size={13} strokeWidth={2} /> {$t('admin.addUser')}
 		</button>
 	</div>
 
@@ -116,7 +115,7 @@
 			};
 		}}>
 			<div class="grid grid-cols-1 md:grid-cols-3 gap-3 mb-3">
-				<input type="text" name="displayName" placeholder={t('admin.displayName')} bind:value={newName} required
+				<input type="text" name="displayName" placeholder={$t('admin.displayName')} bind:value={newName} required
 					class="vui-input text-[length:var(--vui-text-sm)]" />
 				<select name="role" bind:value={newRole} class="vui-input text-[length:var(--vui-text-sm)]">
 					<option value="user">User</option>
@@ -126,23 +125,23 @@
 					class="vui-input text-[length:var(--vui-text-sm)]" />
 			</div>
 			<div class="flex gap-2">
-				<button type="submit" class="vui-btn vui-btn-primary vui-btn-sm">{t('admin.create')}</button>
-				<button type="button" class="vui-btn vui-btn-ghost vui-btn-sm" onclick={() => { showAddUser = false; }}>{t('admin.cancel')}</button>
+				<button type="submit" class="vui-btn vui-btn-primary vui-btn-sm">{$t('admin.create')}</button>
+				<button type="button" class="vui-btn vui-btn-ghost vui-btn-sm" onclick={() => { showAddUser = false; }}>{$t('admin.cancel')}</button>
 			</div>
 		</form>
 	{/if}
 
 	{#if users.length === 0}
-		<p class="text-text-sub text-[length:var(--vui-text-sm)]">{t('admin.noUsers')}</p>
+		<p class="text-text-sub text-[length:var(--vui-text-sm)]">{$t('admin.noUsers')}</p>
 	{:else}
 		<div class="overflow-x-auto">
 			<table class="w-full text-left text-[length:var(--vui-text-sm)]">
 				<thead>
 					<tr class="border-b border-border">
-						<th class="px-3 py-2 text-[11px] font-semibold uppercase tracking-wide text-text-sub">{t('admin.name')}</th>
-						<th class="px-3 py-2 text-[11px] font-semibold uppercase tracking-wide text-text-sub">{t('admin.emails')}</th>
-						<th class="px-3 py-2 text-[11px] font-semibold uppercase tracking-wide text-text-sub">{t('admin.role')}</th>
-						<th class="px-3 py-2 text-[11px] font-semibold uppercase tracking-wide text-text-sub w-28">{t('admin.actions')}</th>
+						<th class="px-3 py-2 text-[11px] font-semibold uppercase tracking-wide text-text-sub">{$t('admin.name')}</th>
+						<th class="px-3 py-2 text-[11px] font-semibold uppercase tracking-wide text-text-sub">{$t('admin.emails')}</th>
+						<th class="px-3 py-2 text-[11px] font-semibold uppercase tracking-wide text-text-sub">{$t('admin.role')}</th>
+						<th class="px-3 py-2 text-[11px] font-semibold uppercase tracking-wide text-text-sub w-28">{$t('admin.actions')}</th>
 					</tr>
 				</thead>
 				<tbody>
@@ -163,7 +162,7 @@
 											<option value="user">User</option>
 											<option value="admin">Admin</option>
 										</select>
-										<button type="submit" class="vui-btn vui-btn-primary vui-btn-sm">{t('admin.save')}</button>
+										<button type="submit" class="vui-btn vui-btn-primary vui-btn-sm">{$t('admin.save')}</button>
 										<button type="button" class="vui-btn vui-btn-ghost vui-btn-sm" onclick={cancelEdit}>
 											<X size={13} />
 										</button>
@@ -214,7 +213,7 @@
 										}}>
 											<input type="hidden" name="id" value={user.id} />
 											<button type="submit" class="vui-btn vui-btn-ghost vui-btn-sm text-red-400" title="Delete"
-												onclick={(e) => { if (!confirm(t('admin.deleteConfirm'))) e.preventDefault(); }}>
+												onclick={(e) => { if (!confirm($t('admin.deleteConfirm'))) e.preventDefault(); }}>
 												<Trash2 size={13} />
 											</button>
 										</form>
@@ -232,14 +231,14 @@
 <!-- Audit Panel -->
 <div class="vui-card mb-6 vui-animate-fade-in">
 	<div class="flex items-center justify-between mb-4">
-		<h2 class="text-[length:var(--vui-text-lg)] font-bold">{t('admin.pipelineAuditor')}</h2>
+		<h2 class="text-[length:var(--vui-text-lg)] font-bold">{$t('admin.pipelineAuditor')}</h2>
 		{#if totalAnomalies > 0}
 			<span class="vui-badge vui-badge-warning">
-				<AlertTriangle size={11} class="inline" /> {t('admin.anomaliesDetected', totalAnomalies)}
+				<AlertTriangle size={11} class="inline" /> {$t('admin.anomaliesDetected', totalAnomalies)}
 			</span>
 		{:else}
 			<span class="vui-badge vui-badge-success">
-				<CircleCheckBig size={11} class="inline" /> {t('admin.allClear')}
+				<CircleCheckBig size={11} class="inline" /> {$t('admin.allClear')}
 			</span>
 		{/if}
 	</div>
@@ -268,9 +267,9 @@
 	}}>
 		<button type="submit" class="vui-btn vui-btn-primary" disabled={auditing}>
 			{#if auditing}
-				<Loader size={13} strokeWidth={2} class="animate-spin" /> {t('admin.runningAudit')}
+				<Loader size={13} strokeWidth={2} class="animate-spin" /> {$t('admin.runningAudit')}
 			{:else}
-				<Play size={13} strokeWidth={2} /> {t('admin.runAudit')}
+				<Play size={13} strokeWidth={2} /> {$t('admin.runAudit')}
 			{/if}
 		</button>
 	</form>
@@ -278,7 +277,7 @@
 	{#if form?.fixed !== undefined}
 		<div class="mt-3 px-3 py-2 rounded-md bg-green-500/10 border border-green-500/30 text-[length:var(--vui-text-sm)]">
 			<CircleCheckBig size={13} class="inline text-green-400" />
-			{t('admin.auditComplete', form.fixed)}
+			{$t('admin.auditComplete', form.fixed)}
 		</div>
 	{/if}
 </div>
@@ -286,7 +285,7 @@
 <!-- Record Status Breakdown -->
 <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
 	<div class="vui-card vui-animate-fade-in">
-		<h2 class="text-[length:var(--vui-text-lg)] font-bold mb-4">{t('admin.recordsByStatus')}</h2>
+		<h2 class="text-[length:var(--vui-text-lg)] font-bold mb-4">{$t('admin.recordsByStatus')}</h2>
 		<div class="space-y-2">
 			{#each recordsByStatus as row}
 				<div class="flex items-center justify-between py-1.5 px-3 rounded bg-bg-deep border border-border">
@@ -299,7 +298,7 @@
 
 	<!-- Jobs by Kind -->
 	<div class="vui-card vui-animate-fade-in">
-		<h2 class="text-[length:var(--vui-text-lg)] font-bold mb-4">{t('admin.jobsByKind')}</h2>
+		<h2 class="text-[length:var(--vui-text-lg)] font-bold mb-4">{$t('admin.jobsByKind')}</h2>
 		<div class="space-y-3">
 			{#each jobKinds as [kind, rows]}
 				<div>
@@ -322,20 +321,20 @@
 <div class="vui-card vui-animate-fade-in">
 	<h2 class="text-[length:var(--vui-text-lg)] font-bold mb-4 flex items-center gap-2">
 		<Clock size={16} strokeWidth={2} />
-		{t('admin.recentEvents')}
+		{$t('admin.recentEvents')}
 	</h2>
 	{#if recentEvents.length === 0}
-		<p class="text-text-sub text-[length:var(--vui-text-sm)]">{t('admin.noEvents')}</p>
+		<p class="text-text-sub text-[length:var(--vui-text-sm)]">{$t('admin.noEvents')}</p>
 	{:else}
 		<div class="overflow-x-auto">
 			<table class="w-full text-left text-[length:var(--vui-text-sm)]">
 				<thead>
 					<tr class="border-b border-border">
-						<th class="px-3 py-2 text-[11px] font-semibold uppercase tracking-wide text-text-sub">{t('admin.col.time')}</th>
-						<th class="px-3 py-2 text-[11px] font-semibold uppercase tracking-wide text-text-sub">{t('admin.col.stage')}</th>
-						<th class="px-3 py-2 text-[11px] font-semibold uppercase tracking-wide text-text-sub">{t('admin.col.event')}</th>
-						<th class="px-3 py-2 text-[11px] font-semibold uppercase tracking-wide text-text-sub">{t('admin.col.detail')}</th>
-						<th class="px-3 py-2 text-[11px] font-semibold uppercase tracking-wide text-text-sub">{t('admin.col.record')}</th>
+						<th class="px-3 py-2 text-[11px] font-semibold uppercase tracking-wide text-text-sub">{$t('admin.col.time')}</th>
+						<th class="px-3 py-2 text-[11px] font-semibold uppercase tracking-wide text-text-sub">{$t('admin.col.stage')}</th>
+						<th class="px-3 py-2 text-[11px] font-semibold uppercase tracking-wide text-text-sub">{$t('admin.col.event')}</th>
+						<th class="px-3 py-2 text-[11px] font-semibold uppercase tracking-wide text-text-sub">{$t('admin.col.detail')}</th>
+						<th class="px-3 py-2 text-[11px] font-semibold uppercase tracking-wide text-text-sub">{$t('admin.col.record')}</th>
 					</tr>
 				</thead>
 				<tbody>

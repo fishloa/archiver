@@ -28,7 +28,7 @@
 			: (pageText?.textEn || pageText?.text || null)
 	);
 	let mainLabel = $derived(
-		lang === 'de' ? t('page.originalText') : t('page.englishTranslation')
+		lang === 'de' ? $t('page.originalText') : $t('page.englishTranslation')
 	);
 	let altText = $derived(
 		lang === 'de'
@@ -36,21 +36,21 @@
 			: (pageText?.text || null)
 	);
 	let altLabel = $derived(
-		lang === 'de' ? t('page.englishTranslation') : t('page.originalOcrText')
+		lang === 'de' ? $t('page.englishTranslation') : $t('page.originalOcrText')
 	);
 </script>
 
 <svelte:head>
-	<title>{page.pageLabel ?? `${t('search.page')} ${page.seq}`} &ndash; {record.title ?? 'Record'} &ndash; Archiver</title>
+	<title>{page.pageLabel ?? `${$t('search.page')} ${page.seq}`} &ndash; {record.title ?? 'Record'} &ndash; Archiver</title>
 </svelte:head>
 
 <div class="mb-4">
 	<div class="flex items-center justify-between">
 		<a href="/records/{record.id}" class="vui-btn vui-btn-ghost vui-btn-sm">
-			<ArrowLeft size={13} strokeWidth={2} /> {record.title ?? t('page.backToRecord')}
+			<ArrowLeft size={13} strokeWidth={2} /> {record.title ?? $t('page.backToRecord')}
 		</a>
 		<span class="text-[length:var(--vui-text-sm)] text-text tabular-nums">
-			{page.pageLabel ?? `${t('search.page')} ${page.seq}`} &middot; {page.seq} {t('page.of')} {totalPages}
+			{page.pageLabel ?? `${$t('search.page')} ${page.seq}`} &middot; {page.seq} {$t('page.of')} {totalPages}
 		</span>
 	</div>
 	{#if record.titleEn && record.titleEn !== record.title}
@@ -61,44 +61,44 @@
 <div class="flex justify-center gap-3 mb-4">
 	{#if prev}
 		<a href="/records/{record.id}/pages/{prev.seq}" class="vui-btn vui-btn-secondary vui-btn-sm">
-			<ArrowLeft size={13} strokeWidth={2} /> {t('page.prev')}
+			<ArrowLeft size={13} strokeWidth={2} /> {$t('page.prev')}
 		</a>
 	{/if}
 	<button
 		class="vui-btn vui-btn-sm {kept ? 'vui-btn-primary !bg-emerald-600 !border-emerald-600' : 'vui-btn-secondary'}"
 		onclick={() => toggleKept(record.id, page.seq)}
-		title={kept ? t('page.removeKept') : t('page.keepThis')}
+		title={kept ? $t('page.removeKept') : $t('page.keepThis')}
 	>
 		{#if kept}
-			<BookmarkCheck size={13} strokeWidth={2} /> {t('page.kept')}
+			<BookmarkCheck size={13} strokeWidth={2} /> {$t('page.kept')}
 		{:else}
-			<Bookmark size={13} strokeWidth={2} /> {t('page.keep')}
+			<Bookmark size={13} strokeWidth={2} /> {$t('page.keep')}
 		{/if}
 	</button>
 	{#if next}
 		<a href="/records/{record.id}/pages/{next.seq}" class="vui-btn vui-btn-secondary vui-btn-sm">
-			{t('page.next')} <ArrowRight size={13} strokeWidth={2} />
+			{$t('page.next')} <ArrowRight size={13} strokeWidth={2} />
 		</a>
 	{/if}
 </div>
 
 {#if count > 0}
 	<div class="flex items-center justify-between gap-3 mb-4 py-2 px-4 rounded-lg bg-surface border border-border text-[length:var(--vui-text-sm)]">
-		<span class="text-text-sub tabular-nums">{t('page.pagesKept', count)}</span>
+		<span class="text-text-sub tabular-nums">{$t('page.pagesKept', count)}</span>
 		<div class="flex items-center gap-2">
 			<a
 				href="/api/records/{record.id}/export-pdf?pages={encodeURIComponent(pagesParam)}"
 				class="vui-btn vui-btn-primary vui-btn-sm !bg-emerald-600 !border-emerald-600"
 				target="_blank"
 			>
-				<Download size={13} strokeWidth={2} /> {t('page.downloadKept')}
+				<Download size={13} strokeWidth={2} /> {$t('page.downloadKept')}
 			</a>
 			<button
 				class="vui-btn vui-btn-ghost vui-btn-sm text-text-sub"
 				onclick={() => clearKept(record.id)}
-				title={t('page.clearKept')}
+				title={$t('page.clearKept')}
 			>
-				<X size={13} strokeWidth={2} /> {t('page.clear')}
+				<X size={13} strokeWidth={2} /> {$t('page.clear')}
 			</button>
 		</div>
 	</div>
@@ -111,12 +111,12 @@
 		{#if page.attachmentId}
 			<img
 				src="/api/files/{page.attachmentId}"
-				alt={page.pageLabel ?? `${t('search.page')} ${page.seq}`}
+				alt={page.pageLabel ?? `${$t('search.page')} ${page.seq}`}
 				class="max-h-[85vh] max-w-full rounded-lg object-contain"
 			/>
 		{:else}
 			<div class="vui-card flex h-96 items-center justify-center">
-				<span class="text-text-sub">{t('page.noImage')}</span>
+				<span class="text-text-sub">{$t('page.noImage')}</span>
 			</div>
 		{/if}
 	</div>
@@ -136,7 +136,7 @@
 						class="vui-transition {peopleOpen ? 'rotate-0' : '-rotate-90'}"
 					/>
 					<Users size={16} strokeWidth={2} />
-					{t('page.peopleMentioned')}
+					{$t('page.peopleMentioned')}
 					<span class="text-text-sub font-normal ml-1">({personMatches.length})</span>
 				</button>
 				{#if peopleOpen}
@@ -198,12 +198,12 @@
 			{altLabel}
 			{#if lang !== 'de' && pageText?.confidence}
 				<span class="text-text-sub font-normal ml-1">
-					({pageText.engine}, {(pageText.confidence * 100).toFixed(0)}% {t('page.confidence')})
+					({pageText.engine}, {(pageText.confidence * 100).toFixed(0)}% {$t('page.confidence')})
 				</span>
 			{/if}
 			{#if lang === 'de' && pageText?.confidence}
 				<span class="text-text-sub font-normal ml-1">
-					({pageText.engine}, {(pageText.confidence * 100).toFixed(0)}% {t('page.confidence')})
+					({pageText.engine}, {(pageText.confidence * 100).toFixed(0)}% {$t('page.confidence')})
 				</span>
 			{/if}
 		</button>

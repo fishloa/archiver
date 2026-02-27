@@ -56,11 +56,11 @@
 							href={item.href}
 							class="nav-item"
 							class:active
-							title={collapsed ? t(item.labelKey) : undefined}
+							title={collapsed ? $t(item.labelKey) : undefined}
 						>
 							<svelte:component this={item.icon} size={20} strokeWidth={active ? 2.2 : 1.8} />
 							{#if !collapsed}
-								{#key lang}<span>{t(item.labelKey)}</span>{/key}
+								<span>{$t(item.labelKey)}</span>
 							{/if}
 						</a>
 					</li>
@@ -86,21 +86,19 @@
 					<a href="/profile" class="user-link" title={user.email}>
 						{user.displayName || user.email}
 					</a>
-					<a href="/oauth2-google/sign_out?rd=/" class="signout-btn" title={t('nav.signOut')}>
+					<a href="/oauth2-google/sign_out?rd=/" class="signout-btn" title={$t('nav.signOut')}>
 						<LogOut size={16} strokeWidth={1.8} />
 					</a>
 				{:else}
 					<a href="/signin" class="signin-btn">
 						<LogIn size={16} strokeWidth={1.8} />
-						{#key lang}<span>{t('nav.signIn')}</span>{/key}
+						<span>{$t('nav.signIn')}</span>
 					</a>
 				{/if}
 			</div>
 		</div>
 		<div class="content">
-			{#key lang}
-				{@render children()}
-			{/key}
+			{@render children()}
 		</div>
 	</main>
 </div>

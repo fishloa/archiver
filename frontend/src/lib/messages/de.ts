@@ -174,6 +174,8 @@ export const de: Record<MessageKey, string> = {
 	'profile.addEmail': 'E-Mail-Adresse hinzuf\u00fcgen...',
 	'profile.add': 'Hinzuf\u00fcgen',
 	'profile.removeEmail': 'E-Mail entfernen',
+	'profile.language': 'Sprache',
+	'profile.languageHint': 'Wähle deine bevorzugte Sprache für die Benutzeroberfläche.',
 
 	// Language
 	'lang.en': 'EN',

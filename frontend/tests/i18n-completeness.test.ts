@@ -31,7 +31,7 @@ function walkDir(dir: string, exts: string[]): string[] {
 // Extract all t('key') calls from source files
 function extractKeys(files: string[]): Map<string, string[]> {
 	const keyLocations = new Map<string, string[]>();
-	const pattern = /\bt\(\s*['"]([^'"]+)['"]/g;
+	const pattern = /(?:\$t|\bt)\(\s*['"]([^'"]+)['"]/g;
 
 	for (const file of files) {
 		const content = readFileSync(file, 'utf-8');
@@ -47,7 +47,7 @@ function extractKeys(files: string[]): Map<string, string[]> {
 	return keyLocations;
 }
 
-const files = walkDir(SRC_DIR, ['.svelte', '.ts']);
+const files = walkDir(SRC_DIR, ['.svelte', '.ts']).filter(f => !f.endsWith('/i18n.ts'));
 const usedKeys = extractKeys(files);
 const enKeys = new Set(Object.keys(en));
 const deKeys = new Set(Object.keys(de));

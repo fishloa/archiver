@@ -5,7 +5,6 @@
 
 	let { data } = $props();
 	let query = $state(data.q || '');
-	let lang = $derived($language);
 
 	function doSearch(e: Event) {
 		e.preventDefault();
@@ -125,21 +124,21 @@
 	// Language-aware text display for search panel
 	function panelMainText(pt: any): string | null {
 		if (!pt) return null;
-		if (lang === 'de') return pt.text || pt.textEn || null;
+		if ($language === 'de') return pt.text || pt.textEn || null;
 		return pt.textEn || pt.text || null;
 	}
 	function panelMainLabel(): string {
-		if (lang === 'de') return t('page.originalText');
-		return t('search.englishTranslation');
+		if ($language === 'de') return $t('page.originalText');
+		return $t('search.englishTranslation');
 	}
 	function panelAltText(pt: any): string | null {
 		if (!pt) return null;
-		if (lang === 'de') return pt.textEn || null;
+		if ($language === 'de') return pt.textEn || null;
 		return pt.text || null;
 	}
 	function panelAltLabel(): string {
-		if (lang === 'de') return t('search.englishTranslation');
-		return t('search.originalOcr');
+		if ($language === 'de') return $t('search.englishTranslation');
+		return $t('search.originalOcr');
 	}
 </script>
 
@@ -155,7 +154,7 @@
 			<input
 				type="text"
 				bind:value={query}
-				placeholder={t('search.placeholder')}
+				placeholder={$t('search.placeholder')}
 				class="search-input"
 				autofocus
 			/>
@@ -178,7 +177,7 @@
 				<div class="ai-card">
 					<div class="ai-head">
 						<BrainCircuit size={14} />
-						<span>{t('search.aiOverview')}</span>
+						<span>{$t('search.aiOverview')}</span>
 					</div>
 					<p class="ai-text">{data.answer}</p>
 				</div>
@@ -219,11 +218,11 @@
 							onclick={() => selectResult(r, i)}
 						>
 							<div class="result-url">
-								records/{r.recordId}{#if r.pageSeq} / {t('search.page')} {r.pageSeq}{/if}
+								records/{r.recordId}{#if r.pageSeq} / {$t('search.page')} {r.pageSeq}{/if}
 								{#if r.referenceCode}&nbsp;&middot; {r.referenceCode}{/if}
 								&nbsp;&middot; <span class="result-score">{(r.score * 100).toFixed(0)}%</span>
 							</div>
-							<div class="result-title">{r.title}{#if r.pageSeq} — {t('search.page')} {r.pageSeq}{/if}</div>
+							<div class="result-title">{r.title}{#if r.pageSeq} — {$t('search.page')} {r.pageSeq}{/if}</div>
 							<p class="result-snippet">{r.snippet}</p>
 						</button>
 					{/each}
@@ -231,7 +230,7 @@
 
 				{@render pager()}
 			{:else if data.q}
-				<p class="empty">{t('search.noResults')} <strong>{data.q}</strong></p>
+				<p class="empty">{$t('search.noResults')} <strong>{data.q}</strong></p>
 			{/if}
 		</div>
 
@@ -242,12 +241,12 @@
 					<button class="panel-close" onclick={closePanel}><X size={18} /></button>
 					<a href={panel.pageSeq ? `/records/${panel.recordId}/pages/${panel.pageSeq}` : `/records/${panel.recordId}`} class="panel-link">
 						<ExternalLink size={14} />
-						{t('search.openFullPage')}
+						{$t('search.openFullPage')}
 					</a>
 				</div>
 
 				{#if panel.loading}
-					<div class="panel-loading">{t('search.loading')}</div>
+					<div class="panel-loading">{$t('search.loading')}</div>
 				{:else if panel.record}
 					<div class="panel-body">
 						<!-- Title -->
@@ -259,12 +258,12 @@
 						<!-- Meta -->
 						<div class="panel-meta">
 							{#if panel.record.referenceCode}
-								<span class="meta-tag">{t('search.ref')}: {panel.record.referenceCode}</span>
+								<span class="meta-tag">{$t('search.ref')}: {panel.record.referenceCode}</span>
 							{/if}
 							{#if panel.record.dateRangeText}
 								<span class="meta-tag">{panel.record.dateRangeText}</span>
 							{/if}
-							<span class="meta-tag">{panel.record.pageCount} {t('search.pages')}</span>
+							<span class="meta-tag">{panel.record.pageCount} {$t('search.pages')}</span>
 							<span class="meta-tag status">{panel.record.status}</span>
 						</div>
 
@@ -281,7 +280,7 @@
 							<div class="panel-image-wrap">
 								<img
 									src="/api/files/{panelPage.attachmentId}"
-									alt="{t('search.page')} {panel.pageSeq}"
+									alt="{$t('search.page')} {panel.pageSeq}"
 									class="panel-image"
 									loading="lazy"
 								/>
@@ -291,7 +290,7 @@
 						<!-- Main text pane (language-aware) -->
 						{#if panelMainText(panel.pageText)}
 							<div class="panel-section">
-								<h3 class="panel-section-title">{panelMainLabel()} — {t('search.page')} {panel.pageSeq}</h3>
+								<h3 class="panel-section-title">{panelMainLabel()} — {$t('search.page')} {panel.pageSeq}</h3>
 								<pre class="panel-text">{panelMainText(panel.pageText)}</pre>
 							</div>
 						{/if}
@@ -301,7 +300,7 @@
 							<button class="ocr-toggle" onclick={() => ocrOpen = !ocrOpen}>
 								<ChevronDown size={14} class={ocrOpen ? 'rotate' : ''} />
 								{panelAltLabel()}
-								{#if lang !== 'de' && panel.pageText?.confidence}
+								{#if $language !== 'de' && panel.pageText?.confidence}
 									<span class="ocr-confidence">{(panel.pageText.confidence * 100).toFixed(0)}%</span>
 								{/if}
 							</button>
@@ -313,7 +312,7 @@
 						<!-- Page thumbnails -->
 						{#if panel.pages && panel.pages.length > 1}
 							<div class="panel-section">
-								<h3 class="panel-section-title">{t('search.allPages')} ({panel.pages.length})</h3>
+								<h3 class="panel-section-title">{$t('search.allPages')} ({panel.pages.length})</h3>
 								<div class="thumb-grid">
 									{#each panel.pages as pg}
 										<button
@@ -323,7 +322,7 @@
 										>
 											<img
 												src="/api/files/{pg.attachmentId}/thumbnail"
-												alt="{t('search.page')} {pg.seq}"
+												alt="{$t('search.page')} {pg.seq}"
 												loading="lazy"
 											/>
 											<span class="thumb-label">{pg.seq}</span>

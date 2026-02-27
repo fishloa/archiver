@@ -2,25 +2,35 @@
 	import { enhance } from '$app/forms';
 	import { invalidateAll } from '$app/navigation';
 	import { Mail, Trash2, Plus } from 'lucide-svelte';
-	import { language, t } from '$lib/i18n';
+	import { language, setLanguage, t, type Lang } from '$lib/i18n';
 
 	let { data, form } = $props();
 	let profile = $derived(data.profile);
 	let newEmail = $state('');
 	let saving = $state(false);
-	let lang = $derived($language);
+
+	async function switchLang(lang: Lang) {
+		setLanguage(lang);
+		try {
+			await fetch('/api/profile', {
+				method: 'PUT',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ lang })
+			});
+		} catch (_) {}
+	}
 </script>
 
 <svelte:head>
-	<title>{t('profile.title')} — Archiver</title>
+	<title>{$t('profile.title')} — Archiver</title>
 </svelte:head>
 
 <div class="profile-page">
-	<h1>{t('profile.title')}</h1>
+	<h1>{$t('profile.title')}</h1>
 
 	<section class="card">
-		<h2>{t('profile.displayName')}</h2>
-		<p class="hint">{t('profile.displayNameHint')}</p>
+		<h2>{$t('profile.displayName')}</h2>
+		<p class="hint">{$t('profile.displayNameHint')}</p>
 		<form
 			method="POST"
 			action="?/updateName"
@@ -36,16 +46,39 @@
 			<div class="input-row">
 				<input type="text" name="displayName" value={profile.displayName} class="text-input" />
 				<button type="submit" class="btn-primary" disabled={saving}>
-					{saving ? t('profile.saving') : t('profile.save')}
+					{saving ? $t('profile.saving') : $t('profile.save')}
 				</button>
 			</div>
 		</form>
 	</section>
 
 	<section class="card">
-		<h2>{t('profile.emailAddresses')}</h2>
+		<h2>{$t('profile.language')}</h2>
+		<p class="hint">{$t('profile.languageHint')}</p>
+		<div class="lang-options">
+			<button
+				class="lang-option"
+				class:active={$language === 'en'}
+				onclick={() => switchLang('en')}
+			>
+				<span class="lang-code">EN</span>
+				<span class="lang-name">English</span>
+			</button>
+			<button
+				class="lang-option"
+				class:active={$language === 'de'}
+				onclick={() => switchLang('de')}
+			>
+				<span class="lang-code">DE</span>
+				<span class="lang-name">Deutsch</span>
+			</button>
+		</div>
+	</section>
+
+	<section class="card">
+		<h2>{$t('profile.emailAddresses')}</h2>
 		<p class="hint">
-			{t('profile.emailHint')}
+			{$t('profile.emailHint')}
 		</p>
 
 		<ul class="email-list">
@@ -57,7 +90,7 @@
 						{emailEntry.email}
 					</span>
 					{#if isLogin}
-						<span class="badge">{t('profile.current')}</span>
+						<span class="badge">{$t('profile.current')}</span>
 					{:else}
 						<form
 							method="POST"
@@ -70,7 +103,7 @@
 							}}
 						>
 							<input type="hidden" name="emailId" value={emailEntry.id} />
-							<button type="submit" class="btn-icon-danger" title={t('profile.removeEmail')}>
+							<button type="submit" class="btn-icon-danger" title={$t('profile.removeEmail')}>
 								<Trash2 size={14} strokeWidth={1.8} />
 							</button>
 						</form>
@@ -95,12 +128,12 @@
 					type="email"
 					name="email"
 					bind:value={newEmail}
-					placeholder={t('profile.addEmail')}
+					placeholder={$t('profile.addEmail')}
 					class="text-input"
 				/>
 				<button type="submit" class="btn-primary" disabled={!newEmail.trim()}>
 					<Plus size={16} strokeWidth={2} />
-					{t('profile.add')}
+					{$t('profile.add')}
 				</button>
 			</div>
 		</form>
@@ -254,5 +287,48 @@
 		font-size: var(--vui-text-xs);
 		color: #ef4444;
 		margin-top: 8px;
+	}
+
+	.lang-options {
+		display: flex;
+		gap: 8px;
+	}
+
+	.lang-option {
+		display: flex;
+		align-items: center;
+		gap: 8px;
+		padding: 10px 16px;
+		background: var(--vui-bg-deep);
+		border: 1.5px solid var(--vui-border);
+		border-radius: var(--vui-radius-md);
+		color: var(--vui-text-sub);
+		cursor: pointer;
+		transition: all 0.15s ease;
+		font-family: inherit;
+	}
+
+	.lang-option:hover {
+		border-color: var(--vui-accent);
+		color: var(--vui-text);
+	}
+
+	.lang-option.active {
+		border-color: var(--vui-accent);
+		background: var(--vui-accent-dim);
+		color: var(--vui-text);
+	}
+
+	.lang-code {
+		font-size: var(--vui-text-sm);
+		font-weight: 700;
+	}
+
+	.lang-option.active .lang-code {
+		color: var(--vui-accent);
+	}
+
+	.lang-name {
+		font-size: var(--vui-text-sm);
 	}
 </style>

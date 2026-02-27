@@ -16,7 +16,6 @@
 	let pages = $derived(data.pages);
 	let timeline = $derived(data.timeline);
 	let personMatches = $derived(data.personMatches ?? []);
-	let lang = $derived($language);
 
 	let sourceMeta = $derived(parseSourceMeta(record.rawSourceMetadata));
 	let nadNumber = $derived(sourceMeta.nad_number ? String(sourceMeta.nad_number) : null);
@@ -98,11 +97,11 @@
 
 	// Metadata as structured groups
 	let metaItems = $derived([
-		{ icon: Hash, label: t('record.reference'), value: record.referenceCode },
-		{ icon: Calendar, label: t('record.dates'), value: record.dateRangeText },
-		{ icon: Bookmark, label: t('record.inventoryNo'), value: record.inventoryNumber },
-		{ icon: Layers, label: t('record.container'), value: [record.containerType, record.containerNumber].filter(Boolean).join(' ') || null },
-		{ icon: FileText, label: t('record.findingAid'), value: record.findingAidNumber },
+		{ icon: Hash, label: $t('record.reference'), value: record.referenceCode },
+		{ icon: Calendar, label: $t('record.dates'), value: record.dateRangeText },
+		{ icon: Bookmark, label: $t('record.inventoryNo'), value: record.inventoryNumber },
+		{ icon: Layers, label: $t('record.container'), value: [record.containerType, record.containerNumber].filter(Boolean).join(' ') || null },
+		{ icon: FileText, label: $t('record.findingAid'), value: record.findingAidNumber },
 	].filter(f => f.value));
 </script>
 
@@ -129,7 +128,7 @@
 	<div class="flex items-start gap-3">
 		<div class="flex-1 min-w-0">
 			<h1 class="text-[length:var(--vui-text-2xl)] font-extrabold tracking-tight leading-tight">
-				{record.titleEn ?? record.title ?? t('record.untitled')}
+				{record.titleEn ?? record.title ?? $t('record.untitled')}
 			</h1>
 			{#if record.titleEn && record.title}
 				<p class="text-text-sub text-[length:var(--vui-text-sm)] mt-1 italic truncate">{record.title}</p>
@@ -154,12 +153,12 @@
 	<div class="flex flex-wrap items-center gap-3 mb-6 py-3 px-4 rounded-lg bg-surface border border-border vui-animate-fade-in">
 		{#if record.sourceUrl}
 			<a href={record.sourceUrl} class="vui-btn vui-btn-ghost vui-btn-sm" target="_blank" rel="noopener noreferrer">
-				<ExternalLink size={13} strokeWidth={2} /> {t('record.source')}
+				<ExternalLink size={13} strokeWidth={2} /> {$t('record.source')}
 			</a>
 		{/if}
 		{#if record.pdfAttachmentId}
 			<a href="/api/records/{record.id}/pdf" class="vui-btn vui-btn-primary vui-btn-sm" target="_blank">
-				<Download size={13} strokeWidth={2} /> {t('record.downloadPdf')}
+				<Download size={13} strokeWidth={2} /> {$t('record.downloadPdf')}
 			</a>
 		{/if}
 		{#if kCount > 0}
@@ -185,7 +184,7 @@
 				<input
 					type="text"
 					bind:value={exportPages}
-					placeholder={t('record.pagesExportPlaceholder')}
+					placeholder={$t('record.pagesExportPlaceholder')}
 					class="px-2.5 py-1.5 rounded-md border border-border bg-bg-deep text-text text-[length:var(--vui-text-sm)] placeholder:text-text-sub focus:outline-none focus:ring-1 focus:ring-accent w-40"
 				/>
 				<a
@@ -193,7 +192,7 @@
 					class="vui-btn vui-btn-ghost vui-btn-sm {exportPages.trim() ? '' : 'opacity-40 pointer-events-none'}"
 					target="_blank"
 				>
-					<FileDown size={13} strokeWidth={2} /> {t('record.export')}
+					<FileDown size={13} strokeWidth={2} /> {$t('record.export')}
 				</a>
 			</div>
 		{/if}
@@ -207,7 +206,7 @@
 		{#if pages.length > 0}
 			<div class="flex items-baseline justify-between mb-3">
 				<h2 class="text-[length:var(--vui-text-sm)] font-semibold text-text-sub">
-					{t('record.pages')} <span class="text-text-sub font-normal">({pages.length})</span>
+					{$t('record.pages')} <span class="text-text-sub font-normal">({pages.length})</span>
 				</h2>
 			</div>
 			<div class="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-3 xl:grid-cols-4">
@@ -231,7 +230,7 @@
 							/>
 						{:else}
 							<div class="flex aspect-[3/4] items-center justify-center bg-surface">
-								<span class="text-text-sub text-[length:var(--vui-text-xs)]">{t('record.noImage')}</span>
+								<span class="text-text-sub text-[length:var(--vui-text-xs)]">{$t('record.noImage')}</span>
 							</div>
 						{/if}
 						<div class="px-2 py-1.5 text-center text-[length:var(--vui-text-xs)] text-text-sub tabular-nums">
@@ -242,7 +241,7 @@
 			</div>
 		{:else}
 			<div class="vui-card flex items-center justify-center h-48">
-				<span class="text-text-sub">{t('record.noPages')}</span>
+				<span class="text-text-sub">{$t('record.noPages')}</span>
 			</div>
 		{/if}
 	</div>
@@ -252,7 +251,7 @@
 		<!-- Metadata -->
 		{#if metaItems.length > 0}
 			<div class="vui-card p-4">
-				<h3 class="text-[length:var(--vui-text-xs)] font-semibold text-text-sub uppercase tracking-wider mb-3">{t('record.details')}</h3>
+				<h3 class="text-[length:var(--vui-text-xs)] font-semibold text-text-sub uppercase tracking-wider mb-3">{$t('record.details')}</h3>
 				<div class="space-y-2.5">
 					{#each metaItems as item}
 						<div class="flex items-start gap-2.5">
@@ -266,7 +265,7 @@
 				</div>
 				{#if record.indexTerms}
 					<div class="mt-3 pt-3 border-t border-border">
-						<div class="text-[length:var(--vui-text-xs)] text-text-sub mb-1.5">{t('record.indexTerms')}</div>
+						<div class="text-[length:var(--vui-text-xs)] text-text-sub mb-1.5">{$t('record.indexTerms')}</div>
 						<div class="flex flex-wrap gap-1.5">
 							{#each record.indexTerms.split(/[;,]/).map((s: string) => s.trim()).filter(Boolean) as term}
 								<span class="px-2 py-0.5 rounded-full bg-bg-deep border border-border text-[length:var(--vui-text-xs)] text-text-sub">{term}</span>
@@ -282,7 +281,7 @@
 			<div class="vui-card p-4">
 				<h3 class="text-[length:var(--vui-text-xs)] font-semibold text-text-sub uppercase tracking-wider mb-3 flex items-center gap-1.5">
 					<Users size={14} strokeWidth={2} />
-					{t('record.peopleMentioned')}
+					{$t('record.peopleMentioned')}
 				</h3>
 				<div class="space-y-2">
 					{#each personMatches as match}
@@ -311,26 +310,26 @@
 
 		<!-- Source info -->
 		<div class="vui-card p-4">
-			<h3 class="text-[length:var(--vui-text-xs)] font-semibold text-text-sub uppercase tracking-wider mb-3">{t('record.sourceInfo')}</h3>
+			<h3 class="text-[length:var(--vui-text-xs)] font-semibold text-text-sub uppercase tracking-wider mb-3">{$t('record.sourceInfo')}</h3>
 			<div class="space-y-2 text-[length:var(--vui-text-xs)]">
 				{#if fondName}
 					<div>
-						<div class="text-text-sub">{t('record.fond')}</div>
+						<div class="text-text-sub">{$t('record.fond')}</div>
 						<div class="text-text">{fondName}</div>
 						{#if nadEnglish}<div class="text-accent font-medium">{nadEnglish}</div>{/if}
 					</div>
 				{/if}
 				<div>
-					<div class="text-text-sub">{t('record.archiveId')}</div>
+					<div class="text-text-sub">{$t('record.archiveId')}</div>
 					<div class="text-text-sub font-mono break-all">{record.sourceRecordId}</div>
 				</div>
 				<div class="flex gap-4">
 					<div>
-						<div class="text-text-sub">{t('record.added')}</div>
+						<div class="text-text-sub">{$t('record.added')}</div>
 						<div class="text-text-sub">{formatShortDate(record.createdAt)}</div>
 					</div>
 					<div>
-						<div class="text-text-sub">{t('record.updated')}</div>
+						<div class="text-text-sub">{$t('record.updated')}</div>
 						<div class="text-text-sub">{formatShortDate(record.updatedAt)}</div>
 					</div>
 				</div>
@@ -346,7 +345,7 @@
 				>
 					<ChevronDown size={12} strokeWidth={2} class="vui-transition {timelineOpen ? 'rotate-0' : '-rotate-90'}" />
 					<Clock size={12} strokeWidth={2} />
-					{t('record.pipeline')}
+					{$t('record.pipeline')}
 					<span class="ml-auto font-normal normal-case tracking-normal">
 						{stageSummaries.filter(s => s.completed).length}/{stageSummaries.length}
 					</span>
@@ -393,7 +392,7 @@
 					onclick={() => rawOpen = !rawOpen}
 				>
 					<ChevronDown size={12} strokeWidth={2} class="vui-transition {rawOpen ? 'rotate-0' : '-rotate-90'}" />
-					{t('record.rawMetadata')}
+					{$t('record.rawMetadata')}
 				</button>
 				{#if rawOpen}
 					<pre class="mt-2 p-2 rounded bg-bg-deep border border-border text-[length:10px] text-text-sub overflow-x-auto font-mono leading-relaxed max-h-64 overflow-y-auto">{rawFormatted}</pre>
