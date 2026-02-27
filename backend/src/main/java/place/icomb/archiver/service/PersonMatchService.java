@@ -1,10 +1,16 @@
 package place.icomb.archiver.service;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
 import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import place.icomb.archiver.model.PagePersonMatch;
 import place.icomb.archiver.model.PageText;
@@ -19,27 +25,41 @@ public class PersonMatchService {
   private static final Logger log = LoggerFactory.getLogger(PersonMatchService.class);
 
   private static final int MAX_MATCHES_PER_PAGE = 10;
+  private static final int MAX_LLM_CANDIDATES = 20;
   private static final double MIN_SCORE = 0.3;
   private static final int CONTEXT_CHARS = 100;
   private static final int PROXIMITY_WINDOW = 3;
+  private static final String FAMILY_SURNAME = "czernin";
 
   private final FamilyTreeService familyTreeService;
   private final PagePersonMatchRepository matchRepo;
   private final PageTextRepository pageTextRepo;
   private final PageRepository pageRepo;
   private final RecordRepository recordRepo;
+  private final String openaiApiKey;
+  private final HttpClient httpClient;
+  private final ObjectMapper objectMapper;
 
   public PersonMatchService(
       FamilyTreeService familyTreeService,
       PagePersonMatchRepository matchRepo,
       PageTextRepository pageTextRepo,
       PageRepository pageRepo,
-      RecordRepository recordRepo) {
+      RecordRepository recordRepo,
+      @Value("${archiver.openai.api-key:}") String openaiApiKey) {
     this.familyTreeService = familyTreeService;
     this.matchRepo = matchRepo;
     this.pageTextRepo = pageTextRepo;
     this.pageRepo = pageRepo;
     this.recordRepo = recordRepo;
+    this.openaiApiKey = openaiApiKey;
+    this.httpClient = HttpClient.newHttpClient();
+    this.objectMapper = new ObjectMapper();
+  }
+
+  /** Constructor for unit testing — no repos, no API key. */
+  PersonMatchService(FamilyTreeService familyTreeService) {
+    this(familyTreeService, null, null, null, null, "");
   }
 
   public List<PagePersonMatch> getPageMatches(Long pageId) {
@@ -93,9 +113,39 @@ public class PersonMatchService {
     List<Person> people = familyTreeService.getAllPeople();
     if (people.isEmpty()) return List.of();
 
-    // Look up document date range for temporal disambiguation
     Integer docYear = getDocumentYear(pageId);
 
+    // Stage 1: Heuristic pre-filter to find candidates
+    List<MatchResult> candidates = computeMatches(text, people, docYear);
+    if (candidates.isEmpty()) return List.of();
+
+    // Stage 2: LLM re-ranking (falls back to heuristic if unavailable)
+    List<MatchResult> finalResults = llmRerank(text, candidates, docYear);
+    if (finalResults == null) {
+      finalResults = candidates.stream().limit(MAX_MATCHES_PER_PAGE).toList();
+    }
+
+    // Store matches
+    List<PagePersonMatch> stored = new ArrayList<>();
+    for (MatchResult mr : finalResults) {
+      PagePersonMatch match = new PagePersonMatch();
+      match.setPageId(pageId);
+      match.setPersonId(mr.personId);
+      match.setPersonName(mr.personName);
+      match.setScore((float) Math.min(1.0, mr.score));
+      match.setContext(mr.context);
+      stored.add(matchRepo.save(match));
+    }
+
+    log.debug("Page {} matched {} persons", pageId, stored.size());
+    return stored;
+  }
+
+  // --- Core matching algorithm (package-private for testing) ---
+
+  record MatchResult(int personId, String personName, double score, String context) {}
+
+  List<MatchResult> computeMatches(String text, List<Person> people, Integer docYear) {
     String normalizedText = familyTreeService.normalize(text);
     List<String> textTokens = familyTreeService.tokenize(normalizedText);
     if (textTokens.isEmpty()) return List.of();
@@ -108,10 +158,12 @@ public class PersonMatchService {
       List<String> nameTokens = getPersonNameTokens(person, titleWords);
       if (nameTokens.isEmpty()) continue;
 
+      List<String> givenNames = getOrderedGivenNames(person, titleWords);
+
       for (String token : nameTokens) {
         tokenToPersons
             .computeIfAbsent(token, k -> new ArrayList<>())
-            .add(new PersonToken(person, nameTokens));
+            .add(new PersonToken(person, nameTokens, givenNames));
       }
     }
 
@@ -131,6 +183,10 @@ public class PersonMatchService {
           double score = computeProximityScore(textTokens, i, pt.allNameTokens);
           if (score < MIN_SCORE) continue;
 
+          // Apply graduated name-position bonus: first given name gets highest boost
+          double nameBonus = computeNamePositionBonus(textTokens, i, pt.orderedGivenNames);
+          score *= nameBonus;
+
           var existing = candidates.get(person.id);
           if (existing == null || score > existing.bestScore) {
             candidates.put(person.id, new MatchCandidate(person, score, i));
@@ -140,33 +196,145 @@ public class PersonMatchService {
     }
 
     // Apply temporal adjustment after finding best scores
-    candidates.values().removeIf(mc -> {
-      mc.bestScore = applyTemporalAdjustment(mc.bestScore, mc.person, docYear);
-      return mc.bestScore < MIN_SCORE;
-    });
+    candidates
+        .values()
+        .removeIf(
+            mc -> {
+              mc.bestScore = applyTemporalAdjustment(mc.bestScore, mc.person, docYear);
+              return mc.bestScore < MIN_SCORE;
+            });
 
-    // Sort by score, take top N
-    List<MatchCandidate> sorted =
-        candidates.values().stream()
-            .sorted(Comparator.comparingDouble((MatchCandidate mc) -> mc.bestScore).reversed())
-            .limit(MAX_MATCHES_PER_PAGE)
-            .toList();
-
-    // Store matches
-    List<PagePersonMatch> stored = new ArrayList<>();
-    for (MatchCandidate mc : sorted) {
-      PagePersonMatch match = new PagePersonMatch();
-      match.setPageId(pageId);
-      match.setPersonId(mc.person.id);
-      match.setPersonName(mc.person.name);
-      match.setScore((float) mc.bestScore);
-      match.setContext(extractContext(text, textTokens, mc.bestTokenIndex));
-      stored.add(matchRepo.save(match));
-    }
-
-    log.debug("Page {} matched {} persons", pageId, stored.size());
-    return stored;
+    // Sort by score, return top candidates for LLM input
+    return candidates.values().stream()
+        .sorted(Comparator.comparingDouble((MatchCandidate mc) -> mc.bestScore).reversed())
+        .limit(MAX_LLM_CANDIDATES)
+        .map(
+            mc ->
+                new MatchResult(
+                    mc.person.id,
+                    mc.person.name,
+                    mc.bestScore,
+                    extractContext(
+                        text,
+                        familyTreeService.tokenize(familyTreeService.normalize(text)),
+                        mc.bestTokenIndex)))
+        .toList();
   }
+
+  // --- LLM re-ranking ---
+
+  private List<MatchResult> llmRerank(String text, List<MatchResult> candidates, Integer docYear) {
+    if (openaiApiKey == null || openaiApiKey.isBlank()) return null;
+    if (candidates.isEmpty()) return null;
+
+    try {
+      StringBuilder prompt = new StringBuilder();
+      prompt.append(
+          "You are identifying people mentioned in a historical document from the Czernin noble "
+              + "family archive (Bohemian/Austrian aristocracy).\n\n");
+      prompt.append("Document text:\n\"\"\"\n");
+      prompt.append(text, 0, Math.min(text.length(), 4000));
+      prompt.append("\n\"\"\"\n\n");
+      if (docYear != null) {
+        prompt.append("Approximate document year: ").append(docYear).append("\n\n");
+      }
+      prompt.append("Candidate family members (from heuristic pre-filter):\n");
+      for (MatchResult mr : candidates) {
+        Person p = familyTreeService.getPerson(mr.personId);
+        prompt.append("- ID ").append(mr.personId).append(": ").append(mr.personName);
+        if (p != null) {
+          if (p.birthYear != null) prompt.append(", born ").append(p.birthYear);
+          if (p.deathYear != null) prompt.append(", died ").append(p.deathYear);
+          if (p.birthPlace != null && !p.birthPlace.isBlank())
+            prompt.append(", birthplace: ").append(p.birthPlace);
+        }
+        prompt.append(" (heuristic score: ").append(String.format("%.2f", mr.score)).append(")\n");
+      }
+      prompt.append(
+          "\nIdentify which candidates are ACTUALLY referenced in the document text. "
+              + "Consider name matches, titles (Graf/Count), locations, dates, and context. "
+              + "Only include people with clear textual evidence — do not guess.\n\n"
+              + "Respond with JSON only:\n"
+              + "{\"matches\": [{\"personId\": N, \"score\": 0.0-1.0, \"evidence\": \"brief quote\"}]}\n"
+              + "If nobody clearly matches, respond: {\"matches\": []}");
+
+      String jsonBody =
+          objectMapper.writeValueAsString(
+              Map.of(
+                  "model",
+                  "gpt-4o-mini",
+                  "messages",
+                  List.of(
+                      Map.of(
+                          "role",
+                          "system",
+                          "content",
+                          "You are a genealogy research assistant. "
+                              + "Respond only with valid JSON, no markdown."),
+                      Map.of("role", "user", "content", prompt.toString())),
+                  "temperature",
+                  0.1,
+                  "max_tokens",
+                  500));
+
+      HttpRequest request =
+          HttpRequest.newBuilder()
+              .uri(URI.create("https://api.openai.com/v1/chat/completions"))
+              .header("Authorization", "Bearer " + openaiApiKey)
+              .header("Content-Type", "application/json")
+              .POST(HttpRequest.BodyPublishers.ofString(jsonBody))
+              .build();
+
+      HttpResponse<String> response =
+          httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+
+      if (response.statusCode() != 200) {
+        log.warn("OpenAI API error: {} {}", response.statusCode(), response.body());
+        return null;
+      }
+
+      var tree = objectMapper.readTree(response.body());
+      String content = tree.get("choices").get(0).get("message").get("content").asText();
+
+      // Strip markdown code fences if present
+      content = content.replaceAll("```json\\s*", "").replaceAll("```\\s*", "").trim();
+      var matchesNode = objectMapper.readTree(content).get("matches");
+
+      if (matchesNode == null || !matchesNode.isArray()) return null;
+
+      // Build lookup from candidates
+      Map<Integer, MatchResult> candidateMap = new HashMap<>();
+      for (MatchResult mr : candidates) {
+        candidateMap.put(mr.personId, mr);
+      }
+
+      List<MatchResult> results = new ArrayList<>();
+      for (var node : matchesNode) {
+        int personId = node.get("personId").asInt();
+        double score = node.get("score").asDouble();
+        var candidate = candidateMap.get(personId);
+        if (candidate == null || score < 0.1) continue;
+
+        results.add(new MatchResult(personId, candidate.personName, score, candidate.context));
+      }
+
+      // Sort by score descending, limit to MAX_MATCHES_PER_PAGE
+      results.sort(Comparator.comparingDouble(MatchResult::score).reversed());
+      if (results.size() > MAX_MATCHES_PER_PAGE) {
+        results = results.subList(0, MAX_MATCHES_PER_PAGE);
+      }
+
+      log.info(
+          "Page LLM re-ranked: {} matches from {} candidates", results.size(), candidates.size());
+      return results;
+
+    } catch (Exception e) {
+      log.warn("LLM re-ranking failed, falling back to heuristic: {}", e.getMessage());
+      return null;
+    }
+  }
+
+  // --- Heuristic helper methods ---
 
   private static final Pattern YEAR_IN_TEXT = Pattern.compile("\\b(1[0-9]{3}|20[0-9]{2})\\b");
 
@@ -207,7 +375,7 @@ public class PersonMatchService {
    * Adjusts a person's match score based on whether they were plausibly alive when the document was
    * written. Eliminates people who could not have been alive; boosts those who were.
    */
-  private double applyTemporalAdjustment(double score, Person person, Integer docYear) {
+  double applyTemporalAdjustment(double score, Person person, Integer docYear) {
     if (docYear == null) return score;
     Integer birth = person.birthYear;
     Integer death = person.deathYear;
@@ -230,8 +398,8 @@ public class PersonMatchService {
       return score * penalty;
     }
 
-    // Boost: person was plausibly alive at document time
-    return Math.min(1.0, score * 1.15);
+    // Boost: person was plausibly alive at document time (allow > 1.0 for ranking)
+    return score * 1.15;
   }
 
   private String getBestText(Long pageId) {
@@ -248,8 +416,6 @@ public class PersonMatchService {
   }
 
   /** Family surname — every person in the tree is a Czernin. */
-  private static final String FAMILY_SURNAME = "czernin";
-
   private List<String> getPersonNameTokens(Person person, Set<String> titleWords) {
     List<String> tokens = new ArrayList<>();
     String normalized = familyTreeService.normalize(person.name);
@@ -267,8 +433,10 @@ public class PersonMatchService {
 
     // Add birthplace as a discriminator — e.g. "Dymokury" helps identify which Rudolf
     // when the document says "Rudolf Czernin /Dymokur/"
+    // birthPlace may contain death place too (e.g. "Dymokury , +Wien"), extract only birth part
     if (person.birthPlace != null && !person.birthPlace.isBlank()) {
-      String normPlace = familyTreeService.normalize(person.birthPlace);
+      String rawPlace = person.birthPlace.split("[,+]")[0].trim();
+      String normPlace = familyTreeService.normalize(rawPlace);
       if (normPlace.length() >= 4 && !tokens.contains(normPlace)) {
         tokens.add(normPlace);
       }
@@ -277,15 +445,67 @@ public class PersonMatchService {
     return tokens;
   }
 
+  /**
+   * Returns the given names from person.name in their original order, excluding title words. Used
+   * for name-position bonus scoring.
+   */
+  List<String> getOrderedGivenNames(Person person, Set<String> titleWords) {
+    List<String> givenNames = new ArrayList<>();
+    String normalized = familyTreeService.normalize(person.name);
+    for (String t : normalized.split("[\\s,;.()]+")) {
+      if (!t.isEmpty() && t.length() > 1 && !titleWords.contains(t)) {
+        givenNames.add(t);
+      }
+    }
+    return givenNames;
+  }
+
+  /**
+   * Computes a graduated bonus based on which name position matched in the text. First given name
+   * match → highest bonus, second → less, etc. This helps disambiguate e.g. "Rudolf" as a first
+   * name (person 234) vs "Rudolf" as a 4th middle name (person 258).
+   */
+  double computeNamePositionBonus(
+      List<String> textTokens, int matchIndex, List<String> orderedGivenNames) {
+    if (orderedGivenNames.isEmpty()) return 1.0;
+
+    int windowStart = Math.max(0, matchIndex - PROXIMITY_WINDOW);
+    int windowEnd = Math.min(textTokens.size(), matchIndex + PROXIMITY_WINDOW + 1);
+
+    // Find the earliest-positioned given name that appears in the text window
+    int bestNamePosition = Integer.MAX_VALUE;
+    for (int j = windowStart; j < windowEnd; j++) {
+      for (int pos = 0; pos < orderedGivenNames.size(); pos++) {
+        if (pos >= bestNamePosition) break; // can't improve
+        if (fuzzyMatch(textTokens.get(j), orderedGivenNames.get(pos))) {
+          bestNamePosition = pos;
+          break;
+        }
+      }
+    }
+
+    if (bestNamePosition == Integer.MAX_VALUE) return 1.0; // no given name matched in window
+
+    // Graduated bonus: 1st name → 1.3x, 2nd → 1.2x, 3rd → 1.1x, 4th+ → 1.0x
+    return switch (bestNamePosition) {
+      case 0 -> 1.3;
+      case 1 -> 1.2;
+      case 2 -> 1.1;
+      default -> 1.0;
+    };
+  }
+
   private boolean fuzzyMatch(String textToken, String personToken) {
     if (textToken.equals(personToken)) return true;
     // Substring match only for tokens >= 4 chars to avoid "in" matching "katerina" etc.
     if (textToken.length() >= 4 && personToken.length() >= 4) {
       if (textToken.contains(personToken) || personToken.contains(textToken)) return true;
     }
+    // Levenshtein ≤ 1 — tolerates single OCR errors (e.g. "rudol" → "rudolf")
+    // but prevents false positives like "adolf" ↔ "rudolf" (distance 2) or "paul" ↔ "laut"
     if (textToken.length() >= 4
         && personToken.length() >= 4
-        && familyTreeService.levenshtein(textToken, personToken) <= 2) {
+        && familyTreeService.levenshtein(textToken, personToken) <= 1) {
       return true;
     }
     return false;
@@ -303,10 +523,15 @@ public class PersonMatchService {
     int windowStart = Math.max(0, matchIndex - PROXIMITY_WINDOW);
     int windowEnd = Math.min(textTokens.size(), matchIndex + PROXIMITY_WINDOW + 1);
 
+    // Track used text positions — each text token can only satisfy one name token.
+    // Prevents "ottokar" counting for both "otto" (substring) and "ottokar" (exact).
+    Set<Integer> usedPositions = new HashSet<>();
     for (String nameToken : nameTokens) {
       for (int j = windowStart; j < windowEnd; j++) {
+        if (usedPositions.contains(j)) continue;
         if (fuzzyMatch(textTokens.get(j), nameToken)) {
           matched++;
+          usedPositions.add(j);
           break;
         }
       }
@@ -344,9 +569,10 @@ public class PersonMatchService {
 
   // --- Inner types ---
 
-  private record PersonToken(Person person, List<String> allNameTokens) {}
+  private record PersonToken(
+      Person person, List<String> allNameTokens, List<String> orderedGivenNames) {}
 
-  private static class MatchCandidate {
+  static class MatchCandidate {
     final Person person;
     double bestScore;
     int bestTokenIndex;
