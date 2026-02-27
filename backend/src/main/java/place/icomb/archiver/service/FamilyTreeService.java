@@ -544,7 +544,7 @@ public class FamilyTreeService {
   }
 
   List<String> tokenize(String s) {
-    return Arrays.stream(s.split("[\\s,;.()]+"))
+    return Arrays.stream(s.split("[\\s,;.()/]+"))
         .filter(t -> !t.isEmpty() && t.length() > 1 && !TITLE_WORDS.contains(t))
         .toList();
   }
