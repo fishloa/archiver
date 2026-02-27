@@ -270,9 +270,12 @@ public class PersonMatchService {
 
   private boolean fuzzyMatch(String textToken, String personToken) {
     if (textToken.equals(personToken)) return true;
-    if (textToken.contains(personToken) || personToken.contains(textToken)) return true;
-    if (textToken.length() >= 3
-        && personToken.length() >= 3
+    // Substring match only for tokens >= 4 chars to avoid "in" matching "katerina" etc.
+    if (textToken.length() >= 4 && personToken.length() >= 4) {
+      if (textToken.contains(personToken) || personToken.contains(textToken)) return true;
+    }
+    if (textToken.length() >= 4
+        && personToken.length() >= 4
         && familyTreeService.levenshtein(textToken, personToken) <= 2) {
       return true;
     }
