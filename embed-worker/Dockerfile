@@ -1,5 +1,8 @@
 FROM python:3.11-slim
 
+ENV PIP_INDEX_URL=https://nexus.icomb.place/repository/pypi-proxy/simple/ \
+    PIP_TRUSTED_HOST=nexus.icomb.place
+
 WORKDIR /app
 
 RUN pip install --no-cache-dir --upgrade pip setuptools wheel && \

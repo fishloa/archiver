@@ -1,6 +1,9 @@
 ## Stage 1: Download OCR models using CPU-only PaddlePaddle (no CUDA needed)
 FROM python:3.10-slim AS model-downloader
 
+ENV PIP_INDEX_URL=https://nexus.icomb.place/repository/pypi-proxy/simple/ \
+    PIP_TRUSTED_HOST=nexus.icomb.place
+
 RUN apt-get update && apt-get install -y --no-install-recommends libgl1 libglib2.0-0 libgomp1 && rm -rf /var/lib/apt/lists/*
 RUN pip install --no-cache-dir paddlepaddle==3.3.0 "paddleocr>=3.4,<4"
 RUN python3 -c "from paddleocr import PaddleOCR; PaddleOCR(use_textline_orientation=True, lang='german', device='cpu')"
@@ -8,7 +11,9 @@ RUN python3 -c "from paddleocr import PaddleOCR; PaddleOCR(use_textline_orientat
 ## Stage 2: Final image with GPU support
 FROM python:3.10-slim
 
-ENV DEBIAN_FRONTEND=noninteractive
+ENV PIP_INDEX_URL=https://nexus.icomb.place/repository/pypi-proxy/simple/ \
+    PIP_TRUSTED_HOST=nexus.icomb.place \
+    DEBIAN_FRONTEND=noninteractive
 RUN apt-get update && apt-get install -y --no-install-recommends \
         libgomp1 libglib2.0-0 libgl1 \
     && rm -rf /var/lib/apt/lists/*

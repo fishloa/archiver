@@ -1,6 +1,9 @@
 ## Stage 1: Download translation models (CPU-only torch)
 FROM python:3.11-slim AS model-downloader
 
+ENV PIP_INDEX_URL=https://nexus.icomb.place/repository/pypi-proxy/simple/ \
+    PIP_TRUSTED_HOST=nexus.icomb.place
+
 RUN pip install --no-cache-dir "torch>=2.6" --index-url https://download.pytorch.org/whl/cpu && \
     pip install --no-cache-dir "transformers>=4.40" sentencepiece
 
@@ -18,7 +21,9 @@ RUN chmod -R a+rX /root/.cache/huggingface/
 ## Stage 2: Final image with GPU support
 FROM python:3.11-slim
 
-ENV DEBIAN_FRONTEND=noninteractive
+ENV PIP_INDEX_URL=https://nexus.icomb.place/repository/pypi-proxy/simple/ \
+    PIP_TRUSTED_HOST=nexus.icomb.place \
+    DEBIAN_FRONTEND=noninteractive
 ENV HOME=/tmp
 
 WORKDIR /app
