@@ -2,10 +2,6 @@
 docs
 pages
 *.md
-backend
-frontend
-scraper-*
-entity-worker
 __pycache__
 *.pyc
 .ruff_cache
