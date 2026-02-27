@@ -26,6 +26,8 @@ spring.ai.mcp.server:
   version: "1.0.0"
   type: SYNC
   protocol: SSE
+  sse-endpoint: /api/mcp/sse
+  sse-message-endpoint: /api/mcp/message
 
 springdoc:
   api-docs:

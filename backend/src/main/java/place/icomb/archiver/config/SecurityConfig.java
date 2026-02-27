@@ -30,7 +30,7 @@ public class SecurityConfig {
             auth ->
                 auth
                     // MCP server endpoints — read-only tools, no auth needed
-                    .requestMatchers("/sse", "/mcp/**")
+                    .requestMatchers("/api/mcp/**")
                     .permitAll()
                     // GET requests are read-only — allow anonymous
                     .requestMatchers(HttpMethod.GET, "/api/**")
