@@ -590,7 +590,7 @@
 
 	.user-email {
 		font-size: 11px;
-		color: var(--vui-text-muted);
+		color: var(--vui-text-sub);
 	}
 
 	.user-email + .user-email::before {
