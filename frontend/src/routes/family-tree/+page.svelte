@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { enhance } from '$app/forms';
 	import { goto, invalidateAll } from '$app/navigation';
 	import { Search, ChevronRight, Baby, X, HandHeart, UserCheck } from 'lucide-svelte';
 	import { language, t } from '$lib/i18n';
@@ -31,20 +32,6 @@
 	const user = $derived(data.user);
 	const hasRefPerson = $derived(!!user?.familyTreePersonId);
 	let settingMe = $state(false);
-
-	async function setThisIsMe(personId: number) {
-		settingMe = true;
-		try {
-			await fetch('/api/profile', {
-				method: 'PUT',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({ familyTreePersonId: personId })
-			});
-			await invalidateAll();
-		} finally {
-			settingMe = false;
-		}
-	}
 
 	const eventColor: Record<string, string> = {
 		birth: 'var(--vui-accent)',
@@ -177,15 +164,29 @@
 
 				{#if user?.authenticated}
 					{@const isMe = user.familyTreePersonId === p.id}
-					<button
-						class="this-is-me-btn"
-						class:is-me={isMe}
-						disabled={isMe || settingMe}
-						onclick={() => setThisIsMe(p.id)}
+					<form
+						method="POST"
+						action="?/setFamilyTreePerson"
+						use:enhance={() => {
+							settingMe = true;
+							return async ({ update }) => {
+								await update();
+								settingMe = false;
+								await invalidateAll();
+							};
+						}}
 					>
-						<UserCheck size={16} strokeWidth={2} />
-						{isMe ? $t('family.thisIsYou') : $t('family.thisIsMe')}
-					</button>
+						<input type="hidden" name="personId" value={p.id} />
+						<button
+							type="submit"
+							class="this-is-me-btn"
+							class:is-me={isMe}
+							disabled={isMe || settingMe}
+						>
+							<UserCheck size={16} strokeWidth={2} />
+							{isMe ? $t('family.thisIsYou') : $t('family.thisIsMe')}
+						</button>
+					</form>
 				{/if}
 			</div>
 		{/if}

@@ -317,8 +317,8 @@ export async function fetchProfile(email: string): Promise<UserProfile> {
 
 export async function updateProfile(
   email: string,
-  body: { displayName: string },
-): Promise<{ id: number; displayName: string }> {
+  body: { displayName?: string; familyTreePersonId?: number | null },
+): Promise<{ id: number; displayName: string; familyTreePersonId?: number }> {
   const res = await fetch(`${backendUrl()}/api/profile`, {
     method: "PUT",
     headers: { "Content-Type": "application/json", ...authHeaders(email) },
