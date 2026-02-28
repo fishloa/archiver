@@ -28,19 +28,49 @@
 	</button>
 </div>
 
-<nav class="flex gap-1 mb-6 border-b border-border">
+<nav class="admin-tabs">
 	{#each tabs as tab}
 		{@const active = isActive(tab.href)}
 		{@const Icon = tab.icon}
-		<a
-			href={tab.href}
-			class="flex items-center gap-2 px-4 py-2.5 text-[length:var(--vui-text-sm)] font-medium transition-colors
-				{active ? 'text-accent border-b-2 border-accent -mb-px' : 'text-text-sub hover:text-text'}"
-		>
-			<Icon size={15} strokeWidth={active ? 2.2 : 1.8} />
+		<a href={tab.href} class="admin-tab" class:active>
+			<Icon size={18} strokeWidth={active ? 2.2 : 1.8} />
 			{$t(tab.labelKey)}
 		</a>
 	{/each}
 </nav>
+
+<style>
+	.admin-tabs {
+		display: flex;
+		gap: 4px;
+		margin-bottom: 28px;
+		border-bottom: 2px solid var(--vui-border);
+		padding-bottom: 0;
+	}
+
+	.admin-tab {
+		display: flex;
+		align-items: center;
+		gap: 8px;
+		padding: 12px 20px;
+		font-size: 15px;
+		font-weight: 600;
+		color: var(--vui-text-sub);
+		text-decoration: none;
+		border-bottom: 3px solid transparent;
+		margin-bottom: -2px;
+		transition: all 0.15s ease;
+	}
+
+	.admin-tab:hover {
+		color: var(--vui-text);
+		text-decoration: none;
+	}
+
+	.admin-tab.active {
+		color: var(--vui-accent);
+		border-bottom-color: var(--vui-accent);
+	}
+</style>
 
 {@render children()}
