@@ -1,7 +1,7 @@
 <script lang="ts">
 	import '../app.css';
 	import { page } from '$app/state';
-	import { Archive, Search, Library, Activity, Settings, PanelLeftClose, PanelLeft, GitBranch, Languages, LogIn, LogOut } from 'lucide-svelte';
+	import { Search, Library, Activity, Settings, PanelLeftClose, PanelLeft, GitBranch, Languages, LogIn, LogOut } from 'lucide-svelte';
 	import type { Snippet } from 'svelte';
 	import { language, initLanguage, t } from '$lib/i18n';
 	import LanguageSwitcher from '$lib/components/LanguageSwitcher.svelte';
@@ -42,7 +42,7 @@
 <div class="app-shell">
 	<nav class="sidebar" class:collapsed>
 		<div class="sidebar-header">
-			<Archive size={20} strokeWidth={1.8} class="text-accent flex-shrink-0" />
+			<img src="/logo.svg" alt="Czernin coat of arms" class="sidebar-logo" />
 			{#if !collapsed}
 				<span class="sidebar-title">Archiver</span>
 			{/if}
@@ -137,6 +137,12 @@
 		gap: 10px;
 		padding: 20px 18px 16px;
 		border-bottom: 1px solid var(--vui-border);
+	}
+
+	.sidebar-logo {
+		width: 28px;
+		height: 28px;
+		flex-shrink: 0;
 	}
 
 	.sidebar.collapsed .sidebar-header {
