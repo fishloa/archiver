@@ -54,7 +54,7 @@
 	let newEmailValue = $state('');
 </script>
 
-<div class="users-page">
+<div>
 	<!-- Form panel: shown when creating or editing -->
 	{#if mode !== null}
 		<div class="form-card">
@@ -263,10 +263,6 @@
 </div>
 
 <style>
-	.users-page {
-		width: 100%;
-	}
-
 	/* ── Form card ── */
 	.form-card {
 		background: var(--vui-surface);
