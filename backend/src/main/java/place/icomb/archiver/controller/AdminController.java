@@ -67,7 +67,7 @@ public class AdminController {
   @PostMapping
   public ResponseEntity<Map<String, Object>> createUser(@RequestBody Map<String, Object> body) {
     String displayName = (String) body.get("displayName");
-    String role = (String) body.getOrDefault("role", "user");
+    String role = ((String) body.getOrDefault("role", "user")).toLowerCase();
 
     AppUser user = new AppUser();
     user.setDisplayName(displayName);
@@ -105,7 +105,7 @@ public class AdminController {
                 user.setDisplayName((String) body.get("displayName"));
               }
               if (body.containsKey("role")) {
-                user.setRole((String) body.get("role"));
+                user.setRole(((String) body.get("role")).toLowerCase());
               }
               userRepository.save(user);
 
