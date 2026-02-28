@@ -72,6 +72,8 @@ public class AdminController {
     AppUser user = new AppUser();
     user.setDisplayName(displayName);
     user.setRole(role);
+    user.setCreatedAt(java.time.Instant.now());
+    user.setUpdatedAt(java.time.Instant.now());
     user = userRepository.save(user);
 
     @SuppressWarnings("unchecked")

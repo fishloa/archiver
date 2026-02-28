@@ -43,6 +43,7 @@ class AdminControllerTest {
   private final HttpClient http = HttpClient.newHttpClient();
   private final ObjectMapper mapper = new ObjectMapper();
 
+  private static final String ADMIN_EMAIL = "admin-test-admin@example.com";
   private static final String TEST_EMAIL = "admin-test@example.com";
   private static final String TEST_EMAIL_2 = "admin-test-2@example.com";
 
@@ -59,11 +60,58 @@ class AdminControllerTest {
 
   @BeforeEach
   void setUp() {
-    jdbc.sql("DELETE FROM app_user_email WHERE email IN (:e1, :e2)")
-        .param("e1", TEST_EMAIL)
-        .param("e2", TEST_EMAIL_2)
+    // Clean test emails
+    jdbc.sql("DELETE FROM app_user_email WHERE email IN (:e1, :e2, :e3)")
+        .param("e1", ADMIN_EMAIL)
+        .param("e2", TEST_EMAIL)
+        .param("e3", TEST_EMAIL_2)
         .update();
     jdbc.sql("DELETE FROM app_user WHERE display_name LIKE 'AdminTest%'").update();
+
+    // Create an admin user for auth
+    Long adminId =
+        jdbc.sql(
+                "INSERT INTO app_user (display_name, role) VALUES ('AdminTest Admin', 'admin')"
+                    + " RETURNING id")
+            .query(Long.class)
+            .single();
+    jdbc.sql("INSERT INTO app_user_email (user_id, email) VALUES (:uid, :email)")
+        .param("uid", adminId)
+        .param("email", ADMIN_EMAIL)
+        .update();
+  }
+
+  /** Helper: build a POST request authenticated as admin. */
+  private HttpRequest.Builder adminPost(String url, String json) {
+    return HttpRequest.newBuilder(URI.create(url))
+        .header("X-Auth-Email", ADMIN_EMAIL)
+        .header("Content-Type", "application/json")
+        .POST(HttpRequest.BodyPublishers.ofString(json));
+  }
+
+  /** Helper: build a PUT request authenticated as admin. */
+  private HttpRequest.Builder adminPut(String url, String json) {
+    return HttpRequest.newBuilder(URI.create(url))
+        .header("X-Auth-Email", ADMIN_EMAIL)
+        .header("Content-Type", "application/json")
+        .PUT(HttpRequest.BodyPublishers.ofString(json));
+  }
+
+  /** Helper: build a DELETE request authenticated as admin. */
+  private HttpRequest.Builder adminDelete(String url) {
+    return HttpRequest.newBuilder(URI.create(url)).header("X-Auth-Email", ADMIN_EMAIL).DELETE();
+  }
+
+  /** Helper: create a test user via the API, return the id. */
+  private int createTestUser(String name, String role, List<String> emails) throws Exception {
+    var body =
+        emails != null
+            ? Map.of("displayName", name, "role", role, "emails", emails)
+            : Map.of("displayName", name, "role", role);
+    String json = mapper.writeValueAsString(body);
+    var resp = http.send(adminPost(base(), json).build(), HttpResponse.BodyHandlers.ofString());
+    assertThat(resp.statusCode()).isEqualTo(201);
+    return ((Number) mapper.readValue(resp.body(), Map.class).get("id")).intValue();
   }
 
   // ── List ──
@@ -81,19 +129,7 @@ class AdminControllerTest {
 
   @Test
   void listUsersIncludesEmails() throws Exception {
-    // Create a user with email first
-    String json =
-        mapper.writeValueAsString(
-            Map.of(
-                "displayName", "AdminTest ListEmail",
-                "role", "user",
-                "emails", List.of(TEST_EMAIL)));
-    var createReq =
-        HttpRequest.newBuilder(URI.create(base()))
-            .header("Content-Type", "application/json")
-            .POST(HttpRequest.BodyPublishers.ofString(json))
-            .build();
-    http.send(createReq, HttpResponse.BodyHandlers.ofString());
+    createTestUser("AdminTest ListEmail", "user", List.of(TEST_EMAIL));
 
     var req = HttpRequest.newBuilder(URI.create(base())).GET().build();
     var resp = http.send(req, HttpResponse.BodyHandlers.ofString());
@@ -116,6 +152,19 @@ class AdminControllerTest {
                 "displayName", "AdminTest Create",
                 "role", "user",
                 "emails", List.of(TEST_EMAIL)));
+    var resp = http.send(adminPost(base(), json).build(), HttpResponse.BodyHandlers.ofString());
+
+    assertThat(resp.statusCode()).isEqualTo(201);
+    Map<String, Object> body = mapper.readValue(resp.body(), Map.class);
+    assertThat(body.get("displayName")).isEqualTo("AdminTest Create");
+    assertThat(body.get("role")).isEqualTo("user");
+    assertThat(body.get("id")).isNotNull();
+  }
+
+  @Test
+  void createUserWithoutAuthReturns403() throws Exception {
+    String json =
+        mapper.writeValueAsString(Map.of("displayName", "AdminTest NoAuth", "role", "user"));
     var req =
         HttpRequest.newBuilder(URI.create(base()))
             .header("Content-Type", "application/json")
@@ -123,11 +172,7 @@ class AdminControllerTest {
             .build();
     var resp = http.send(req, HttpResponse.BodyHandlers.ofString());
 
-    assertThat(resp.statusCode()).isEqualTo(201);
-    Map<String, Object> body = mapper.readValue(resp.body(), Map.class);
-    assertThat(body.get("displayName")).isEqualTo("AdminTest Create");
-    assertThat(body.get("role")).isEqualTo("user");
-    assertThat(body.get("id")).isNotNull();
+    assertThat(resp.statusCode()).isEqualTo(403);
   }
 
   @Test
@@ -138,12 +183,7 @@ class AdminControllerTest {
                 "displayName", "AdminTest CaseRole",
                 "role", "User",
                 "emails", List.of(TEST_EMAIL)));
-    var req =
-        HttpRequest.newBuilder(URI.create(base()))
-            .header("Content-Type", "application/json")
-            .POST(HttpRequest.BodyPublishers.ofString(json))
-            .build();
-    var resp = http.send(req, HttpResponse.BodyHandlers.ofString());
+    var resp = http.send(adminPost(base(), json).build(), HttpResponse.BodyHandlers.ofString());
 
     assertThat(resp.statusCode()).isEqualTo(201);
     Map<String, Object> body = mapper.readValue(resp.body(), Map.class);
@@ -158,12 +198,7 @@ class AdminControllerTest {
                 "displayName", "AdminTest UpperAdmin",
                 "role", "ADMIN",
                 "emails", List.of(TEST_EMAIL)));
-    var req =
-        HttpRequest.newBuilder(URI.create(base()))
-            .header("Content-Type", "application/json")
-            .POST(HttpRequest.BodyPublishers.ofString(json))
-            .build();
-    var resp = http.send(req, HttpResponse.BodyHandlers.ofString());
+    var resp = http.send(adminPost(base(), json).build(), HttpResponse.BodyHandlers.ofString());
 
     assertThat(resp.statusCode()).isEqualTo(201);
     Map<String, Object> body = mapper.readValue(resp.body(), Map.class);
@@ -178,16 +213,10 @@ class AdminControllerTest {
                 "displayName", "AdminTest MultiEmail",
                 "role", "user",
                 "emails", List.of(TEST_EMAIL, TEST_EMAIL_2)));
-    var req =
-        HttpRequest.newBuilder(URI.create(base()))
-            .header("Content-Type", "application/json")
-            .POST(HttpRequest.BodyPublishers.ofString(json))
-            .build();
-    var resp = http.send(req, HttpResponse.BodyHandlers.ofString());
+    var resp = http.send(adminPost(base(), json).build(), HttpResponse.BodyHandlers.ofString());
 
     assertThat(resp.statusCode()).isEqualTo(201);
 
-    // Verify both emails exist
     Long count =
         jdbc.sql("SELECT COUNT(*) FROM app_user_email WHERE email IN (:e1, :e2)")
             .param("e1", TEST_EMAIL)
@@ -201,71 +230,37 @@ class AdminControllerTest {
 
   @Test
   void updateUserChangesDisplayName() throws Exception {
-    // Create first
-    String createJson =
-        mapper.writeValueAsString(
-            Map.of(
-                "displayName", "AdminTest BeforeUpdate",
-                "role", "user"));
-    var createReq =
-        HttpRequest.newBuilder(URI.create(base()))
-            .header("Content-Type", "application/json")
-            .POST(HttpRequest.BodyPublishers.ofString(createJson))
-            .build();
-    var createResp = http.send(createReq, HttpResponse.BodyHandlers.ofString());
-    int id = ((Number) mapper.readValue(createResp.body(), Map.class).get("id")).intValue();
+    int id = createTestUser("AdminTest BeforeUpdate", "user", null);
 
-    // Update
     String updateJson = mapper.writeValueAsString(Map.of("displayName", "AdminTest AfterUpdate"));
-    var updateReq =
-        HttpRequest.newBuilder(URI.create(base() + "/" + id))
-            .header("Content-Type", "application/json")
-            .PUT(HttpRequest.BodyPublishers.ofString(updateJson))
-            .build();
-    var updateResp = http.send(updateReq, HttpResponse.BodyHandlers.ofString());
+    var resp =
+        http.send(
+            adminPut(base() + "/" + id, updateJson).build(), HttpResponse.BodyHandlers.ofString());
 
-    assertThat(updateResp.statusCode()).isEqualTo(200);
-    Map<String, Object> body = mapper.readValue(updateResp.body(), Map.class);
+    assertThat(resp.statusCode()).isEqualTo(200);
+    Map<String, Object> body = mapper.readValue(resp.body(), Map.class);
     assertThat(body.get("displayName")).isEqualTo("AdminTest AfterUpdate");
   }
 
   @Test
   void updateUserRoleNormalizesCase() throws Exception {
-    String createJson =
-        mapper.writeValueAsString(
-            Map.of(
-                "displayName", "AdminTest RoleUpdate",
-                "role", "user"));
-    var createReq =
-        HttpRequest.newBuilder(URI.create(base()))
-            .header("Content-Type", "application/json")
-            .POST(HttpRequest.BodyPublishers.ofString(createJson))
-            .build();
-    var createResp = http.send(createReq, HttpResponse.BodyHandlers.ofString());
-    int id = ((Number) mapper.readValue(createResp.body(), Map.class).get("id")).intValue();
+    int id = createTestUser("AdminTest RoleUpdate", "user", null);
 
     String updateJson = mapper.writeValueAsString(Map.of("role", "Admin"));
-    var updateReq =
-        HttpRequest.newBuilder(URI.create(base() + "/" + id))
-            .header("Content-Type", "application/json")
-            .PUT(HttpRequest.BodyPublishers.ofString(updateJson))
-            .build();
-    var updateResp = http.send(updateReq, HttpResponse.BodyHandlers.ofString());
+    var resp =
+        http.send(
+            adminPut(base() + "/" + id, updateJson).build(), HttpResponse.BodyHandlers.ofString());
 
-    assertThat(updateResp.statusCode()).isEqualTo(200);
-    Map<String, Object> body = mapper.readValue(updateResp.body(), Map.class);
+    assertThat(resp.statusCode()).isEqualTo(200);
+    Map<String, Object> body = mapper.readValue(resp.body(), Map.class);
     assertThat(body.get("role")).isEqualTo("admin");
   }
 
   @Test
   void updateNonexistentUserReturns404() throws Exception {
     String json = mapper.writeValueAsString(Map.of("displayName", "Nobody"));
-    var req =
-        HttpRequest.newBuilder(URI.create(base() + "/999999"))
-            .header("Content-Type", "application/json")
-            .PUT(HttpRequest.BodyPublishers.ofString(json))
-            .build();
-    var resp = http.send(req, HttpResponse.BodyHandlers.ofString());
+    var resp =
+        http.send(adminPut(base() + "/999999", json).build(), HttpResponse.BodyHandlers.ofString());
 
     assertThat(resp.statusCode()).isEqualTo(404);
   }
@@ -274,29 +269,18 @@ class AdminControllerTest {
 
   @Test
   void deleteUserReturns204() throws Exception {
-    String createJson =
-        mapper.writeValueAsString(
-            Map.of(
-                "displayName", "AdminTest ToDelete",
-                "role", "user"));
-    var createReq =
-        HttpRequest.newBuilder(URI.create(base()))
-            .header("Content-Type", "application/json")
-            .POST(HttpRequest.BodyPublishers.ofString(createJson))
-            .build();
-    var createResp = http.send(createReq, HttpResponse.BodyHandlers.ofString());
-    int id = ((Number) mapper.readValue(createResp.body(), Map.class).get("id")).intValue();
+    int id = createTestUser("AdminTest ToDelete", "user", null);
 
-    var deleteReq = HttpRequest.newBuilder(URI.create(base() + "/" + id)).DELETE().build();
-    var deleteResp = http.send(deleteReq, HttpResponse.BodyHandlers.ofString());
+    var resp =
+        http.send(adminDelete(base() + "/" + id).build(), HttpResponse.BodyHandlers.ofString());
 
-    assertThat(deleteResp.statusCode()).isEqualTo(204);
+    assertThat(resp.statusCode()).isEqualTo(204);
   }
 
   @Test
   void deleteNonexistentUserReturns404() throws Exception {
-    var req = HttpRequest.newBuilder(URI.create(base() + "/999999")).DELETE().build();
-    var resp = http.send(req, HttpResponse.BodyHandlers.ofString());
+    var resp =
+        http.send(adminDelete(base() + "/999999").build(), HttpResponse.BodyHandlers.ofString());
 
     assertThat(resp.statusCode()).isEqualTo(404);
   }
@@ -305,89 +289,47 @@ class AdminControllerTest {
 
   @Test
   void addEmailReturns201() throws Exception {
-    String createJson =
-        mapper.writeValueAsString(
-            Map.of(
-                "displayName", "AdminTest EmailAdd",
-                "role", "user"));
-    var createReq =
-        HttpRequest.newBuilder(URI.create(base()))
-            .header("Content-Type", "application/json")
-            .POST(HttpRequest.BodyPublishers.ofString(createJson))
-            .build();
-    var createResp = http.send(createReq, HttpResponse.BodyHandlers.ofString());
-    int id = ((Number) mapper.readValue(createResp.body(), Map.class).get("id")).intValue();
+    int id = createTestUser("AdminTest EmailAdd", "user", null);
 
     String emailJson = mapper.writeValueAsString(Map.of("email", TEST_EMAIL));
-    var addReq =
-        HttpRequest.newBuilder(URI.create(base() + "/" + id + "/emails"))
-            .header("Content-Type", "application/json")
-            .POST(HttpRequest.BodyPublishers.ofString(emailJson))
-            .build();
-    var addResp = http.send(addReq, HttpResponse.BodyHandlers.ofString());
+    var resp =
+        http.send(
+            adminPost(base() + "/" + id + "/emails", emailJson).build(),
+            HttpResponse.BodyHandlers.ofString());
 
-    assertThat(addResp.statusCode()).isEqualTo(201);
-    Map<String, Object> body = mapper.readValue(addResp.body(), Map.class);
+    assertThat(resp.statusCode()).isEqualTo(201);
+    Map<String, Object> body = mapper.readValue(resp.body(), Map.class);
     assertThat(body.get("email")).isEqualTo(TEST_EMAIL);
   }
 
   @Test
   void addEmailToNonexistentUserReturns404() throws Exception {
     String emailJson = mapper.writeValueAsString(Map.of("email", TEST_EMAIL));
-    var req =
-        HttpRequest.newBuilder(URI.create(base() + "/999999/emails"))
-            .header("Content-Type", "application/json")
-            .POST(HttpRequest.BodyPublishers.ofString(emailJson))
-            .build();
-    var resp = http.send(req, HttpResponse.BodyHandlers.ofString());
+    var resp =
+        http.send(
+            adminPost(base() + "/999999/emails", emailJson).build(),
+            HttpResponse.BodyHandlers.ofString());
 
     assertThat(resp.statusCode()).isEqualTo(404);
   }
 
   @Test
   void addBlankEmailReturnsBadRequest() throws Exception {
-    String createJson =
-        mapper.writeValueAsString(
-            Map.of(
-                "displayName", "AdminTest BlankEmail",
-                "role", "user"));
-    var createReq =
-        HttpRequest.newBuilder(URI.create(base()))
-            .header("Content-Type", "application/json")
-            .POST(HttpRequest.BodyPublishers.ofString(createJson))
-            .build();
-    var createResp = http.send(createReq, HttpResponse.BodyHandlers.ofString());
-    int id = ((Number) mapper.readValue(createResp.body(), Map.class).get("id")).intValue();
+    int id = createTestUser("AdminTest BlankEmail", "user", null);
 
     String emailJson = mapper.writeValueAsString(Map.of("email", "  "));
-    var req =
-        HttpRequest.newBuilder(URI.create(base() + "/" + id + "/emails"))
-            .header("Content-Type", "application/json")
-            .POST(HttpRequest.BodyPublishers.ofString(emailJson))
-            .build();
-    var resp = http.send(req, HttpResponse.BodyHandlers.ofString());
+    var resp =
+        http.send(
+            adminPost(base() + "/" + id + "/emails", emailJson).build(),
+            HttpResponse.BodyHandlers.ofString());
 
     assertThat(resp.statusCode()).isEqualTo(400);
   }
 
   @Test
   void removeEmailReturns204() throws Exception {
-    // Create user with email
-    String createJson =
-        mapper.writeValueAsString(
-            Map.of(
-                "displayName", "AdminTest RemoveEmail",
-                "role", "user",
-                "emails", List.of(TEST_EMAIL)));
-    var createReq =
-        HttpRequest.newBuilder(URI.create(base()))
-            .header("Content-Type", "application/json")
-            .POST(HttpRequest.BodyPublishers.ofString(createJson))
-            .build();
-    var createResp = http.send(createReq, HttpResponse.BodyHandlers.ofString());
-    int userId = ((Number) mapper.readValue(createResp.body(), Map.class).get("id")).intValue();
+    int userId = createTestUser("AdminTest RemoveEmail", "user", List.of(TEST_EMAIL));
 
-    // Find the email ID
     Long emailId =
         jdbc.sql("SELECT id FROM app_user_email WHERE user_id = :uid AND email = :email")
             .param("uid", userId)
@@ -395,33 +337,22 @@ class AdminControllerTest {
             .query(Long.class)
             .single();
 
-    var deleteReq =
-        HttpRequest.newBuilder(URI.create(base() + "/" + userId + "/emails/" + emailId))
-            .DELETE()
-            .build();
-    var deleteResp = http.send(deleteReq, HttpResponse.BodyHandlers.ofString());
+    var resp =
+        http.send(
+            adminDelete(base() + "/" + userId + "/emails/" + emailId).build(),
+            HttpResponse.BodyHandlers.ofString());
 
-    assertThat(deleteResp.statusCode()).isEqualTo(204);
+    assertThat(resp.statusCode()).isEqualTo(204);
   }
 
   @Test
   void removeNonexistentEmailReturns404() throws Exception {
-    String createJson =
-        mapper.writeValueAsString(
-            Map.of(
-                "displayName", "AdminTest NoEmail",
-                "role", "user"));
-    var createReq =
-        HttpRequest.newBuilder(URI.create(base()))
-            .header("Content-Type", "application/json")
-            .POST(HttpRequest.BodyPublishers.ofString(createJson))
-            .build();
-    var createResp = http.send(createReq, HttpResponse.BodyHandlers.ofString());
-    int id = ((Number) mapper.readValue(createResp.body(), Map.class).get("id")).intValue();
+    int id = createTestUser("AdminTest NoEmail", "user", null);
 
-    var req =
-        HttpRequest.newBuilder(URI.create(base() + "/" + id + "/emails/999999")).DELETE().build();
-    var resp = http.send(req, HttpResponse.BodyHandlers.ofString());
+    var resp =
+        http.send(
+            adminDelete(base() + "/" + id + "/emails/999999").build(),
+            HttpResponse.BodyHandlers.ofString());
 
     assertThat(resp.statusCode()).isEqualTo(404);
   }
