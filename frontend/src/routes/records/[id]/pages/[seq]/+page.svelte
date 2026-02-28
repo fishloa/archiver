@@ -144,21 +144,21 @@
 						{#each personMatches as match}
 							<a
 								href="/family-tree?personId={match.personId}"
-								class="group block px-3 py-2 rounded-lg bg-bg-deep border border-border vui-transition hover:border-accent hover:bg-surface"
+								class="group block px-4 py-3 rounded-lg bg-bg-deep border border-border vui-transition hover:border-accent hover:bg-surface"
 							>
-								<div class="text-[length:var(--vui-text-sm)] font-semibold text-text">
+								<div class="text-[length:var(--vui-text-base)] font-semibold text-text">
 									{match.personName}
 								</div>
-								<div class="flex items-center gap-3 mt-1 text-[length:var(--vui-text-xs)] text-text-sub">
+								<div class="flex items-center gap-3 mt-1.5 text-[length:var(--vui-text-sm)] text-text-sub">
 									{#if match.birthYear}
 										<span class="flex items-center gap-1">
-											<Baby size={14} strokeWidth={2} class="text-accent" />
+											<Baby size={16} strokeWidth={2} class="text-accent" />
 											{match.birthYear}
 										</span>
 									{/if}
 									{#if match.deathYear}
 										<span class="flex items-center gap-1">
-											<Skull size={14} strokeWidth={2} class="text-red-400" />
+											<Skull size={16} strokeWidth={2} class="text-red-400" />
 											{match.deathYear}
 										</span>
 									{/if}
