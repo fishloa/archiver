@@ -129,6 +129,9 @@ export const en = {
 	// Admin
 	'admin.title': 'Admin',
 	'admin.refresh': 'Refresh',
+	'admin.tab.users': 'Users',
+	'admin.tab.audit': 'Audit',
+	'admin.tab.events': 'Events',
 	'admin.users': 'Users',
 	'admin.addUser': 'Add User',
 	'admin.displayName': 'Display name',

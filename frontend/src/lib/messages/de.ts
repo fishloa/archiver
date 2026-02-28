@@ -131,6 +131,9 @@ export const de: Record<MessageKey, string> = {
 	// Admin
 	'admin.title': 'Verwaltung',
 	'admin.refresh': 'Aktualisieren',
+	'admin.tab.users': 'Benutzer',
+	'admin.tab.audit': 'Pr\u00fcfung',
+	'admin.tab.events': 'Ereignisse',
 	'admin.users': 'Benutzer',
 	'admin.addUser': 'Benutzer hinzuf\u00fcgen',
 	'admin.displayName': 'Anzeigename',

@@ -1,8 +1,10 @@
 package place.icomb.archiver.controller;
 
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 import org.springframework.http.ResponseEntity;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -39,14 +41,26 @@ public class AdminController {
   public ResponseEntity<List<Map<String, Object>>> listUsers() {
     List<Map<String, Object>> users =
         jdbcTemplate.queryForList(
-            """
-            SELECT u.id, u.display_name, u.role, u.created_at, u.updated_at,
-                   COALESCE(string_agg(e.email, ',' ORDER BY e.id), '') AS emails
-            FROM app_user u
-            LEFT JOIN app_user_email e ON e.user_id = u.id
-            GROUP BY u.id
-            ORDER BY u.id
-            """);
+            "SELECT id, display_name, role, created_at, updated_at FROM app_user ORDER BY id");
+
+    List<Map<String, Object>> emails =
+        jdbcTemplate.queryForList("SELECT id, user_id, email FROM app_user_email ORDER BY id");
+
+    Map<Object, List<Map<String, Object>>> emailsByUser =
+        emails.stream().collect(Collectors.groupingBy(e -> e.get("user_id")));
+
+    for (Map<String, Object> user : users) {
+      List<Map<String, Object>> userEmails = emailsByUser.getOrDefault(user.get("id"), List.of());
+      List<Map<String, Object>> structured = new ArrayList<>();
+      for (Map<String, Object> e : userEmails) {
+        Map<String, Object> em = new LinkedHashMap<>();
+        em.put("id", e.get("id"));
+        em.put("email", e.get("email"));
+        structured.add(em);
+      }
+      user.put("emails", structured);
+    }
+
     return ResponseEntity.ok(users);
   }
 

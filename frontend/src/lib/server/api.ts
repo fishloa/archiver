@@ -353,7 +353,21 @@ export async function removeProfileEmail(
 
 // ── Admin User CRUD ──
 
-export async function fetchUsers(email: string): Promise<any[]> {
+export interface AdminUserEmail {
+  id: number;
+  email: string;
+}
+
+export interface AdminUser {
+  id: number;
+  display_name: string | null;
+  role: string;
+  created_at: string;
+  updated_at: string;
+  emails: AdminUserEmail[];
+}
+
+export async function fetchUsers(email: string): Promise<AdminUser[]> {
   const res = await fetch(`${backendUrl()}/api/admin/users`, {
     headers: authHeaders(email),
   });
