@@ -5,6 +5,7 @@ export const en = {
 	'nav.familyTree': 'Family Tree',
 	'nav.pipeline': 'Pipeline',
 	'nav.admin': 'Admin',
+	'nav.translate': 'Translate',
 	'nav.signIn': 'Sign in',
 	'nav.signOut': 'Sign out',
 
@@ -174,6 +175,17 @@ export const en = {
 	'profile.removeEmail': 'Remove email',
 	'profile.language': 'Language',
 	'profile.languageHint': 'Choose your preferred language for the interface.',
+
+	// Translate
+	'translate.title': 'Translate',
+	'translate.subtitle': 'Translate German or Czech text to English using neural machine translation',
+	'translate.from': 'From',
+	'translate.sourceText': 'Source',
+	'translate.sourcePlaceholder': 'Enter text to translate...',
+	'translate.result': 'Translation',
+	'translate.resultPlaceholder': 'Translation will appear here...',
+	'translate.translateBtn': 'Translate',
+	'translate.translating': 'Translating...',
 
 	// Language
 	'lang.en': 'EN',

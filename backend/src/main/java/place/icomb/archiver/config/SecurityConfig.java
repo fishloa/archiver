@@ -43,6 +43,12 @@ public class SecurityConfig {
                     // Semantic search is a read-only POST
                     .requestMatchers(HttpMethod.POST, "/api/search/semantic")
                     .permitAll()
+                    // Claude translation — requires login
+                    .requestMatchers(HttpMethod.POST, "/api/translate/claude")
+                    .hasAnyRole("USER", "ADMIN")
+                    // On-demand worker translation
+                    .requestMatchers(HttpMethod.POST, "/api/translate")
+                    .permitAll()
                     // Family tree maintenance — idempotent
                     .requestMatchers(HttpMethod.POST, "/api/family-tree/reload")
                     .permitAll()

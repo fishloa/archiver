@@ -1,7 +1,7 @@
 <script lang="ts">
 	import '../app.css';
 	import { page } from '$app/state';
-	import { Archive, Search, Library, Activity, Settings, PanelLeftClose, PanelLeft, GitBranch, LogIn, LogOut } from 'lucide-svelte';
+	import { Archive, Search, Library, Activity, Settings, PanelLeftClose, PanelLeft, GitBranch, Languages, LogIn, LogOut } from 'lucide-svelte';
 	import type { Snippet } from 'svelte';
 	import { language, initLanguage, t } from '$lib/i18n';
 	import LanguageSwitcher from '$lib/components/LanguageSwitcher.svelte';
@@ -26,6 +26,7 @@
 		{ href: '/', labelKey: 'nav.search' as const, icon: Search },
 		{ href: '/records', labelKey: 'nav.records' as const, icon: Library },
 		{ href: '/family-tree', labelKey: 'nav.familyTree' as const, icon: GitBranch },
+		{ href: '/translate', labelKey: 'nav.translate' as const, icon: Languages },
 		{ href: '/pipeline', labelKey: 'nav.pipeline' as const, icon: Activity },
 		{ href: '/admin', labelKey: 'nav.admin' as const, icon: Settings, adminOnly: true }
 	];

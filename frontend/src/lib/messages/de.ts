@@ -7,6 +7,7 @@ export const de: Record<MessageKey, string> = {
 	'nav.familyTree': 'Stammbaum',
 	'nav.pipeline': 'Pipeline',
 	'nav.admin': 'Verwaltung',
+	'nav.translate': 'Übersetzen',
 	'nav.signIn': 'Anmelden',
 	'nav.signOut': 'Abmelden',
 
@@ -176,6 +177,17 @@ export const de: Record<MessageKey, string> = {
 	'profile.removeEmail': 'E-Mail entfernen',
 	'profile.language': 'Sprache',
 	'profile.languageHint': 'Wähle deine bevorzugte Sprache für die Benutzeroberfläche.',
+
+	// Translate
+	'translate.title': 'Übersetzen',
+	'translate.subtitle': 'Deutschen oder tschechischen Text mit neuronaler maschineller Übersetzung ins Englische übersetzen',
+	'translate.from': 'Von',
+	'translate.sourceText': 'Quelltext',
+	'translate.sourcePlaceholder': 'Text zum Übersetzen eingeben...',
+	'translate.result': 'Übersetzung',
+	'translate.resultPlaceholder': 'Übersetzung erscheint hier...',
+	'translate.translateBtn': 'Übersetzen',
+	'translate.translating': 'Übersetze...',
 
 	// Language
 	'lang.en': 'EN',
