@@ -109,7 +109,7 @@
 <style>
 	.translate-page {
 		max-width: 960px;
-		margin: 0 auto;
+		margin: 0;
 		display: flex;
 		flex-direction: column;
 		height: calc(100vh - 80px);
