@@ -51,6 +51,10 @@ test-frontend:
 lint-frontend:
 	cd frontend && npx eslint . && npx prettier --check .
 
+# Smoke test (live site)
+test-smoke:
+	web/test-endpoints.sh
+
 # All
 test: test-backend test-scraper test-ocr test-pdf test-entity test-frontend
 lint: lint-backend lint-scraper lint-ocr lint-pdf lint-entity lint-frontend
