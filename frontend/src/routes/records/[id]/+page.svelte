@@ -254,8 +254,9 @@
 				<h3 class="text-[length:var(--vui-text-xs)] font-semibold text-text-sub uppercase tracking-wider mb-3">{$t('record.details')}</h3>
 				<div class="space-y-2.5">
 					{#each metaItems as item}
+						{@const MetaIcon = item.icon}
 						<div class="flex items-start gap-2.5">
-							<svelte:component this={item.icon} size={14} strokeWidth={1.8} class="text-text-sub mt-0.5 flex-shrink-0" />
+							<MetaIcon size={14} strokeWidth={1.8} class="text-text-sub mt-0.5 flex-shrink-0" />
 							<div class="min-w-0">
 								<div class="text-[length:var(--vui-text-xs)] text-text-sub">{item.label}</div>
 								<div class="text-[length:var(--vui-text-sm)] text-text break-words">{item.value}</div>

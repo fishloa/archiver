@@ -52,6 +52,7 @@
 			{#each navItems as item}
 				{#if !item.adminOnly || isAdmin}
 					{@const active = isActive(item.href)}
+					{@const Icon = item.icon}
 					<li>
 						<a
 							href={item.href}
@@ -59,7 +60,7 @@
 							class:active
 							title={collapsed ? $t(item.labelKey) : undefined}
 						>
-							<svelte:component this={item.icon} size={20} strokeWidth={active ? 2.2 : 1.8} />
+							<Icon size={20} strokeWidth={active ? 2.2 : 1.8} />
 							{#if !collapsed}
 								<span>{$t(item.labelKey)}</span>
 							{/if}

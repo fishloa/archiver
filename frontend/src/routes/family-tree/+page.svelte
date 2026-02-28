@@ -96,7 +96,8 @@
 								<div class="tl-dot-col">
 									<span class="tl-dot" style="background: {eventColor[ev.type] ?? 'var(--vui-text-muted)'}">
 										{#if eventIconComponent[ev.type]}
-											<svelte:component this={eventIconComponent[ev.type]} size={14} strokeWidth={2.5} />
+											{@const EvIcon = eventIconComponent[ev.type]}
+											<EvIcon size={14} strokeWidth={2.5} />
 										{/if}
 									</span>
 									{#if i < p.events.length - 1}

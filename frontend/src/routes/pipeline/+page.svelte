@@ -82,6 +82,7 @@
 		{@const workers = stage.workersConnected ?? 0}
 		{@const busy = Math.min(running, workers)}
 		{@const idle = Math.max(0, workers - busy)}
+		{@const StageIcon = cfg.icon}
 
 		<div class="stage" style="--delay: {i * 60}ms">
 			<!-- Node + connector column -->
@@ -102,7 +103,7 @@
 					<!-- Header: icon + name + record/page counts -->
 					<div class="card-header">
 						<div class="card-icon" style="background: {cfg.dimBg}">
-							<svelte:component this={cfg.icon} size={16} color={cfg.color} strokeWidth={2} />
+							<StageIcon size={16} color={cfg.color} strokeWidth={2} />
 						</div>
 						<div>
 							<div class="card-title" style="color: {cfg.color}">{stage.name}</div>
