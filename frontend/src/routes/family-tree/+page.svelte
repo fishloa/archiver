@@ -213,7 +213,7 @@
 
 	.subtitle {
 		font-size: 16px;
-		color: var(--vui-text-sub);
+		color: var(--vui-text-muted);
 		margin-bottom: 32px;
 		max-width: 500px;
 		text-align: center;
@@ -293,7 +293,7 @@
 		background: var(--vui-surface);
 		border-radius: 4px;
 		border: 1px solid var(--vui-border);
-		color: var(--vui-text-sub);
+		color: var(--vui-text-muted);
 		font-weight: 500;
 	}
 
@@ -329,7 +329,7 @@
 
 	.detail-path {
 		font-size: 14px;
-		color: var(--vui-text-sub);
+		color: var(--vui-text-muted);
 		line-height: 1.6;
 		margin: 0 0 16px;
 		padding-bottom: 16px;
@@ -459,7 +459,7 @@
 
 	.detail-ancestor {
 		font-size: 12px;
-		color: var(--vui-text-sub);
+		color: var(--vui-text-muted);
 		padding-top: 12px;
 		border-top: 1px solid color-mix(in srgb, var(--vui-border) 60%, transparent);
 	}
@@ -558,6 +558,6 @@
 	.empty {
 		margin-top: 32px;
 		text-align: center;
-		color: var(--vui-text-sub);
+		color: var(--vui-text-muted);
 	}
 </style>

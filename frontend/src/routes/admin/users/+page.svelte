@@ -334,7 +334,7 @@
 		font-weight: 600;
 		text-transform: uppercase;
 		letter-spacing: 0.05em;
-		color: var(--vui-text-sub);
+		color: var(--vui-text-muted);
 	}
 
 	.field-input {
@@ -381,7 +381,7 @@
 		border: 1px solid var(--vui-border);
 		border-radius: 8px;
 		font-size: 13px;
-		color: var(--vui-text-sub);
+		color: var(--vui-text-muted);
 	}
 
 	.email-text {
@@ -469,7 +469,7 @@
 		border: 1.5px solid var(--vui-border);
 		border-radius: 8px;
 		background: none;
-		color: var(--vui-text-sub);
+		color: var(--vui-text-muted);
 		font-size: 13px;
 		font-weight: 500;
 		cursor: pointer;
@@ -590,7 +590,7 @@
 
 	.user-email {
 		font-size: 11px;
-		color: var(--vui-text-sub);
+		color: var(--vui-text-muted);
 	}
 
 	.user-email + .user-email::before {
@@ -605,7 +605,7 @@
 		text-transform: uppercase;
 		letter-spacing: 0.03em;
 		border: 1px solid var(--vui-border);
-		color: var(--vui-text-sub);
+		color: var(--vui-text-muted);
 		flex-shrink: 0;
 	}
 	.user-role.role-admin {
@@ -629,7 +629,7 @@
 		border: none;
 		border-radius: 8px;
 		background: none;
-		color: var(--vui-text-sub);
+		color: var(--vui-text-muted);
 		cursor: pointer;
 	}
 	.action-btn:hover {

@@ -129,7 +129,7 @@
 	}
 
 	.subtitle {
-		color: var(--vui-text-sub);
+		color: var(--vui-text-muted);
 		font-size: var(--vui-text-sm);
 		margin-bottom: 24px;
 	}
@@ -144,7 +144,7 @@
 	.lang-selector label {
 		font-size: var(--vui-text-sm);
 		font-weight: 500;
-		color: var(--vui-text-sub);
+		color: var(--vui-text-muted);
 	}
 
 	.lang-selector select {

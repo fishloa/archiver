@@ -170,7 +170,7 @@
 		align-items: center;
 		gap: 12px;
 		padding: 10px 18px;
-		color: var(--vui-text-sub);
+		color: var(--vui-text-muted);
 		text-decoration: none;
 		font-size: var(--vui-text-sm);
 		font-weight: 500;
@@ -215,7 +215,7 @@
 
 	.collapse-btn:hover {
 		background: var(--vui-surface);
-		color: var(--vui-text-sub);
+		color: var(--vui-text-muted);
 		border-color: var(--vui-border-hover);
 	}
 
@@ -248,7 +248,7 @@
 	.user-link {
 		font-size: var(--vui-text-sm);
 		font-weight: 500;
-		color: var(--vui-text-sub);
+		color: var(--vui-text-muted);
 		text-decoration: none;
 		transition: color 0.15s ease;
 	}
@@ -275,7 +275,7 @@
 		gap: 6px;
 		font-size: var(--vui-text-sm);
 		font-weight: 500;
-		color: var(--vui-text-sub);
+		color: var(--vui-text-muted);
 		text-decoration: none;
 		transition: color 0.15s ease;
 	}

@@ -495,12 +495,12 @@
 		margin: 4px 0 0;
 		font-size: 13px;
 		line-height: 1.55;
-		color: var(--vui-text-sub);
+		color: var(--vui-text-muted);
 	}
 
 	.empty {
 		margin-top: 40px;
-		color: var(--vui-text-sub);
+		color: var(--vui-text-muted);
 	}
 
 	/* ---- Pagination ---- */
@@ -646,7 +646,7 @@
 		border-radius: 6px;
 		background: var(--vui-surface);
 		border: 1px solid var(--vui-border);
-		color: var(--vui-text-sub);
+		color: var(--vui-text-muted);
 	}
 
 	.meta-tag.status {
@@ -691,7 +691,7 @@
 	.panel-section-title {
 		font-size: 13px;
 		font-weight: 600;
-		color: var(--vui-text-sub);
+		color: var(--vui-text-muted);
 		margin: 0;
 	}
 
@@ -723,7 +723,7 @@
 		font-family: inherit;
 	}
 
-	.ocr-toggle:hover { color: var(--vui-text-sub); }
+	.ocr-toggle:hover { color: var(--vui-text-muted); }
 
 	.ocr-toggle :global(.rotate) {
 		transform: rotate(180deg);

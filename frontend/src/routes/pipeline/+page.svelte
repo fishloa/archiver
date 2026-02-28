@@ -338,7 +338,7 @@
 		margin-top: 4px;
 		font-size: 11px;
 		font-variant-numeric: tabular-nums;
-		color: var(--vui-text-sub);
+		color: var(--vui-text-muted);
 	}
 
 	.progress-pct {
@@ -401,7 +401,7 @@
 		margin-top: 6px;
 		font-size: 11px;
 		font-variant-numeric: tabular-nums;
-		color: var(--vui-text-sub);
+		color: var(--vui-text-muted);
 		display: flex;
 		align-items: center;
 		gap: 6px;

@@ -55,7 +55,7 @@
 		padding: 12px 20px;
 		font-size: 15px;
 		font-weight: 600;
-		color: var(--vui-text-sub);
+		color: var(--vui-text-muted);
 		text-decoration: none;
 		border-bottom: 3px solid transparent;
 		margin-bottom: -2px;

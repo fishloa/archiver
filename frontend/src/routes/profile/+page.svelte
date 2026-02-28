@@ -254,7 +254,7 @@
 	.email-addr {
 		flex: 1;
 		font-size: var(--vui-text-sm);
-		color: var(--vui-text-sub);
+		color: var(--vui-text-muted);
 	}
 
 	.email-addr.is-login {
@@ -310,7 +310,7 @@
 		background: var(--vui-bg-deep);
 		border: 1.5px solid var(--vui-border);
 		border-radius: var(--vui-radius-md);
-		color: var(--vui-text-sub);
+		color: var(--vui-text-muted);
 		cursor: pointer;
 		transition: all 0.15s ease;
 		font-family: inherit;
