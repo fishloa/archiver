@@ -107,7 +107,11 @@ export const cs: Record<MessageKey, string> = {
 	'family.commonAncestor': 'Společný předek',
 	'family.genFromPerson': 'gen. od osoby',
 	'family.genFromAlexander': 'od Alexandra',
+	'family.genFromYou': 'od vás',
 	'family.toAlexander': 'k Alexandrovi (Lucki)',
+	'family.toYou': 'k vám',
+	'family.thisIsMe': 'To jsem já',
+	'family.thisIsYou': 'To jste vy',
 
 	// Pipeline
 	'pipeline.title': 'Pipeline dokumentů',
@@ -178,6 +182,9 @@ export const cs: Record<MessageKey, string> = {
 	'profile.addEmail': 'Přidat e-mailovou adresu...',
 	'profile.add': 'Přidat',
 	'profile.removeEmail': 'Odebrat e-mail',
+	'profile.familyTree': 'Identita v rodokmenu',
+	'profile.familyTreeHint': 'Navštivte stránku Rodokmen a klikněte na „To jsem já" u osoby.',
+	'profile.familyTreeLinked': 'Jste propojeni s osobou v rodokmenu. Zobrazit v',
 	'profile.language': 'Jazyk',
 	'profile.languageHint': 'Vyberte preferovaný jazyk rozhraní.',
 

@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
 	import { invalidateAll } from '$app/navigation';
-	import { Mail, Trash2, Plus } from 'lucide-svelte';
+	import { Mail, Trash2, Plus, TreePine } from 'lucide-svelte';
 	import { language, setLanguage, t, type Lang } from '$lib/i18n';
 
 	let { data, form } = $props();
@@ -81,6 +81,18 @@
 				<span class="lang-name">Čeština</span>
 			</button>
 		</div>
+	</section>
+
+	<section class="card">
+		<h2><TreePine size={16} strokeWidth={2} class="inline-icon" /> {$t('profile.familyTree')}</h2>
+		{#if profile.familyTreePersonId}
+			<p class="family-tree-linked">
+				{$t('profile.familyTreeLinked')}
+				<a href="/family-tree?personId={profile.familyTreePersonId}">{$t('family.title')}</a>
+			</p>
+		{:else}
+			<p class="hint">{$t('profile.familyTreeHint')}</p>
+		{/if}
 	</section>
 
 	<section class="card">
@@ -338,5 +350,26 @@
 
 	.lang-name {
 		font-size: var(--vui-text-sm);
+	}
+
+	:global(.inline-icon) {
+		display: inline;
+		vertical-align: -2px;
+		color: var(--vui-accent);
+	}
+
+	.family-tree-linked {
+		font-size: var(--vui-text-sm);
+		color: var(--vui-text-muted);
+	}
+
+	.family-tree-linked a {
+		color: var(--vui-accent);
+		text-decoration: none;
+		font-weight: 600;
+	}
+
+	.family-tree-linked a:hover {
+		text-decoration: underline;
 	}
 </style>

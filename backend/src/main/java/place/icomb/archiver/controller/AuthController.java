@@ -21,17 +21,13 @@ public class AuthController {
       return ResponseEntity.ok(Map.of("authenticated", false));
     }
 
-    return ResponseEntity.ok(
-        Map.of(
-            "authenticated",
-            true,
-            "email",
-            auth.getName(),
-            "displayName",
-            user.getDisplayName() != null ? user.getDisplayName() : "",
-            "role",
-            user.getRole(),
-            "lang",
-            user.getLang() != null ? user.getLang() : "en"));
+    var result = new java.util.LinkedHashMap<String, Object>();
+    result.put("authenticated", true);
+    result.put("email", auth.getName());
+    result.put("displayName", user.getDisplayName() != null ? user.getDisplayName() : "");
+    result.put("role", user.getRole());
+    result.put("lang", user.getLang() != null ? user.getLang() : "en");
+    result.put("familyTreePersonId", user.getFamilyTreePersonId());
+    return ResponseEntity.ok(result);
   }
 }

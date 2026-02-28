@@ -59,7 +59,7 @@
 							<td class="px-4 py-3.5 text-text-sub whitespace-nowrap tabular-nums" title={absoluteTime(ev.created_at)}>
 								{relativeTime(ev.created_at)}
 							</td>
-							<td class="px-4 py-3.5 text-text">{ev.stage}</td>
+							<td class="px-4 py-3.5 text-text-sub">{ev.stage}</td>
 							<td class="px-4 py-3.5">
 								<span class="inline-block px-2 py-0.5 rounded text-[length:var(--vui-text-xs)] font-medium border {eventColor(ev.event)}">
 									{ev.event}

@@ -185,11 +185,11 @@
 								<div class="text-[length:var(--vui-text-xs)] text-text-sub mt-0.5">{fond}</div>
 							{/if}
 						</td>
-						<td class="px-5 py-3.5 whitespace-nowrap text-text">{record.dateRangeText ?? ''}</td>
-						<td class="px-5 py-3.5 text-text">{record.referenceCode ?? ''}</td>
+						<td class="px-5 py-3.5 whitespace-nowrap text-text-sub">{record.dateRangeText ?? ''}</td>
+						<td class="px-5 py-3.5 text-text-sub">{record.referenceCode ?? ''}</td>
 						<td class="px-5 py-3.5"><StatusBadge status={record.status} /></td>
 						<td class="px-5 py-3.5 whitespace-nowrap text-text-sub">{formatDate(record.createdAt)}</td>
-						<td class="px-5 py-3.5 text-text tabular-nums text-right">{pageDisplay(record)}</td>
+						<td class="px-5 py-3.5 text-text-sub tabular-nums text-right">{pageDisplay(record)}</td>
 					</tr>
 				{/each}
 			</tbody>

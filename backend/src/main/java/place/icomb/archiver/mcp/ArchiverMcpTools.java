@@ -195,7 +195,7 @@ public class ArchiverMcpTools {
       kinship.put("pathDescription", rel.pathDescription());
       kinship.put("commonAncestor", rel.commonAncestorName());
       kinship.put("stepsFromPerson", rel.stepsFromPerson());
-      kinship.put("stepsFromAlexander", rel.stepsFromAlexander());
+      kinship.put("stepsFromRef", rel.stepsFromRef());
       result.put("kinshipToAlexander", kinship);
     }
 

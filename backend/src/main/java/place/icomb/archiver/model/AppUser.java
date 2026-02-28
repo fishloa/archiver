@@ -12,6 +12,7 @@ public class AppUser {
   private String role;
   private String lang;
   private Instant createdAt;
+  private Integer familyTreePersonId;
   private Instant updatedAt;
 
   public AppUser() {}
@@ -54,6 +55,14 @@ public class AppUser {
 
   public void setCreatedAt(Instant createdAt) {
     this.createdAt = createdAt;
+  }
+
+  public Integer getFamilyTreePersonId() {
+    return familyTreePersonId;
+  }
+
+  public void setFamilyTreePersonId(Integer familyTreePersonId) {
+    this.familyTreePersonId = familyTreePersonId;
   }
 
   public Instant getUpdatedAt() {

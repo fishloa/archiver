@@ -17,6 +17,7 @@ export interface AuthUser {
   email?: string;
   displayName?: string;
   role?: string;
+  familyTreePersonId?: number;
 }
 
 export async function fetchCurrentUser(email: string): Promise<AuthUser> {
@@ -232,9 +233,11 @@ export async function searchFamilyTree(
   return res.json();
 }
 
-export async function relatePerson(personId: number): Promise<any | null> {
+export async function relatePerson(personId: number, refId?: number): Promise<any | null> {
+  const params = new URLSearchParams({ personId: String(personId) });
+  if (refId != null) params.set("refId", String(refId));
   const res = await fetch(
-    `${backendUrl()}/api/family-tree/relate?personId=${personId}`,
+    `${backendUrl()}/api/family-tree/relate?${params}`,
   );
   if (!res.ok) return null;
   return res.json();
@@ -300,6 +303,7 @@ export interface UserProfile {
   displayName: string;
   role: string;
   loginEmail: string;
+  familyTreePersonId?: number;
   emails: ProfileEmail[];
 }
 

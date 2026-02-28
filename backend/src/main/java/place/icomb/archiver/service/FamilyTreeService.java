@@ -119,18 +119,29 @@ public class FamilyTreeService {
   }
 
   public RelationshipResult relate(int personId) {
+    if (alexander == null) return null;
+    return relate(personId, alexander.id);
+  }
+
+  public RelationshipResult relate(int personId, int referencePersonId) {
     Person person = peopleById.get(personId);
-    if (person == null || alexander == null) return null;
-    if (person.id == alexander.id) {
+    Person ref = peopleById.get(referencePersonId);
+    if (person == null || ref == null) return null;
+    if (person.id == ref.id) {
+      String desc =
+          ref.id == (alexander != null ? alexander.id : -1)
+              ? "Alexander Friedrich Josef Paul Maria Czernin, nicknamed Lucki/Papi"
+              : "This is " + ref.name;
       return new RelationshipResult(
           personId,
           person.name,
-          "This is Alexander himself",
-          "Alexander Friedrich Josef Paul Maria Czernin, nicknamed Lucki/Papi",
+          "This is " + ref.name,
+          desc,
           person.name,
           person.id,
           0,
-          0);
+          0,
+          ref.name);
     }
 
     // Collect ancestors of the queried person with step count
@@ -143,24 +154,24 @@ public class FamilyTreeService {
       steps++;
     }
 
-    // Walk up from Alexander to find LCA
-    cur = alexander;
-    int alexSteps = 0;
+    // Walk up from reference person to find LCA
+    cur = ref;
+    int refSteps = 0;
     while (cur != null) {
       if (personAncestors.containsKey(cur.id)) {
         // Found LCA
         Person lca = cur;
         int dA = personAncestors.get(cur.id); // steps from person to LCA
-        int dB = alexSteps; // steps from Alexander to LCA
+        int dB = refSteps; // steps from reference to LCA
 
         String kinship = kinshipLabel(dA, dB);
-        String path = buildPathDescription(person, alexander, lca, dA, dB);
+        String path = buildPathDescription(person, ref, lca, dA, dB);
 
         return new RelationshipResult(
-            personId, person.name, kinship, path, lca.name, lca.id, dA, dB);
+            personId, person.name, kinship, path, lca.name, lca.id, dA, dB, ref.name);
       }
       cur = cur.parent;
-      alexSteps++;
+      refSteps++;
     }
 
     return null; // no common ancestor found
@@ -606,31 +617,34 @@ public class FamilyTreeService {
   }
 
   private String buildPathDescription(
-      Person person, Person alex, Person lca, int dPerson, int dAlex) {
+      Person person, Person ref, Person lca, int dPerson, int dRef) {
     var sb = new StringBuilder();
+    String refName = ref.name;
 
     // Collect path from person to LCA
     List<Person> personPath = pathToAncestor(person, lca);
-    List<Person> alexPath = pathToAncestor(alex, lca);
+    List<Person> refPath = pathToAncestor(ref, lca);
 
-    if (dPerson == 1 && dAlex == 1) {
+    if (dPerson == 1 && dRef == 1) {
       // Siblings
       sb.append(person.name)
-          .append(" and Alexander are siblings (children of ")
+          .append(" and ")
+          .append(refName)
+          .append(" are siblings (children of ")
           .append(lca.name)
           .append(")");
-    } else if (dPerson >= 2 && dAlex >= 2) {
-      // Cousins — describe through the divergence point
-      // Person's ancestor at depth 1 from LCA and Alex's ancestor at depth 1 from LCA
+    } else if (dPerson >= 2 && dRef >= 2) {
       Person personBranch = personPath.size() >= 2 ? personPath.get(personPath.size() - 2) : person;
-      Person alexBranch = alexPath.size() >= 2 ? alexPath.get(alexPath.size() - 2) : alex;
+      Person refBranch = refPath.size() >= 2 ? refPath.get(refPath.size() - 2) : ref;
 
-      if (dPerson == 2 && dAlex == 2) {
+      if (dPerson == 2 && dRef == 2) {
         sb.append(person.name)
             .append("'s father ")
             .append(personBranch.name)
-            .append(" and Alexander's father ")
-            .append(alexBranch.name)
+            .append(" and ")
+            .append(refName)
+            .append("'s father ")
+            .append(refBranch.name)
             .append(" were siblings (children of ")
             .append(lca.name)
             .append(")");
@@ -641,13 +655,19 @@ public class FamilyTreeService {
             .append(person.name)
             .append(" descends through ")
             .append(personBranch.name)
-            .append(", Alexander through ")
-            .append(alexBranch.name);
+            .append(", ")
+            .append(refName)
+            .append(" through ")
+            .append(refBranch.name);
       }
     } else {
-      sb.append(person.name).append(" and Alexander share the common ancestor ").append(lca.name);
+      sb.append(person.name)
+          .append(" and ")
+          .append(refName)
+          .append(" share the common ancestor ")
+          .append(lca.name);
       sb.append(" (").append(dPerson).append(" generations from ").append(person.name);
-      sb.append(", ").append(dAlex).append(" from Alexander)");
+      sb.append(", ").append(dRef).append(" from ").append(refName).append(")");
     }
 
     return sb.toString();
@@ -706,5 +726,6 @@ public class FamilyTreeService {
       String commonAncestorName,
       int commonAncestorId,
       int stepsFromPerson,
-      int stepsFromAlexander) {}
+      int stepsFromRef,
+      String refPersonName) {}
 }

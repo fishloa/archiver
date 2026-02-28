@@ -97,7 +97,7 @@
 			{#each recordsByStatus as row}
 				{@const pct = totalRecords > 0 ? (row.cnt / totalRecords) * 100 : 0}
 				<div class="flex items-center gap-3 py-2 px-3 rounded bg-bg-deep border border-border">
-					<span class="text-[length:var(--vui-text-sm)] font-medium text-text w-32">{row.status}</span>
+					<span class="text-[length:var(--vui-text-sm)] font-medium text-text-sub w-32">{row.status}</span>
 					<div class="flex-1 h-2 rounded-full bg-border overflow-hidden">
 						<div class="h-full rounded-full bg-accent transition-all" style="width: {pct}%"></div>
 					</div>
@@ -113,7 +113,7 @@
 		<div class="space-y-4">
 			{#each jobKinds as [kind, rows]}
 				<div>
-					<div class="text-[length:var(--vui-text-sm)] font-semibold text-text mb-2">{kind.replace(/_/g, ' ')}</div>
+					<div class="text-[length:var(--vui-text-sm)] font-semibold text-text-sub mb-2">{kind.replace(/_/g, ' ')}</div>
 					<div class="flex flex-wrap gap-2">
 						{#each rows as row}
 							<span class="px-2.5 py-1 rounded text-[length:var(--vui-text-xs)] font-medium tabular-nums border

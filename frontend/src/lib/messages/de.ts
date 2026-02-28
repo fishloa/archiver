@@ -107,7 +107,11 @@ export const de: Record<MessageKey, string> = {
 	'family.commonAncestor': 'Gemeinsamer Vorfahre',
 	'family.genFromPerson': 'Gen. von Person',
 	'family.genFromAlexander': 'von Alexander',
+	'family.genFromYou': 'von dir',
 	'family.toAlexander': 'zu Alexander (Lucki)',
+	'family.toYou': 'zu dir',
+	'family.thisIsMe': 'Das bin ich',
+	'family.thisIsYou': 'Das bist du',
 
 	// Pipeline
 	'pipeline.title': 'Dokumenten-Pipeline',
@@ -178,6 +182,9 @@ export const de: Record<MessageKey, string> = {
 	'profile.addEmail': 'E-Mail-Adresse hinzuf\u00fcgen...',
 	'profile.add': 'Hinzuf\u00fcgen',
 	'profile.removeEmail': 'E-Mail entfernen',
+	'profile.familyTree': 'Stammbaum-Identität',
+	'profile.familyTreeHint': 'Besuche die Stammbaum-Seite und klicke auf „Das bin ich" bei einer Person.',
+	'profile.familyTreeLinked': 'Du bist mit einer Person im Stammbaum verknüpft. Anzeigen im',
 	'profile.language': 'Sprache',
 	'profile.languageHint': 'Wähle deine bevorzugte Sprache für die Benutzeroberfläche.',
 

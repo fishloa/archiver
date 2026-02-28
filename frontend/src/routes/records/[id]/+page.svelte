@@ -259,7 +259,7 @@
 							<MetaIcon size={14} strokeWidth={1.8} class="text-text-sub mt-0.5 flex-shrink-0" />
 							<div class="min-w-0">
 								<div class="text-[length:var(--vui-text-xs)] text-text-sub">{item.label}</div>
-								<div class="text-[length:var(--vui-text-sm)] text-text break-words">{item.value}</div>
+								<div class="text-[length:var(--vui-text-sm)] text-text-sub break-words">{item.value}</div>
 							</div>
 						</div>
 					{/each}
@@ -316,7 +316,7 @@
 				{#if fondName}
 					<div>
 						<div class="text-text-sub">{$t('record.fond')}</div>
-						<div class="text-text">{fondName}</div>
+						<div class="text-text-sub">{fondName}</div>
 						{#if nadEnglish}<div class="text-accent font-medium">{nadEnglish}</div>{/if}
 					</div>
 				{/if}

@@ -105,7 +105,11 @@ export const en = {
 	'family.commonAncestor': 'Common ancestor',
 	'family.genFromPerson': 'gen. from person',
 	'family.genFromAlexander': 'from Alexander',
+	'family.genFromYou': 'from you',
 	'family.toAlexander': 'to Alexander (Lucki)',
+	'family.toYou': 'to you',
+	'family.thisIsMe': 'This is me',
+	'family.thisIsYou': 'This is you',
 
 	// Pipeline
 	'pipeline.title': 'Document Pipeline',
@@ -176,6 +180,9 @@ export const en = {
 	'profile.addEmail': 'Add email address...',
 	'profile.add': 'Add',
 	'profile.removeEmail': 'Remove email',
+	'profile.familyTree': 'Family Tree Identity',
+	'profile.familyTreeHint': 'Visit the Family Tree page and click "This is me" on a person to set your identity.',
+	'profile.familyTreeLinked': 'You are linked to a person in the family tree. View in',
 	'profile.language': 'Language',
 	'profile.languageHint': 'Choose your preferred language for the interface.',
 

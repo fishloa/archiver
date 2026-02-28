@@ -18,6 +18,7 @@ import place.icomb.archiver.model.AppUser;
 import place.icomb.archiver.model.AppUserEmail;
 import place.icomb.archiver.repository.AppUserEmailRepository;
 import place.icomb.archiver.repository.AppUserRepository;
+import place.icomb.archiver.service.FamilyTreeService;
 
 @RestController
 @RequestMapping("/api/profile")
@@ -25,11 +26,15 @@ public class ProfileController {
 
   private final AppUserRepository userRepository;
   private final AppUserEmailRepository emailRepository;
+  private final FamilyTreeService familyTreeService;
 
   public ProfileController(
-      AppUserRepository userRepository, AppUserEmailRepository emailRepository) {
+      AppUserRepository userRepository,
+      AppUserEmailRepository emailRepository,
+      FamilyTreeService familyTreeService) {
     this.userRepository = userRepository;
     this.emailRepository = emailRepository;
+    this.familyTreeService = familyTreeService;
   }
 
   private AppUser currentUser() {
@@ -59,6 +64,7 @@ public class ProfileController {
     result.put("displayName", user.getDisplayName() != null ? user.getDisplayName() : "");
     result.put("role", user.getRole());
     result.put("loginEmail", currentLoginEmail());
+    result.put("familyTreePersonId", user.getFamilyTreePersonId());
     result.put(
         "emails",
         emails.stream()
@@ -95,12 +101,25 @@ public class ProfileController {
         user.setLang(lang);
       }
     }
+    if (body.containsKey("familyTreePersonId")) {
+      Object val = body.get("familyTreePersonId");
+      if (val == null) {
+        user.setFamilyTreePersonId(null);
+      } else {
+        int personId = ((Number) val).intValue();
+        if (familyTreeService.getPerson(personId) == null) {
+          return ResponseEntity.badRequest().body(Map.of("error", "Person not found"));
+        }
+        user.setFamilyTreePersonId(personId);
+      }
+    }
     userRepository.save(user);
 
     Map<String, Object> result = new LinkedHashMap<>();
     result.put("id", user.getId());
     result.put("displayName", user.getDisplayName());
     result.put("lang", user.getLang() != null ? user.getLang() : "en");
+    result.put("familyTreePersonId", user.getFamilyTreePersonId());
     return ResponseEntity.ok(result);
   }
 

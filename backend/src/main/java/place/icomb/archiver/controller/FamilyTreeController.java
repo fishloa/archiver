@@ -51,8 +51,12 @@ public class FamilyTreeController {
   }
 
   @GetMapping("/relate")
-  public ResponseEntity<Map<String, Object>> relate(@RequestParam int personId) {
-    var result = familyTreeService.relate(personId);
+  public ResponseEntity<Map<String, Object>> relate(
+      @RequestParam int personId, @RequestParam(required = false) Integer refId) {
+    var result =
+        refId != null
+            ? familyTreeService.relate(personId, refId)
+            : familyTreeService.relate(personId);
     if (result == null) return ResponseEntity.notFound().build();
 
     Map<String, Object> m = new LinkedHashMap<>();
@@ -63,7 +67,8 @@ public class FamilyTreeController {
     m.put("commonAncestorName", result.commonAncestorName());
     m.put("commonAncestorId", result.commonAncestorId());
     m.put("stepsFromPerson", result.stepsFromPerson());
-    m.put("stepsFromAlexander", result.stepsFromAlexander());
+    m.put("stepsFromRef", result.stepsFromRef());
+    m.put("refPersonName", result.refPersonName());
     return ResponseEntity.ok(m);
   }
 

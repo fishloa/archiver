@@ -172,7 +172,7 @@
 		padding: 10px 18px;
 		color: var(--vui-text-muted);
 		text-decoration: none;
-		font-size: var(--vui-text-sm);
+		font-size: 15px;
 		font-weight: 500;
 		transition: all 0.15s ease;
 		border-left: 3px solid transparent;

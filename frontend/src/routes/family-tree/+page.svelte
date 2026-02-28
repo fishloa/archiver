@@ -1,6 +1,6 @@
 <script lang="ts">
-	import { goto } from '$app/navigation';
-	import { Search, ChevronRight, Baby, X, HandHeart } from 'lucide-svelte';
+	import { goto, invalidateAll } from '$app/navigation';
+	import { Search, ChevronRight, Baby, X, HandHeart, UserCheck } from 'lucide-svelte';
 	import { language, t } from '$lib/i18n';
 
 	let { data } = $props();
@@ -26,6 +26,24 @@
 
 	function navigatePerson(personId: number) {
 		goto(`/family-tree?q=${encodeURIComponent(data.q || data.person?.name || '')}&personId=${personId}`);
+	}
+
+	const user = $derived(data.user);
+	const hasRefPerson = $derived(!!user?.familyTreePersonId);
+	let settingMe = $state(false);
+
+	async function setThisIsMe(personId: number) {
+		settingMe = true;
+		try {
+			await fetch('/api/profile', {
+				method: 'PUT',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ familyTreePersonId: personId })
+			});
+			await invalidateAll();
+		} finally {
+			settingMe = false;
+		}
 	}
 
 	const eventColor: Record<string, string> = {
@@ -85,14 +103,10 @@
 					{#if rel}
 						<div class="detail-kinship">
 							<span class="kinship-badge">{rel.kinshipLabel}</span>
-							<span class="kinship-ref">{$t('family.toAlexander')}</span>
+							<span class="kinship-ref">{hasRefPerson ? $t('family.toYou') : $t('family.toAlexander')}</span>
 						</div>
 					{/if}
 				</div>
-
-				{#if rel?.pathDescription}
-					<p class="detail-path">{rel.pathDescription}</p>
-				{/if}
 
 				<!-- Timeline -->
 				{#if p.events && p.events.length > 0}
@@ -152,9 +166,26 @@
 					<div class="detail-ancestor">
 						{$t('family.commonAncestor')}: <strong>{rel.commonAncestorName}</strong>
 						<span class="ancestor-steps">
-							({rel.stepsFromPerson} {$t('family.genFromPerson')}, {rel.stepsFromAlexander} {$t('family.genFromAlexander')})
+							({rel.stepsFromPerson} {$t('family.genFromPerson')}, {rel.stepsFromRef} {hasRefPerson ? $t('family.genFromYou') : $t('family.genFromAlexander')})
 						</span>
 					</div>
+				{/if}
+
+				{#if rel?.pathDescription}
+					<p class="detail-path">{rel.pathDescription}</p>
+				{/if}
+
+				{#if user?.authenticated}
+					{@const isMe = user.familyTreePersonId === p.id}
+					<button
+						class="this-is-me-btn"
+						class:is-me={isMe}
+						disabled={isMe || settingMe}
+						onclick={() => setThisIsMe(p.id)}
+					>
+						<UserCheck size={16} strokeWidth={2} />
+						{isMe ? $t('family.thisIsYou') : $t('family.thisIsMe')}
+					</button>
 				{/if}
 			</div>
 		{/if}
@@ -331,9 +362,9 @@
 		font-size: 14px;
 		color: var(--vui-text-muted);
 		line-height: 1.6;
-		margin: 0 0 16px;
-		padding-bottom: 16px;
-		border-bottom: 1px solid color-mix(in srgb, var(--vui-border) 60%, transparent);
+		margin: 0;
+		padding-top: 12px;
+		border-top: 1px solid color-mix(in srgb, var(--vui-border) 60%, transparent);
 	}
 
 	/* ── Timeline ── */
@@ -553,6 +584,39 @@
 
 	.date-death {
 		color: #f87171;
+	}
+
+	.this-is-me-btn {
+		display: inline-flex;
+		align-items: center;
+		gap: 6px;
+		margin-top: 14px;
+		padding: 8px 16px;
+		background: var(--vui-surface);
+		border: 1.5px solid var(--vui-border);
+		border-radius: var(--vui-radius-md);
+		color: var(--vui-text-muted);
+		font-size: 13px;
+		font-weight: 600;
+		cursor: pointer;
+		font-family: inherit;
+		transition: all 0.15s ease;
+	}
+
+	.this-is-me-btn:hover:not(:disabled) {
+		border-color: var(--vui-accent);
+		color: var(--vui-accent);
+	}
+
+	.this-is-me-btn.is-me {
+		border-color: var(--vui-accent);
+		color: var(--vui-accent);
+		cursor: default;
+	}
+
+	.this-is-me-btn:disabled:not(.is-me) {
+		opacity: 0.5;
+		cursor: wait;
 	}
 
 	.empty {
