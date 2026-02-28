@@ -4,7 +4,12 @@
 	import { language, t } from '$lib/i18n';
 
 	let { data } = $props();
-	let query = $state(data.q || '');
+	let query = $state('');
+
+	// Sync query when data.q changes (e.g. navigation)
+	$effect(() => {
+		query = data.q || '';
+	});
 
 	function doSearch(e: Event) {
 		e.preventDefault();
@@ -48,6 +53,7 @@
 		<p class="subtitle">{$t('family.subtitle')}</p>
 		<form onsubmit={doSearch} class="search-form landing-form">
 			<Search size={18} class="search-icon" />
+			<!-- svelte-ignore a11y_autofocus -->
 			<input type="text" bind:value={query} placeholder={$t('family.searchPlaceholder')} class="search-input" autofocus />
 		</form>
 	</div>

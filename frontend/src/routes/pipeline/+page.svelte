@@ -411,10 +411,6 @@
 		color: var(--vui-text-muted);
 	}
 
-	.queue-label {
-		color: var(--vui-text-muted);
-	}
-
 	.failed-label {
 		color: var(--vui-danger);
 	}

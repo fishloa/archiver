@@ -1,10 +1,11 @@
 import { writable, derived } from 'svelte/store';
 import { en, type MessageKey } from './messages/en';
 import { de } from './messages/de';
+import { cs } from './messages/cs';
 
-export type Lang = 'en' | 'de';
+export type Lang = 'en' | 'de' | 'cs';
 
-const messages: Record<Lang, Record<MessageKey, string>> = { en, de };
+const messages: Record<Lang, Record<MessageKey, string>> = { en, de, cs };
 
 export const language = writable<Lang>('en');
 

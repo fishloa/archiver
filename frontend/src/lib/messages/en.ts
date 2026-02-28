@@ -193,6 +193,7 @@ export const en = {
 	// Language
 	'lang.en': 'EN',
 	'lang.de': 'DE',
+	'lang.cs': 'CZ',
 } as const;
 
 export type MessageKey = keyof typeof en;

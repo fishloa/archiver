@@ -4,7 +4,12 @@
 	import { language, t } from '$lib/i18n';
 
 	let { data } = $props();
-	let query = $state(data.q || '');
+	let query = $state('');
+
+	// Sync query when data.q changes (e.g. navigation)
+	$effect(() => {
+		query = data.q || '';
+	});
 
 	function doSearch(e: Event) {
 		e.preventDefault();
@@ -151,6 +156,7 @@
 		<h1 class="logo">Archiver</h1>
 		<form onsubmit={doSearch} class="search-form landing-form">
 			<Search size={18} class="search-icon" />
+			<!-- svelte-ignore a11y_autofocus -->
 			<input
 				type="text"
 				bind:value={query}
@@ -366,7 +372,7 @@
 	.landing-form { max-width: 580px; }
 	.results-form { margin-bottom: 24px; }
 
-	.search-icon {
+	:global(.search-icon) {
 		position: absolute;
 		left: 16px;
 		top: 50%;

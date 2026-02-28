@@ -195,4 +195,5 @@ export const de: Record<MessageKey, string> = {
 	// Language
 	'lang.en': 'EN',
 	'lang.de': 'DE',
+	'lang.cs': 'CZ',
 };

@@ -10,12 +10,13 @@ export const handle: Handle = async ({ event, resolve }) => {
 	// Language detection: cookie > Accept-Language > default 'en'
 	let lang: Lang = 'en';
 	const cookieVal = event.cookies.get('archiver_lang');
-	if (cookieVal === 'en' || cookieVal === 'de') {
+	if (cookieVal === 'en' || cookieVal === 'de' || cookieVal === 'cs') {
 		lang = cookieVal;
 	} else {
 		const accept = event.request.headers.get('accept-language') ?? '';
-		// Match de, de-DE, de-AT, de-CH etc. — Austria (at) is German-speaking
-		if (/\bde\b/i.test(accept)) {
+		if (/\bcs\b/i.test(accept)) {
+			lang = 'cs';
+		} else if (/\bde\b/i.test(accept)) {
 			lang = 'de';
 		}
 	}

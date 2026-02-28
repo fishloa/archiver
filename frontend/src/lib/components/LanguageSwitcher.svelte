@@ -31,6 +31,11 @@
 		class:active={current === 'de'}
 		onclick={() => switchLang('de')}
 	>DE</button>
+	<button
+		class="lang-btn"
+		class:active={current === 'cs'}
+		onclick={() => switchLang('cs')}
+	>CZ</button>
 </div>
 
 <style>

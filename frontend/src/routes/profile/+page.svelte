@@ -72,6 +72,14 @@
 				<span class="lang-code">DE</span>
 				<span class="lang-name">Deutsch</span>
 			</button>
+			<button
+				class="lang-option"
+				class:active={$language === 'cs'}
+				onclick={() => switchLang('cs')}
+			>
+				<span class="lang-code">CZ</span>
+				<span class="lang-name">Čeština</span>
+			</button>
 		</div>
 	</section>
 
