@@ -76,7 +76,7 @@
 				id="source-text"
 				bind:value={sourceText}
 				placeholder={$t('translate.sourcePlaceholder')}
-				rows={10}
+	
 			></textarea>
 		</div>
 
@@ -87,7 +87,7 @@
 				value={translatedText}
 				readonly
 				placeholder={$t('translate.resultPlaceholder')}
-				rows={10}
+	
 			></textarea>
 		</div>
 	</div>
@@ -110,6 +110,9 @@
 	.translate-page {
 		max-width: 960px;
 		margin: 0 auto;
+		display: flex;
+		flex-direction: column;
+		height: calc(100vh - 80px);
 	}
 
 	.page-header {
@@ -169,6 +172,14 @@
 		grid-template-columns: 1fr 1fr;
 		gap: 16px;
 		margin-bottom: 16px;
+		flex: 1;
+		min-height: 0;
+	}
+
+	.text-panel {
+		display: flex;
+		flex-direction: column;
+		min-height: 0;
 	}
 
 	.text-panel label {
@@ -183,6 +194,8 @@
 
 	.text-panel textarea {
 		width: 100%;
+		flex: 1;
+		min-height: 0;
 		padding: 12px;
 		border: 1px solid var(--vui-border);
 		border-radius: var(--vui-radius-md);
