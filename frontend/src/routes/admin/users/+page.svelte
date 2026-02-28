@@ -239,7 +239,7 @@
 						</span>
 						<div class="user-actions">
 							<button class="action-btn" title="Edit" onclick={() => startEdit(user)}>
-								<Pencil size={14} />
+								<Pencil size={18} />
 							</button>
 							<form method="POST" action="?/deleteUser" class="inline" use:enhance={() => {
 								return async ({ update }) => {
@@ -251,7 +251,7 @@
 								<input type="hidden" name="id" value={user.id} />
 								<button type="submit" class="action-btn action-danger" title="Delete"
 									onclick={(e) => { if (!confirm($t('admin.deleteConfirm'))) e.preventDefault(); }}>
-									<Trash2 size={14} />
+									<Trash2 size={18} />
 								</button>
 							</form>
 						</div>
@@ -575,7 +575,7 @@
 		display: block;
 		font-size: 14px;
 		font-weight: 600;
-		color: var(--vui-text);
+		color: var(--vui-accent);
 		white-space: nowrap;
 		overflow: hidden;
 		text-overflow: ellipsis;
@@ -624,17 +624,20 @@
 		display: flex;
 		align-items: center;
 		justify-content: center;
-		width: 30px;
-		height: 30px;
+		width: 36px;
+		height: 36px;
 		border: none;
-		border-radius: 6px;
+		border-radius: 8px;
 		background: none;
-		color: var(--vui-text-muted);
+		color: var(--vui-text-sub);
 		cursor: pointer;
 	}
 	.action-btn:hover {
 		background: var(--vui-bg-deep);
 		color: var(--vui-text);
+	}
+	.action-danger {
+		color: #ef4444;
 	}
 	.action-danger:hover {
 		color: #ef4444;
