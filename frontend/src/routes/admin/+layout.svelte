@@ -31,12 +31,12 @@
 <nav class="flex gap-1 mb-6 border-b border-border">
 	{#each tabs as tab}
 		{@const active = isActive(tab.href)}
+		{@const Icon = tab.icon}
 		<a
 			href={tab.href}
 			class="flex items-center gap-2 px-4 py-2.5 text-[length:var(--vui-text-sm)] font-medium transition-colors
 				{active ? 'text-accent border-b-2 border-accent -mb-px' : 'text-text-sub hover:text-text'}"
 		>
-			{@const Icon = tab.icon}
 			<Icon size={15} strokeWidth={active ? 2.2 : 1.8} />
 			{$t(tab.labelKey)}
 		</a>
