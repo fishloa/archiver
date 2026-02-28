@@ -37,7 +37,9 @@ RUN pip install --no-cache-dir --upgrade pip setuptools wheel && \
         "sentencepiece>=0.2" \
         "langdetect>=1.0" \
         "httpx>=0.27" \
-        "httpx-sse>=0.4"
+        "httpx-sse>=0.4" \
+        "fastapi>=0.115" \
+        "uvicorn>=0.32"
 
 # Layer 2: Copy pre-downloaded models (world-readable for non-root execution)
 COPY --from=model-downloader /root/.cache/huggingface/ /root/.cache/huggingface/
@@ -55,5 +57,7 @@ RUN pip install --no-cache-dir /tmp/worker-common/ && rm -rf /tmp/worker-common/
 COPY translate-worker/pyproject.toml ./
 COPY translate-worker/src/ src/
 RUN pip install --no-cache-dir -e .
+
+EXPOSE 8001
 
 CMD ["python3", "-m", "translate_worker.main"]

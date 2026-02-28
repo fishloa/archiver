@@ -9,6 +9,8 @@ dependencies = [
     "sentencepiece>=0.2",
     "torch>=2.0",
     "langdetect>=1.0",
+    "fastapi>=0.115",
+    "uvicorn>=0.32",
 ]
 
 [project.optional-dependencies]

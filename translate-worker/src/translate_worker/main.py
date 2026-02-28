@@ -116,12 +116,27 @@ def main():
     from .config import Config
     from .client import ProcessorClient
     from .translator import Translator
+    from .api import app as api_app, set_translator
+
+    import threading
+    import uvicorn
 
     cfg = Config()
     client = ProcessorClient(cfg.backend_url, cfg.processor_token)
 
     log.info("Loading translation models...")
     translator = Translator()
+
+    # Start FastAPI server in daemon thread for on-demand translation
+    set_translator(translator)
+    api_thread = threading.Thread(
+        target=uvicorn.run,
+        args=(api_app,),
+        kwargs={"host": "0.0.0.0", "port": 8001, "log_level": "info"},
+        daemon=True,
+    )
+    api_thread.start()
+    log.info("Translation API server started on port 8001")
 
     log.info(
         "Translate worker starting (backend=%s, poll=%ds)",

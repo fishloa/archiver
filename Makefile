@@ -1,4 +1,4 @@
-.PHONY: dev-backend dev-scraper dev-frontend test lint
+.PHONY: dev-backend dev-scraper dev-frontend test lint validate-deploy
 
 # Backend
 dev-backend:
@@ -54,6 +54,10 @@ lint-frontend:
 # Smoke test (live site)
 test-smoke:
 	web/test-endpoints.sh
+
+# Full deployment validation (live site)
+validate-deploy:
+	web/validate-deploy.sh
 
 # All
 test: test-backend test-scraper test-ocr test-pdf test-entity test-frontend

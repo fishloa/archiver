@@ -149,6 +149,7 @@ public class SemanticSearchController {
           JOIN record rec ON rec.id = r.record_id
           LEFT JOIN page p ON p.id = r.page_id
           WHERE r.rn = 1
+            AND (r.kw_score > 0 OR r.sem_score >= 0.65)
           ORDER BY r.hybrid_score DESC
           LIMIT ?
           """
