@@ -79,7 +79,9 @@ class BackendClient:
         resp = self._client.post("/api/ingest/records", json=body)
         data = resp.json()
         record_id = data.get("id") or data.get("record_id")
-        log.info("Created record %s for %s/%s", record_id, source_system, source_record_id)
+        log.info(
+            "Created record %s for %s/%s", record_id, source_system, source_record_id
+        )
         return record_id
 
     def upload_page(
@@ -141,7 +143,9 @@ class BackendClient:
         self._client.delete(f"/api/ingest/records/{record_id}")
         log.info("Deleted record %s", record_id)
 
-    def delete_record_by_source(self, source_system: str, source_record_id: str) -> bool:
+    def delete_record_by_source(
+        self, source_system: str, source_record_id: str
+    ) -> bool:
         """Delete a record by source system + ID. Returns True if deleted, False if not found."""
         try:
             self._client.delete(

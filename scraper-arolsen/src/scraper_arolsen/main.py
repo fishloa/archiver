@@ -28,19 +28,40 @@ from .pdf import build_pdf
 log = logging.getLogger(__name__)
 
 
-def _build_description(meta: dict) -> str:
-    """Build a human-readable description from Arolsen metadata fields."""
+def _person_title(result: dict) -> str:
+    """Build a human-readable title from a person list result."""
+    last = result.get("LastName", "")
+    first = result.get("FirstName", "")
+    parts = [p for p in (last, first) if p]
+    return " ".join(parts) or str(result.get("ObjId", "unknown"))
+
+
+def _build_description(result: dict, archive_info: dict | None = None) -> str:
+    """Build a human-readable description from person + archive data."""
     parts = []
-    if meta.get("creator"):
-        parts.append(f"Creator: {meta['creator']}")
-    if meta.get("collection"):
-        parts.append(f"Collection: {meta['collection']}")
-    if meta.get("archive"):
-        parts.append(f"Archive: {meta['archive']}")
-    if meta.get("scope"):
-        parts.append(f"Scope: {meta['scope']}")
-    if meta.get("language"):
-        parts.append(f"Language: {meta['language']}")
+    dob = result.get("Dob", "")
+    if dob:
+        parts.append(f"DOB: {dob}")
+    place = result.get("PlaceBirth", "")
+    if place:
+        parts.append(f"Place of birth: {place}")
+    sig = result.get("Signature", "")
+    if sig:
+        parts.append(f"Signature: {sig}")
+    if archive_info:
+        ref_item = next(
+            (
+                h
+                for h in archive_info.get("HeaderItems", [])
+                if h.get("Title") == "referenceCode"
+            ),
+            None,
+        )
+        if ref_item:
+            parts.append(f"Reference: {ref_item['Value']}")
+        arch_title = archive_info.get("Title", "")
+        if arch_title:
+            parts.append(f"Archive: {arch_title}")
     return " | ".join(parts)
 
 
@@ -51,12 +72,12 @@ def ingest_document(
     known_statuses: dict[str, str],
     dry_run: bool = False,
 ) -> str:
-    """Ingest a single Arolsen document: metadata, pages, PDF, complete.
+    """Ingest a single Arolsen document: metadata, pages, complete.
 
     Args:
         client: Backend API client.
         session: Arolsen API session.
-        result: Result dict from GetPersonList (must contain ``obj`` field).
+        result: Result dict from GetPersonList (has ``ObjId``, ``LastName``, etc.).
         known_statuses: Pre-fetched map of sourceRecordId -> status.
         dry_run: If True, log what would happen but skip all uploads.
 
@@ -64,98 +85,123 @@ def ingest_document(
         "ok", "skipped", or "failed".
     """
     cfg = get_config()
-    obj = result.get("obj", "")
-    title = result.get("title", obj)
+    obj_id = str(result.get("ObjId", ""))
+    title = _person_title(result)
 
-    if not obj:
-        log.warning("Result has no 'obj' field, skipping: %r", result)
+    if not obj_id:
+        log.warning("Result has no 'ObjId' field, skipping: %r", result)
         return "failed"
 
     # Check existing status from pre-fetched map
     if not dry_run:
-        current_status = known_statuses.get(obj)
+        current_status = known_statuses.get(obj_id)
         if current_status and current_status not in ("ingesting",):
             log.info("[SKIP] %s — already %s", title, current_status)
             return "skipped"
         if current_status == "ingesting":
-            # Previous ingest was incomplete — delete and re-ingest
-            status_info = client.get_status(SOURCE_SYSTEM, obj)
+            status_info = client.get_status(SOURCE_SYSTEM, obj_id)
             backend_record_id = status_info.get("id")
             if backend_record_id:
-                log.info("[CLEANUP] %s — deleting incomplete record %s", title, backend_record_id)
+                log.info(
+                    "[CLEANUP] %s — deleting incomplete record %s",
+                    title,
+                    backend_record_id,
+                )
                 client.delete_record(backend_record_id)
-                known_statuses.pop(obj, None)
+                known_statuses.pop(obj_id, None)
 
-    log.info("[START] %s (obj=%s)", title, obj)
+    log.info("[START] %s (ObjId=%s)", title, obj_id)
 
-    # Fetch detailed metadata
-    meta = session.get_metadata(obj)
-    if not meta:
-        log.warning("No metadata returned for obj=%s, using result fields only", obj)
-        meta = {}
-
-    # Merge list-level fields into meta for fallback values
-    for key in ("title", "archive", "collection"):
-        if key not in meta or not meta[key]:
-            meta[key] = result.get(key, "")
+    # Fetch archive info for richer metadata (optional — not fatal if it fails)
+    archive_info = None
+    desc_id = result.get("DescId")
+    if desc_id and str(desc_id) != "0":
+        try:
+            archive_info = session.get_archive_info(int(desc_id))
+        except Exception as exc:
+            log.debug("GetArchiveInfo failed for descId=%s: %s", desc_id, exc)
 
     if dry_run:
-        files = session.get_files(obj)
+        files = session.get_files(obj_id)
         log.info(
-            "[DRY-RUN] obj=%s title=%r pages=%d meta_keys=%s",
-            obj, meta.get("title", ""), len(files), list(meta.keys()),
+            "[DRY-RUN] ObjId=%s title=%r pages=%d descId=%s",
+            obj_id,
+            title,
+            len(files),
+            desc_id,
         )
         return "ok"
 
+    # Build reference code from archive info
+    ref_code = ""
+    if archive_info:
+        ref_item = next(
+            (
+                h
+                for h in archive_info.get("HeaderItems", [])
+                if h.get("Title") == "referenceCode"
+            ),
+            None,
+        )
+        if ref_item:
+            ref_code = ref_item["Value"]
+    if not ref_code:
+        ref_code = result.get("Signature", "")
+
     # Build metadata for backend record creation
-    source_url = f"https://collections.arolsen-archives.org/en/search/person/{obj}"
+    source_url = f"https://collections.arolsen-archives.org/en/document/{obj_id}"
     record_metadata: dict = {
         "archive_id": DEFAULT_ARCHIVE_ID,
-        "title": meta.get("title") or title,
-        "dateRangeText": meta.get("dates", ""),
-        "description": _build_description(meta),
-        "referenceCode": meta.get("collection", "") or result.get("archive", ""),
+        "title": title,
+        "description": _build_description(result, archive_info),
+        "referenceCode": ref_code,
         "sourceUrl": source_url,
     }
 
     # Remove empty string values (but always keep archive_id)
-    record_metadata = {k: v for k, v in record_metadata.items() if v or k == "archive_id"}
-    # Attach full raw API response for traceability
-    record_metadata["raw_arolsen"] = meta
+    record_metadata = {
+        k: v for k, v in record_metadata.items() if v or k == "archive_id"
+    }
+    # Attach raw person result for traceability
+    record_metadata["raw_arolsen"] = result
 
     # Create record in backend
-    backend_record_id = client.create_record(SOURCE_SYSTEM, obj, record_metadata)
+    backend_record_id = client.create_record(SOURCE_SYSTEM, obj_id, record_metadata)
 
     # Fetch file listing (pages)
-    files = session.get_files(obj)
+    files = session.get_files(obj_id)
 
     if not files:
-        log.info("  No pages found for obj=%s — completing as metadata-only", obj)
+        log.info("  No pages found for ObjId=%s — completing as metadata-only", obj_id)
         client.complete_ingest(backend_record_id)
-        known_statuses[obj] = "ocr_pending"
+        known_statuses[obj_id] = "ocr_pending"
         return "ok"
 
-    log.info("  Found %d page(s) for obj=%s", len(files), obj)
+    log.info("  Found %d page(s) for ObjId=%s", len(files), obj_id)
 
     page_images: list[Image.Image] = []
     for seq, file_entry in enumerate(files, start=1):
-        image_url = file_entry.get("folderImage", "")
-        file_id = file_entry.get("file", "")
+        # API returns ``image`` field with backslash-encoded URLs
+        image_url = file_entry.get("image", "")
+        doc_counter = file_entry.get("docCounter", "")
 
         if not image_url:
-            log.warning("  [%d/%d] No folderImage URL in file entry: %r", seq, len(files), file_entry)
+            log.warning(
+                "  [%d/%d] No image URL in file entry: %r", seq, len(files), file_entry
+            )
             continue
 
-        log.info("  [%d/%d] Downloading page file=%s ...", seq, len(files), file_id)
+        log.info(
+            "  [%d/%d] Downloading page %s ...", seq, len(files), doc_counter or seq
+        )
 
         image_bytes = session.download_image(image_url)
         if image_bytes is None:
-            log.warning("  [%d/%d] Failed to download image from %s", seq, len(files), image_url)
+            log.warning("  [%d/%d] Failed to download image", seq, len(files))
             continue
 
         try:
             img = Image.open(BytesIO(image_bytes))
-            # Ensure RGB format for JPEG/PDF compatibility
             if img.mode != "RGB":
                 img = img.convert("RGB")
             page_images.append(img)
@@ -169,12 +215,12 @@ def ingest_document(
                 backend_record_id,
                 seq,
                 jpeg_bytes,
-                metadata={"pageLabel": file_id} if file_id else None,
+                metadata={"pageLabel": doc_counter} if doc_counter else None,
             )
 
             time.sleep(cfg.delay * 0.2)
         except Exception as exc:
-            log.warning("  [%d/%d] Failed to process image from %s: %s", seq, len(files), image_url, exc)
+            log.warning("  [%d/%d] Failed to process image: %s", seq, len(files), exc)
             continue
 
     # Build and upload PDF from collected page images
@@ -189,8 +235,8 @@ def ingest_document(
 
     # Mark record as fully ingested
     client.complete_ingest(backend_record_id)
-    known_statuses[obj] = "ocr_pending"
-    log.info("[DONE] obj=%s — %d pages ingested", obj, len(page_images))
+    known_statuses[obj_id] = "ocr_pending"
+    log.info("[DONE] ObjId=%s — %d pages ingested", obj_id, len(page_images))
     return "ok"
 
 
@@ -206,12 +252,14 @@ def run_scrape(
     success, failed, skipped = 0, 0, 0
 
     for i, result in enumerate(results, start=1):
-        obj = result.get("obj", "?")
-        title = result.get("title", obj)
-        log.info("=== [%d/%d] obj=%s %s ===", i, len(results), obj, title)
+        obj_id = str(result.get("ObjId", "?"))
+        title = _person_title(result)
+        log.info("=== [%d/%d] ObjId=%s %s ===", i, len(results), obj_id, title)
 
         try:
-            outcome = ingest_document(client, session, result, known_statuses, dry_run=dry_run)
+            outcome = ingest_document(
+                client, session, result, known_statuses, dry_run=dry_run
+            )
             if outcome == "skipped":
                 skipped += 1
             elif outcome == "ok":
@@ -219,7 +267,7 @@ def run_scrape(
             else:
                 failed += 1
         except Exception as exc:
-            log.error("Failed to ingest obj=%s: %s", obj, exc, exc_info=verbose)
+            log.error("Failed to ingest ObjId=%s: %s", obj_id, exc, exc_info=verbose)
             failed += 1
 
         time.sleep(get_config().delay)
@@ -265,7 +313,8 @@ def main():
         help="Maximum number of documents to ingest (default: 0 = unlimited)",
     )
     parser.add_argument(
-        "-v", "--verbose",
+        "-v",
+        "--verbose",
         action="store_true",
         help="Enable debug logging",
     )
@@ -307,7 +356,9 @@ def main():
         incomplete = sum(1 for s in known_statuses.values() if s == "ingesting")
         log.info(
             "Backend has %d records (%d complete, %d incomplete)",
-            len(known_statuses), already_done, incomplete,
+            len(known_statuses),
+            already_done,
+            incomplete,
         )
 
     session = ArolsenSession()
@@ -335,24 +386,24 @@ def main():
             effective_count = args.max_items
             log.info("Capping at --max-items %d", effective_count)
 
-        # Paginate through results (API max is PAGE_SIZE per request)
+        # Paginate through results (API returns up to PAGE_SIZE per request)
         all_results: list[dict] = []
-        start_index = 0
+        row_num = 0
 
-        while start_index < effective_count:
-            batch_size = min(PAGE_SIZE, effective_count - start_index)
+        while row_num < effective_count:
             log.info(
-                "Fetching results %d–%d of %d...",
-                start_index + 1, start_index + batch_size, effective_count,
+                "Fetching results from row %d (have %d, target %d)...",
+                row_num,
+                len(all_results),
+                effective_count,
             )
-            batch = session.get_person_list(start_index, batch_size)
+            batch = session.get_person_list(row_num=row_num)
             if not batch:
-                log.warning("Empty batch at start_index=%d, stopping pagination", start_index)
+                log.warning("Empty batch at rowNum=%d, stopping pagination", row_num)
                 break
             all_results.extend(batch)
-            start_index += len(batch)
-            if len(batch) < batch_size:
-                # API returned fewer than requested — we've reached the end
+            row_num += len(batch)
+            if len(batch) < PAGE_SIZE:
                 break
             time.sleep(cfg.delay)
 
@@ -364,8 +415,12 @@ def main():
 
         # Ingest all collected results
         s, f, sk = run_scrape(
-            all_results, session, client, known_statuses,
-            args.dry_run, args.verbose,
+            all_results,
+            session,
+            client,
+            known_statuses,
+            args.dry_run,
+            args.verbose,
         )
         total_success += s
         total_failed += f
@@ -380,7 +435,9 @@ def main():
 
     log.info(
         "Finished: %d success, %d failed, %d skipped",
-        total_success, total_failed, total_skipped,
+        total_success,
+        total_failed,
+        total_skipped,
     )
 
 
