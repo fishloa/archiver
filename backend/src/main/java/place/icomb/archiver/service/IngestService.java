@@ -324,7 +324,7 @@ public class IngestService {
 
   private static final int MAX_TEXT_PDF_PAGES = 500;
   private static final long MAX_TEXT_PDF_BYTES = 100 * 1024 * 1024; // 100 MB
-  private static final float RENDER_DPI = 200; // balance between quality and memory
+  private static final float RENDER_DPI = 300;
 
   /**
    * Ingests a text-based PDF: renders each page to an image, extracts embedded text via PDFBox, and
