@@ -1,11 +1,21 @@
 package place.icomb.archiver.service;
 
+import java.awt.image.BufferedImage;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.time.Instant;
 import java.util.HexFormat;
 import java.util.List;
 import java.util.Optional;
+import javax.imageio.ImageIO;
+import org.apache.pdfbox.Loader;
+import org.apache.pdfbox.pdmodel.PDDocument;
+import org.apache.pdfbox.rendering.PDFRenderer;
+import org.apache.pdfbox.text.PDFTextStripper;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -13,17 +23,22 @@ import place.icomb.archiver.dto.IngestRecordRequest;
 import place.icomb.archiver.dto.PageMetadata;
 import place.icomb.archiver.model.Attachment;
 import place.icomb.archiver.model.Page;
+import place.icomb.archiver.model.PageText;
 import place.icomb.archiver.model.Record;
 import place.icomb.archiver.repository.AttachmentRepository;
 import place.icomb.archiver.repository.PageRepository;
+import place.icomb.archiver.repository.PageTextRepository;
 import place.icomb.archiver.repository.RecordRepository;
 
 @Service
 public class IngestService {
 
+  private static final Logger log = LoggerFactory.getLogger(IngestService.class);
+
   private final RecordRepository recordRepository;
   private final AttachmentRepository attachmentRepository;
   private final PageRepository pageRepository;
+  private final PageTextRepository pageTextRepository;
   private final StorageService storageService;
   private final JobService jobService;
   private final JdbcTemplate jdbcTemplate;
@@ -33,6 +48,7 @@ public class IngestService {
       RecordRepository recordRepository,
       AttachmentRepository attachmentRepository,
       PageRepository pageRepository,
+      PageTextRepository pageTextRepository,
       StorageService storageService,
       JobService jobService,
       JdbcTemplate jdbcTemplate,
@@ -40,6 +56,7 @@ public class IngestService {
     this.recordRepository = recordRepository;
     this.attachmentRepository = attachmentRepository;
     this.pageRepository = pageRepository;
+    this.pageTextRepository = pageTextRepository;
     this.storageService = storageService;
     this.jobService = jobService;
     this.jdbcTemplate = jdbcTemplate;
@@ -303,6 +320,123 @@ public class IngestService {
     recordRepository.delete(record);
 
     recordEventService.recordChanged(recordId, "deleted");
+  }
+
+  private static final int MAX_TEXT_PDF_PAGES = 500;
+  private static final long MAX_TEXT_PDF_BYTES = 100 * 1024 * 1024; // 100 MB
+  private static final float RENDER_DPI = 200; // balance between quality and memory
+
+  /**
+   * Ingests a text-based PDF: renders each page to an image, extracts embedded text via PDFBox, and
+   * stores both. Because page_text rows are pre-populated, OCR will be skipped at complete time.
+   */
+  public int addTextPdf(Long recordId, byte[] pdfBytes) {
+    if (pdfBytes.length > MAX_TEXT_PDF_BYTES) {
+      throw new IllegalArgumentException(
+          "PDF too large: " + (pdfBytes.length / 1024 / 1024) + " MB (max 100 MB)");
+    }
+
+    Record record =
+        recordRepository
+            .findById(recordId)
+            .orElseThrow(() -> new IllegalArgumentException("Record not found: " + recordId));
+
+    int pageCount;
+    try (PDDocument doc = Loader.loadPDF(pdfBytes)) {
+      pageCount = doc.getNumberOfPages();
+      if (pageCount > MAX_TEXT_PDF_PAGES) {
+        throw new IllegalArgumentException(
+            "PDF has " + pageCount + " pages (max " + MAX_TEXT_PDF_PAGES + ")");
+      }
+
+      PDFRenderer renderer = new PDFRenderer(doc);
+      PDFTextStripper stripper = new PDFTextStripper();
+
+      for (int i = 0; i < pageCount; i++) {
+        int seq = i + 1;
+
+        // Render page to JPEG — free the BufferedImage promptly to limit memory
+        byte[] imageBytes;
+        int imgW, imgH;
+        {
+          BufferedImage image = renderer.renderImageWithDPI(i, RENDER_DPI);
+          imgW = image.getWidth();
+          imgH = image.getHeight();
+          ByteArrayOutputStream baos = new ByteArrayOutputStream();
+          ImageIO.write(image, "JPEG", baos);
+          imageBytes = baos.toByteArray();
+          image.flush();
+        }
+
+        // Store image
+        String path = storageService.storePageImage(recordId, seq, imageBytes);
+        String sha = sha256(imageBytes);
+
+        Attachment attachment = new Attachment();
+        attachment.setRecordId(recordId);
+        attachment.setRole("page_image");
+        attachment.setPath(path);
+        attachment.setSha256(sha);
+        attachment.setMime("image/jpeg");
+        attachment.setBytes((long) imageBytes.length);
+        attachment.setCreatedAt(Instant.now());
+        attachment = attachmentRepository.save(attachment);
+
+        Page page = new Page();
+        page.setRecordId(recordId);
+        page.setSeq(seq);
+        page.setAttachmentId(attachment.getId());
+        page.setWidth(imgW);
+        page.setHeight(imgH);
+        page = pageRepository.save(page);
+
+        // Extract text from this page
+        stripper.setStartPage(seq);
+        stripper.setEndPage(seq);
+        String text = stripper.getText(doc).strip();
+
+        if (!text.isEmpty()) {
+          PageText pt = new PageText();
+          pt.setPageId(page.getId());
+          pt.setEngine("pdfbox");
+          pt.setConfidence(1.0f);
+          pt.setTextRaw(text);
+          pt.setCreatedAt(Instant.now());
+          pageTextRepository.save(pt);
+        }
+
+        log.info(
+            "Text-PDF page {}/{} for record {} — {} chars",
+            seq,
+            pageCount,
+            recordId,
+            text.length());
+      }
+    } catch (IOException e) {
+      throw new RuntimeException("Failed to process text PDF for record " + recordId, e);
+    }
+
+    // Store original PDF as attachment (outside PDDocument try-with-resources to free it first)
+    String pdfPath = storageService.storePdf(recordId, pdfBytes);
+    String pdfSha = sha256(pdfBytes);
+    Attachment pdfAttachment = new Attachment();
+    pdfAttachment.setRecordId(recordId);
+    pdfAttachment.setRole("original_pdf");
+    pdfAttachment.setPath(pdfPath);
+    pdfAttachment.setSha256(pdfSha);
+    pdfAttachment.setMime("application/pdf");
+    pdfAttachment.setBytes((long) pdfBytes.length);
+    pdfAttachment.setCreatedAt(Instant.now());
+    pdfAttachment = attachmentRepository.save(pdfAttachment);
+
+    record.setPdfAttachmentId(pdfAttachment.getId());
+    record.setPageCount(pageCount);
+    record.setAttachmentCount(pageCount + 1);
+    record.setUpdatedAt(Instant.now());
+    recordRepository.save(record);
+
+    recordEventService.recordChanged(recordId, "updated");
+    return pageCount;
   }
 
   private static String sha256(byte[] data) {

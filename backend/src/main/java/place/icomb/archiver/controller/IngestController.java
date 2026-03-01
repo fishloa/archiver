@@ -152,6 +152,16 @@ public class IngestController {
                 "sha256", attachment.getSha256()));
   }
 
+  @PostMapping(
+      value = "/records/{recordId}/text-pdf",
+      consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+  public ResponseEntity<Map<String, Object>> addTextPdf(
+      @PathVariable Long recordId, @RequestPart("pdf") MultipartFile pdf) throws IOException {
+    int pageCount = ingestService.addTextPdf(recordId, pdf.getBytes());
+    return ResponseEntity.status(HttpStatus.CREATED)
+        .body(Map.of("recordId", recordId, "pages", pageCount, "ocrSkipped", true));
+  }
+
   @PostMapping("/records/{recordId}/repair")
   public ResponseEntity<Map<String, Object>> repairRecord(@PathVariable Long recordId) {
     Record record = ingestService.repairRecord(recordId);
