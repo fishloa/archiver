@@ -37,7 +37,7 @@ public class RecordEventService {
     for (SseEmitter emitter : emitters) {
       try {
         emitter.send(SseEmitter.event().name(event).data(data));
-      } catch (IOException e) {
+      } catch (Exception e) {
         dead.add(emitter);
       }
     }

@@ -105,6 +105,7 @@
 {/if}
 
 <!-- Main layout: image left, info right -->
+{#key page.id}
 <div class="flex flex-col lg:flex-row gap-6 vui-animate-fade-in">
 	<!-- Image -->
 	<div class="lg:flex-1 min-w-0">
@@ -212,3 +213,4 @@
 		{/if}
 	</div>
 {/if}
+{/key}

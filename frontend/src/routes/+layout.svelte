@@ -8,11 +8,13 @@
 
 	let { children, data }: { children: Snippet; data: any } = $props();
 
-	// Initialize language from server-detected preference
+	// Initialize language during SSR (effect is client-only, won't run server-side)
+	// eslint-disable-next-line -- intentionally capturing initial data for SSR
+	initLanguage(data?.language ?? 'en');
+
+	// Re-sync language when server data changes on the client
 	$effect(() => {
-		if (data?.language) {
-			initLanguage(data.language);
-		}
+		initLanguage(data?.language ?? 'en');
 	});
 
 	let collapsed = $state(false);

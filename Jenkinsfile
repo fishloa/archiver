@@ -34,11 +34,13 @@ pipeline {
                     env.BUILD_SCRAPER_FINDBUCH = params.BUILD_ALL || changed('scraper-findbuch') || workerCommonChanged
                     env.BUILD_SCRAPER_OESTA = params.BUILD_ALL || changed('scraper-oesta') || workerCommonChanged
                     env.BUILD_SCRAPER_MATRICULA = params.BUILD_ALL || changed('scraper-matricula') || workerCommonChanged
+                    env.BUILD_SCRAPER_AROLSEN = params.BUILD_ALL || changed('scraper-arolsen') || workerCommonChanged
+                    env.BUILD_SCRAPER_DDB = params.BUILD_ALL || changed('scraper-ddb') || workerCommonChanged
                     env.BUILD_OCR = params.BUILD_ALL || changed('ocr-worker-paddle') || workerCommonChanged
                     env.BUILD_PDF = params.BUILD_ALL || changed('pdf-worker') || workerCommonChanged
                     env.BUILD_TRANSLATE = params.BUILD_ALL || changed('translate-worker') || workerCommonChanged
                     env.BUILD_EMBED = params.BUILD_ALL || changed('embed-worker') || workerCommonChanged
-                    echo "backend=${env.BUILD_BACKEND} frontend=${env.BUILD_FRONTEND} web=${env.BUILD_WEB} oauth2-proxy-apple=${env.BUILD_OAUTH2_PROXY_APPLE} scraper-cz=${env.BUILD_SCRAPER} ebadatelna=${env.BUILD_SCRAPER_EBADATELNA} findbuch=${env.BUILD_SCRAPER_FINDBUCH} oesta=${env.BUILD_SCRAPER_OESTA} matricula=${env.BUILD_SCRAPER_MATRICULA} ocr=${env.BUILD_OCR} pdf=${env.BUILD_PDF} translate=${env.BUILD_TRANSLATE} embed=${env.BUILD_EMBED}"
+                    echo "backend=${env.BUILD_BACKEND} frontend=${env.BUILD_FRONTEND} web=${env.BUILD_WEB} oauth2-proxy-apple=${env.BUILD_OAUTH2_PROXY_APPLE} scraper-cz=${env.BUILD_SCRAPER} ebadatelna=${env.BUILD_SCRAPER_EBADATELNA} findbuch=${env.BUILD_SCRAPER_FINDBUCH} oesta=${env.BUILD_SCRAPER_OESTA} matricula=${env.BUILD_SCRAPER_MATRICULA} arolsen=${env.BUILD_SCRAPER_AROLSEN} ddb=${env.BUILD_SCRAPER_DDB} ocr=${env.BUILD_OCR} pdf=${env.BUILD_PDF} translate=${env.BUILD_TRANSLATE} embed=${env.BUILD_EMBED}"
                 }
             }
         }
@@ -232,6 +234,28 @@ pipeline {
                         script {
                             dockerPush(registry, "${prefix}/scraper-matricula:latest")
                             dockerPush(registry, "${prefix}/scraper-matricula:\${GIT_COMMIT}")
+                        }
+                    }
+                }
+
+                stage('scraper-arolsen') {
+                    when { expression { env.BUILD_SCRAPER_AROLSEN == 'true' } }
+                    steps {
+                        sh "docker build -f scraper-arolsen/Dockerfile -t ${prefix}/scraper-arolsen:latest -t ${prefix}/scraper-arolsen:\${GIT_COMMIT} ."
+                        script {
+                            dockerPush(registry, "${prefix}/scraper-arolsen:latest")
+                            dockerPush(registry, "${prefix}/scraper-arolsen:\${GIT_COMMIT}")
+                        }
+                    }
+                }
+
+                stage('scraper-ddb') {
+                    when { expression { env.BUILD_SCRAPER_DDB == 'true' } }
+                    steps {
+                        sh "docker build -f scraper-ddb/Dockerfile -t ${prefix}/scraper-ddb:latest -t ${prefix}/scraper-ddb:\${GIT_COMMIT} ."
+                        script {
+                            dockerPush(registry, "${prefix}/scraper-ddb:latest")
+                            dockerPush(registry, "${prefix}/scraper-ddb:\${GIT_COMMIT}")
                         }
                     }
                 }
