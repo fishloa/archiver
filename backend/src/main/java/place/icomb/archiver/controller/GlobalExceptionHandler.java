@@ -8,6 +8,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.context.request.async.AsyncRequestNotUsableException;
 import org.springframework.web.context.request.async.AsyncRequestTimeoutException;
 
 @RestControllerAdvice
@@ -18,6 +19,11 @@ public class GlobalExceptionHandler {
   @ExceptionHandler(AsyncRequestTimeoutException.class)
   public void handleAsyncTimeout(AsyncRequestTimeoutException ex) {
     // SSE connections time out normally — not an error
+  }
+
+  @ExceptionHandler(AsyncRequestNotUsableException.class)
+  public void handleAsyncNotUsable(AsyncRequestNotUsableException ex) {
+    // SSE client disconnected (broken pipe) — not an error
   }
 
   @ExceptionHandler(IllegalArgumentException.class)
