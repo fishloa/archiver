@@ -256,13 +256,48 @@ public class IngestService {
       return record;
     }
 
+    int enqueued = 0;
+    for (Page page : pages) {
+      // Skip pages that already have OCR text (repair scenario / text-pdf)
+      Boolean hasText =
+          jdbcTemplate.queryForObject(
+              "SELECT EXISTS(SELECT 1 FROM page_text WHERE page_id = ?)",
+              Boolean.class,
+              page.getId());
+      if (hasText != null && hasText) {
+        continue;
+      }
+      enqueued++;
+    }
+
+    int skipped = pages.size() - enqueued;
+
+    if (enqueued == 0) {
+      // All pages already have text (e.g. text-pdf ingest) — skip OCR entirely
+      record.setStatus("ocr_done");
+      record.setUpdatedAt(Instant.now());
+      record = recordRepository.save(record);
+
+      String detail = pages.size() + " pages (all already OCR'd)";
+      jdbcTemplate.update(
+          "INSERT INTO pipeline_event (record_id, stage, event, detail, created_at) VALUES (?, 'ingest', 'completed', ?, now())",
+          recordId,
+          detail);
+      jdbcTemplate.update(
+          "INSERT INTO pipeline_event (record_id, stage, event, detail, created_at) VALUES (?, 'ocr', 'completed', 'skipped (text pre-populated)', now())",
+          recordId);
+
+      recordEventService.recordChanged(recordId, "completed");
+      jobService.startPostOcrPipeline(recordId);
+      return record;
+    }
+
     record.setStatus("ocr_pending");
     record.setUpdatedAt(Instant.now());
     record = recordRepository.save(record);
 
-    int enqueued = 0;
+    // Now actually enqueue the jobs
     for (Page page : pages) {
-      // Skip pages that already have OCR text (repair scenario)
       Boolean hasText =
           jdbcTemplate.queryForObject(
               "SELECT EXISTS(SELECT 1 FROM page_text WHERE page_id = ?)",
@@ -272,10 +307,8 @@ public class IngestService {
         continue;
       }
       jobService.enqueueJob("ocr_page_paddle", recordId, page.getId(), ocrPayload);
-      enqueued++;
     }
 
-    int skipped = pages.size() - enqueued;
     String detail = enqueued + " pages" + (skipped > 0 ? " (" + skipped + " already OCR'd)" : "");
 
     jdbcTemplate.update(
@@ -287,10 +320,8 @@ public class IngestService {
         recordId,
         enqueued + " jobs enqueued" + (skipped > 0 ? " (" + skipped + " skipped)" : ""));
 
-    if (enqueued > 0) {
-      // Fire NOTIFY so listeners can pick up work immediately
-      jdbcTemplate.execute("NOTIFY ocr_jobs");
-    }
+    // Fire NOTIFY so listeners can pick up work immediately
+    jdbcTemplate.execute("NOTIFY ocr_jobs");
 
     recordEventService.recordChanged(recordId, "completed");
     return record;

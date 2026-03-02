@@ -127,7 +127,7 @@ public class JobService {
   }
 
   /** Enqueue PDF build and translation jobs, then transition to pdf_pending. */
-  private void startPostOcrPipeline(Long recordId) {
+  void startPostOcrPipeline(Long recordId) {
     // Check if this record has any pages
     Long pageCount =
         jdbcTemplate.queryForObject(
