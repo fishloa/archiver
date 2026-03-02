@@ -148,7 +148,7 @@ services:
       replicas: 2
 
   embed-tei:
-    image: ghcr.io/huggingface/text-embeddings-inference:turing-1.7
+    image: ghcr.io/huggingface/text-embeddings-inference:86-1.9
     runtime: nvidia
     environment:
       NVIDIA_VISIBLE_DEVICES: all
