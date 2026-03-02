@@ -3,6 +3,7 @@ package place.icomb.archiver.controller;
 import static io.restassured.RestAssured.given;
 import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.notNullValue;
+import static place.icomb.archiver.TestAuth.PROCESSOR_AUTH_HEADER;
 
 import io.restassured.RestAssured;
 import io.restassured.http.ContentType;
@@ -73,6 +74,7 @@ class IngestControllerTest {
 
     given()
         .contentType(ContentType.JSON)
+        .header("Authorization", PROCESSOR_AUTH_HEADER)
         .body(recordBody)
         .when()
         .post("/ingest/records")

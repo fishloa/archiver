@@ -1,5 +1,6 @@
 package place.icomb.archiver.config;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
@@ -15,9 +16,13 @@ import place.icomb.archiver.repository.AppUserRepository;
 public class SecurityConfig {
 
   private final AppUserRepository appUserRepository;
+  private final String processorToken;
 
-  public SecurityConfig(AppUserRepository appUserRepository) {
+  public SecurityConfig(
+      AppUserRepository appUserRepository,
+      @Value("${archiver.processor.token}") String processorToken) {
     this.appUserRepository = appUserRepository;
+    this.processorToken = processorToken;
   }
 
   @Bean
@@ -26,6 +31,8 @@ public class SecurityConfig {
         .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
         .addFilterBefore(
             new ProxyAuthFilter(appUserRepository), UsernamePasswordAuthenticationFilter.class)
+        .addFilterBefore(
+            new ProcessorTokenFilter(processorToken), UsernamePasswordAuthenticationFilter.class)
         .authorizeHttpRequests(
             auth ->
                 auth
@@ -35,11 +42,18 @@ public class SecurityConfig {
                     // GET requests are read-only — allow anonymous
                     .requestMatchers(HttpMethod.GET, "/api/**")
                     .permitAll()
-                    // Worker/scraper endpoints — own bearer token auth
-                    .requestMatchers("/api/processor/**")
-                    .permitAll()
-                    .requestMatchers("/api/ingest/**")
-                    .permitAll()
+                    // Worker/scraper ingest — bearer token or admin only
+                    .requestMatchers(HttpMethod.POST, "/api/ingest/**")
+                    .hasAnyRole("PROCESSOR", "ADMIN")
+                    .requestMatchers(HttpMethod.PUT, "/api/ingest/**")
+                    .hasAnyRole("PROCESSOR", "ADMIN")
+                    .requestMatchers(HttpMethod.DELETE, "/api/ingest/**")
+                    .hasAnyRole("PROCESSOR", "ADMIN")
+                    // Worker processor endpoints — bearer token or admin only
+                    .requestMatchers(HttpMethod.POST, "/api/processor/**")
+                    .hasAnyRole("PROCESSOR", "ADMIN")
+                    .requestMatchers(HttpMethod.PUT, "/api/processor/**")
+                    .hasAnyRole("PROCESSOR", "ADMIN")
                     // Semantic search is a read-only POST
                     .requestMatchers(HttpMethod.POST, "/api/search/semantic")
                     .permitAll()

@@ -1,6 +1,7 @@
 package place.icomb.archiver.controller;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static place.icomb.archiver.TestAuth.PROCESSOR_AUTH_HEADER;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.ByteArrayOutputStream;
@@ -84,6 +85,7 @@ class TextPdfIngestTest {
             HttpRequest.newBuilder()
                 .uri(URI.create(base + "/ingest/records"))
                 .header("Content-Type", "application/json")
+                .header("Authorization", PROCESSOR_AUTH_HEADER)
                 .POST(HttpRequest.BodyPublishers.ofString(recordBody))
                 .build(),
             HttpResponse.BodyHandlers.ofString());
@@ -104,6 +106,7 @@ class TextPdfIngestTest {
             HttpRequest.newBuilder()
                 .uri(URI.create(base + "/ingest/records/" + recordId + "/text-pdf"))
                 .header("Content-Type", "multipart/form-data; boundary=" + boundary)
+                .header("Authorization", PROCESSOR_AUTH_HEADER)
                 .POST(HttpRequest.BodyPublishers.ofByteArray(multipartBody))
                 .build(),
             HttpResponse.BodyHandlers.ofString());
@@ -135,6 +138,7 @@ class TextPdfIngestTest {
         http.send(
             HttpRequest.newBuilder()
                 .uri(URI.create(base + "/ingest/records/" + recordId + "/complete"))
+                .header("Authorization", PROCESSOR_AUTH_HEADER)
                 .POST(HttpRequest.BodyPublishers.noBody())
                 .build(),
             HttpResponse.BodyHandlers.ofString());

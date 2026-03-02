@@ -35,8 +35,15 @@ class BackendClient:
             timeout=60.0,
             max_retries=retries,
             retry_backoff=[2, 4, 8, 16, 30],
-            headers={"User-Agent": "scraper-arolsen/0.1"},
+            headers=self._build_headers(cfg),
         )
+
+    @staticmethod
+    def _build_headers(cfg):
+        headers = {"User-Agent": "scraper-arolsen/0.1"}
+        if cfg.processor_token:
+            headers["Authorization"] = f"Bearer {cfg.processor_token}"
+        return headers
 
     def close(self):
         self._client.close()

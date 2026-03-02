@@ -35,8 +35,15 @@ class BackendClient:
             timeout=60.0,
             max_retries=retries,
             retry_backoff=[2, 4, 8, 16, 30],
-            headers={"User-Agent": "scraper-cz/0.1"},
+            headers=self._build_headers(cfg),
         )
+
+    @staticmethod
+    def _build_headers(cfg):
+        headers = {"User-Agent": "scraper-cz/0.1"}
+        if cfg.processor_token:
+            headers["Authorization"] = f"Bearer {cfg.processor_token}"
+        return headers
 
     def close(self):
         self._client.close()
@@ -84,7 +91,9 @@ class BackendClient:
         resp = self._client.post("/api/ingest/records", json=body)
         data = resp.json()
         record_id = data.get("id") or data.get("record_id")
-        log.info("Created record %s for %s/%s", record_id, source_system, source_record_id)
+        log.info(
+            "Created record %s for %s/%s", record_id, source_system, source_record_id
+        )
         return record_id
 
     def upload_page(
@@ -146,7 +155,9 @@ class BackendClient:
         self._client.delete(f"/api/ingest/records/{record_id}")
         log.info("Deleted record %s", record_id)
 
-    def delete_record_by_source(self, source_system: str, source_record_id: str) -> bool:
+    def delete_record_by_source(
+        self, source_system: str, source_record_id: str
+    ) -> bool:
         """Delete a record by source system + ID. Returns True if deleted."""
         try:
             self._client.delete(
@@ -189,7 +200,9 @@ class BackendClient:
         data = resp.json()
         log.info(
             "Repair record %s — status=%s, existing pages: %s",
-            record_id, data.get("status"), data.get("existingPages"),
+            record_id,
+            data.get("status"),
+            data.get("existingPages"),
         )
         return data
 
