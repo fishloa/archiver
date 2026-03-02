@@ -54,6 +54,20 @@ public class StorageService {
     return relativePath;
   }
 
+  /** Streams a derivative file to disk without buffering in memory. */
+  public String storeDerivStream(Long recordId, String derivType, String filename, InputStream in) {
+    String relativePath =
+        String.format("records/%d/derivatives/%s/%s", recordId, derivType, filename);
+    try {
+      Path fullPath = storageRoot.resolve(relativePath);
+      Files.createDirectories(fullPath.getParent());
+      Files.copy(in, fullPath, java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+    } catch (IOException e) {
+      throw new UncheckedIOException("Failed to write file: " + relativePath, e);
+    }
+    return relativePath;
+  }
+
   /** Resolves the full filesystem path for an attachment. */
   public Path getPath(Attachment attachment) {
     return storageRoot.resolve(attachment.getPath());

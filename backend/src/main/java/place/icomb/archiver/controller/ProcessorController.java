@@ -235,7 +235,8 @@ public class ProcessorController {
       throws IOException {
     validateToken(authHeader);
 
-    String path = storageService.storeDeriv(recordId, "pdf", "searchable.pdf", pdf.getBytes());
+    String path =
+        storageService.storeDerivStream(recordId, "pdf", "searchable.pdf", pdf.getInputStream());
 
     Attachment attachment = new Attachment();
     attachment.setRecordId(recordId);
