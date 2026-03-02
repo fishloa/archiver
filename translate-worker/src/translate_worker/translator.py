@@ -121,7 +121,7 @@ class Translator:
         inputs = {k: v.to(self._device) for k, v in inputs.items()}
 
         with torch.no_grad():
-            translated = model.generate(**inputs)
+            translated = model.generate(**inputs, no_repeat_ngram_size=3)
 
         return tokenizer.batch_decode(translated, skip_special_tokens=True)[0]
 
