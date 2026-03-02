@@ -232,16 +232,15 @@ public class JobService {
     }
     total += staleClaimed;
 
-    // --- Pass 2: Retry failed jobs (reset to pending, clear error) ---
+    // --- Pass 2: Retry all failed jobs (reset to pending, clear error) ---
     int failedRetried =
         jdbcTemplate.update(
             """
-            UPDATE job SET status = 'pending', error = NULL, finished_at = NULL
+            UPDATE job SET status = 'pending', error = NULL, finished_at = NULL, attempts = 0
             WHERE status = 'failed'
-              AND attempts < 3
             """);
     if (failedRetried > 0) {
-      log.info("Audit: retried {} failed jobs (attempts < 3)", failedRetried);
+      log.info("Audit: retried {} failed jobs", failedRetried);
     }
     total += failedRetried;
 
@@ -317,6 +316,34 @@ public class JobService {
       startPostOcrPipeline(recordId);
     }
     total += ocrPendingNoPages.size();
+
+    // --- Pass 3c: ocr_pending records with pages but no pending/claimed OCR jobs
+    //     (all page text was pre-populated, e.g. text-pdf ingest) ---
+    List<Long> ocrPendingAllDone =
+        jdbcTemplate.queryForList(
+            """
+            SELECT r.id FROM record r
+            WHERE r.status = 'ocr_pending'
+              AND EXISTS (SELECT 1 FROM page p WHERE p.record_id = r.id)
+              AND NOT EXISTS (
+                SELECT 1 FROM job j
+                WHERE j.record_id = r.id
+                  AND j.kind IN ('ocr_page_paddle', 'ocr_page_abbyy')
+                  AND j.status IN ('pending', 'claimed')
+              )
+            ORDER BY r.id
+            """,
+            Long.class);
+
+    for (Long recordId : ocrPendingAllDone) {
+      jdbcTemplate.update(
+          "UPDATE record SET status = 'ocr_done', updated_at = now() WHERE id = ?", recordId);
+      log.info("Audit: record {} ocr_pending → ocr_done (all text pre-populated)", recordId);
+      logPipelineEvent(recordId, "ocr", "completed", "all text pre-populated");
+      recordEventService.recordChanged(recordId, "status");
+      startPostOcrPipeline(recordId);
+    }
+    total += ocrPendingAllDone.size();
 
     // --- Pass 4: ocr_done records with no build_searchable_pdf job ---
     List<Long> ocrDoneStuck =
@@ -566,12 +593,14 @@ public class JobService {
 
     log.info(
         "Pipeline audit complete: {} stale jobs reset, {} failed retried, {} ingesting fixed, "
-            + "{} ocr_done re-queued, {} pdf_pending nudged, {} pdf_done→translating, {} pdf_done→embedding, "
+            + "{} ocr_pending text-done, {} ocr_done re-queued, {} pdf_pending nudged, "
+            + "{} pdf_done→translating, {} pdf_done→embedding, "
             + "{} translating→embedding, {} translation events backfilled, {} embedding→complete, "
             + "{} complete→embedding backfill ({} total)",
         staleClaimed,
         failedRetried,
         ingestingStuck.size(),
+        ocrPendingAllDone.size(),
         ocrDoneStuck.size(),
         pdfPendingStuck.size(),
         pdfDoneToTranslating,

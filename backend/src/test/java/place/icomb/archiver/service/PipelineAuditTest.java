@@ -289,19 +289,19 @@ class PipelineAuditTest {
   }
 
   @Test
-  void pass2_failedJobAtThreeAttempts_notRetried() {
+  void pass2_failedJobAtThreeAttempts_alsoRetried() {
     Long archiveId = createArchive();
     Long recordId = createRecord(archiveId, "ocr_pending", 1);
     Long pageId = createPage(recordId, 1);
 
-    // attempts = 3 → should NOT be reset (condition is attempts < 3)
+    // All failed jobs are now retried regardless of attempt count
     Long jobId =
         createJobWithError(
             recordId, pageId, "ocr_page_paddle", "failed", 3, "Persistent OCR failure");
 
     jobService.auditPipeline();
 
-    assertThat(getJobStatus(jobId)).isEqualTo("failed");
+    assertThat(getJobStatus(jobId)).isEqualTo("pending");
   }
 
   @Test
@@ -670,16 +670,20 @@ class PipelineAuditTest {
   }
 
   @Test
-  void pass6_pdfDoneAllTranslationsFailed_backfillsEvent() {
+  void pass6_pdfDoneAllTranslationsCompleted_withErrors_backfillsEvent() {
     Long archiveId = createArchive();
     Long recordId = createRecord(archiveId, "pdf_done", 1);
     Long pageId = createPage(recordId, 1);
 
-    // All translate jobs failed (still counts as "done" for audit purposes)
-    Long translatePageJob =
-        createJobWithError(recordId, pageId, "translate_page", "failed", 3, "Translation error");
-    Long translateRecordJob =
-        createJobWithError(recordId, null, "translate_record", "failed", 3, "Translation error");
+    // All translate jobs completed (some may have had errors but still completed)
+    Long translatePageJob = createJob(recordId, pageId, "translate_page", "completed", 1);
+    jdbc.sql("UPDATE job SET finished_at = now() WHERE id = :id")
+        .param("id", translatePageJob)
+        .update();
+    Long translateRecordJob = createJob(recordId, null, "translate_record", "completed", 1);
+    jdbc.sql("UPDATE job SET finished_at = now() WHERE id = :id")
+        .param("id", translateRecordJob)
+        .update();
 
     // No translation/completed event
 
