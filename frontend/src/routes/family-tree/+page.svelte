@@ -131,8 +131,34 @@
 						<div class="family-row">
 							<span class="family-label">{$t('family.parent')}</span>
 							<button class="family-link" onclick={() => navigatePerson(p.parent.id)}>
-								{p.parent.name} <ChevronRight size={14} />
+								<span class="link-name">{p.parent.name}</span>
+								{#if p.parent.birthYear || p.parent.deathYear}
+									<span class="link-dates">
+										{#if p.parent.birthYear}<span class="date-birth">*{p.parent.birthYear}</span>{/if}
+										{#if p.parent.deathYear}<span class="date-death">&dagger;{p.parent.deathYear}</span>{/if}
+									</span>
+								{/if}
+								<ChevronRight size={14} />
 							</button>
+						</div>
+					{/if}
+					{#if p.siblings && p.siblings.length > 0}
+						<div class="family-row">
+							<span class="family-label">{$t('family.siblings')}</span>
+							<div class="family-chips">
+								{#each p.siblings as sib}
+									<button class="family-link" onclick={() => navigatePerson(sib.id)}>
+										<span class="link-name">{sib.name}</span>
+										{#if sib.birthYear || sib.deathYear}
+											<span class="link-dates">
+												{#if sib.birthYear}<span class="date-birth">*{sib.birthYear}</span>{/if}
+												{#if sib.deathYear}<span class="date-death">&dagger;{sib.deathYear}</span>{/if}
+											</span>
+										{/if}
+										<ChevronRight size={14} />
+									</button>
+								{/each}
+							</div>
 						</div>
 					{/if}
 					{#if p.children && p.children.length > 0}
@@ -141,7 +167,14 @@
 							<div class="family-chips">
 								{#each p.children as child}
 									<button class="family-link" onclick={() => navigatePerson(child.id)}>
-										{child.name} <ChevronRight size={14} />
+										<span class="link-name">{child.name}</span>
+										{#if child.birthYear || child.deathYear}
+											<span class="link-dates">
+												{#if child.birthYear}<span class="date-birth">*{child.birthYear}</span>{/if}
+												{#if child.deathYear}<span class="date-death">&dagger;{child.deathYear}</span>{/if}
+											</span>
+										{/if}
+										<ChevronRight size={14} />
 									</button>
 								{/each}
 							</div>
@@ -471,8 +504,8 @@
 	.family-link {
 		display: inline-flex;
 		align-items: center;
-		gap: 2px;
-		padding: 3px 10px;
+		gap: 4px;
+		padding: 4px 10px;
 		border: 1px solid var(--vui-border);
 		border-radius: 16px;
 		background: var(--vui-surface);
@@ -487,6 +520,26 @@
 	.family-link:hover {
 		border-color: var(--vui-accent);
 		background: var(--vui-accent-dim);
+	}
+
+	.link-name {
+		font-weight: 600;
+	}
+
+	.link-dates {
+		display: inline-flex;
+		gap: 4px;
+		font-size: 11px;
+		font-weight: 700;
+		opacity: 0.8;
+	}
+
+	.link-dates .date-birth {
+		color: var(--vui-accent);
+	}
+
+	.link-dates .date-death {
+		color: #f87171;
 	}
 
 	.detail-ancestor {

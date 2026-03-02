@@ -103,6 +103,7 @@ export const cs: Record<MessageKey, string> = {
 	'family.searchPlaceholder': 'Hledat podle jména...',
 	'family.noResults': 'Žádné výsledky pro',
 	'family.parent': 'Rodič',
+	'family.siblings': 'Sourozenci',
 	'family.children': 'Děti',
 	'family.commonAncestor': 'Společný předek',
 	'family.genFromPerson': 'gen. od osoby',

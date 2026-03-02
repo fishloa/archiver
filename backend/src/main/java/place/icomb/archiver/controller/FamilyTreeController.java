@@ -89,20 +89,40 @@ public class FamilyTreeController {
     m.put("depth", p.depth);
 
     if (p.parent != null) {
-      m.put("parent", Map.of("id", p.parent.id, "name", p.parent.name));
+      m.put("parent", personRef(p.parent));
     } else {
       m.put("parent", null);
     }
 
     List<Map<String, Object>> children = new ArrayList<>();
     for (Person child : p.children) {
-      children.add(Map.of("id", child.id, "name", child.name));
+      children.add(personRef(child));
     }
     m.put("children", children);
+
+    // Siblings = parent's other children (excluding self)
+    List<Map<String, Object>> siblings = new ArrayList<>();
+    if (p.parent != null) {
+      for (Person sibling : p.parent.children) {
+        if (sibling.id != p.id) {
+          siblings.add(personRef(sibling));
+        }
+      }
+    }
+    m.put("siblings", siblings);
     m.put("spouses", p.spouses);
     m.put("events", familyTreeService.getLifeEvents(p));
 
     return ResponseEntity.ok(m);
+  }
+
+  private static Map<String, Object> personRef(Person p) {
+    Map<String, Object> ref = new LinkedHashMap<>();
+    ref.put("id", p.id);
+    ref.put("name", p.name);
+    ref.put("birthYear", p.birthYear);
+    ref.put("deathYear", p.deathYear);
+    return ref;
   }
 
   @GetMapping("/page-matches/{pageId}")

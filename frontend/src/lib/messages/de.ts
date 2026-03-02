@@ -103,6 +103,7 @@ export const de: Record<MessageKey, string> = {
 	'family.searchPlaceholder': 'Nach Name suchen...',
 	'family.noResults': 'Keine Ergebnisse f\u00fcr',
 	'family.parent': 'Elternteil',
+	'family.siblings': 'Geschwister',
 	'family.children': 'Kinder',
 	'family.commonAncestor': 'Gemeinsamer Vorfahre',
 	'family.genFromPerson': 'Gen. von Person',

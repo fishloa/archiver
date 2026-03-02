@@ -101,6 +101,7 @@ export const en = {
 	'family.searchPlaceholder': 'Search by name...',
 	'family.noResults': 'No results found for',
 	'family.parent': 'Parent',
+	'family.siblings': 'Siblings',
 	'family.children': 'Children',
 	'family.commonAncestor': 'Common ancestor',
 	'family.genFromPerson': 'gen. from person',
