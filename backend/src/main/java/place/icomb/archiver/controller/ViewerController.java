@@ -1,10 +1,12 @@
 package place.icomb.archiver.controller;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import org.springframework.core.io.ByteArrayResource;
 import org.springframework.core.io.Resource;
 import org.springframework.http.HttpHeaders;
@@ -14,6 +16,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -611,6 +614,43 @@ public class ViewerController {
   public ResponseEntity<Map<String, Object>> runAudit() {
     int fixed = jobService.auditPipeline();
     return ResponseEntity.ok(Map.of("fixed", fixed));
+  }
+
+  @SuppressWarnings("unchecked")
+  @PostMapping("/admin/records/reset-pipeline")
+  public ResponseEntity<Map<String, Object>> resetPipeline(@RequestBody Map<String, Object> body) {
+    // Validate targetStage
+    String targetStage = (String) body.get("targetStage");
+    if (targetStage == null
+        || !Set.of("ocr_pending", "translating", "embedding").contains(targetStage)) {
+      return ResponseEntity.badRequest()
+          .body(
+              Map.of("error", "Invalid targetStage. Must be: ocr_pending, translating, embedding"));
+    }
+
+    // Validate recordIds
+    List<Number> rawIds = (List<Number>) body.get("recordIds");
+    if (rawIds == null || rawIds.isEmpty()) {
+      return ResponseEntity.badRequest().body(Map.of("error", "recordIds must be non-empty"));
+    }
+    if (rawIds.size() > 100) {
+      return ResponseEntity.badRequest().body(Map.of("error", "Maximum 100 records per request"));
+    }
+
+    List<Map<String, Object>> results = new ArrayList<>();
+    for (Number rawId : rawIds) {
+      long recordId = rawId.longValue();
+      try {
+        results.add(jobService.resetRecordToStage(recordId, targetStage));
+      } catch (IllegalArgumentException e) {
+        Map<String, Object> err = new LinkedHashMap<>();
+        err.put("recordId", recordId);
+        err.put("error", e.getMessage());
+        results.add(err);
+      }
+    }
+
+    return ResponseEntity.ok(Map.of("results", results));
   }
 
   @GetMapping("/admin/stats")

@@ -1,7 +1,13 @@
-import { fetchRecord, fetchRecordPages, fetchRecordTimeline, fetchRecordPersonMatches } from '$lib/server/api';
+import {
+	fetchRecord,
+	fetchRecordPages,
+	fetchRecordTimeline,
+	fetchRecordPersonMatches,
+	resetRecordPipeline,
+} from '$lib/server/api';
 import type { RecordPersonMatch } from '$lib/server/api';
-import { error } from '@sveltejs/kit';
-import type { PageServerLoad } from './$types';
+import { error, fail } from '@sveltejs/kit';
+import type { PageServerLoad, Actions } from './$types';
 
 export const load: PageServerLoad = async ({ params }) => {
 	const id = Number(params.id);
@@ -11,7 +17,7 @@ export const load: PageServerLoad = async ({ params }) => {
 		const [record, pages, timeline] = await Promise.all([
 			fetchRecord(id),
 			fetchRecordPages(id),
-			fetchRecordTimeline(id)
+			fetchRecordTimeline(id),
 		]);
 
 		// Fetch person matches (non-blocking)
@@ -27,4 +33,37 @@ export const load: PageServerLoad = async ({ params }) => {
 		if (e && typeof e === 'object' && 'status' in e) throw e;
 		error(404, 'Record not found');
 	}
+};
+
+export const actions: Actions = {
+	resetOcr: async ({ params, locals }) => {
+		const id = Number(params.id);
+		if (!locals.userEmail) return fail(401, { error: 'Not authenticated' });
+		try {
+			const res = await resetRecordPipeline(locals.userEmail, [id], 'ocr_pending');
+			return { success: true, results: res.results };
+		} catch (e) {
+			return fail(500, { error: String(e) });
+		}
+	},
+	resetTranslate: async ({ params, locals }) => {
+		const id = Number(params.id);
+		if (!locals.userEmail) return fail(401, { error: 'Not authenticated' });
+		try {
+			const res = await resetRecordPipeline(locals.userEmail, [id], 'translating');
+			return { success: true, results: res.results };
+		} catch (e) {
+			return fail(500, { error: String(e) });
+		}
+	},
+	resetEmbed: async ({ params, locals }) => {
+		const id = Number(params.id);
+		if (!locals.userEmail) return fail(401, { error: 'Not authenticated' });
+		try {
+			const res = await resetRecordPipeline(locals.userEmail, [id], 'embedding');
+			return { success: true, results: res.results };
+		} catch (e) {
+			return fail(500, { error: String(e) });
+		}
+	},
 };

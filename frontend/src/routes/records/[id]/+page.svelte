@@ -6,12 +6,13 @@
 		ArrowLeft, Download, FileDown, ChevronDown, Clock,
 		CircleCheckBig, AlertTriangle, Play, ExternalLink,
 		FileText, Hash, Calendar, Archive, Bookmark, Layers,
-		BookmarkCheck, X, Users
+		BookmarkCheck, X, Users, RotateCcw, ShieldAlert
 	} from 'lucide-svelte';
 	import type { PipelineEvent, JobStat } from '$lib/server/api';
 	import { isKept, keptCount, keptPagesParam, clearKept } from '$lib/kept-pages.svelte';
+	import { enhance } from '$app/forms';
 
-	let { data } = $props();
+	let { data, form } = $props();
 	let record = $derived(data.record);
 	let pages = $derived(data.pages);
 	let timeline = $derived(data.timeline);
@@ -25,6 +26,9 @@
 	let rawOpen = $state(false);
 	let timelineOpen = $state(false);
 	let exportPages = $state('');
+	let adminDropdownOpen = $state(false);
+	let confirmAction = $state<string | null>(null);
+	let isAdmin = $derived(data.user?.role === 'admin');
 
 	let kCount = $derived(keptCount(record.id));
 	let kParam = $derived(keptPagesParam(record.id));
@@ -194,6 +198,97 @@
 				>
 					<FileDown size={13} strokeWidth={2} /> {$t('record.export')}
 				</a>
+			</div>
+		{/if}
+	</div>
+{/if}
+
+<!-- Admin pipeline reset -->
+{#if isAdmin}
+	<div class="mb-6 py-3 px-4 rounded-lg bg-surface border border-border vui-animate-fade-in">
+		<div class="flex items-center gap-2">
+			<ShieldAlert size={14} strokeWidth={2} class="text-text-sub" />
+			<span class="text-[length:var(--vui-text-xs)] font-semibold text-text-sub uppercase tracking-wider">{$t('admin.adminActions')}</span>
+
+			<div class="relative ml-auto">
+				<button
+					class="vui-btn vui-btn-ghost vui-btn-sm"
+					onclick={() => adminDropdownOpen = !adminDropdownOpen}
+				>
+					<RotateCcw size={13} strokeWidth={2} />
+					{$t('admin.resetPipeline')}
+					<ChevronDown size={12} strokeWidth={2} class="ml-1" />
+				</button>
+
+				{#if adminDropdownOpen}
+					<!-- svelte-ignore a11y_no_static_element_interactions -->
+					<div
+						class="absolute right-0 top-full mt-1 w-64 rounded-lg border border-border bg-surface shadow-lg z-20 p-1"
+						onmouseleave={() => adminDropdownOpen = false}
+					>
+						<button
+							class="w-full text-left px-3 py-2 rounded-md text-[length:var(--vui-text-sm)] hover:bg-bg-deep vui-transition"
+							onclick={() => { confirmAction = 'resetOcr'; adminDropdownOpen = false; }}
+						>
+							<div class="font-medium">{$t('admin.rerunOcr')}</div>
+							<div class="text-[length:var(--vui-text-xs)] text-text-sub">{$t('admin.rerunOcrDesc')}</div>
+						</button>
+						<button
+							class="w-full text-left px-3 py-2 rounded-md text-[length:var(--vui-text-sm)] hover:bg-bg-deep vui-transition"
+							onclick={() => { confirmAction = 'resetTranslate'; adminDropdownOpen = false; }}
+						>
+							<div class="font-medium">{$t('admin.retranslate')}</div>
+							<div class="text-[length:var(--vui-text-xs)] text-text-sub">{$t('admin.retranslateDesc')}</div>
+						</button>
+						<button
+							class="w-full text-left px-3 py-2 rounded-md text-[length:var(--vui-text-sm)] hover:bg-bg-deep vui-transition"
+							onclick={() => { confirmAction = 'resetEmbed'; adminDropdownOpen = false; }}
+						>
+							<div class="font-medium">{$t('admin.reembed')}</div>
+							<div class="text-[length:var(--vui-text-xs)] text-text-sub">{$t('admin.reembedDesc')}</div>
+						</button>
+					</div>
+				{/if}
+			</div>
+		</div>
+
+		{#if confirmAction}
+			<div class="mt-3 p-3 rounded-md bg-bg-deep border border-border">
+				<p class="text-[length:var(--vui-text-sm)] mb-3">
+					{#if confirmAction === 'resetOcr'}
+						<strong class="text-danger">{$t('admin.destructive')}</strong> {$t('admin.confirmResetOcr')}
+					{:else if confirmAction === 'resetTranslate'}
+						{$t('admin.confirmResetTranslate')}
+					{:else}
+						{$t('admin.confirmResetEmbed')}
+					{/if}
+				</p>
+				<div class="flex items-center gap-2">
+					<form method="POST" action="?/{confirmAction}" use:enhance={() => {
+						return async ({ update }) => {
+							confirmAction = null;
+							await update();
+						};
+					}}>
+						<button type="submit" class="vui-btn vui-btn-sm {confirmAction === 'resetOcr' ? '!bg-danger !border-danger !text-white' : 'vui-btn-primary'}">
+							{$t('admin.confirm')}
+						</button>
+					</form>
+					<button class="vui-btn vui-btn-ghost vui-btn-sm" onclick={() => confirmAction = null}>
+						{$t('admin.cancel')}
+					</button>
+				</div>
+			</div>
+		{/if}
+
+		{#if form?.success}
+			<div class="mt-3 p-2 rounded-md bg-emerald-950/30 border border-emerald-800 text-[length:var(--vui-text-sm)] text-emerald-400">
+				{$t('admin.resetSuccess')}
+			</div>
+		{/if}
+		{#if form?.error}
+			<div class="mt-3 p-2 rounded-md bg-red-950/30 border border-red-800 text-[length:var(--vui-text-sm)] text-danger">
+				{$t('admin.resetError', form.error)}
 			</div>
 		{/if}
 	</div>

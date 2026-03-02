@@ -174,6 +174,23 @@ export const de: Record<MessageKey, string> = {
 	'admin.col.detail': 'Detail',
 	'admin.col.record': 'Dokument',
 
+	// Admin pipeline reset
+	'admin.resetPipeline': 'Pipeline zurücksetzen',
+	'admin.adminActions': 'Admin-Aktionen',
+	'admin.rerunOcr': 'OCR wiederholen',
+	'admin.rerunOcrDesc': 'Löscht Text, Übersetzungen, PDF, Einbettungen',
+	'admin.retranslate': 'Neu übersetzen',
+	'admin.retranslateDesc': 'Löscht Übersetzungen und Einbettungen',
+	'admin.reembed': 'Neu einbetten',
+	'admin.reembedDesc': 'Löscht nur Einbettungen',
+	'admin.confirmResetOcr': 'Dies löscht den gesamten OCR-Text, Übersetzungen, das durchsuchbare PDF und Einbettungen für diesen Datensatz und führt OCR erneut durch.',
+	'admin.confirmResetTranslate': 'Dies löscht alle Übersetzungen und Einbettungen und übersetzt erneut aus dem vorhandenen OCR-Text.',
+	'admin.confirmResetEmbed': 'Dies löscht Einbettungen und bettet den vorhandenen Text erneut ein.',
+	'admin.destructive': 'Destruktiv:',
+	'admin.confirm': 'Bestätigen',
+	'admin.resetSuccess': 'Pipeline erfolgreich zurückgesetzt. Jobs wurden eingereiht.',
+	'admin.resetError': 'Fehler: {0}',
+
 	// Profile
 	'profile.title': 'Profil',
 	'profile.displayName': 'Anzeigename',

@@ -1,11 +1,15 @@
 package place.icomb.archiver.service;
 
 import java.time.Instant;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import place.icomb.archiver.model.Job;
@@ -611,6 +615,176 @@ public class JobService {
         completeUnembedded.size(),
         total);
     return total;
+  }
+
+  /**
+   * Resets a record to a specific pipeline stage, cleaning up downstream data and enqueuing new
+   * jobs.
+   *
+   * @return summary map with recordId, targetStage, jobsEnqueued, jobsCancelled
+   */
+  @Transactional
+  public Map<String, Object> resetRecordToStage(Long recordId, String targetStage) {
+    Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+    String adminEmail = auth != null ? auth.getName() : "unknown";
+    // Verify record exists
+    Long exists =
+        jdbcTemplate.queryForObject(
+            "SELECT count(*) FROM record WHERE id = ?", Long.class, recordId);
+    if (exists == null || exists == 0) {
+      throw new IllegalArgumentException("Record not found: " + recordId);
+    }
+
+    int jobsCancelled = 0;
+    int jobsEnqueued = 0;
+
+    switch (targetStage) {
+      case "ocr_pending" -> {
+        // Cancel all pending/claimed jobs for this record
+        jobsCancelled =
+            jdbcTemplate.update(
+                """
+                UPDATE job SET status = 'completed', error = 'cancelled by admin reset',
+                  finished_at = now()
+                WHERE record_id = ? AND status IN ('pending', 'claimed')
+                """,
+                recordId);
+
+        // Delete text chunks
+        jdbcTemplate.update("DELETE FROM text_chunk WHERE record_id = ?", recordId);
+
+        // Delete page_text for all pages
+        jdbcTemplate.update(
+            "DELETE FROM page_text WHERE page_id IN (SELECT id FROM page WHERE record_id = ?)",
+            recordId);
+
+        // Delete searchable PDF attachment
+        jdbcTemplate.update(
+            "DELETE FROM attachment WHERE record_id = ? AND role = 'searchable_pdf'", recordId);
+
+        // Clear translated fields and pdf_attachment_id
+        jdbcTemplate.update(
+            "UPDATE record SET title_en = NULL, description_en = NULL, pdf_attachment_id = NULL, status = 'ocr_pending', updated_at = now() WHERE id = ?",
+            recordId);
+
+        // Enqueue OCR jobs for each page
+        var langRow = jdbcTemplate.queryForMap("SELECT lang FROM record WHERE id = ?", recordId);
+        String lang = (String) langRow.get("lang");
+        String ocrPayload = lang != null ? "{\"lang\":\"" + lang + "\"}" : null;
+        List<Long> pageIds =
+            jdbcTemplate.queryForList(
+                "SELECT id FROM page WHERE record_id = ? ORDER BY seq", Long.class, recordId);
+        for (Long pageId : pageIds) {
+          enqueueJob("ocr_page_paddle", recordId, pageId, ocrPayload);
+          jobsEnqueued++;
+        }
+      }
+
+      case "translating" -> {
+        // Cancel pending/claimed translate and embed jobs
+        jobsCancelled =
+            jdbcTemplate.update(
+                """
+                UPDATE job SET status = 'completed', error = 'cancelled by admin reset',
+                  finished_at = now()
+                WHERE record_id = ?
+                  AND kind IN ('translate_page', 'translate_record', 'embed_record')
+                  AND status IN ('pending', 'claimed')
+                """,
+                recordId);
+
+        // Delete text chunks
+        jdbcTemplate.update("DELETE FROM text_chunk WHERE record_id = ?", recordId);
+
+        // Clear page translations
+        jdbcTemplate.update(
+            """
+            UPDATE page_text SET text_en = NULL
+            WHERE page_id IN (SELECT id FROM page WHERE record_id = ?)
+            """,
+            recordId);
+
+        // Clear record translations
+        jdbcTemplate.update(
+            "UPDATE record SET title_en = NULL, description_en = NULL, status = 'translating', updated_at = now() WHERE id = ?",
+            recordId);
+
+        // Enqueue translate jobs
+        var langRow =
+            jdbcTemplate.queryForMap(
+                "SELECT lang, metadata_lang FROM record WHERE id = ?", recordId);
+        String contentLang = (String) langRow.get("lang");
+        String metadataLang = (String) langRow.get("metadata_lang");
+
+        // Metadata translation
+        if (metadataLang == null || !"en".equals(metadataLang)) {
+          String metaPayload = metadataLang != null ? "{\"lang\":\"" + metadataLang + "\"}" : null;
+          enqueueJob("translate_record", recordId, null, metaPayload);
+          jobsEnqueued++;
+        }
+
+        // Page translations
+        if (contentLang == null || !"en".equals(contentLang)) {
+          List<Long> pageIds =
+              jdbcTemplate.queryForList(
+                  "SELECT p.id FROM page p WHERE p.record_id = ? ORDER BY p.seq",
+                  Long.class,
+                  recordId);
+          for (Long pageId : pageIds) {
+            enqueueJob("translate_page", recordId, pageId, null);
+            jobsEnqueued++;
+          }
+        }
+      }
+
+      case "embedding" -> {
+        // Cancel pending/claimed embed jobs
+        jobsCancelled =
+            jdbcTemplate.update(
+                """
+                UPDATE job SET status = 'completed', error = 'cancelled by admin reset',
+                  finished_at = now()
+                WHERE record_id = ? AND kind = 'embed_record'
+                  AND status IN ('pending', 'claimed')
+                """,
+                recordId);
+
+        // Delete text chunks
+        jdbcTemplate.update("DELETE FROM text_chunk WHERE record_id = ?", recordId);
+
+        // Set status
+        jdbcTemplate.update(
+            "UPDATE record SET status = 'embedding', updated_at = now() WHERE id = ?", recordId);
+
+        // Enqueue embed job
+        enqueueJob("embed_record", recordId, null, null);
+        jobsEnqueued++;
+      }
+
+      default -> throw new IllegalArgumentException("Invalid target stage: " + targetStage);
+    }
+
+    // Log pipeline event
+    logPipelineEvent(
+        recordId, "admin", "admin_reset", "Reset to " + targetStage + " by " + adminEmail);
+
+    // Notify UI
+    recordEventService.recordChanged(recordId, "status");
+
+    log.info(
+        "Admin reset: record {} → {} by {} ({} jobs cancelled, {} jobs enqueued)",
+        recordId,
+        targetStage,
+        adminEmail,
+        jobsCancelled,
+        jobsEnqueued);
+
+    Map<String, Object> result = new LinkedHashMap<>();
+    result.put("recordId", recordId);
+    result.put("targetStage", targetStage);
+    result.put("jobsEnqueued", jobsEnqueued);
+    result.put("jobsCancelled", jobsCancelled);
+    return result;
   }
 
   /** Marks a job as failed with an error message. */

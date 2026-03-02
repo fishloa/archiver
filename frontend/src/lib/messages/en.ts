@@ -172,6 +172,23 @@ export const en = {
 	'admin.col.detail': 'Detail',
 	'admin.col.record': 'Record',
 
+	// Admin pipeline reset
+	'admin.resetPipeline': 'Reset Pipeline',
+	'admin.adminActions': 'Admin Actions',
+	'admin.rerunOcr': 'Re-run OCR',
+	'admin.rerunOcrDesc': 'Deletes all text, translations, PDF, embeddings',
+	'admin.retranslate': 'Re-translate',
+	'admin.retranslateDesc': 'Deletes translations and embeddings',
+	'admin.reembed': 'Re-embed',
+	'admin.reembedDesc': 'Deletes embeddings only',
+	'admin.confirmResetOcr': 'This will delete all OCR text, translations, searchable PDF, and embeddings for this record, then re-run OCR from scratch.',
+	'admin.confirmResetTranslate': 'This will clear all translations and embeddings, then re-translate from existing OCR text.',
+	'admin.confirmResetEmbed': 'This will clear embeddings and re-embed from existing text.',
+	'admin.destructive': 'Destructive:',
+	'admin.confirm': 'Confirm',
+	'admin.resetSuccess': 'Pipeline reset successful. Jobs have been enqueued.',
+	'admin.resetError': 'Error: {0}',
+
 	// Profile
 	'profile.title': 'Profile',
 	'profile.displayName': 'Display Name',

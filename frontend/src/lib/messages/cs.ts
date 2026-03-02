@@ -174,6 +174,23 @@ export const cs: Record<MessageKey, string> = {
 	'admin.col.detail': 'Detail',
 	'admin.col.record': 'Záznam',
 
+	// Admin pipeline reset
+	'admin.resetPipeline': 'Resetovat pipeline',
+	'admin.adminActions': 'Akce správce',
+	'admin.rerunOcr': 'Znovu spustit OCR',
+	'admin.rerunOcrDesc': 'Smaže text, překlady, PDF, vektory',
+	'admin.retranslate': 'Znovu přeložit',
+	'admin.retranslateDesc': 'Smaže překlady a vektory',
+	'admin.reembed': 'Znovu vektorizovat',
+	'admin.reembedDesc': 'Smaže pouze vektory',
+	'admin.confirmResetOcr': 'Toto smaže veškerý OCR text, překlady, prohledávatelné PDF a vektory pro tento záznam a znovu spustí OCR od začátku.',
+	'admin.confirmResetTranslate': 'Toto smaže všechny překlady a vektory a znovu přeloží z existujícího OCR textu.',
+	'admin.confirmResetEmbed': 'Toto smaže vektory a znovu vektorizuje z existujícího textu.',
+	'admin.destructive': 'Destruktivní:',
+	'admin.confirm': 'Potvrdit',
+	'admin.resetSuccess': 'Pipeline úspěšně resetována. Úlohy byly zařazeny do fronty.',
+	'admin.resetError': 'Chyba: {0}',
+
 	// Profile
 	'profile.title': 'Profil',
 	'profile.displayName': 'Zobrazované jméno',

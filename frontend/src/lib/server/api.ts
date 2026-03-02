@@ -301,6 +301,30 @@ export async function fetchRecordPersonMatches(
   return res.json();
 }
 
+// ── Admin Pipeline Reset ──
+
+export interface ResetResult {
+  recordId: number;
+  targetStage: string;
+  jobsEnqueued: number;
+  jobsCancelled: number;
+  error?: string;
+}
+
+export async function resetRecordPipeline(
+  email: string,
+  recordIds: number[],
+  targetStage: string,
+): Promise<{ results: ResetResult[] }> {
+  const res = await fetch(`${backendUrl()}/api/admin/records/reset-pipeline`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...authHeaders(email) },
+    body: JSON.stringify({ recordIds, targetStage }),
+  });
+  if (!res.ok) throw new Error(`Backend error: ${res.status}`);
+  return res.json();
+}
+
 // ── Self-service Profile ──
 
 export interface ProfileEmail {
