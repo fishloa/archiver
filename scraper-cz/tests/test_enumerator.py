@@ -21,7 +21,6 @@ def _make_mock_session():
 
 
 class TestEnumerateAll:
-
     @patch("scraper_cz.enumerator.search_mod")
     @patch("scraper_cz.enumerator.record_mod")
     def test_single_page_results(self, mock_record, mock_search):
@@ -167,7 +166,6 @@ class TestEnumerateAll:
 
 
 class TestProbeForHidden:
-
     @patch("scraper_cz.enumerator.record_mod")
     def test_finds_hidden_scans(self, mock_record):
         """Should detect records that have hidden scans."""

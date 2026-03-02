@@ -120,6 +120,9 @@ export const en = {
 	'pipeline.busy': 'busy',
 	'pipeline.noWorkers': 'no workers',
 	'pipeline.failed': 'failed',
+	'pipeline.scrapers': 'Active Scrapers',
+	'pipeline.noScrapers': 'No scrapers running',
+	'pipeline.ingested': 'ingested',
 
 	// Pipeline stage descriptions
 	'pipeline.desc.downloading': 'Downloading document metadata and page images from archive catalogs',

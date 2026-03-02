@@ -31,7 +31,7 @@ def parse_page(html: str) -> list[dict]:
 
 def _parse_block(block: str) -> dict | None:
     """Parse a single result block from search results."""
-    xid_m = re.search(r'xid=([a-f0-9-]{36})', block)
+    xid_m = re.search(r"xid=([a-f0-9-]{36})", block)
     if not xid_m:
         return None
 
@@ -42,9 +42,9 @@ def _parse_block(block: str) -> dict | None:
     scan_m = re.search(r'tooltip="Zobrazit v plné kvalitě (\d+) sken', block)
 
     title = htmlmod.unescape(title_m.group(1).strip()) if title_m else ""
-    inv_m = re.search(r'inv\.\s*č\.\s*(\d+)', title)
-    sig_m = re.search(r'sig\.\s*(\S+)', title)
-    fond_m = re.match(r'^(.*?)(?:\s*\u2022)', title)  # bullet: \u2022
+    inv_m = re.search(r"inv\.\s*č\.\s*(\d+)", title)
+    sig_m = re.search(r"sig\.\s*(\S+)", title)
+    fond_m = re.match(r"^(.*?)(?:\s*\u2022)", title)  # bullet: \u2022
 
     return {
         "xid": xid_m.group(1),
@@ -80,13 +80,14 @@ def parse_record_detail(html: str, xid: str) -> dict:
 
     # Fond/finding aid name from the "contentLine" header area
     fond_name_m = re.search(
-        r'Název\s+(?:fondu|pomůcky)\s*:\s*(.*?)(?=\s*Číslo\s+pomůcky|\s*$)',
-        _strip_html(html[html.find("contentLine"):html.find("contentLine") + 600])
-        if "contentLine" in html else "",
+        r"Název\s+(?:fondu|pomůcky)\s*:\s*(.*?)(?=\s*Číslo\s+pomůcky|\s*$)",
+        _strip_html(html[html.find("contentLine") : html.find("contentLine") + 600])
+        if "contentLine" in html
+        else "",
     )
 
     # Scan count from the thumbnail area
-    scan_count_m = re.search(r'(\d+)\s*(?:skenů|sken|scan)', html)
+    scan_count_m = re.search(r"(\d+)\s*(?:skenů|sken|scan)", html)
 
     # Entity ref for Zoomify viewer
     entity_ref_m = re.search(r'entityRef=([^&"\']+)', html)
@@ -167,7 +168,7 @@ def _extract_tabular_fields(html: str) -> dict[str, str]:
         re.DOTALL,
     ):
         label = _strip_html(m.group(1)).strip().rstrip(":")
-        value = re.sub(r'\s+', ' ', _strip_html(m.group(2))).strip()
+        value = re.sub(r"\s+", " ", _strip_html(m.group(2))).strip()
         if not value:
             continue
         key = _LABEL_MAP.get(label)
@@ -184,7 +185,7 @@ def extract_entity_ref(html: str) -> str | None:
 
 def extract_scan_count(html: str) -> int:
     """Extract scan count from a permalink page."""
-    m = re.search(r'(\d+)\s*skenů', html)
+    m = re.search(r"(\d+)\s*skenů", html)
     return int(m.group(1)) if m else 0
 
 
@@ -193,7 +194,7 @@ def extract_scan_uuids(html: str) -> list[tuple[str, str]]:
     uuids: list[tuple[str, str]] = []
     seen: set[str] = set()
     for m in re.finditer(
-        r'images/(\d+)/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})\.jpg',
+        r"images/(\d+)/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})\.jpg",
         html,
     ):
         folder, uuid = m.group(1), m.group(2)
@@ -207,7 +208,8 @@ def extract_paginator_pages(html: str) -> dict[int, str]:
     """Extract paginator links from media viewer pages."""
     pages: dict[int, str] = {}
     for m in re.finditer(
-        r'PaginatorMedia\.action\?_sourcePage=([^&"\']+)&(?:amp;)?row=(\d+)', html,
+        r'PaginatorMedia\.action\?_sourcePage=([^&"\']+)&(?:amp;)?row=(\d+)',
+        html,
     ):
         sp = urllib.parse.unquote(htmlmod.unescape(m.group(1)))
         pages[int(m.group(2))] = sp
@@ -269,4 +271,4 @@ def collect_all_scan_uuids(
 
 def _strip_html(text: str) -> str:
     """Remove HTML tags from text."""
-    return re.sub(r'<[^>]+>', '', text).strip()
+    return re.sub(r"<[^>]+>", "", text).strip()

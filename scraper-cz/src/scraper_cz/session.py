@@ -83,7 +83,8 @@ class VadeMeCumSession:
         # Extract tokens per form
         forms = re.findall(
             r'<form[^>]*action="([^"]*SearchBean[^"]*)"[^>]*>(.*?)</form>',
-            html, re.DOTALL,
+            html,
+            re.DOTALL,
         )
 
         self._simple_sp = None
@@ -172,7 +173,9 @@ class VadeMeCumSession:
                 return html
             log.warning(
                 "Session expired fetching xid=%s (attempt %d/%d), reinitialising...",
-                xid, attempt + 1, retries + 1,
+                xid,
+                attempt + 1,
+                retries + 1,
             )
             self.reinit()
         return html  # return last attempt even if still expired

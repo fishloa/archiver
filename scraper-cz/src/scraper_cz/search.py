@@ -63,7 +63,7 @@ def search(
 
 def extract_total(html: str) -> int:
     """Extract total result count from search results page."""
-    m = re.search(r'Celkem\s*:\s*(\d+)', html)
+    m = re.search(r"Celkem\s*:\s*(\d+)", html)
     return int(m.group(1)) if m else 0
 
 
@@ -71,7 +71,8 @@ def extract_form_params(html: str) -> tuple[str | None, str | None]:
     """Extract _sourcePage and __fp from the paginator form."""
     pag_form = re.search(
         r'action="/vademecum/PaginatorResult\.action">(.*?)</form>',
-        html, re.DOTALL,
+        html,
+        re.DOTALL,
     )
     if not pag_form:
         return None, None

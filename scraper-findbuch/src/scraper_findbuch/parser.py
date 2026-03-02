@@ -56,24 +56,30 @@ def parse_search_results(html: str) -> list[dict]:
             href = link.get("href", "")
             text = link.get_text(strip=True)
             # Only accept links to findbuch.at pages (not external sites)
-            if (href and text and len(text) > 5
-                    and "/page/" not in href
-                    and "searchterm" not in href
-                    and "login" not in href.lower()
-                    and "registration" not in href.lower()
-                    and "data-protection" not in href
-                    and "imprint" not in href
-                    and "contact" not in href
-                    and "site-map" not in href
-                    and "forgot" not in href.lower()
-                    and not href.startswith("http://")
-                    and not href.startswith("https://www.facebook")
-                    and not href.startswith("https://www.instagram")
-                    and not href.startswith("https://www.twitter")
-                    and not href.startswith("https://twitter")
-                    and not href.startswith("https://x.com")
-                    and (href.startswith("/") or href.startswith("https://www.findbuch.at/"))
-                    and href.count("/") >= 2):
+            if (
+                href
+                and text
+                and len(text) > 5
+                and "/page/" not in href
+                and "searchterm" not in href
+                and "login" not in href.lower()
+                and "registration" not in href.lower()
+                and "data-protection" not in href
+                and "imprint" not in href
+                and "contact" not in href
+                and "site-map" not in href
+                and "forgot" not in href.lower()
+                and not href.startswith("http://")
+                and not href.startswith("https://www.facebook")
+                and not href.startswith("https://www.instagram")
+                and not href.startswith("https://www.twitter")
+                and not href.startswith("https://twitter")
+                and not href.startswith("https://x.com")
+                and (
+                    href.startswith("/") or href.startswith("https://www.findbuch.at/")
+                )
+                and href.count("/") >= 2
+            ):
                 if href.startswith("/"):
                     href = "https://www.findbuch.at" + href
                 results.append({"detail_url": href, "title": text})
@@ -81,7 +87,9 @@ def parse_search_results(html: str) -> list[dict]:
     # Check for login-required message
     if not results:
         if "registered users" in html.lower() or "registrierten" in html.lower():
-            log.warning("Results hidden behind login — FINDBUCH_USERNAME/PASSWORD required")
+            log.warning(
+                "Results hidden behind login — FINDBUCH_USERNAME/PASSWORD required"
+            )
 
     log.debug("Parsed %d search results from page", len(results))
     return results
@@ -92,10 +100,12 @@ def get_result_count(html: str) -> int:
 
     Looks for pattern: '<strong>N results</strong>' or 'N Ergebnisse'.
     """
-    match = re.search(r'<strong>\s*(\d+)\s*(?:results?|Ergebnisse?)\s*</strong>', html, re.IGNORECASE)
+    match = re.search(
+        r"<strong>\s*(\d+)\s*(?:results?|Ergebnisse?)\s*</strong>", html, re.IGNORECASE
+    )
     if match:
         return int(match.group(1))
-    match = re.search(r'(\d+)\s+(?:results?|Ergebnisse?)', html, re.IGNORECASE)
+    match = re.search(r"(\d+)\s+(?:results?|Ergebnisse?)", html, re.IGNORECASE)
     if match:
         return int(match.group(1))
     return 0
@@ -192,7 +202,9 @@ def parse_detail_page(html: str, detail_url: str = "") -> dict:
                         metadata[field] = value
 
     # Strategy 3: Labeled divs/spans
-    for elem in soup.find_all(["div", "span", "p"], class_=re.compile(r"label|field|key", re.I)):
+    for elem in soup.find_all(
+        ["div", "span", "p"], class_=re.compile(r"label|field|key", re.I)
+    ):
         label = elem.get_text(strip=True).rstrip(":")
         # Value is the next sibling or parent's next child
         value_elem = elem.find_next_sibling(["div", "span", "p"])
@@ -214,5 +226,9 @@ def parse_detail_page(html: str, detail_url: str = "") -> dict:
                 metadata["surname"] = parts[0].strip()
                 metadata["forename"] = parts[1].strip()
 
-    log.debug("Parsed detail: %s %s", metadata.get("surname", "?"), metadata.get("forename", "?"))
+    log.debug(
+        "Parsed detail: %s %s",
+        metadata.get("surname", "?"),
+        metadata.get("forename", "?"),
+    )
     return metadata

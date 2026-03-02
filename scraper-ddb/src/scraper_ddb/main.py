@@ -9,6 +9,7 @@ import argparse
 import logging
 import sys
 import time
+import uuid
 from io import BytesIO
 
 from PIL import Image
@@ -21,6 +22,8 @@ from .session import DDBSession
 from .pdf import build_pdf
 
 log = logging.getLogger(__name__)
+
+SCRAPER_NAME = "Deutsche Digitale Bibliothek"
 
 DDB_ITEM_BASE = "https://www.deutsche-digitale-bibliothek.de/item"
 
@@ -77,7 +80,9 @@ def ingest_document(
             backend_record_id = status_info.get("id")
             if backend_record_id:
                 log.info(
-                    "[CLEANUP] %s — deleting incomplete record %s", label, backend_record_id
+                    "[CLEANUP] %s — deleting incomplete record %s",
+                    label,
+                    backend_record_id,
                 )
                 client.delete_record(backend_record_id)
                 known_statuses.pop(item_id, None)
@@ -102,7 +107,9 @@ def ingest_document(
     if dry_run:
         log.info(
             "[DRY-RUN] %s — title=%s, pages=%d",
-            label, title, page_count,
+            label,
+            title,
+            page_count,
         )
         return "ok"
 
@@ -169,7 +176,12 @@ def ingest_document(
         image_url = page_info.get("image_url", "")
 
         if not image_url:
-            log.warning("  [%d/%d] No image URL for page %s — skipping", seq, page_count, page_label)
+            log.warning(
+                "  [%d/%d] No image URL for page %s — skipping",
+                seq,
+                page_count,
+                page_label,
+            )
             continue
 
         log.info("  [%d/%d] Downloading %s...", seq, page_count, page_label)
@@ -199,7 +211,10 @@ def ingest_document(
         except Exception as e:
             log.warning(
                 "  [%d/%d] Failed to download/upload page %s: %s",
-                seq, page_count, page_label, e,
+                seq,
+                page_count,
+                page_label,
+                e,
             )
             continue
 
@@ -232,6 +247,7 @@ def run_scrape(
     known_statuses: dict[str, str],
     dry_run: bool,
     verbose: bool,
+    scraper_id: str = "",
 ) -> tuple[int, int, int]:
     """Process a list of Solr result docs. Returns (success, failed, skipped)."""
     success, failed, skipped = 0, 0, 0
@@ -244,7 +260,9 @@ def run_scrape(
         log.info("=== [%d/%d] %s ===", i, len(docs), title)
 
         try:
-            result = ingest_document(client, session, doc, known_statuses, dry_run=dry_run)
+            result = ingest_document(
+                client, session, doc, known_statuses, dry_run=dry_run
+            )
             if result == "skipped":
                 skipped += 1
             elif result == "ok":
@@ -254,6 +272,9 @@ def run_scrape(
         except Exception as e:
             log.error("Failed to ingest %s: %s", item_id, e, exc_info=verbose)
             failed += 1
+
+        if client and scraper_id:
+            client.heartbeat(scraper_id, SOURCE_SYSTEM, SCRAPER_NAME, success)
 
         time.sleep(get_config().delay)
 
@@ -306,7 +327,8 @@ def main():
         help="Number of Solr results per page (default: 20)",
     )
     parser.add_argument(
-        "-v", "--verbose",
+        "-v",
+        "--verbose",
         action="store_true",
         help="Enable debug logging",
     )
@@ -349,10 +371,16 @@ def main():
             incomplete = sum(1 for s in known_statuses.values() if s == "ingesting")
             log.info(
                 "Backend has %d records (%d complete, %d incomplete)",
-                len(known_statuses), already_done, incomplete,
+                len(known_statuses),
+                already_done,
+                incomplete,
             )
         except Exception as e:
             log.warning("Could not fetch existing statuses: %s", e)
+
+    scraper_id = uuid.uuid4().hex[:12]
+    if client:
+        client.heartbeat(scraper_id, SOURCE_SYSTEM, SCRAPER_NAME)
 
     session = DDBSession()
     total_success, total_failed, total_skipped = 0, 0, 0
@@ -388,7 +416,9 @@ def main():
             all_docs.extend(docs)
             log.info(
                 "Fetched page offset=%d: %d docs (total collected: %d)",
-                start, len(docs), len(all_docs),
+                start,
+                len(docs),
+                len(all_docs),
             )
 
             start += args.rows
@@ -402,7 +432,8 @@ def main():
         log.info("Processing %d documents", len(all_docs))
 
         s, f, sk = run_scrape(
-            all_docs, session, client, known_statuses, args.dry_run, args.verbose
+            all_docs, session, client, known_statuses, args.dry_run, args.verbose,
+            scraper_id=scraper_id,
         )
         total_success += s
         total_failed += f
@@ -417,7 +448,9 @@ def main():
 
     log.info(
         "Finished: %d success, %d failed, %d skipped",
-        total_success, total_failed, total_skipped,
+        total_success,
+        total_failed,
+        total_skipped,
     )
 
     sys.exit(0 if total_failed == 0 else 1)

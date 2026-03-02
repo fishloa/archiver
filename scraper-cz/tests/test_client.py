@@ -19,7 +19,6 @@ def client():
 
 
 class TestCreateRecord:
-
     def test_creates_record(self, client, httpx_mock: HTTPXMock):
         httpx_mock.add_response(
             url=f"{BASE}/api/ingest/records",
@@ -35,12 +34,16 @@ class TestCreateRecord:
             method="POST",
             json={"id": "rec-002"},
         )
-        client.create_record(SOURCE_SYSTEM, "xid-456", {
-            "inv": 200,
-            "sig": "109-5/1",
-            "title": "Test Record",
-            "datace": "1920-1930",
-        })
+        client.create_record(
+            SOURCE_SYSTEM,
+            "xid-456",
+            {
+                "inv": 200,
+                "sig": "109-5/1",
+                "title": "Test Record",
+                "datace": "1920-1930",
+            },
+        )
         request = httpx_mock.get_requests()[0]
         body = json.loads(request.content)
         assert body["sourceSystem"] == SOURCE_SYSTEM
@@ -53,10 +56,11 @@ class TestCreateRecord:
 
 
 class TestUploadPage:
-
     def test_uploads_page(self, client, httpx_mock: HTTPXMock):
         httpx_mock.add_response(
-            url=httpx.URL(f"{BASE}/api/ingest/records/rec-001/pages", params={"seq": "1"}),
+            url=httpx.URL(
+                f"{BASE}/api/ingest/records/rec-001/pages", params={"seq": "1"}
+            ),
             method="POST",
             json={"id": "att-001"},
         )
@@ -65,7 +69,6 @@ class TestUploadPage:
 
 
 class TestUploadPdf:
-
     def test_uploads_pdf(self, client, httpx_mock: HTTPXMock):
         httpx_mock.add_response(
             url=httpx.URL(f"{BASE}/api/ingest/records/rec-001/pdf"),
@@ -77,7 +80,6 @@ class TestUploadPdf:
 
 
 class TestCompleteIngest:
-
     def test_completes(self, client, httpx_mock: HTTPXMock):
         httpx_mock.add_response(
             url=httpx.URL(f"{BASE}/api/ingest/records/rec-001/complete"),
@@ -88,7 +90,6 @@ class TestCompleteIngest:
 
 
 class TestGetStatus:
-
     def test_returns_status(self, client, httpx_mock: HTTPXMock):
         httpx_mock.add_response(
             url=f"{BASE}/api/ingest/status/{SOURCE_SYSTEM}/xid-123",
@@ -109,7 +110,6 @@ class TestGetStatus:
 
 
 class TestRetries:
-
     def test_retries_on_server_error(self, httpx_mock: HTTPXMock):
         c = BackendClient(base_url=BASE, max_retries=2)
         httpx_mock.add_response(

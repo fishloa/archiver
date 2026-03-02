@@ -1,4 +1,5 @@
 """HTTP session for data.matricula-online.eu."""
+
 import base64
 import json
 import re
@@ -55,6 +56,7 @@ class MatriculaSession:
         # Parse the diocese URL to get the path prefix
         # e.g. /en/oesterreich/wien/ -> we want links that extend this path
         from urllib.parse import urlparse
+
         parsed = urlparse(diocese_url)
         base_path = parsed.path.rstrip("/")
 
@@ -64,7 +66,7 @@ class MatriculaSession:
             # Parish links extend the diocese path by one segment
             if href.startswith(base_path + "/") and href != base_path + "/":
                 # Check it's one level deeper (parish, not register)
-                remainder = href[len(base_path) + 1:].strip("/")
+                remainder = href[len(base_path) + 1 :].strip("/")
                 if "/" not in remainder and remainder:
                     full_url = BASE_URL + href if not href.startswith("http") else href
                     name = text or remainder
@@ -95,6 +97,7 @@ class MatriculaSession:
 
         # Parse the parish URL path to identify register links
         from urllib.parse import urlparse
+
         parsed = urlparse(parish_url)
         parish_path = parsed.path.rstrip("/")
 
@@ -132,13 +135,15 @@ class MatriculaSession:
             if date_range:
                 name += f" ({date_range})"
 
-            registers.append({
-                "name": name,
-                "archival_id": archival_id,
-                "register_type": register_type,
-                "date_range": date_range,
-                "url": full_url,
-            })
+            registers.append(
+                {
+                    "name": name,
+                    "archival_id": archival_id,
+                    "register_type": register_type,
+                    "date_range": date_range,
+                    "url": full_url,
+                }
+            )
 
         log.info("Found %d registers for %s", len(registers), parish_name)
         return parish_name, registers
@@ -172,8 +177,8 @@ class MatriculaSession:
         # The JS object contains bare identifiers (e.g. "onloaderror": loaderror)
         # that aren't valid JSON. Replace them with null.
         config_text = re.sub(
-            r':\s*([a-zA-Z_]\w*)\s*([,}])',
-            r': null\2',
+            r":\s*([a-zA-Z_]\w*)\s*([,}])",
+            r": null\2",
             config_text,
         )
         # Also handle "key": true/false/null which are valid JSON
@@ -197,7 +202,7 @@ class MatriculaSession:
 
         pages = []
         for i, file_path in enumerate(files):
-            label = labels[i] if i < len(labels) else f"page_{i+1}"
+            label = labels[i] if i < len(labels) else f"page_{i + 1}"
             # file_path is like "/image/aHR0cDov..." where the part after /image/
             # is a base64-encoded URL to the actual JPEG on hosted-images.
             # The img proxy returns 403 without proper session cookies, so

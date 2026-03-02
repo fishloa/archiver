@@ -8,6 +8,7 @@ import argparse
 import logging
 import sys
 import time
+import uuid
 from io import BytesIO
 
 from PIL import Image
@@ -19,6 +20,8 @@ from .parser import parse_detail_page
 from .pdf import build_pdf
 
 log = logging.getLogger(__name__)
+
+SCRAPER_NAME = "Austrian State Archives"
 
 
 def ingest_record(
@@ -54,7 +57,11 @@ def ingest_record(
             status_info = client.get_status(SOURCE_SYSTEM, record_id)
             backend_record_id = status_info.get("id")
             if backend_record_id:
-                log.info("[CLEANUP] %s — deleting incomplete record %s", label, backend_record_id)
+                log.info(
+                    "[CLEANUP] %s — deleting incomplete record %s",
+                    label,
+                    backend_record_id,
+                )
                 client.delete_record(backend_record_id)
                 known_statuses.pop(record_id, None)
 
@@ -67,8 +74,13 @@ def ingest_record(
         sig = detail.get("signature", "?")
         title = detail.get("title", "")
         objs = len(detail.get("digital_objects", []))
-        log.info("[DRY-RUN] %s — sig=%s, title=%s, %d digital objects",
-                 label, sig, title, objs)
+        log.info(
+            "[DRY-RUN] %s — sig=%s, title=%s, %d digital objects",
+            label,
+            sig,
+            title,
+            objs,
+        )
         return "ok"
 
     # Prepare metadata for backend
@@ -86,7 +98,9 @@ def ingest_record(
 
     # Create record in backend
     create_metadata = dict(metadata)
-    create_metadata["sourceUrl"] = f"https://www.archivinformationssystem.at/detail.aspx?ID={record_id}"
+    create_metadata["sourceUrl"] = (
+        f"https://www.archivinformationssystem.at/detail.aspx?ID={record_id}"
+    )
     backend_record_id = client.create_record(SOURCE_SYSTEM, record_id, create_metadata)
 
     # Get digital objects
@@ -108,8 +122,14 @@ def ingest_record(
         sqnznr = obj["sqnznr"]
         klid = obj.get("klid")
 
-        log.info("  [%d/%d] Downloading image veid=%s deid=%s sqnznr=%s...",
-                 seq, len(digital_objects), veid, deid, sqnznr)
+        log.info(
+            "  [%d/%d] Downloading image veid=%s deid=%s sqnznr=%s...",
+            seq,
+            len(digital_objects),
+            veid,
+            deid,
+            sqnznr,
+        )
 
         image_bytes = session.get_image(veid, deid, sqnznr, width=1200, klid=klid)
         if image_bytes is None:
@@ -131,13 +151,17 @@ def ingest_record(
 
             # Upload page to backend
             client.upload_page(
-                backend_record_id, seq, jpeg_bytes,
+                backend_record_id,
+                seq,
+                jpeg_bytes,
                 metadata={"veid": veid, "deid": deid, "sqnznr": sqnznr},
             )
 
             time.sleep(cfg.delay * 0.2)
         except Exception as e:
-            log.warning("  [%d/%d] Failed to process image: %s", seq, len(digital_objects), e)
+            log.warning(
+                "  [%d/%d] Failed to process image: %s", seq, len(digital_objects), e
+            )
             continue
 
     # Build and upload PDF
@@ -174,6 +198,7 @@ def run_scrape(
     known_statuses: dict[str, str],
     dry_run: bool,
     verbose: bool,
+    scraper_id: str = "",
 ) -> tuple[int, int, int]:
     """Process a list of record IDs. Returns (success, failed, skipped)."""
     success, failed, skipped = 0, 0, 0
@@ -183,7 +208,9 @@ def run_scrape(
         log.info("=== [%d/%d] %s ===", i, len(records), label)
 
         try:
-            result = ingest_record(client, session, record_id, known_statuses, dry_run=dry_run)
+            result = ingest_record(
+                client, session, record_id, known_statuses, dry_run=dry_run
+            )
             if result == "skipped":
                 skipped += 1
             elif result == "ok":
@@ -193,6 +220,9 @@ def run_scrape(
         except Exception as e:
             log.error("Failed to ingest %s: %s", label, e, exc_info=verbose)
             failed += 1
+
+        if client and scraper_id:
+            client.heartbeat(scraper_id, SOURCE_SYSTEM, SCRAPER_NAME, success)
 
         time.sleep(get_config().delay)
 
@@ -229,7 +259,8 @@ def main():
         help="Enumerate and log records but do not upload anything",
     )
     parser.add_argument(
-        "-v", "--verbose",
+        "-v",
+        "--verbose",
         action="store_true",
         help="Enable debug logging",
     )
@@ -244,7 +275,9 @@ def main():
     )
 
     if not args.action or not args.term_or_id:
-        parser.error("Provide an action ('search' or 'detail') and a search term or record ID")
+        parser.error(
+            "Provide an action ('search' or 'detail') and a search term or record ID"
+        )
 
     # Apply config overrides
     cfg = Config()
@@ -266,8 +299,14 @@ def main():
         incomplete = sum(1 for s in known_statuses.values() if s == "ingesting")
         log.info(
             "Backend has %d records (%d complete, %d incomplete)",
-            len(known_statuses), already_done, incomplete,
+            len(known_statuses),
+            already_done,
+            incomplete,
         )
+
+    scraper_id = uuid.uuid4().hex[:12]
+    if client:
+        client.heartbeat(scraper_id, SOURCE_SYSTEM, SCRAPER_NAME)
 
     session = OeStASession()
     total_success, total_failed, total_skipped = 0, 0, 0
@@ -283,8 +322,10 @@ def main():
                 log.warning("No records found.")
                 sys.exit(0)
 
-            s, f, sk = run_scrape(record_ids, session, client, known_statuses,
-                                  args.dry_run, args.verbose)
+            s, f, sk = run_scrape(
+                record_ids, session, client, known_statuses, args.dry_run, args.verbose,
+                scraper_id=scraper_id,
+            )
             total_success += s
             total_failed += f
             total_skipped += sk
@@ -293,8 +334,10 @@ def main():
             # Ingest a specific record by ID
             record_id = args.term_or_id
             log.info("Ingesting record %s", record_id)
-            s, f, sk = run_scrape([record_id], session, client, known_statuses,
-                                  args.dry_run, args.verbose)
+            s, f, sk = run_scrape(
+                [record_id], session, client, known_statuses, args.dry_run, args.verbose,
+                scraper_id=scraper_id,
+            )
             total_success += s
             total_failed += f
             total_skipped += sk
@@ -311,7 +354,9 @@ def main():
 
     log.info(
         "Finished: %d success, %d failed, %d skipped",
-        total_success, total_failed, total_skipped,
+        total_success,
+        total_failed,
+        total_skipped,
     )
 
 

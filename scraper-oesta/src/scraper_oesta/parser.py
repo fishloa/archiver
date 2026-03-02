@@ -73,9 +73,11 @@ def parse_detail_page(html: str, record_id: str) -> dict:
                 if not result["title"]:
                     # Strip trailing " (Level)" from title
                     title_part = parts[1]
-                    level_match = re.search(r'\(([^)]+)\)\s*$', title_part)
+                    level_match = re.search(r"\(([^)]+)\)\s*$", title_part)
                     if level_match:
-                        title_part = title_part[:level_match.start()].strip().rstrip(",")
+                        title_part = (
+                            title_part[: level_match.start()].strip().rstrip(",")
+                        )
                     result["title"] = title_part
 
     # Strategy 3: Fallback to lblTitel span
@@ -89,9 +91,9 @@ def parse_detail_page(html: str, record_id: str) -> dict:
                 if not result["signature"]:
                     result["signature"] = parts[0].strip()
                 title_part = parts[1]
-                level_match = re.search(r'\(([^)]+)\)\s*$', title_part)
+                level_match = re.search(r"\(([^)]+)\)\s*$", title_part)
                 if level_match:
-                    title_part = title_part[:level_match.start()].strip().rstrip(",")
+                    title_part = title_part[: level_match.start()].strip().rstrip(",")
                 result["title"] = title_part
 
     # Extract digital objects from og:image meta tag and filmstrip
@@ -99,19 +101,21 @@ def parse_detail_page(html: str, record_id: str) -> dict:
     if og_img and og_img.get("content"):
         img_url = og_img["content"]
         # Parse: getimage.aspx?veid=N&deid=N&sqnznr=N&width=N&klid=N
-        params = dict(re.findall(r'(\w+)=(\d+)', img_url))
+        params = dict(re.findall(r"(\w+)=(\d+)", img_url))
         if "veid" in params and "deid" in params and "sqnznr" in params:
-            result["digital_objects"].append({
-                "veid": params["veid"],
-                "deid": params["deid"],
-                "sqnznr": params["sqnznr"],
-                "klid": params.get("klid"),
-            })
+            result["digital_objects"].append(
+                {
+                    "veid": params["veid"],
+                    "deid": params["deid"],
+                    "sqnznr": params["sqnznr"],
+                    "klid": params.get("klid"),
+                }
+            )
 
     # Also look for filmstrip images (multiple pages)
     for img in soup.find_all("img", src=re.compile(r"getimage\.aspx")):
         src = img.get("src", "")
-        params = dict(re.findall(r'(\w+)=(\d+)', src))
+        params = dict(re.findall(r"(\w+)=(\d+)", src))
         if "veid" in params and "deid" in params and "sqnznr" in params:
             obj = {
                 "veid": params["veid"],
@@ -122,13 +126,15 @@ def parse_detail_page(html: str, record_id: str) -> dict:
             result["digital_objects"].append(obj)
 
     # Also look for openimage() JavaScript calls
-    for match in re.findall(r'openimage\s*\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)', html):
-        result["digital_objects"].append({
-            "veid": match[0],
-            "deid": match[1],
-            "sqnznr": match[2],
-            "klid": None,
-        })
+    for match in re.findall(r"openimage\s*\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)", html):
+        result["digital_objects"].append(
+            {
+                "veid": match[0],
+                "deid": match[1],
+                "sqnznr": match[2],
+                "klid": None,
+            }
+        )
 
     # Determine the full-size deid value (from og:image, typically 10)
     full_deid = None
@@ -160,13 +166,16 @@ def parse_detail_page(html: str, record_id: str) -> dict:
         # The second-to-last link is the parent
         for link in tree_links:
             href = link.get("href", "")
-            m = re.search(r'ID=(\d+)', href)
+            m = re.search(r"ID=(\d+)", href)
             if m and m.group(1) != record_id:
                 result["parent_id"] = m.group(1)
 
     log.debug(
         "Parsed record %s: sig=%s, title=%s, objs=%d",
-        record_id, result["signature"], result["title"][:50], len(result["digital_objects"]),
+        record_id,
+        result["signature"],
+        result["title"][:50],
+        len(result["digital_objects"]),
     )
 
     return result

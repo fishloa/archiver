@@ -10,6 +10,7 @@ import json
 import logging
 import sys
 import time
+import uuid
 
 from .config import Config, set_config, get_config
 from .client import BackendClient, SOURCE_SYSTEM, wait_for_backend
@@ -24,6 +25,8 @@ from .zoomify import download_and_stitch, image_to_jpeg_bytes
 from .pdf import build_pdf
 
 log = logging.getLogger(__name__)
+
+SCRAPER_NAME = "Czech National Archives"
 
 # Page-level retry settings (on top of tile-level retries in zoomify.py)
 PAGE_MAX_RETRIES = 5
@@ -53,7 +56,11 @@ def _download_page_with_retry(
         wait = PAGE_RETRY_BACKOFF[attempt - 1]
         log.warning(
             "  [%d/%d] Page download attempt %d/%d failed — retrying in %ds",
-            seq, total, attempt, PAGE_MAX_RETRIES, wait,
+            seq,
+            total,
+            attempt,
+            PAGE_MAX_RETRIES,
+            wait,
         )
         time.sleep(wait)
         # Reinit session in case cookies/session expired
@@ -61,8 +68,14 @@ def _download_page_with_retry(
             session.reinit()
         except Exception:
             pass
-    log.error("  [%d/%d] Failed to download page after %d attempts", seq, total, PAGE_MAX_RETRIES)
+    log.error(
+        "  [%d/%d] Failed to download page after %d attempts",
+        seq,
+        total,
+        PAGE_MAX_RETRIES,
+    )
     return None
+
 
 # Target NADs for the Czech National Archives.
 # Only NADs with digitised content on VadeMeCum are included.
@@ -108,7 +121,9 @@ def ingest_record(
             status_info = client.get_status(SOURCE_SYSTEM, xid)
             record_id = status_info.get("id")
             if record_id:
-                log.info("[CLEANUP] %s — deleting incomplete record %s", label, record_id)
+                log.info(
+                    "[CLEANUP] %s — deleting incomplete record %s", label, record_id
+                )
                 client.delete_record(record_id)
                 known_statuses.pop(xid, None)
 
@@ -117,15 +132,16 @@ def ingest_record(
     detail = load_record_detail(session, xid)
 
     if dry_run:
-        log.info("[DRY-RUN] %s — %d scans, detail: %s",
-                 label, detail.get("scans", 0), detail.get("title", ""))
+        log.info(
+            "[DRY-RUN] %s — %d scans, detail: %s",
+            label,
+            detail.get("scans", 0),
+            detail.get("title", ""),
+        )
         return "ok"
 
     # Create record in backend
-    metadata = {
-        k: v for k, v in detail.items()
-        if k != "entity_ref" and v
-    }
+    metadata = {k: v for k, v in detail.items() if k != "entity_ref" and v}
     record_id = client.create_record(SOURCE_SYSTEM, xid, metadata)
 
     # Get scan UUIDs
@@ -145,11 +161,16 @@ def ingest_record(
 
     # Download and upload each page
     page_images = []
-    for seq, (folder, uuid) in enumerate(all_uuids, start=1):
-        log.info("  [%d/%d] Downloading tiles for %s/%s...",
-                 seq, len(all_uuids), folder, uuid[:8])
+    for seq, (folder, scan_uuid) in enumerate(all_uuids, start=1):
+        log.info(
+            "  [%d/%d] Downloading tiles for %s/%s...",
+            seq,
+            len(all_uuids),
+            folder,
+            scan_uuid[:8],
+        )
 
-        img = _download_page_with_retry(folder, uuid, session, seq, len(all_uuids))
+        img = _download_page_with_retry(folder, scan_uuid, session, seq, len(all_uuids))
         if img is None:
             continue
 
@@ -158,8 +179,10 @@ def ingest_record(
         # Upload page to backend
         jpeg_bytes = image_to_jpeg_bytes(img)
         client.upload_page(
-            record_id, seq, jpeg_bytes,
-            metadata={"folder": folder, "uuid": uuid},
+            record_id,
+            seq,
+            jpeg_bytes,
+            metadata={"folder": folder, "uuid": scan_uuid},
         )
 
         time.sleep(cfg.delay * 0.2)
@@ -185,6 +208,7 @@ def run_scrape(
     known_statuses: dict[str, str],
     dry_run: bool,
     verbose: bool,
+    scraper_id: str = "",
 ) -> tuple[int, int, int]:
     """Process a list of records. Returns (success, failed, skipped)."""
     success, failed, skipped = 0, 0, 0
@@ -193,11 +217,16 @@ def run_scrape(
         label = f"inv.{rec.get('inv', '?')} sig.{rec.get('sig', '?')}"
         log.info(
             "=== [%d/%d] %s (%d scans) ===",
-            i, len(records), label, rec.get("scans", 0),
+            i,
+            len(records),
+            label,
+            rec.get("scans", 0),
         )
 
         try:
-            result = ingest_record(client, session, rec, known_statuses, dry_run=dry_run)
+            result = ingest_record(
+                client, session, rec, known_statuses, dry_run=dry_run
+            )
             if result == "skipped":
                 skipped += 1
             elif result == "ok":
@@ -207,6 +236,9 @@ def run_scrape(
         except Exception as e:
             log.error("Failed to ingest %s: %s", label, e, exc_info=verbose)
             failed += 1
+
+        if client and scraper_id:
+            client.heartbeat(scraper_id, SOURCE_SYSTEM, SCRAPER_NAME, success)
 
         time.sleep(get_config().delay)
 
@@ -223,6 +255,7 @@ def run_fond_scrape(
     verbose: bool,
     no_probe: bool = False,
     levels: list[str] | None = None,
+    scraper_id: str = "",
 ) -> tuple[int, int, int]:
     """Scrape an entire fond by NAD number.
 
@@ -243,7 +276,8 @@ def run_fond_scrape(
 
     # Phase 1: enumerate without digiCheck
     total, records = enumerate_all(
-        session, "*",
+        session,
+        "*",
         digi_only=False,
         levels=levels,
         nad=nad,
@@ -258,7 +292,9 @@ def run_fond_scrape(
     zero_scan = [r for r in records if r.get("scans", 0) == 0]
     log.info(
         "NAD %d: %d with scans, %d with 0 scans in search results",
-        nad, len(with_scans), len(zero_scan),
+        nad,
+        len(with_scans),
+        len(zero_scan),
     )
 
     # Phase 2: probe for hidden scans
@@ -267,7 +303,9 @@ def run_fond_scrape(
         already_probed = progress.probed_count(nad)
         log.info(
             "NAD %d: probing %d records for hidden scans (%d already probed)...",
-            nad, len(zero_scan), already_probed,
+            nad,
+            len(zero_scan),
+            already_probed,
         )
         hidden = probe_for_hidden(session, zero_scan, progress, nad)
         log.info("NAD %d: found %d hidden records with scans", nad, len(hidden))
@@ -281,17 +319,26 @@ def run_fond_scrape(
 
     total_scans = sum(r.get("scans", 0) for r in all_to_ingest)
     new_records = [
-        r for r in all_to_ingest
-        if r["xid"] not in known_statuses
-        or known_statuses.get(r["xid"]) == "ingesting"
+        r
+        for r in all_to_ingest
+        if r["xid"] not in known_statuses or known_statuses.get(r["xid"]) == "ingesting"
     ]
     log.info(
         "NAD %d: %d new/incomplete, %d already done, %d total scans",
-        nad, len(new_records), len(all_to_ingest) - len(new_records), total_scans,
+        nad,
+        len(new_records),
+        len(all_to_ingest) - len(new_records),
+        total_scans,
     )
 
     s, f, sk = run_scrape(
-        all_to_ingest, session, client, known_statuses, dry_run, verbose,
+        all_to_ingest,
+        session,
+        client,
+        known_statuses,
+        dry_run,
+        verbose,
+        scraper_id=scraper_id,
     )
 
     # Mark ingested in progress tracker
@@ -339,27 +386,34 @@ def run_repair(
         actual = r.get("pageCount", 0)
         status = r.get("status", "")
         if expected > 0 and actual > 0 and actual < expected and status != "ingesting":
-            incomplete.append({
-                "record_id": r["id"],
-                "xid": r.get("sourceRecordId", ""),
-                "ref": r.get("referenceCode", ""),
-                "expected": expected,
-                "actual": actual,
-                "missing": expected - actual,
-            })
+            incomplete.append(
+                {
+                    "record_id": r["id"],
+                    "xid": r.get("sourceRecordId", ""),
+                    "ref": r.get("referenceCode", ""),
+                    "expected": expected,
+                    "actual": actual,
+                    "missing": expected - actual,
+                }
+            )
 
     incomplete.sort(key=lambda x: x["missing"], reverse=True)
     total_missing = sum(r["missing"] for r in incomplete)
     log.info(
         "Found %d incomplete records with %d total missing pages",
-        len(incomplete), total_missing,
+        len(incomplete),
+        total_missing,
     )
 
     if dry_run:
         for r in incomplete[:20]:
             log.info(
                 "  [DRY-RUN] id=%s ref=%s expected=%d actual=%d missing=%d",
-                r["record_id"], r["ref"], r["expected"], r["actual"], r["missing"],
+                r["record_id"],
+                r["ref"],
+                r["expected"],
+                r["actual"],
+                r["missing"],
             )
         if len(incomplete) > 20:
             log.info("  ... and %d more", len(incomplete) - 20)
@@ -370,7 +424,11 @@ def run_repair(
         label = f"id={rec['record_id']} ref={rec['ref']}"
         log.info(
             "=== [%d/%d] Repairing %s (missing %d/%d pages) ===",
-            i, len(incomplete), label, rec["missing"], rec["expected"],
+            i,
+            len(incomplete),
+            label,
+            rec["missing"],
+            rec["expected"],
         )
 
         try:
@@ -393,28 +451,36 @@ def run_repair(
 
             # Step 3: Get all scan UUIDs
             zoom_html = session.get_zoomify_page(entity_ref, scan_index=0)
-            all_uuids = collect_all_scan_uuids(session, entity_ref, scan_count, zoom_html)
+            all_uuids = collect_all_scan_uuids(
+                session, entity_ref, scan_count, zoom_html
+            )
             log.info("  Collected %d/%d scan UUIDs", len(all_uuids), scan_count)
 
             # Step 4: Download and upload only missing pages
             uploaded = 0
-            for seq, (folder, uuid) in enumerate(all_uuids, start=1):
+            for seq, (folder, scan_uuid) in enumerate(all_uuids, start=1):
                 if seq in existing_seqs:
                     continue  # Page already exists
 
                 log.info(
                     "  [%d/%d] Downloading missing page %d...",
-                    uploaded + 1, rec["missing"], seq,
+                    uploaded + 1,
+                    rec["missing"],
+                    seq,
                 )
 
-                img = _download_page_with_retry(folder, uuid, session, seq, rec["expected"])
+                img = _download_page_with_retry(
+                    folder, scan_uuid, session, seq, rec["expected"]
+                )
                 if img is None:
                     continue
 
                 jpeg_bytes = image_to_jpeg_bytes(img)
                 client.upload_page(
-                    rec["record_id"], seq, jpeg_bytes,
-                    metadata={"folder": folder, "uuid": uuid},
+                    rec["record_id"],
+                    seq,
+                    jpeg_bytes,
+                    metadata={"folder": folder, "uuid": scan_uuid},
                 )
                 uploaded += 1
                 time.sleep(cfg.delay * 0.2)
@@ -453,7 +519,7 @@ def main():
         "--all-nads",
         action="store_true",
         help="Scrape all digitised items from target NADs (1005, 1464, 1075, "
-             "1420, 1799). No search term needed — enumerates entire fonds.",
+        "1420, 1799). No search term needed — enumerates entire fonds.",
     )
     parser.add_argument(
         "--backend-url",
@@ -498,7 +564,7 @@ def main():
         nargs="+",
         metavar="NAD",
         help="Scrape entire fond(s) by NAD number — enumerates all records, "
-             "probes for hidden scans, and ingests everything",
+        "probes for hidden scans, and ingests everything",
     )
     parser.add_argument(
         "--no-probe",
@@ -514,10 +580,11 @@ def main():
         "--repair",
         action="store_true",
         help="Find records with missing pages and re-download them. "
-             "Compares actual vs expected page counts and fills in the gaps.",
+        "Compares actual vs expected page counts and fills in the gaps.",
     )
     parser.add_argument(
-        "-v", "--verbose",
+        "-v",
+        "--verbose",
         action="store_true",
         help="Enable debug logging",
     )
@@ -531,8 +598,16 @@ def main():
         datefmt="%H:%M:%S",
     )
 
-    if not args.term and not args.all and not args.all_nads and not args.fond and not args.repair:
-        parser.error("Provide a search term, --all FILE, --all-nads, --fond NAD, or --repair")
+    if (
+        not args.term
+        and not args.all
+        and not args.all_nads
+        and not args.fond
+        and not args.repair
+    ):
+        parser.error(
+            "Provide a search term, --all FILE, --all-nads, --fond NAD, or --repair"
+        )
 
     # Apply config overrides
     cfg = Config()
@@ -554,8 +629,14 @@ def main():
         incomplete = sum(1 for s in known_statuses.values() if s == "ingesting")
         log.info(
             "Backend has %d records (%d complete, %d incomplete)",
-            len(known_statuses), already_done, incomplete,
+            len(known_statuses),
+            already_done,
+            incomplete,
         )
+
+    scraper_id = uuid.uuid4().hex[:12]
+    if client:
+        client.heartbeat(scraper_id, SOURCE_SYSTEM, SCRAPER_NAME)
 
     session = VadeMeCumSession()
     progress = ProgressTracker(args.progress_file)
@@ -567,8 +648,9 @@ def main():
             if client is None:
                 wait_for_backend(cfg.require_backend())
                 client = BackendClient()
-            s, f, sk = run_repair(client, session,
-                                  dry_run=args.dry_run, verbose=args.verbose)
+            s, f, sk = run_repair(
+                client, session, dry_run=args.dry_run, verbose=args.verbose
+            )
             total_success += s
             total_failed += f
             total_skipped += sk
@@ -578,17 +660,24 @@ def main():
             for nad_num in args.fond:
                 try:
                     s, f, sk = run_fond_scrape(
-                        nad_num, session, client, known_statuses, progress,
+                        nad_num,
+                        session,
+                        client,
+                        known_statuses,
+                        progress,
                         dry_run=args.dry_run,
                         verbose=args.verbose,
                         no_probe=args.no_probe,
                         levels=args.levels,
+                        scraper_id=scraper_id,
                     )
                     total_success += s
                     total_failed += f
                     total_skipped += sk
                 except Exception as e:
-                    log.error("Error scraping NAD %d: %s", nad_num, e, exc_info=args.verbose)
+                    log.error(
+                        "Error scraping NAD %d: %s", nad_num, e, exc_info=args.verbose
+                    )
 
         elif args.all:
             # Load from JSON file
@@ -597,8 +686,10 @@ def main():
                 records = json.load(f)
             log.info("Loaded %d records", len(records))
 
-            s, f, sk = run_scrape(records, session, client, known_statuses,
-                                  args.dry_run, args.verbose)
+            s, f, sk = run_scrape(
+                records, session, client, known_statuses, args.dry_run, args.verbose,
+                scraper_id=scraper_id,
+            )
             total_success += s
             total_failed += f
             total_skipped += sk
@@ -611,32 +702,45 @@ def main():
                     "\n============================================================"
                     "\n  NAD %d: %s"
                     "\n============================================================",
-                    nad_num, nad_name,
+                    nad_num,
+                    nad_name,
                 )
 
                 session.reinit()
                 total, records = enumerate_all(
-                    session, search_term,
+                    session,
+                    search_term,
                     digi_only=args.digi_only,
                     levels=args.levels,
                     nad=nad_num,
                     max_items=args.max_items,
                 )
-                log.info("NAD %d: %d/%d records enumerated", nad_num, len(records), total)
+                log.info(
+                    "NAD %d: %d/%d records enumerated", nad_num, len(records), total
+                )
 
                 if not records:
                     continue
 
                 total_scans = sum(r.get("scans", 0) for r in records)
-                new_records = [r for r in records if r["xid"] not in known_statuses
-                               or known_statuses.get(r["xid"]) == "ingesting"]
+                new_records = [
+                    r
+                    for r in records
+                    if r["xid"] not in known_statuses
+                    or known_statuses.get(r["xid"]) == "ingesting"
+                ]
                 log.info(
                     "NAD %d: %d new/incomplete, %d already done, %d total scans",
-                    nad_num, len(new_records), len(records) - len(new_records), total_scans,
+                    nad_num,
+                    len(new_records),
+                    len(records) - len(new_records),
+                    total_scans,
                 )
 
-                s, f, sk = run_scrape(records, session, client, known_statuses,
-                                      args.dry_run, args.verbose)
+                s, f, sk = run_scrape(
+                    records, session, client, known_statuses, args.dry_run, args.verbose,
+                    scraper_id=scraper_id,
+                )
                 total_success += s
                 total_failed += f
                 total_skipped += sk
@@ -645,7 +749,8 @@ def main():
             # Single search term, optional single NAD
             log.info("Searching VadeMeCum for: '%s'", args.term)
             total, records = enumerate_all(
-                session, args.term,
+                session,
+                args.term,
                 digi_only=args.digi_only,
                 levels=args.levels,
                 nad=args.nad,
@@ -660,11 +765,15 @@ def main():
             total_scans = sum(r.get("scans", 0) for r in records)
             log.info(
                 "Processing %d records (%d total scans, ~%.0f MB estimated)",
-                len(records), total_scans, total_scans * 250 / 1024,
+                len(records),
+                total_scans,
+                total_scans * 250 / 1024,
             )
 
-            s, f, sk = run_scrape(records, session, client, known_statuses,
-                                  args.dry_run, args.verbose)
+            s, f, sk = run_scrape(
+                records, session, client, known_statuses, args.dry_run, args.verbose,
+                scraper_id=scraper_id,
+            )
             total_success += s
             total_failed += f
             total_skipped += sk
@@ -677,7 +786,9 @@ def main():
 
     log.info(
         "Finished: %d success, %d failed, %d skipped",
-        total_success, total_failed, total_skipped,
+        total_success,
+        total_failed,
+        total_skipped,
     )
 
 

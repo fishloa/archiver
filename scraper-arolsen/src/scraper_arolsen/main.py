@@ -14,6 +14,7 @@ import argparse
 import logging
 import sys
 import time
+import uuid
 from io import BytesIO
 
 from PIL import Image
@@ -26,6 +27,8 @@ from .session import ArolsenSession, PAGE_SIZE
 from .pdf import build_pdf
 
 log = logging.getLogger(__name__)
+
+SCRAPER_NAME = "Arolsen Archives"
 
 
 def _person_title(result: dict) -> str:
@@ -247,6 +250,7 @@ def run_scrape(
     known_statuses: dict[str, str],
     dry_run: bool,
     verbose: bool,
+    scraper_id: str = "",
 ) -> tuple[int, int, int]:
     """Process a list of search results. Returns (success, failed, skipped)."""
     success, failed, skipped = 0, 0, 0
@@ -269,6 +273,9 @@ def run_scrape(
         except Exception as exc:
             log.error("Failed to ingest ObjId=%s: %s", obj_id, exc, exc_info=verbose)
             failed += 1
+
+        if client and scraper_id:
+            client.heartbeat(scraper_id, SOURCE_SYSTEM, SCRAPER_NAME, success)
 
         time.sleep(get_config().delay)
 
@@ -361,6 +368,10 @@ def main():
             incomplete,
         )
 
+    scraper_id = uuid.uuid4().hex[:12]
+    if client:
+        client.heartbeat(scraper_id, SOURCE_SYSTEM, SCRAPER_NAME)
+
     session = ArolsenSession()
     total_success, total_failed, total_skipped = 0, 0, 0
 
@@ -421,6 +432,7 @@ def main():
             known_statuses,
             args.dry_run,
             args.verbose,
+            scraper_id=scraper_id,
         )
         total_success += s
         total_failed += f

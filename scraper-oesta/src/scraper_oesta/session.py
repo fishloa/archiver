@@ -57,16 +57,19 @@ class OeStASession:
         generator = self._extract_field(html, "__VIEWSTATEGENERATOR")
 
         # Step 3: POST search
-        resp = self._client.post("/volltextsuche.aspx", data={
-            "__VIEWSTATE": viewstate,
-            "__EVENTVALIDATION": validation,
-            "__VIEWSTATEGENERATOR": generator,
-            "ctl00$cphMainArea$txtMitAllenWoertern": query,
-            "ctl00$cphMainArea$cmdSuchen": "Search",
-        })
+        resp = self._client.post(
+            "/volltextsuche.aspx",
+            data={
+                "__VIEWSTATE": viewstate,
+                "__EVENTVALIDATION": validation,
+                "__VIEWSTATEGENERATOR": generator,
+                "ctl00$cphMainArea$txtMitAllenWoertern": query,
+                "ctl00$cphMainArea$cmdSuchen": "Search",
+            },
+        )
 
         # Step 4: Parse result IDs from links like detail.aspx?ID=NNNNN
-        ids = re.findall(r'detail\.aspx\?ID=(\d+)', resp.text)
+        ids = re.findall(r"detail\.aspx\?ID=(\d+)", resp.text)
         return list(dict.fromkeys(ids))  # deduplicate preserving order
 
     def _extract_field(self, html, field_name):

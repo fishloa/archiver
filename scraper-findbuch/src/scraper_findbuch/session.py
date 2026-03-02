@@ -45,7 +45,8 @@ class FindbuchSession:
         # Locate the <form> that contains a tl_login FORM_SUBMIT
         form_match = re.search(
             r'<form[^>]*>(.*?name="FORM_SUBMIT"\s+value="(tl_login[^"]*)".*?)</form>',
-            html, re.DOTALL,
+            html,
+            re.DOTALL,
         )
         if not form_match:
             return html  # no login form on this page
@@ -54,9 +55,7 @@ class FindbuchSession:
         form_submit = form_match.group(2)
 
         # Extract hidden fields from within this specific form
-        token_match = re.search(
-            r'name="REQUEST_TOKEN"\s+value="([^"]*)"', form_html
-        )
+        token_match = re.search(r'name="REQUEST_TOKEN"\s+value="([^"]*)"', form_html)
         request_token = token_match.group(1) if token_match else ""
 
         payload: dict[str, str] = {
@@ -66,9 +65,7 @@ class FindbuchSession:
             "password": cfg.findbuch_password,
         }
         for field_name in ("_target_path", "_always_use_target_path"):
-            m = re.search(
-                rf'name="{field_name}"\s+value="([^"]*)"', form_html
-            )
+            m = re.search(rf'name="{field_name}"\s+value="([^"]*)"', form_html)
             if m:
                 payload[field_name] = m.group(1)
 
@@ -79,7 +76,9 @@ class FindbuchSession:
         """Log in to findbuch.at. Required for viewing record details."""
         cfg = get_config()
         if not cfg.findbuch_username or not cfg.findbuch_password:
-            raise RuntimeError("FINDBUCH_USERNAME and FINDBUCH_PASSWORD env vars required")
+            raise RuntimeError(
+                "FINDBUCH_USERNAME and FINDBUCH_PASSWORD env vars required"
+            )
 
         # Step 1: main site login
         login_page = self._client.get("/loginregistration")

@@ -43,7 +43,9 @@ def _fetch_with_retry(url: str, user_agent: str, timeout: int = 15) -> bytes | N
 
 
 def get_tile_info(
-    folder: str, uuid: str, user_agent: str | None = None,
+    folder: str,
+    uuid: str,
+    user_agent: str | None = None,
 ) -> dict | None:
     """Fetch Zoomify ImageProperties.xml and parse tile metadata.
 
@@ -61,7 +63,12 @@ def get_tile_info(
     url = f"{MRIMAGE_BASE}/{ZOOMIFY_PATH}/{folder}/{uuid}.jpg/ImageProperties.xml"
     data = _fetch_with_retry(url, ua)
     if data is None:
-        log.warning("Failed to fetch tile info for %s/%s after %d attempts", folder, uuid, MAX_RETRIES)
+        log.warning(
+            "Failed to fetch tile info for %s/%s after %d attempts",
+            folder,
+            uuid,
+            MAX_RETRIES,
+        )
         return None
     xml = data.decode()
     m = re.search(
@@ -160,7 +167,13 @@ def download_and_stitch(
     # Retry missing tiles sequentially (connection-refused bursts are bursty)
     missing = expected - tile_results.keys()
     if missing:
-        log.info("  Retrying %d/%d missing tiles for %s/%s...", len(missing), len(expected), folder, uuid[:8])
+        log.info(
+            "  Retrying %d/%d missing tiles for %s/%s...",
+            len(missing),
+            len(expected),
+            folder,
+            uuid[:8],
+        )
         time.sleep(1.0)
         url_map = {(col, row): url for url, col, row in tile_jobs}
         for col, row in sorted(missing):
@@ -179,7 +192,9 @@ def download_and_stitch(
         tile_img = Image.open(io.BytesIO(data))
         full_img.paste(tile_img, (col * ts, row * ts))
 
-    log.debug("Stitched %s/%s: %dx%d from %d tiles", folder, uuid, w, h, len(tile_results))
+    log.debug(
+        "Stitched %s/%s: %dx%d from %d tiles", folder, uuid, w, h, len(tile_results)
+    )
     return full_img
 
 

@@ -53,7 +53,7 @@ class DDBSession:
             "q": term,
             "wt": "json",
             "fq": [
-                "sector_fct:sec_01",       # archive sector
+                "sector_fct:sec_01",  # archive sector
                 "type_fct:mediatype_003",  # archival documents
             ],
             "rows": rows,
@@ -132,7 +132,9 @@ class DDBSession:
 
                 if service_id:
                     # Build a max-quality IIIF URL from the service base
-                    image_url = f"{service_id.rstrip('/')}/full/!2500,2500/0/default.jpg"
+                    image_url = (
+                        f"{service_id.rstrip('/')}/full/!2500,2500/0/default.jpg"
+                    )
                 elif raw_id:
                     image_url = raw_id
 
@@ -162,5 +164,5 @@ class DDBSession:
         # Strip 'binary-' prefix if present
         uuid = preview_store
         if uuid.startswith("binary-"):
-            uuid = uuid[len("binary-"):]
+            uuid = uuid[len("binary-") :]
         return f"{IIIF_BASE}/image/2/{uuid}/full/!2500,2500/0/default.jpg"

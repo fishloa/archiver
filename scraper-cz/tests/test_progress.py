@@ -7,7 +7,6 @@ from scraper_cz.progress import ProgressTracker
 
 
 class TestProgressTracker:
-
     def test_noop_when_no_path(self):
         """None path = no-op tracker; all queries return False."""
         pt = ProgressTracker(None)

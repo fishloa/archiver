@@ -233,8 +233,11 @@ public class ViewerController {
     completeStage.put("pages", donePages);
     stages.add(completeStage);
 
-    return ResponseEntity.ok(
-        Map.of("stages", stages, "totals", Map.of("records", totalRecords, "pages", totalPages)));
+    Map<String, Object> result = new LinkedHashMap<>();
+    result.put("stages", stages);
+    result.put("totals", Map.of("records", totalRecords, "pages", totalPages));
+    result.put("scrapers", jobEventService.getActiveScrapers());
+    return ResponseEntity.ok(result);
   }
 
   private Map<String, Object> buildStage(

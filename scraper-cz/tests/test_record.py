@@ -53,7 +53,6 @@ class TestParsePage:
 
 
 class TestParseRecordDetail:
-
     def test_basic_fields(self, record_html):
         detail = parse_record_detail(record_html, "test-xid")
         assert detail["xid"] == "test-xid"
@@ -77,7 +76,6 @@ class TestParseRecordDetail:
 
 
 class TestScanUuids:
-
     def test_extract_uuids(self, zoomify_html):
         uuids = extract_scan_uuids(zoomify_html)
         assert len(uuids) == 3
@@ -98,7 +96,6 @@ class TestScanUuids:
 
 
 class TestPaginatorPages:
-
     def test_extract_pages(self, zoomify_html):
         pages = extract_paginator_pages(zoomify_html)
         assert 10 in pages
@@ -109,9 +106,8 @@ class TestPaginatorPages:
 
 
 class TestHelpers:
-
     def test_extract_scan_count(self):
-        html = '<div>Zobrazit 12 skenů v prohlížeči</div>'
+        html = "<div>Zobrazit 12 skenů v prohlížeči</div>"
         assert extract_scan_count(html) == 12
 
     def test_extract_scan_count_missing(self):

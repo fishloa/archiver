@@ -9,14 +9,22 @@ import logging
 import sys
 import time
 import urllib.parse
+import uuid
 
 from .config import Config, set_config, get_config
 from .client import BackendClient, SOURCE_SYSTEM
 from worker_common.http import wait_for_backend
 from .session import FindbuchSession
-from .parser import parse_search_results, get_total_pages, get_result_count, parse_detail_page
+from .parser import (
+    parse_search_results,
+    get_total_pages,
+    get_result_count,
+    parse_detail_page,
+)
 
 log = logging.getLogger(__name__)
+
+SCRAPER_NAME = "Findbuch.at"
 
 
 def ingest_record(
@@ -57,7 +65,9 @@ def ingest_record(
             status_info = client.get_status(SOURCE_SYSTEM, source_record_id)
             record_id = status_info.get("id")
             if record_id:
-                log.info("[CLEANUP] %s — deleting incomplete record %s", title, record_id)
+                log.info(
+                    "[CLEANUP] %s — deleting incomplete record %s", title, record_id
+                )
                 client.delete_record(record_id)
                 known_statuses.pop(source_record_id, None)
 
@@ -76,7 +86,9 @@ def ingest_record(
     metadata = {
         "archive_id": 3,  # findbuch.at
         "title": (
-            (detail_data.get("surname", "") + ", " + detail_data.get("forename", "")).strip().rstrip(",")
+            (detail_data.get("surname", "") + ", " + detail_data.get("forename", ""))
+            .strip()
+            .rstrip(",")
             or title
         ),
         "referenceCode": detail_data.get("file_number", ""),
@@ -139,6 +151,7 @@ def run_scrape(
     known_statuses: dict[str, str],
     dry_run: bool,
     verbose: bool,
+    scraper_id: str = "",
 ) -> tuple[int, int, int]:
     """Process a list of search results. Returns (success, failed, skipped)."""
     success, failed, skipped = 0, 0, 0
@@ -147,11 +160,15 @@ def run_scrape(
         title = result.get("title", "?")
         log.info(
             "=== [%d/%d] %s ===",
-            i, len(results), title,
+            i,
+            len(results),
+            title,
         )
 
         try:
-            result_status = ingest_record(client, session, result, known_statuses, dry_run=dry_run)
+            result_status = ingest_record(
+                client, session, result, known_statuses, dry_run=dry_run
+            )
             if result_status == "skipped":
                 skipped += 1
             elif result_status == "ok":
@@ -161,6 +178,9 @@ def run_scrape(
         except Exception as e:
             log.error("Failed to ingest %s: %s", title, e, exc_info=verbose)
             failed += 1
+
+        if client and scraper_id:
+            client.heartbeat(scraper_id, SOURCE_SYSTEM, SCRAPER_NAME, success)
 
         time.sleep(get_config().delay)
 
@@ -204,7 +224,8 @@ def main():
         help="Maximum number of pages to fetch (default: all)",
     )
     parser.add_argument(
-        "-v", "--verbose",
+        "-v",
+        "--verbose",
         action="store_true",
         help="Enable debug logging",
     )
@@ -241,16 +262,24 @@ def main():
         incomplete = sum(1 for s in known_statuses.values() if s == "ingesting")
         log.info(
             "Backend has %d records (%d complete, %d incomplete)",
-            len(known_statuses), already_done, incomplete,
+            len(known_statuses),
+            already_done,
+            incomplete,
         )
+
+    scraper_id = uuid.uuid4().hex[:12]
+    if client:
+        client.heartbeat(scraper_id, SOURCE_SYSTEM, SCRAPER_NAME)
 
     session = FindbuchSession()
     try:
         session.login()
     except RuntimeError as e:
         log.error("Login failed: %s", e)
-        log.error("Set FINDBUCH_USERNAME and FINDBUCH_PASSWORD env vars. "
-                  "Register at https://www.findbuch.at/registration-for-individuals")
+        log.error(
+            "Set FINDBUCH_USERNAME and FINDBUCH_PASSWORD env vars. "
+            "Register at https://www.findbuch.at/registration-for-individuals"
+        )
         sys.exit(1)
     total_success, total_failed, total_skipped = 0, 0, 0
 
@@ -287,10 +316,15 @@ def main():
             results = parse_search_results(page_html)
             all_results.extend(results)
 
-            log.info("Page %d: found %d results (total: %d)", page_num, len(results), len(all_results))
+            log.info(
+                "Page %d: found %d results (total: %d)",
+                page_num,
+                len(results),
+                len(all_results),
+            )
 
             if len(all_results) >= args.max_items:
-                all_results = all_results[:args.max_items]
+                all_results = all_results[: args.max_items]
                 break
 
         log.info("Total results enumerated: %d", len(all_results))
@@ -301,8 +335,8 @@ def main():
 
         # Process results
         s, f, sk = run_scrape(
-            all_results, session, client, known_statuses,
-            args.dry_run, args.verbose
+            all_results, session, client, known_statuses, args.dry_run, args.verbose,
+            scraper_id=scraper_id,
         )
         total_success += s
         total_failed += f
@@ -317,7 +351,9 @@ def main():
 
     log.info(
         "Finished: %d success, %d failed, %d skipped",
-        total_success, total_failed, total_skipped,
+        total_success,
+        total_failed,
+        total_skipped,
     )
 
 

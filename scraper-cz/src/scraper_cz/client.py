@@ -206,6 +206,29 @@ class BackendClient:
         )
         return data
 
+    def heartbeat(
+        self,
+        scraper_id: str,
+        source_system: str,
+        source_name: str,
+        records: int = 0,
+        pages: int = 0,
+    ) -> None:
+        """Send a heartbeat to the backend so the pipeline page shows this scraper."""
+        try:
+            self._client.post(
+                "/api/ingest/heartbeat",
+                json={
+                    "scraperId": scraper_id,
+                    "sourceSystem": source_system,
+                    "sourceName": source_name,
+                    "recordsIngested": records,
+                    "pagesIngested": pages,
+                },
+            )
+        except Exception:
+            log.debug("Heartbeat failed (non-fatal)", exc_info=True)
+
     def get_all_records(self, source_system: str) -> list[dict]:
         """Fetch all records for a source system with their full metadata.
 

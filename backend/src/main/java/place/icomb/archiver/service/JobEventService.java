@@ -28,6 +28,19 @@ public class JobEventService {
 
   private record WorkerEntry(List<String> kinds, Instant lastSeen) {}
 
+  /** How long a scraper is considered alive after its last heartbeat. */
+  private static final long SCRAPER_TTL_SECONDS = 90;
+
+  /** Tracks scrapers by ID — updated via heartbeat endpoint. */
+  private final ConcurrentHashMap<String, ScraperEntry> scrapers = new ConcurrentHashMap<>();
+
+  private record ScraperEntry(
+      String sourceSystem,
+      String sourceName,
+      Instant lastSeen,
+      long recordsIngested,
+      long pagesIngested) {}
+
   // ---------------------------------------------------------------------------
   // Worker tracking (from any API call via X-Worker-Id / X-Worker-Kinds headers)
   // ---------------------------------------------------------------------------
@@ -61,6 +74,47 @@ public class JobEventService {
       }
     }
     return counts;
+  }
+
+  // ---------------------------------------------------------------------------
+  // Scraper tracking (via heartbeat endpoint)
+  // ---------------------------------------------------------------------------
+
+  /** Called by the heartbeat endpoint to track a running scraper. */
+  public void touchScraper(
+      String scraperId,
+      String sourceSystem,
+      String sourceName,
+      long recordsIngested,
+      long pagesIngested) {
+    if (scraperId == null || scraperId.isBlank()) return;
+    scrapers.put(
+        scraperId,
+        new ScraperEntry(sourceSystem, sourceName, Instant.now(), recordsIngested, pagesIngested));
+  }
+
+  /** Returns a list of active scrapers (those seen within SCRAPER_TTL_SECONDS). */
+  public List<Map<String, Object>> getActiveScrapers() {
+    Instant cutoff = Instant.now().minusSeconds(SCRAPER_TTL_SECONDS);
+    List<Map<String, Object>> result = new java.util.ArrayList<>();
+    var it = scrapers.entrySet().iterator();
+    while (it.hasNext()) {
+      var entry = it.next();
+      if (entry.getValue().lastSeen().isBefore(cutoff)) {
+        it.remove();
+        continue;
+      }
+      var s = entry.getValue();
+      Map<String, Object> m = new LinkedHashMap<>();
+      m.put("scraperId", entry.getKey());
+      m.put("sourceSystem", s.sourceSystem());
+      m.put("sourceName", s.sourceName());
+      m.put("recordsIngested", s.recordsIngested());
+      m.put("pagesIngested", s.pagesIngested());
+      m.put("lastSeen", s.lastSeen().toString());
+      result.add(m);
+    }
+    return result;
   }
 
   // ---------------------------------------------------------------------------

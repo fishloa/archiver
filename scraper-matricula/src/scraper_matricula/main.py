@@ -8,6 +8,7 @@ import argparse
 import logging
 import sys
 import time
+import uuid
 from io import BytesIO
 
 from PIL import Image
@@ -18,6 +19,8 @@ from .session import MatriculaSession
 from .pdf import build_pdf
 
 log = logging.getLogger(__name__)
+
+SCRAPER_NAME = "Matricula Online"
 
 
 def image_to_jpeg_bytes(img: Image.Image) -> bytes:
@@ -64,15 +67,24 @@ def ingest_register(
     if not dry_run:
         current_status = known_statuses.get(source_record_id)
         if current_status and current_status not in ("ingesting",):
-            log.info("[SKIP] %s / %s — already %s", parish_name, register_name, current_status)
+            log.info(
+                "[SKIP] %s / %s — already %s",
+                parish_name,
+                register_name,
+                current_status,
+            )
             return "skipped"
         if current_status == "ingesting":
             # Previous ingest was incomplete — delete and re-ingest
             status_info = client.get_status(SOURCE_SYSTEM, source_record_id)
             record_id = status_info.get("id")
             if record_id:
-                log.info("[CLEANUP] %s / %s — deleting incomplete record %s",
-                         parish_name, register_name, record_id)
+                log.info(
+                    "[CLEANUP] %s / %s — deleting incomplete record %s",
+                    parish_name,
+                    register_name,
+                    record_id,
+                )
                 client.delete_record(record_id)
                 known_statuses.pop(source_record_id, None)
 
@@ -101,7 +113,9 @@ def ingest_register(
         "title": register_name,
         "description": f"Church register from {parish_name}",
         "dateRangeText": date_range,
-        "referenceCode": register_url.split("/")[-2] if register_url.endswith("/") else register_url.split("/")[-1],
+        "referenceCode": register_url.split("/")[-2]
+        if register_url.endswith("/")
+        else register_url.split("/")[-1],
         "sourceUrl": register_url,
         "archive_id": 5,
     }
@@ -131,14 +145,22 @@ def ingest_register(
             # Upload page
             jpeg_bytes = image_to_jpeg_bytes(img)
             client.upload_page(
-                record_id, page_num, jpeg_bytes,
-                metadata={"pageLabel": page_label, "width": img.width, "height": img.height},
+                record_id,
+                page_num,
+                jpeg_bytes,
+                metadata={
+                    "pageLabel": page_label,
+                    "width": img.width,
+                    "height": img.height,
+                },
             )
 
             time.sleep(cfg.delay * 0.2)
 
         except Exception as e:
-            log.warning("  [%d/%d] Failed to download/upload page: %s", page_num, page_count, e)
+            log.warning(
+                "  [%d/%d] Failed to download/upload page: %s", page_num, page_count, e
+            )
             continue
 
     # Build and upload PDF
@@ -171,6 +193,7 @@ def ingest_parish(
     known_statuses: dict[str, str],
     dry_run: bool = False,
     max_registers: int | None = None,
+    scraper_id: str = "",
 ) -> tuple[int, int, int]:
     """Ingest all registers in a parish. Returns (success, failed, skipped)."""
     success, failed, skipped = 0, 0, 0
@@ -189,10 +212,21 @@ def ingest_parish(
         registers = registers[:max_registers]
 
     for i, register_info in enumerate(registers, start=1):
-        log.info("=== [%d/%d] %s ===", i, len(registers), register_info.get("name", "Unknown"))
+        log.info(
+            "=== [%d/%d] %s ===",
+            i,
+            len(registers),
+            register_info.get("name", "Unknown"),
+        )
         try:
-            result = ingest_register(client, session, register_info, parish_name,
-                                   known_statuses, dry_run=dry_run)
+            result = ingest_register(
+                client,
+                session,
+                register_info,
+                parish_name,
+                known_statuses,
+                dry_run=dry_run,
+            )
             if result == "skipped":
                 skipped += 1
             elif result == "ok":
@@ -202,6 +236,9 @@ def ingest_parish(
         except Exception as e:
             log.error("Failed to ingest register: %s", e, exc_info=True)
             failed += 1
+
+        if client and scraper_id:
+            client.heartbeat(scraper_id, SOURCE_SYSTEM, SCRAPER_NAME, success)
 
         time.sleep(get_config().delay)
 
@@ -216,6 +253,7 @@ def ingest_diocese(
     dry_run: bool = False,
     max_parishes: int | None = None,
     max_registers_per_parish: int | None = None,
+    scraper_id: str = "",
 ) -> tuple[int, int, int]:
     """Ingest all parishes in a diocese. Returns (success, failed, skipped)."""
     total_success, total_failed, total_skipped = 0, 0, 0
@@ -236,12 +274,21 @@ def ingest_diocese(
             "\n============================================================\n"
             "  [%d/%d] Parish: %s\n"
             "============================================================",
-            i, len(parishes), parish_name,
+            i,
+            len(parishes),
+            parish_name,
         )
 
-        s, f, sk = ingest_parish(client, session, parish_url, parish_name,
-                               known_statuses, dry_run=dry_run,
-                               max_registers=max_registers_per_parish)
+        s, f, sk = ingest_parish(
+            client,
+            session,
+            parish_url,
+            parish_name,
+            known_statuses,
+            dry_run=dry_run,
+            max_registers=max_registers_per_parish,
+            scraper_id=scraper_id,
+        )
         total_success += s
         total_failed += f
         total_skipped += sk
@@ -259,7 +306,7 @@ def main():
         nargs="?",
         choices=["parish", "register", "diocese"],
         help="Command: 'parish' (all registers in a parish), "
-             "'register' (single register), 'diocese' (all parishes in diocese)",
+        "'register' (single register), 'diocese' (all parishes in diocese)",
     )
     parser.add_argument(
         "url",
@@ -286,7 +333,8 @@ def main():
         help="Maximum number of items (parishes or registers) to process",
     )
     parser.add_argument(
-        "-v", "--verbose",
+        "-v",
+        "--verbose",
         action="store_true",
         help="Enable debug logging",
     )
@@ -324,10 +372,16 @@ def main():
             incomplete = sum(1 for s in known_statuses.values() if s == "ingesting")
             log.info(
                 "Backend has %d records (%d complete, %d incomplete)",
-                len(known_statuses), already_done, incomplete,
+                len(known_statuses),
+                already_done,
+                incomplete,
             )
         except Exception as e:
             log.warning("Could not fetch statuses: %s", e)
+
+    scraper_id = uuid.uuid4().hex[:12]
+    if client:
+        client.heartbeat(scraper_id, SOURCE_SYSTEM, SCRAPER_NAME)
 
     session = MatriculaSession()
     total_success, total_failed, total_skipped = 0, 0, 0
@@ -335,16 +389,29 @@ def main():
     try:
         if args.command == "parish":
             log.info("Scraping parish: %s", args.url)
-            s, f, sk = ingest_parish(client, session, args.url, "Unnamed Parish",
-                                    known_statuses, dry_run=args.dry_run,
-                                    max_registers=args.max_items)
+            s, f, sk = ingest_parish(
+                client,
+                session,
+                args.url,
+                "Unnamed Parish",
+                known_statuses,
+                dry_run=args.dry_run,
+                max_registers=args.max_items,
+                scraper_id=scraper_id,
+            )
             total_success, total_failed, total_skipped = s, f, sk
 
         elif args.command == "register":
             log.info("Scraping register: %s", args.url)
             register_info = {"name": "Register", "url": args.url, "date_range": ""}
-            result = ingest_register(client, session, register_info, "Parish",
-                                   known_statuses, dry_run=args.dry_run)
+            result = ingest_register(
+                client,
+                session,
+                register_info,
+                "Parish",
+                known_statuses,
+                dry_run=args.dry_run,
+            )
             if result == "ok":
                 total_success = 1
             elif result == "skipped":
@@ -354,10 +421,16 @@ def main():
 
         elif args.command == "diocese":
             log.info("Scraping diocese: %s", args.url)
-            s, f, sk = ingest_diocese(client, session, args.url, known_statuses,
-                                     dry_run=args.dry_run,
-                                     max_parishes=args.max_items,
-                                     max_registers_per_parish=None)
+            s, f, sk = ingest_diocese(
+                client,
+                session,
+                args.url,
+                known_statuses,
+                dry_run=args.dry_run,
+                max_parishes=args.max_items,
+                max_registers_per_parish=None,
+                scraper_id=scraper_id,
+            )
             total_success, total_failed, total_skipped = s, f, sk
 
     except KeyboardInterrupt:
@@ -369,7 +442,9 @@ def main():
 
     log.info(
         "Finished: %d success, %d failed, %d skipped",
-        total_success, total_failed, total_skipped,
+        total_success,
+        total_failed,
+        total_skipped,
     )
 
     sys.exit(0 if total_failed == 0 else 1)

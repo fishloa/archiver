@@ -122,6 +122,9 @@ export const de: Record<MessageKey, string> = {
 	'pipeline.busy': 'besch\u00e4ftigt',
 	'pipeline.noWorkers': 'keine Arbeiter',
 	'pipeline.failed': 'fehlgeschlagen',
+	'pipeline.scrapers': 'Aktive Scraper',
+	'pipeline.noScrapers': 'Keine Scraper aktiv',
+	'pipeline.ingested': 'aufgenommen',
 
 	// Pipeline stage descriptions
 	'pipeline.desc.downloading': 'Herunterladen von Dokumentmetadaten und Seitenbildern aus Archivkatalogen',

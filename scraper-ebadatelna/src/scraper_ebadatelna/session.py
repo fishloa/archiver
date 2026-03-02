@@ -56,21 +56,28 @@ class EBadatelnaSession:
         self._client.get("/")
 
         # AJAX login
-        resp = self._client.post("/Account/Login", data={
-            "email": cfg.ebadatelna_email,
-            "password": cfg.ebadatelna_password,
-        })
+        resp = self._client.post(
+            "/Account/Login",
+            data={
+                "email": cfg.ebadatelna_email,
+                "password": cfg.ebadatelna_password,
+            },
+        )
 
         # The login returns a result — check if successful
         # On success: returns user active status; on failure: returns error HTML
         body = resp.text.strip()
         if body in ("True", "1", "true"):
             self._authenticated = True
-            log.info("Logged in to ebadatelna.cz as %s (verified)", cfg.ebadatelna_email)
+            log.info(
+                "Logged in to ebadatelna.cz as %s (verified)", cfg.ebadatelna_email
+            )
             return True
         elif body in ("False", "0", "false"):
             self._authenticated = True
-            log.warning("Logged in to ebadatelna.cz but account NOT verified — images may be restricted")
+            log.warning(
+                "Logged in to ebadatelna.cz but account NOT verified — images may be restricted"
+            )
             return True
         else:
             log.error("Login failed: %s", body[:200])
@@ -120,11 +127,14 @@ class EBadatelnaSession:
         Returns:
             Tuple of (data_list, total_count)
         """
-        resp = self._client.post("/Home/OcrFulltextRead", data={
-            "searchText": search_text,
-            "skip": str(skip),
-            "take": str(take),
-        })
+        resp = self._client.post(
+            "/Home/OcrFulltextRead",
+            data={
+                "searchText": search_text,
+                "skip": str(skip),
+                "take": str(take),
+            },
+        )
         data = resp.json()
         return data.get("Data", []), data.get("Total", 0)
 

@@ -119,9 +119,19 @@ export interface PipelineStage {
   pagesTotal?: number;
 }
 
+export interface ScraperInfo {
+  scraperId: string;
+  sourceSystem: string;
+  sourceName: string;
+  recordsIngested: number;
+  pagesIngested: number;
+  lastSeen: string;
+}
+
 export interface PipelineStats {
   stages: PipelineStage[];
   totals: { records: number; pages: number };
+  scrapers?: ScraperInfo[];
 }
 
 export async function fetchPipelineStats(): Promise<PipelineStats> {

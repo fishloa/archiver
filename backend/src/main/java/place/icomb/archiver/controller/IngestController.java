@@ -32,6 +32,7 @@ import place.icomb.archiver.repository.ArchiveRepository;
 import place.icomb.archiver.repository.PageRepository;
 import place.icomb.archiver.repository.RecordRepository;
 import place.icomb.archiver.service.IngestService;
+import place.icomb.archiver.service.JobEventService;
 
 @RestController
 @RequestMapping("/api/ingest")
@@ -41,16 +42,19 @@ public class IngestController {
   private final RecordRepository recordRepository;
   private final ArchiveRepository archiveRepository;
   private final PageRepository pageRepository;
+  private final JobEventService jobEventService;
 
   public IngestController(
       IngestService ingestService,
       RecordRepository recordRepository,
       ArchiveRepository archiveRepository,
-      PageRepository pageRepository) {
+      PageRepository pageRepository,
+      JobEventService jobEventService) {
     this.ingestService = ingestService;
     this.recordRepository = recordRepository;
     this.archiveRepository = archiveRepository;
     this.pageRepository = pageRepository;
+    this.jobEventService = jobEventService;
   }
 
   // ── Archive CRUD ──────────────────────────────────────────────────────────
@@ -102,6 +106,19 @@ public class IngestController {
       return ResponseEntity.noContent().build();
     }
     return ResponseEntity.notFound().build();
+  }
+
+  // ── Scraper heartbeat ──────────────────────────────────────────────────
+
+  @PostMapping("/heartbeat")
+  public ResponseEntity<Void> scraperHeartbeat(@RequestBody Map<String, Object> body) {
+    jobEventService.touchScraper(
+        (String) body.get("scraperId"),
+        (String) body.get("sourceSystem"),
+        (String) body.get("sourceName"),
+        ((Number) body.getOrDefault("recordsIngested", 0)).longValue(),
+        ((Number) body.getOrDefault("pagesIngested", 0)).longValue());
+    return ResponseEntity.ok().build();
   }
 
   // ── Record ingest ───────────────────────────────────────────────────────

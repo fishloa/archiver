@@ -9,9 +9,10 @@
 		Languages,
 		BrainCircuit,
 		CircleCheckBig,
-		AlertTriangle
+		AlertTriangle,
+		Radio
 	} from 'lucide-svelte';
-	import type { PipelineStage } from '$lib/server/api';
+	import type { PipelineStage, ScraperInfo } from '$lib/server/api';
 	import { language, t } from '$lib/i18n';
 
 	let { data } = $props();
@@ -68,6 +69,39 @@
 			{fmt(data.stats.totals.records)} {$t('pipeline.records')} &middot; {fmt(data.stats.totals.pages)} {$t('pipeline.pages')}
 		</span>
 	</div>
+</div>
+
+<!-- Active scrapers -->
+<div class="scrapers-section vui-animate-fade-in mb-6" style="max-width: 640px">
+	<h2 class="text-[length:var(--vui-text-sm)] font-semibold text-text-sub mb-3 flex items-center gap-2">
+		<Radio size={14} />
+		{$t('pipeline.scrapers')}
+	</h2>
+	{#if data.stats.scrapers && data.stats.scrapers.length > 0}
+		<div class="flex flex-col gap-2">
+			{#each data.stats.scrapers as scraper}
+				<div class="scraper-card">
+					<div class="flex items-center gap-2.5">
+						<span class="scraper-dot"></span>
+						<div class="min-w-0 flex-1">
+							<div class="scraper-name">{scraper.sourceName}</div>
+							<div class="scraper-system">{scraper.sourceSystem}</div>
+						</div>
+						<div class="scraper-counts">
+							<span class="scraper-num">{fmt(scraper.recordsIngested)}</span>
+							<span class="scraper-label">{$t('pipeline.records')}</span>
+							<span class="count-sep">&middot;</span>
+							<span class="scraper-num">{fmt(scraper.pagesIngested)}</span>
+							<span class="scraper-label">{$t('pipeline.pages')}</span>
+							<span class="scraper-label" style="margin-left: 2px">{$t('pipeline.ingested')}</span>
+						</div>
+					</div>
+				</div>
+			{/each}
+		</div>
+	{:else}
+		<p class="text-[length:var(--vui-text-xs)] text-text-sub opacity-60">{$t('pipeline.noScrapers')}</p>
+	{/if}
 </div>
 
 <!-- Vertical pipeline -->
@@ -413,5 +447,63 @@
 
 	.failed-label {
 		color: var(--vui-danger);
+	}
+
+	/* Scraper cards */
+	.scraper-card {
+		border: 1.5px solid rgba(110,198,240,0.3);
+		border-radius: 8px;
+		background: var(--vui-surface);
+		padding: 10px 14px;
+	}
+
+	.scraper-dot {
+		width: 8px;
+		height: 8px;
+		border-radius: 50%;
+		background: #34d399;
+		flex-shrink: 0;
+		animation: scraper-pulse 2s ease-in-out infinite;
+	}
+
+	@keyframes scraper-pulse {
+		0%, 100% { opacity: 1; }
+		50% { opacity: 0.4; }
+	}
+
+	.scraper-name {
+		font-size: 13px;
+		font-weight: 600;
+		color: var(--vui-text);
+		white-space: nowrap;
+		overflow: hidden;
+		text-overflow: ellipsis;
+	}
+
+	.scraper-system {
+		font-size: 11px;
+		color: var(--vui-text-muted);
+		white-space: nowrap;
+		overflow: hidden;
+		text-overflow: ellipsis;
+	}
+
+	.scraper-counts {
+		display: flex;
+		align-items: baseline;
+		gap: 3px;
+		flex-shrink: 0;
+		font-variant-numeric: tabular-nums;
+	}
+
+	.scraper-num {
+		font-size: 16px;
+		font-weight: 700;
+		color: var(--vui-text);
+	}
+
+	.scraper-label {
+		font-size: 10px;
+		color: var(--vui-text-muted);
 	}
 </style>

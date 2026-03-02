@@ -9,6 +9,7 @@ import io
 import logging
 import sys
 import time
+import uuid
 
 from PIL import Image
 
@@ -18,6 +19,8 @@ from .session import EBadatelnaSession
 from .pdf import build_pdf
 
 log = logging.getLogger(__name__)
+
+SCRAPER_NAME = "Czech Archive of Security Forces"
 
 
 def image_to_jpeg_bytes(img: Image.Image, quality: int = 95) -> bytes:
@@ -62,7 +65,9 @@ def ingest_record(
             status_info = client.get_status(SOURCE_SYSTEM, doc_id)
             record_id = status_info.get("id")
             if record_id:
-                log.info("[CLEANUP] %s — deleting incomplete record %s", label, record_id)
+                log.info(
+                    "[CLEANUP] %s — deleting incomplete record %s", label, record_id
+                )
                 client.delete_record(record_id)
                 known_statuses.pop(doc_id, None)
 
@@ -94,6 +99,7 @@ def ingest_record(
 
     # Add all fields to rawSourceMetadata
     import json as jsonmod
+
     metadata["rawSourceMetadata"] = jsonmod.dumps(item, ensure_ascii=False)
 
     # Create record in backend
@@ -109,7 +115,11 @@ def ingest_record(
             total_images = sig_data.get("TotalImages", 0)
             total_pages = sig_data.get("TotalPages", 1)
 
-            log.info("  GetSignatureImages: %d images across %d pages", total_images, total_pages)
+            log.info(
+                "  GetSignatureImages: %d images across %d pages",
+                total_images,
+                total_pages,
+            )
 
             # Collect all page paths from all pagination pages
             all_page_paths = list(thumbnail_list)
@@ -135,7 +145,9 @@ def ingest_record(
 
                     jpeg_bytes = image_to_jpeg_bytes(img)
                     client.upload_page(
-                        record_id, seq, jpeg_bytes,
+                        record_id,
+                        seq,
+                        jpeg_bytes,
                         metadata={"page_path": page_path},
                     )
                     time.sleep(cfg.delay * 0.2)
@@ -173,6 +185,7 @@ def run_ingest(
     dry_run: bool,
     verbose: bool,
     max_items: int | None = None,
+    scraper_id: str = "",
 ) -> tuple[int, int, int]:
     """Process a list of items. Returns (success, failed, skipped)."""
     success, failed, skipped = 0, 0, 0
@@ -187,11 +200,16 @@ def run_ingest(
         file_count = item.get("FileCount", 0)
         log.info(
             "=== [%d/%d] %s (%d pages) ===",
-            i, len(items), title or doc_id, file_count,
+            i,
+            len(items),
+            title or doc_id,
+            file_count,
         )
 
         try:
-            result = ingest_record(client, session, item, known_statuses, dry_run=dry_run)
+            result = ingest_record(
+                client, session, item, known_statuses, dry_run=dry_run
+            )
             if result == "skipped":
                 skipped += 1
             elif result == "ok":
@@ -201,6 +219,9 @@ def run_ingest(
         except Exception as e:
             log.error("Failed to ingest %s: %s", doc_id, e, exc_info=verbose)
             failed += 1
+
+        if client and scraper_id:
+            client.heartbeat(scraper_id, SOURCE_SYSTEM, SCRAPER_NAME, success)
 
         time.sleep(get_config().delay)
 
@@ -239,7 +260,9 @@ def browse_collection(
         take = 50
         while True:
             try:
-                items, total = session.item_read(parent_id=parent_id, skip=skip, take=take)
+                items, total = session.item_read(
+                    parent_id=parent_id, skip=skip, take=take
+                )
             except Exception as e:
                 log.warning("Failed to fetch items for parent %s: %s", parent_id, e)
                 break
@@ -255,7 +278,13 @@ def browse_collection(
                 is_leaf = item.get("Leaf", 0)
                 has_files = item.get("HasFiles", 0)
 
-                log.debug("  %s%s (Leaf=%s, HasFiles=%s)", "  " * depth, item.get("Name", ""), is_leaf, has_files)
+                log.debug(
+                    "  %s%s (Leaf=%s, HasFiles=%s)",
+                    "  " * depth,
+                    item.get("Name", ""),
+                    is_leaf,
+                    has_files,
+                )
 
                 if is_leaf == 1 and has_files == 1:
                     # Leaf document with files
@@ -359,7 +388,8 @@ def main():
             help="Maximum number of items to ingest",
         )
         sp.add_argument(
-            "-v", "--verbose",
+            "-v",
+            "--verbose",
             action="store_true",
             help="Enable debug logging",
         )
@@ -398,13 +428,19 @@ def main():
             incomplete = sum(1 for s in known_statuses.values() if s == "ingesting")
             log.info(
                 "Backend has %d records (%d complete, %d incomplete)",
-                len(known_statuses), already_done, incomplete,
+                len(known_statuses),
+                already_done,
+                incomplete,
             )
         except Exception as e:
             log.warning("Could not fetch existing statuses: %s", e)
             if not cfg.backend_url:
                 log.warning("BACKEND_URL not set; proceeding in dry-run mode")
                 args.dry_run = True
+
+    scraper_id = uuid.uuid4().hex[:12]
+    if client:
+        client.heartbeat(scraper_id, SOURCE_SYSTEM, SCRAPER_NAME)
 
     session = EBadatelnaSession()
     session.login()  # attempts login if credentials set; continues without if not
@@ -420,23 +456,41 @@ def main():
                 sys.exit(0)
 
             log.info("Processing %d items", len(items))
-            s, f, sk = run_ingest(items, session, client, known_statuses,
-                                  args.dry_run, args.verbose, max_items=args.max_items)
+            s, f, sk = run_ingest(
+                items,
+                session,
+                client,
+                known_statuses,
+                args.dry_run,
+                args.verbose,
+                max_items=args.max_items,
+                scraper_id=scraper_id,
+            )
             total_success += s
             total_failed += f
             total_skipped += sk
 
         elif args.command == "browse":
             log.info("Browsing collection: %s", args.collection_id)
-            items = browse_collection(session, args.collection_id, max_items=args.max_items)
+            items = browse_collection(
+                session, args.collection_id, max_items=args.max_items
+            )
 
             if not items:
                 log.warning("No items found.")
                 sys.exit(0)
 
             log.info("Processing %d items", len(items))
-            s, f, sk = run_ingest(items, session, client, known_statuses,
-                                  args.dry_run, args.verbose, max_items=args.max_items)
+            s, f, sk = run_ingest(
+                items,
+                session,
+                client,
+                known_statuses,
+                args.dry_run,
+                args.verbose,
+                max_items=args.max_items,
+                scraper_id=scraper_id,
+            )
             total_success += s
             total_failed += f
             total_skipped += sk
@@ -450,7 +504,9 @@ def main():
 
     log.info(
         "Finished: %d success, %d failed, %d skipped",
-        total_success, total_failed, total_skipped,
+        total_success,
+        total_failed,
+        total_skipped,
     )
 
 

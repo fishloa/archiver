@@ -45,7 +45,11 @@ def enumerate_all(
     session.reinit()
 
     total, html = search_mod.search(
-        session, term, digi_only=digi_only, levels=levels, nad=nad,
+        session,
+        term,
+        digi_only=digi_only,
+        levels=levels,
+        nad=nad,
     )
     if total == 0:
         return 0, []
@@ -69,6 +73,7 @@ def enumerate_all(
         fwd = search_mod.extract_forward_link(html)
         if fwd:
             import urllib.parse
+
             sp_fwd, row = fwd
             url = (
                 f"{BASE}/PaginatorResult.action?"
@@ -94,11 +99,18 @@ def enumerate_all(
 
             # Detect session expiry in pagination
             if session.is_expired_response(html):
-                log.warning("Session expired during pagination at row %d, reinitialising...", row)
+                log.warning(
+                    "Session expired during pagination at row %d, reinitialising...",
+                    row,
+                )
                 session.reinit()
                 # Re-execute the search from scratch and jump to current row
                 _, html = search_mod.search(
-                    session, term, digi_only=digi_only, levels=levels, nad=nad,
+                    session,
+                    term,
+                    digi_only=digi_only,
+                    levels=levels,
+                    nad=nad,
                 )
                 new_sp, new_fp = search_mod.extract_form_params(html)
                 if new_sp:
@@ -202,6 +214,7 @@ def probe_for_hidden(
     progress.save()
     log.info(
         "Probing complete: %d/%d records had hidden scans",
-        len(hidden), total,
+        len(hidden),
+        total,
     )
     return hidden
