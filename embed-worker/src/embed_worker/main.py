@@ -14,23 +14,36 @@ from .chunker import chunk_text
 log = logging.getLogger(__name__)
 
 JOB_KIND = "embed_record"
-BATCH_SIZE = 64
+BATCH_SIZE = 16
 
 
 def embed_batch(tei_url: str, tei_key: str, texts: list[str]) -> list[list[float]]:
-    """Embed a batch of texts via TEI server."""
+    """Embed a batch of texts via TEI server.
+
+    Retries with halved batch size on 422 (token limit exceeded).
+    Falls back to one-at-a-time as last resort.
+    """
     headers = {"Content-Type": "application/json"}
     if tei_key:
         headers["Authorization"] = f"Bearer {tei_key}"
 
-    resp = httpx.post(
-        f"{tei_url}/embed",
-        json={"inputs": texts},
-        headers=headers,
-        timeout=120.0,
-    )
-    resp.raise_for_status()
-    return resp.json()
+    try:
+        resp = httpx.post(
+            f"{tei_url}/embed",
+            json={"inputs": texts},
+            headers=headers,
+            timeout=120.0,
+        )
+        resp.raise_for_status()
+        return resp.json()
+    except httpx.HTTPStatusError as e:
+        if e.response.status_code == 422 and len(texts) > 1:
+            log.warning("TEI 422 with batch size %d, splitting in half", len(texts))
+            mid = len(texts) // 2
+            left = embed_batch(tei_url, tei_key, texts[:mid])
+            right = embed_batch(tei_url, tei_key, texts[mid:])
+            return left + right
+        raise
 
 
 def process_one(client, tei_url: str, tei_key: str, job: dict) -> None:

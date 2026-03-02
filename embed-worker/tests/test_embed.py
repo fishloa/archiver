@@ -176,6 +176,30 @@ def test_process_one_skips_empty_pages():
 
 
 @respx.mock
+def test_embed_batch_retries_on_422():
+    """embed_batch should split and retry on 422 (token limit exceeded)."""
+    call_count = 0
+
+    def side_effect(request):
+        nonlocal call_count
+        call_count += 1
+        body = request.content
+        import json
+
+        inputs = json.loads(body)["inputs"]
+        if len(inputs) > 2:
+            return httpx.Response(422, json={"error": "too many tokens"})
+        return httpx.Response(200, json=[[0.1] * 1024] * len(inputs))
+
+    respx.post("http://tei:80/embed").mock(side_effect=side_effect)
+
+    result = embed_batch("http://tei:80", "test-key", ["a", "b", "c", "d"])
+
+    assert len(result) == 4
+    assert call_count >= 3  # first call fails, then splits into 2+ successful calls
+
+
+@respx.mock
 def test_process_one_1024_dim_vectors():
     """Verify stored embeddings are 1024-dimensional (BGE-M3)."""
     fake_vectors = [[float(i) / 1024 for i in range(1024)]]
