@@ -28,3 +28,12 @@ class ProcessorClient(_Base):
             files={"pdf": ("searchable.pdf", pdf_bytes, "application/pdf")},
         )
         resp.raise_for_status()
+
+    def upload_searchable_pdf_file(self, record_id: int, pdf_path: str):
+        """Upload a searchable PDF from a file path (avoids loading into memory)."""
+        with open(pdf_path, "rb") as f:
+            resp = self._client.post(
+                f"/api/processor/records/{record_id}/searchable-pdf",
+                files={"pdf": ("searchable.pdf", f, "application/pdf")},
+            )
+            resp.raise_for_status()

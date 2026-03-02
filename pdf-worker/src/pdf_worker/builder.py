@@ -2,12 +2,15 @@
 
 Each page becomes a PDF page with the scanned image as background and
 invisible OCR text overlaid so the PDF is selectable/searchable.
+
+Pages are processed one at a time to avoid loading all images into memory.
+The PDF is written directly to a file on disk.
 """
 
 import io
 import logging
+from collections.abc import Iterable
 
-from PIL import Image
 from reportlab.lib.utils import ImageReader
 from reportlab.pdfgen import canvas
 
@@ -18,53 +21,48 @@ DPI = 150
 SCALE = 72.0 / DPI
 
 
-def build_searchable_pdf(pages: list[dict]) -> bytes:
-    """Build a searchable PDF from page data.
+def build_searchable_pdf_to_file(pages: Iterable[dict], output_path: str) -> int:
+    """Build a searchable PDF, writing directly to a file on disk.
 
     Args:
-        pages: list of dicts with keys:
+        pages: iterable of dicts with keys:
             - image: bytes (JPEG/PNG image data)
             - text: str (OCR text for the page)
             - width: int (image width in pixels)
             - height: int (image height in pixels)
-            - seq: int (page sequence number for ordering)
+        output_path: path to write the PDF file to.
 
     Returns:
-        PDF file content as bytes.
+        Number of pages written.
     """
-    # Sort pages by sequence number
-    pages = sorted(pages, key=lambda p: p["seq"])
+    c = canvas.Canvas(output_path)
+    page_count = 0
 
-    buf = io.BytesIO()
-    c = canvas.Canvas(buf)
-
-    for i, page in enumerate(pages):
-        page_num = i + 1
+    for page in pages:
+        page_count += 1
         img_w = page["width"]
         img_h = page["height"]
 
-        # PDF page size in points
         pt_w = img_w * SCALE
         pt_h = img_h * SCALE
 
         c.setPageSize((pt_w, pt_h))
 
-        # Draw the scanned image as full-page background
         img_reader = ImageReader(io.BytesIO(page["image"]))
         c.drawImage(img_reader, 0, 0, width=pt_w, height=pt_h)
 
-        # Overlay invisible OCR text
         text = page.get("text", "")
         if text:
             _draw_invisible_text(c, text, pt_w, pt_h)
 
         c.showPage()
-        log.debug("  Page %d added (%dx%d px -> %.0fx%.0f pt)", page_num, img_w, img_h, pt_w, pt_h)
+        log.debug(
+            "  Page %d added (%dx%d px -> %.0fx%.0f pt)", page_count, img_w, img_h, pt_w, pt_h
+        )
 
     c.save()
-    pdf_bytes = buf.getvalue()
-    log.info("PDF built: %d pages, %d bytes", len(pages), len(pdf_bytes))
-    return pdf_bytes
+    log.info("PDF built: %d pages -> %s", page_count, output_path)
+    return page_count
 
 
 def _draw_invisible_text(c: canvas.Canvas, text: str, page_w: float, page_h: float):

@@ -3,12 +3,14 @@
 Claims build_searchable_pdf jobs from the backend, builds searchable PDFs
 (with invisible text layer over scanned page images), and uploads them back.
 
-Subscribes to the backend's SSE job events stream for real-time
-notifications. Falls back to polling on SSE disconnect.
+Pages are streamed one at a time: download image → add to PDF → discard.
+The PDF is written to a temporary file on disk to avoid holding it in memory.
 """
 
 import io
 import logging
+import os
+import tempfile
 
 from PIL import Image
 from worker_common import run_sse_loop, wait_for_backend
@@ -18,9 +20,36 @@ log = logging.getLogger(__name__)
 JOB_KIND = "build_searchable_pdf"
 
 
+def _page_iterator(client, pages_meta):
+    """Yield page dicts one at a time, downloading each image on demand."""
+    # Sort by sequence number so pages are in order
+    pages_meta = sorted(pages_meta, key=lambda p: p.get("seq", 0))
+
+    for pm in pages_meta:
+        page_id = pm["page_id"]
+        seq = pm.get("seq", 0)
+        text = pm.get("text_raw", "") or ""
+
+        log.info("  Downloading image for page %d (seq=%d)", page_id, seq)
+        image_bytes = client.download_page_image(page_id)
+        log.info("    Downloaded %d bytes", len(image_bytes))
+
+        img = Image.open(io.BytesIO(image_bytes))
+        width, height = img.size
+        img.close()
+
+        yield {
+            "image": image_bytes,
+            "text": text,
+            "width": width,
+            "height": height,
+        }
+        # image_bytes goes out of scope here and can be GC'd
+
+
 def process_one(client, job: dict) -> None:
     """Process a single searchable-PDF job."""
-    from .builder import build_searchable_pdf
+    from .builder import build_searchable_pdf_to_file
 
     job_id = job["id"]
     record_id = job["recordId"]
@@ -33,34 +62,21 @@ def process_one(client, job: dict) -> None:
     if not pages_meta:
         raise RuntimeError(f"Record {record_id} has no pages")
 
-    pages = []
-    for pm in pages_meta:
-        page_id = pm["page_id"]
-        seq = pm.get("seq", 0)
-        text = pm.get("text_raw", "") or ""
+    # Build PDF to a temp file, streaming pages one at a time
+    tmp_fd, tmp_path = tempfile.mkstemp(suffix=".pdf")
+    os.close(tmp_fd)
 
-        log.info("  Downloading image for page %d (seq=%d)", page_id, seq)
-        image_bytes = client.download_page_image(page_id)
-        log.info("    Downloaded %d bytes", len(image_bytes))
+    try:
+        page_count = build_searchable_pdf_to_file(_page_iterator(client, pages_meta), tmp_path)
+        pdf_size = os.path.getsize(tmp_path)
+        log.info("  PDF built: %d pages, %d bytes", page_count, pdf_size)
 
-        img = Image.open(io.BytesIO(image_bytes))
-        width, height = img.size
-
-        pages.append({
-            "image": image_bytes,
-            "text": text,
-            "width": width,
-            "height": height,
-            "seq": seq,
-        })
-
-    log.info("  Building searchable PDF for record %d (%d pages)", record_id, len(pages))
-    pdf_bytes = build_searchable_pdf(pages)
-    log.info("  PDF built: %d bytes", len(pdf_bytes))
-
-    log.info("  Uploading searchable PDF for record %d", record_id)
-    client.upload_searchable_pdf(record_id, pdf_bytes)
-    log.info("  Upload complete")
+        log.info("  Uploading searchable PDF for record %d", record_id)
+        client.upload_searchable_pdf_file(record_id, tmp_path)
+        log.info("  Upload complete")
+    finally:
+        if os.path.exists(tmp_path):
+            os.unlink(tmp_path)
 
     client.complete_job(job_id)
     log.info("  Job %d completed", job_id)
