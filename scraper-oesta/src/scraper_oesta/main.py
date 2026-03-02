@@ -14,7 +14,8 @@ from io import BytesIO
 from PIL import Image
 
 from .config import Config, set_config, get_config
-from .client import BackendClient, SOURCE_SYSTEM, wait_for_backend
+from .client import BackendClient, SOURCE_SYSTEM
+from worker_common.http import wait_for_backend
 from .session import OeStASession
 from .parser import parse_detail_page
 from .pdf import build_pdf

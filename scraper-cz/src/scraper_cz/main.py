@@ -13,7 +13,8 @@ import time
 import uuid
 
 from .config import Config, set_config, get_config
-from .client import BackendClient, SOURCE_SYSTEM, wait_for_backend
+from .client import BackendClient, SOURCE_SYSTEM
+from worker_common.http import wait_for_backend
 from .session import VadeMeCumSession
 from .enumerator import enumerate_all, probe_for_hidden
 from .progress import ProgressTracker
