@@ -1,12 +1,12 @@
 """Embed worker main loop.
 
-Claims embed_record jobs, embeds document text via OpenAI,
+Claims embed_record jobs, embeds document text via TEI (BGE-M3),
 and stores the vectors in the backend for semantic search.
 """
 
 import logging
 
-from openai import OpenAI
+import httpx
 from worker_common import run_sse_loop, wait_for_backend
 
 from .chunker import chunk_text
@@ -14,11 +14,26 @@ from .chunker import chunk_text
 log = logging.getLogger(__name__)
 
 JOB_KIND = "embed_record"
-EMBED_MODEL = "text-embedding-3-small"
-BATCH_SIZE = 100  # OpenAI allows up to 2048 inputs per request
+BATCH_SIZE = 64
 
 
-def process_one(client, openai_client, job: dict) -> None:
+def embed_batch(tei_url: str, tei_key: str, texts: list[str]) -> list[list[float]]:
+    """Embed a batch of texts via TEI server."""
+    headers = {"Content-Type": "application/json"}
+    if tei_key:
+        headers["Authorization"] = f"Bearer {tei_key}"
+
+    resp = httpx.post(
+        f"{tei_url}/embed",
+        json={"inputs": texts},
+        headers=headers,
+        timeout=120.0,
+    )
+    resp.raise_for_status()
+    return resp.json()
+
+
+def process_one(client, tei_url: str, tei_key: str, job: dict) -> None:
     """Process a single embed_record job."""
     job_id = job["id"]
     record_id = job["recordId"]
@@ -28,7 +43,6 @@ def process_one(client, openai_client, job: dict) -> None:
     # 1. Fetch record metadata
     meta = client.get_record_metadata(record_id)
     title = meta.get("title_en") or meta.get("title") or ""
-    description = meta.get("description_en") or meta.get("description") or ""
     ref_code = meta.get("reference_code") or ""
 
     # 2. Fetch all pages with OCR text
@@ -37,7 +51,7 @@ def process_one(client, openai_client, job: dict) -> None:
     # 3. Build text content to embed
     all_chunks = []
 
-    # Metadata chunk — English only
+    # Metadata chunk — prefer English translations for bilingual coverage
     meta_text = ""
     if meta.get("title_en"):
         meta_text += f"Title: {meta['title_en']}\n"
@@ -51,11 +65,13 @@ def process_one(client, openai_client, job: dict) -> None:
         for i, chunk in enumerate(chunk_text(meta_text)):
             all_chunks.append({"page_id": None, "chunk_index": i, "content": chunk})
 
-    # Page text chunks — English translations only
+    # Page text chunks — prefer original OCR text (text_raw) for multilingual embedding.
+    # BGE-M3 handles Czech/German/English natively, so we embed the original text
+    # rather than waiting for English translations.
     skipped = 0
     for page in pages:
         page_id = page.get("page_id")
-        text = page.get("text_en") or ""
+        text = page.get("text_raw") or page.get("text_en") or ""
         if not text.strip():
             skipped += 1
             continue
@@ -65,24 +81,24 @@ def process_one(client, openai_client, job: dict) -> None:
             all_chunks.append({"page_id": page_id, "chunk_index": i, "content": chunk})
 
     if skipped:
-        log.info("  Skipped %d pages without English translation", skipped)
+        log.info("  Skipped %d pages without OCR text", skipped)
 
     if not all_chunks:
-        log.info("  No English text to embed for record %d", record_id)
+        log.info("  No text to embed for record %d", record_id)
         client.complete_job(job_id)
         return
 
     log.info("  Chunked into %d pieces", len(all_chunks))
 
-    # 4. Embed in batches
+    # 4. Embed in batches via TEI
     for batch_start in range(0, len(all_chunks), BATCH_SIZE):
         batch = all_chunks[batch_start : batch_start + BATCH_SIZE]
         texts = [c["content"] for c in batch]
 
-        response = openai_client.embeddings.create(model=EMBED_MODEL, input=texts)
+        embeddings = embed_batch(tei_url, tei_key, texts)
 
-        for j, embedding_data in enumerate(response.data):
-            batch[j]["embedding"] = embedding_data.embedding
+        for j, embedding in enumerate(embeddings):
+            batch[j]["embedding"] = embedding
 
     # 5. Store via backend API
     chunks_payload = [
@@ -95,7 +111,9 @@ def process_one(client, openai_client, job: dict) -> None:
         for c in all_chunks
     ]
     result = client.store_embeddings(record_id, chunks_payload)
-    log.info("  Stored %d chunks for record %d", result.get("chunksStored", 0), record_id)
+    log.info(
+        "  Stored %d chunks for record %d", result.get("chunksStored", 0), record_id
+    )
 
     # 6. Complete the job
     client.complete_job(job_id)
@@ -114,11 +132,11 @@ def main():
 
     cfg = Config()
     client = EmbedClient(cfg.backend_url, cfg.processor_token)
-    openai_client = OpenAI(api_key=cfg.openai_api_key)
 
     log.info(
-        "Embed worker starting (backend=%s, poll=%ds)",
+        "Embed worker starting (backend=%s, tei=%s, poll=%ds)",
         cfg.backend_url,
+        cfg.tei_url,
         cfg.poll_interval,
     )
 
@@ -128,7 +146,7 @@ def main():
         run_sse_loop(
             client,
             job_kinds=[JOB_KIND],
-            process_fn=lambda job: process_one(client, openai_client, job),
+            process_fn=lambda job: process_one(client, cfg.tei_url, cfg.tei_key, job),
             poll_interval=cfg.poll_interval,
         )
     except KeyboardInterrupt:

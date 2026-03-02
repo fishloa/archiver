@@ -42,6 +42,9 @@ archiver:
     token: ${ARCHIVER_PROCESSOR_TOKEN:dev-processor-token}
   openai:
     api-key: ${OPENAI_API_KEY:}
+  embed:
+    tei-url: ${EMBED_TEI_URL:}
+    tei-key: ${EMBED_TEI_KEY:}
   translate-worker:
     url: ${TRANSLATE_WORKER_URL:http://translate-worker:8001}
   anthropic:

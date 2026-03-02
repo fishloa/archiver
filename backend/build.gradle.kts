@@ -54,6 +54,7 @@ dependencies {
     testImplementation("org.testcontainers:junit-jupiter:1.21.1")
     testImplementation("org.testcontainers:postgresql:1.21.1")
     testImplementation("io.rest-assured:rest-assured:5.5.1")
+    testImplementation("org.wiremock:wiremock-standalone:3.13.0")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 }
 

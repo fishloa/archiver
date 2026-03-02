@@ -4,7 +4,10 @@ import jakarta.validation.Valid;
 import java.io.IOException;
 import java.sql.Timestamp;
 import java.time.Instant;
+import java.util.List;
 import java.util.Map;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.Resource;
 import org.springframework.http.HttpStatus;
@@ -42,6 +45,8 @@ import place.icomb.archiver.service.StorageService;
 @RestController
 @RequestMapping("/api/processor")
 public class ProcessorController {
+
+  private static final Logger log = LoggerFactory.getLogger(ProcessorController.class);
 
   private final JobService jobService;
   private final JobEventService jobEventService;
@@ -412,6 +417,29 @@ public class ProcessorController {
     validateToken(authHeader);
     int requeued = jobService.auditPipeline();
     return ResponseEntity.ok(Map.of("requeued", requeued));
+  }
+
+  @PostMapping("/reset-embeddings")
+  public ResponseEntity<Map<String, Object>> resetEmbeddings(
+      @RequestHeader("Authorization") String authHeader) {
+    validateToken(authHeader);
+
+    // 1. Clear all existing text chunks
+    int deleted = jdbcTemplate.update("DELETE FROM text_chunk");
+    log.info("Deleted {} text chunks", deleted);
+
+    // 2. Re-enqueue embed_record jobs for all complete records
+    List<Long> recordIds =
+        jdbcTemplate.queryForList("SELECT id FROM record WHERE status = 'complete'", Long.class);
+
+    for (Long recordId : recordIds) {
+      jdbcTemplate.update(
+          "UPDATE record SET status = 'embedding', updated_at = now() WHERE id = ?", recordId);
+      jobService.enqueueJob("embed_record", recordId, null, null);
+    }
+
+    log.info("Re-enqueued embed_record jobs for {} records", recordIds.size());
+    return ResponseEntity.ok(Map.of("recordsQueued", recordIds.size(), "chunksDeleted", deleted));
   }
 
   // -------------------------------------------------------------------------

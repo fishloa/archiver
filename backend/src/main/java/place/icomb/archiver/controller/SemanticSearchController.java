@@ -42,14 +42,18 @@ public class SemanticSearchController {
           "get", "got", "find", "found", "know", "think", "tell", "say", "said");
 
   private final JdbcTemplate jdbcTemplate;
-  private final String openaiApiKey;
+  private final String teiUrl;
+  private final String teiKey;
   private final HttpClient httpClient = HttpClient.newHttpClient();
   private final ObjectMapper objectMapper = new ObjectMapper();
 
   public SemanticSearchController(
-      JdbcTemplate jdbcTemplate, @Value("${archiver.openai.api-key:}") String openaiApiKey) {
+      JdbcTemplate jdbcTemplate,
+      @Value("${archiver.embed.tei-url:}") String teiUrl,
+      @Value("${archiver.embed.tei-key:}") String teiKey) {
     this.jdbcTemplate = jdbcTemplate;
-    this.openaiApiKey = openaiApiKey;
+    this.teiUrl = teiUrl;
+    this.teiKey = teiKey;
   }
 
   @PostMapping("/search/semantic")
@@ -61,8 +65,8 @@ public class SemanticSearchController {
       return ResponseEntity.ok(Map.of("results", List.of()));
     }
 
-    if (openaiApiKey == null || openaiApiKey.isBlank()) {
-      return ResponseEntity.status(503).body(Map.of("error", "OpenAI API key not configured"));
+    if (teiUrl == null || teiUrl.isBlank()) {
+      return ResponseEntity.status(503).body(Map.of("error", "Embedding service not configured"));
     }
 
     try {
@@ -75,7 +79,7 @@ public class SemanticSearchController {
 
       log.info("Semantic search: query='{}', keywords={}", query, keywords);
 
-      // 2. Embed the query via OpenAI
+      // 2. Embed the query via TEI
       long t0 = System.currentTimeMillis();
       float[] queryEmbedding = embedText(query);
       long tEmbed = System.currentTimeMillis();
@@ -192,26 +196,28 @@ public class SemanticSearchController {
   }
 
   private float[] embedText(String text) throws Exception {
-    String escapedText = objectMapper.writeValueAsString(text);
-    String jsonBody = "{\"model\": \"text-embedding-3-small\", \"input\": " + escapedText + "}";
+    String jsonBody = objectMapper.writeValueAsString(Map.of("inputs", text));
 
-    HttpRequest request =
+    var requestBuilder =
         HttpRequest.newBuilder()
-            .uri(URI.create("https://api.openai.com/v1/embeddings"))
-            .header("Authorization", "Bearer " + openaiApiKey)
+            .uri(URI.create(teiUrl + "/embed"))
             .header("Content-Type", "application/json")
-            .POST(HttpRequest.BodyPublishers.ofString(jsonBody))
-            .build();
+            .POST(HttpRequest.BodyPublishers.ofString(jsonBody));
 
-    HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
-
-    if (response.statusCode() != 200) {
-      throw new RuntimeException(
-          "OpenAI API error: " + response.statusCode() + " " + response.body());
+    if (teiKey != null && !teiKey.isBlank()) {
+      requestBuilder.header("Authorization", "Bearer " + teiKey);
     }
 
+    HttpResponse<String> response =
+        httpClient.send(requestBuilder.build(), HttpResponse.BodyHandlers.ofString());
+
+    if (response.statusCode() != 200) {
+      throw new RuntimeException("TEI API error: " + response.statusCode() + " " + response.body());
+    }
+
+    // TEI returns float[][] — first element is the embedding for our single input
     var tree = objectMapper.readTree(response.body());
-    var embeddingNode = tree.get("data").get(0).get("embedding");
+    var embeddingNode = tree.get(0);
     float[] embedding = new float[embeddingNode.size()];
     for (int i = 0; i < embeddingNode.size(); i++) {
       embedding[i] = (float) embeddingNode.get(i).doubleValue();

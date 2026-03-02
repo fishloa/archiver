@@ -79,6 +79,8 @@ services:
       OPENAI_API_KEY: ${OPENAI_API_KEY}
       TRANSLATE_WORKER_URL: http://translate-worker:8001
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
+      EMBED_TEI_URL: http://embed-tei:80
+      EMBED_TEI_KEY: ${TEI_API_KEY}
     restart: unless-stopped
 
   frontend:
@@ -145,15 +147,28 @@ services:
     deploy:
       replicas: 2
 
+  embed-tei:
+    image: ghcr.io/huggingface/text-embeddings-inference:turing-1.7
+    runtime: nvidia
+    environment:
+      NVIDIA_VISIBLE_DEVICES: all
+      HF_API_TOKEN: ${TEI_API_KEY}
+    volumes:
+      - tei_model_cache:/data
+    command: --model-id BAAI/bge-m3 --port 80 --max-batch-tokens 32768 --api-key ${TEI_API_KEY}
+    restart: unless-stopped
+
   embed-worker:
     image: dockerregistry.icomb.place/archiver/embed-worker:latest
     user: "${CONTAINER_USER:-1012:1012}"
     environment:
       BACKEND_URL: http://backend:8080
       PROCESSOR_TOKEN: ${PROCESSOR_TOKEN}
-      OPENAI_API_KEY: ${OPENAI_API_KEY}
+      EMBED_TEI_URL: http://embed-tei:80
+      EMBED_TEI_KEY: ${TEI_API_KEY}
     depends_on:
       - backend
+      - embed-tei
     restart: unless-stopped
 
   scraper-ebadatelna:
@@ -208,3 +223,4 @@ services:
 volumes:
   archiver_store:
     external: true
+  tei_model_cache: {}

@@ -7,7 +7,6 @@ WORKDIR /app
 
 RUN pip install --no-cache-dir --upgrade pip setuptools wheel && \
     pip install --no-cache-dir \
-        "openai>=1.0" \
         "httpx>=0.27" \
         "httpx-sse>=0.4"
 
