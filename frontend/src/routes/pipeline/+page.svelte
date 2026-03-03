@@ -72,59 +72,64 @@
 	</div>
 </div>
 
-<!-- Scrapers card -->
-<div class="sources-card-wrapper vui-animate-fade-in" style="max-width: 640px">
-	<div class="stage-card" style="border-color: rgba(110,198,240,0.35)">
-		<div class="accent-bar" style="background: #6ec6f0"></div>
-		<div class="card-body">
-			<div class="card-header" style="margin-bottom: 10px">
-				<div class="card-icon" style="background: rgba(110,198,240,0.08)">
-					<Radio size={16} color="#6ec6f0" strokeWidth={2} />
-				</div>
-				<div>
-					<div class="card-title" style="color: #6ec6f0">{$t('pipeline.scrapers')}</div>
-				</div>
-			</div>
-			{#if data.sources && data.sources.length > 0}
-				<div class="flex flex-col gap-1.5">
-					{#each data.sources as scraper}
-						{@const isActive = scraper.instances.length > 0}
-						<div class="source-card" class:source-active={isActive}>
-							<div class="flex items-center gap-2.5">
-								<span class="source-dot" class:source-dot-active={isActive}></span>
-								<span class="source-name">{scraper.name}</span>
-								<span class="source-status-label" class:source-status-active={isActive}>
-									{isActive ? $t('pipeline.active') : $t('pipeline.idle')}
-								</span>
-							</div>
-							{#if isActive}
-								<div class="source-instances">
-									{#each scraper.instances as instance}
-										<div class="instance-row">
-											<span class="instance-id">{instance.scraperId.slice(0, 8)}</span>
-											<span class="instance-stats">
-												<span class="instance-num">{fmt(instance.recordsIngested)}</span>
-												<span class="instance-label">{$t('pipeline.records')}</span>
-												<span class="count-sep">&middot;</span>
-												<span class="instance-num">{fmt(instance.pagesIngested)}</span>
-												<span class="instance-label">{$t('pipeline.pages')}</span>
-											</span>
-										</div>
-									{/each}
-								</div>
-							{/if}
-						</div>
-					{/each}
-				</div>
-			{:else}
-				<p class="text-[length:var(--vui-text-xs)] text-text-sub opacity-60">{$t('pipeline.noScrapers')}</p>
-			{/if}
-		</div>
-	</div>
-</div>
-
 <!-- Vertical pipeline -->
 <div class="pipeline vui-animate-fade-in">
+	<!-- Scrapers node -->
+	<div class="stage" style="--delay: 0ms">
+		<div class="stage-rail">
+			<div class="node-ring" style="border-color: #6ec6f0; box-shadow: 0 0 12px rgba(110,198,240,0.08)">
+				<div class="node-dot" style="background: #6ec6f0"></div>
+			</div>
+			<div class="connector" style="border-color: #6ec6f0"></div>
+		</div>
+		<div class="stage-card" style="border-color: rgba(110,198,240,0.35)">
+			<div class="accent-bar" style="background: #6ec6f0"></div>
+			<div class="card-body">
+				<div class="card-header" style="margin-bottom: 10px">
+					<div class="card-icon" style="background: rgba(110,198,240,0.08)">
+						<Radio size={16} color="#6ec6f0" strokeWidth={2} />
+					</div>
+					<div>
+						<div class="card-title" style="color: #6ec6f0">{$t('pipeline.scrapers')}</div>
+					</div>
+				</div>
+				{#if data.sources && data.sources.length > 0}
+					<div class="flex flex-col gap-1.5">
+						{#each data.sources as scraper}
+							{@const isActive = scraper.instances.length > 0}
+							<div class="source-card" class:source-active={isActive}>
+								<div class="flex items-center gap-2.5">
+									<span class="source-dot" class:source-dot-active={isActive}></span>
+									<span class="source-name">{scraper.name}</span>
+									<span class="source-status-label" class:source-status-active={isActive}>
+										{isActive ? $t('pipeline.active') : $t('pipeline.idle')}
+									</span>
+								</div>
+								{#if isActive}
+									<div class="source-instances">
+										{#each scraper.instances as instance}
+											<div class="instance-row">
+												<span class="instance-id">{instance.scraperId.slice(0, 8)}</span>
+												<span class="instance-stats">
+													<span class="instance-num">{fmt(instance.recordsIngested)}</span>
+													<span class="instance-label">{$t('pipeline.records')}</span>
+													<span class="count-sep">&middot;</span>
+													<span class="instance-num">{fmt(instance.pagesIngested)}</span>
+													<span class="instance-label">{$t('pipeline.pages')}</span>
+												</span>
+											</div>
+										{/each}
+									</div>
+								{/if}
+							</div>
+						{/each}
+					</div>
+				{:else}
+					<p class="text-[length:var(--vui-text-xs)] text-text-sub opacity-60">{$t('pipeline.noScrapers')}</p>
+				{/if}
+			</div>
+		</div>
+	</div>
 	{#each displayStages as stage, i}
 		{@const cfg = stageConfig[i]}
 		{@const hasJobs = stage.jobsPending !== undefined}
@@ -137,7 +142,7 @@
 		{@const idle = Math.max(0, workers - busy)}
 		{@const StageIcon = cfg.icon}
 
-		<div class="stage" style="--delay: {i * 60}ms">
+		<div class="stage" style="--delay: {(i + 1) * 60}ms">
 			<!-- Node + connector column -->
 			<div class="stage-rail">
 				<div class="node-ring" style="border-color: {cfg.color}; box-shadow: 0 0 12px {cfg.dimBg}">
@@ -560,11 +565,6 @@
 	.worker-detail-pending {
 		color: var(--vui-text-muted);
 		margin-left: auto;
-	}
-
-	/* Sources card wrapper */
-	.sources-card-wrapper {
-		margin-bottom: 24px;
 	}
 
 	/* Source cards */
