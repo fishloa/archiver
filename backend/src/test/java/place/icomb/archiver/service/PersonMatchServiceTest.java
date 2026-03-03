@@ -168,6 +168,52 @@ class PersonMatchServiceTest {
     }
   }
 
+  /**
+   * Record 55, page 78 — WWII German Ministry document mentions "Count Rudolf Czernin" in context
+   * of property confiscation in Bohemia. Should match personId=234 (Rudolf Děpolt, CZERNIN 3, born
+   * 1904 in Dymokury) NOT personId=221 (Rudolf, CZERNIN 2, born 1874 in Graz).
+   */
+  @Test
+  void wwiiRudolfShouldMatchCzernin3NotCzernin2() {
+    String text =
+        "The sale was made illusory. The same efforts for Count Rudolf Czernin "
+            + "could be prevented in time. In both stable and unstable political situations, "
+            + "the property in Bohemia was subject to seizure by the German authorities in 1943.";
+    Integer docYear = 1943;
+
+    List<MatchResult> results = matchService.computeMatches(text, allPeople, docYear);
+
+    System.out.println("=== wwiiRudolfShouldMatchCzernin3NotCzernin2 ===");
+    for (int i = 0; i < Math.min(results.size(), 10); i++) {
+      MatchResult r = results.get(i);
+      Person p = treeService.getPerson(r.personId());
+      System.out.printf(
+          "%2d. [%3d] %-50s score=%.4f section=%s birth=%s death=%s%n",
+          i + 1,
+          r.personId(),
+          r.personName(),
+          r.score(),
+          p != null ? p.section : "?",
+          p != null ? p.birthYear : "?",
+          p != null ? p.deathYear : "?");
+    }
+
+    // PersonId 234 (Rudolf Děpolt, CZERNIN 3, born 1904) should be in results
+    assertThat(results)
+        .as("Rudolf 234 (CZERNIN 3, born 1904) should appear in matches")
+        .anyMatch(r -> r.personId() == 234);
+
+    // PersonId 234 should rank higher than 221
+    MatchResult rudolf234 =
+        results.stream().filter(r -> r.personId() == 234).findFirst().orElseThrow();
+    var rudolf221 = results.stream().filter(r -> r.personId() == 221).findFirst();
+    if (rudolf221.isPresent()) {
+      assertThat(rudolf234.score())
+          .as("Rudolf 234 (CZERNIN 3) should score >= Rudolf 221 (CZERNIN 2)")
+          .isGreaterThanOrEqualTo(rudolf221.get().score());
+    }
+  }
+
   @Test
   void noMatchesForIrrelevantText() {
     String text = "This document discusses agricultural policies in 1950s Czechoslovakia.";
