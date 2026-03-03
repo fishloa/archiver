@@ -1,12 +1,10 @@
 [project]
 name = "ocr-worker-qwen3vl"
 version = "0.1.0"
-description = "Qwen VLM OCR worker for the archiver pipeline (native macOS / MLX)"
+description = "Qwen VLM OCR worker for the archiver pipeline (via Ollama)"
 requires-python = ">=3.10"
 dependencies = [
     "worker-common",
-    "mlx-vlm>=0.1",
-    "Pillow>=10.0",
 ]
 
 [project.optional-dependencies]

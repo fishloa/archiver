@@ -1,7 +1,7 @@
 """Qwen VLM OCR worker main loop.
 
-Claims ocr_page_qwen3vl jobs from the backend, runs Qwen VLM on each
-page image via MLX (Apple Silicon Metal), and posts the results back.
+Claims ocr_page_qwen3vl jobs from the backend, runs Qwen VLM via
+Ollama on the local Mac, and posts the results back.
 """
 
 import json
@@ -15,7 +15,7 @@ JOB_KIND = "ocr_page_qwen3vl"
 ENGINE_NAME = "ocr_page_qwen3vl"
 
 
-def process_one(client, job: dict, model_name: str) -> None:
+def process_one(client, job: dict, model_name: str, ollama_url: str) -> None:
     """Process a single OCR job."""
     from .ocr import process_image
 
@@ -28,7 +28,7 @@ def process_one(client, job: dict, model_name: str) -> None:
     image_bytes = client.download_page_image(page_id)
     log.info("  Downloaded %d bytes", len(image_bytes))
 
-    result = process_image(image_bytes, model_name=model_name)
+    result = process_image(image_bytes, model_name=model_name, ollama_url=ollama_url)
     log.info(
         "  OCR: %.2f confidence, %d chars",
         result["confidence"],
@@ -60,9 +60,10 @@ def main():
     client = ProcessorClient(cfg.backend_url, cfg.processor_token)
 
     log.info(
-        "Qwen VLM OCR worker starting (backend=%s, model=%s, poll=%ds)",
+        "Qwen VLM OCR worker starting (backend=%s, model=%s, ollama=%s, poll=%ds)",
         cfg.backend_url,
         cfg.model_name,
+        cfg.ollama_url,
         cfg.poll_interval,
     )
 
@@ -72,7 +73,7 @@ def main():
         run_sse_loop(
             client,
             job_kinds=[JOB_KIND],
-            process_fn=lambda job: process_one(client, job, cfg.model_name),
+            process_fn=lambda job: process_one(client, job, cfg.model_name, cfg.ollama_url),
             poll_interval=cfg.poll_interval,
         )
     except KeyboardInterrupt:
