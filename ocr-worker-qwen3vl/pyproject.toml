@@ -1,0 +1,27 @@
+[project]
+name = "ocr-worker-qwen3vl"
+version = "0.1.0"
+description = "Qwen VLM OCR worker for the archiver pipeline (native macOS / MLX)"
+requires-python = ">=3.10"
+dependencies = [
+    "worker-common",
+    "mlx-vlm>=0.1",
+    "Pillow>=10.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+    "ruff>=0.7",
+]
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.ruff]
+target-version = "py310"
+line-length = 100
