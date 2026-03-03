@@ -2,7 +2,6 @@ package place.icomb.archiver.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.net.URI;
-import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.util.*;
@@ -38,7 +37,7 @@ public class PersonMatchService {
   private final PageRepository pageRepo;
   private final RecordRepository recordRepo;
   private final String openaiApiKey;
-  private final HttpClient httpClient;
+  private final ResilientHttpClient httpClient;
   private final ObjectMapper objectMapper;
 
   public PersonMatchService(
@@ -54,7 +53,7 @@ public class PersonMatchService {
     this.pageRepo = pageRepo;
     this.recordRepo = recordRepo;
     this.openaiApiKey = openaiApiKey;
-    this.httpClient = HttpClient.newHttpClient();
+    this.httpClient = ResilientHttpClient.builder().build();
     this.objectMapper = new ObjectMapper();
   }
 

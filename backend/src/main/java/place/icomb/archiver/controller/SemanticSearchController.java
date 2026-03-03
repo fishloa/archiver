@@ -2,7 +2,6 @@ package place.icomb.archiver.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.net.URI;
-import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.util.ArrayList;
@@ -44,7 +43,8 @@ public class SemanticSearchController {
   private final JdbcTemplate jdbcTemplate;
   private final String teiUrl;
   private final String teiKey;
-  private final HttpClient httpClient = HttpClient.newHttpClient();
+  private final place.icomb.archiver.service.ResilientHttpClient httpClient =
+      place.icomb.archiver.service.ResilientHttpClient.builder().build();
   private final ObjectMapper objectMapper = new ObjectMapper();
 
   public SemanticSearchController(

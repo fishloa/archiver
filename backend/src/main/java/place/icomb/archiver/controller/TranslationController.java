@@ -4,7 +4,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import java.net.URI;
-import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.util.Map;
@@ -27,7 +26,8 @@ public class TranslationController {
 
   private final String workerUrl;
   private final String anthropicApiKey;
-  private final HttpClient httpClient = HttpClient.newHttpClient();
+  private final place.icomb.archiver.service.ResilientHttpClient httpClient =
+      place.icomb.archiver.service.ResilientHttpClient.builder().build();
   private final ObjectMapper objectMapper = new ObjectMapper();
 
   private static final Map<String, String> LANG_NAMES =
