@@ -323,11 +323,13 @@ public class PersonMatchService {
       List<MatchResult> results = new ArrayList<>();
       for (var node : matchesNode) {
         int personId = node.get("personId").asInt();
-        double score = node.get("score").asDouble();
+        double llmScore = node.get("score").asDouble();
         var candidate = candidateMap.get(personId);
-        if (candidate == null || score < 0.1) continue;
+        if (candidate == null || llmScore < 0.1) continue;
 
-        results.add(new MatchResult(personId, candidate.personName, score, candidate.context));
+        // Blend LLM score (70%) with heuristic score (30%) to preserve geographic/temporal signals
+        double blended = llmScore * 0.7 + Math.min(candidate.score(), 1.0) * 0.3;
+        results.add(new MatchResult(personId, candidate.personName, blended, candidate.context));
       }
 
       // Sort by score descending, limit to MAX_MATCHES_PER_PAGE
