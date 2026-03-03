@@ -55,6 +55,7 @@ archiver:
       ollama-url: ${QWEN_OLLAMA_URL:http://192.168.16.28:11434}
       model: ${QWEN_OCR_MODEL:qwen2.5vl:7b}
       poll-interval: ${QWEN_OCR_POLL_INTERVAL:5000}
+      concurrency: ${QWEN_OCR_CONCURRENCY:1}
 
 management:
   endpoints:
