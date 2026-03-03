@@ -83,11 +83,6 @@ public class JobService {
       checkRecordOcrComplete(job.getRecordId());
     }
 
-    // Handle Qwen re-OCR completing on records that are past ocr_pending
-    if (job.getRecordId() != null && "ocr_page_qwen3vl".equals(job.getKind())) {
-      handleQwenReOcrComplete(job.getRecordId());
-    }
-
     // Check if PDF build is complete
     if (job.getRecordId() != null && "build_searchable_pdf".equals(job.getKind())) {
       checkRecordPdfComplete(job.getRecordId());
@@ -108,20 +103,21 @@ public class JobService {
   }
 
   /**
-   * If every page in the record has OCR text, transition the record status from ocr_pending to
-   * ocr_done, then immediately start the PDF build + translation pipeline.
+   * If all OCR jobs for this record are completed, transition from ocr_pending to ocr_done, then
+   * start the post-OCR pipeline.
    */
   private void checkRecordOcrComplete(Long recordId) {
-    Long pending =
+    Long pendingJobs =
         jdbcTemplate.queryForObject(
             """
-            SELECT count(*) FROM page p
-            WHERE p.record_id = ?
-              AND NOT EXISTS (SELECT 1 FROM page_text pt WHERE pt.page_id = p.id)
+            SELECT count(*) FROM job j
+            WHERE j.record_id = ?
+              AND j.kind IN ('ocr_page_paddle', 'ocr_page_abbyy', 'ocr_page_qwen3vl')
+              AND j.status IN ('pending', 'claimed')
             """,
             Long.class,
             recordId);
-    if (pending != null && pending == 0) {
+    if (pendingJobs != null && pendingJobs == 0) {
       int updated =
           jdbcTemplate.update(
               "UPDATE record SET status = 'ocr_done', updated_at = now() WHERE id = ? AND status = 'ocr_pending'",
@@ -136,80 +132,42 @@ public class JobService {
   }
 
   /**
-   * After the last Qwen re-OCR job completes for a record that is already past ocr_pending, clean
-   * up old OCR data and re-run the downstream pipeline (PDF build, translation, embedding).
+   * Cleans up downstream pipeline data and resets a record to ocr_pending. Deletes old page_text,
+   * text_chunks, searchable PDF, translations, and cancels pending downstream jobs.
    */
-  private void handleQwenReOcrComplete(Long recordId) {
-    // Check if any Qwen OCR jobs are still pending/claimed for this record
-    Long remaining =
-        jdbcTemplate.queryForObject(
-            "SELECT count(*) FROM job WHERE record_id = ? AND kind = 'ocr_page_qwen3vl' AND status IN ('pending', 'claimed')",
-            Long.class,
-            recordId);
-    if (remaining != null && remaining > 0) {
-      return; // Still more Qwen jobs to go
-    }
+  @Transactional
+  public void resetForOcr(Long recordId) {
+    // Cancel pending/claimed downstream jobs
+    jdbcTemplate.update(
+        """
+        UPDATE job SET status = 'completed', error = 'cancelled for ocr reset',
+          finished_at = now()
+        WHERE record_id = ?
+          AND kind IN ('build_searchable_pdf', 'translate_page', 'translate_record', 'embed_record')
+          AND status IN ('pending', 'claimed')
+        """,
+        recordId);
 
-    // Check record status — if ocr_pending, the normal flow handles it
-    String status =
-        jdbcTemplate.queryForObject(
-            "SELECT status FROM record WHERE id = ?", String.class, recordId);
-    if ("ocr_pending".equals(status)) {
-      return;
-    }
+    // Delete text chunks
+    jdbcTemplate.update("DELETE FROM text_chunk WHERE record_id = ?", recordId);
 
-    // Delete old non-qwen page_text rows for this record's pages
-    int oldTextDeleted =
-        jdbcTemplate.update(
-            "DELETE FROM page_text WHERE engine != 'qwen3vl' AND page_id IN (SELECT id FROM page WHERE record_id = ?)",
-            recordId);
+    // Delete page_text for all pages
+    jdbcTemplate.update(
+        "DELETE FROM page_text WHERE page_id IN (SELECT id FROM page WHERE record_id = ?)",
+        recordId);
 
-    // Delete text_chunk rows
-    int chunksDeleted = jdbcTemplate.update("DELETE FROM text_chunk WHERE record_id = ?", recordId);
-
-    // Delete searchable_pdf attachment and clear pdf_attachment_id
+    // Delete searchable PDF attachment
     jdbcTemplate.update("UPDATE record SET pdf_attachment_id = NULL WHERE id = ?", recordId);
-    int pdfsDeleted =
-        jdbcTemplate.update(
-            "DELETE FROM attachment WHERE record_id = ? AND role = 'searchable_pdf'", recordId);
+    jdbcTemplate.update(
+        "DELETE FROM attachment WHERE record_id = ? AND role = 'searchable_pdf'", recordId);
 
     // Clear translated fields
     jdbcTemplate.update(
-        "UPDATE record SET title_en = NULL, description_en = NULL WHERE id = ?", recordId);
-
-    // Clear page translations
-    jdbcTemplate.update(
-        "UPDATE page_text SET text_en = NULL WHERE page_id IN (SELECT id FROM page WHERE record_id = ?)",
+        "UPDATE record SET title_en = NULL, description_en = NULL, status = 'ocr_pending', updated_at = now() WHERE id = ?",
         recordId);
 
-    // Cancel any pending/claimed downstream jobs
-    int jobsCancelled =
-        jdbcTemplate.update(
-            """
-            UPDATE job SET status = 'completed', error = 'cancelled for qwen re-ocr',
-              finished_at = now()
-            WHERE record_id = ?
-              AND kind IN ('translate_page', 'translate_record', 'build_searchable_pdf', 'embed_record')
-              AND status IN ('pending', 'claimed')
-            """,
-            recordId);
-
-    // Transition to ocr_done
-    jdbcTemplate.update(
-        "UPDATE record SET status = 'ocr_done', updated_at = now() WHERE id = ?", recordId);
-
-    log.info(
-        "Qwen re-OCR complete for record {}: deleted {} old texts, {} chunks, {} PDFs, cancelled {} jobs → ocr_done",
-        recordId,
-        oldTextDeleted,
-        chunksDeleted,
-        pdfsDeleted,
-        jobsCancelled);
-    logPipelineEvent(recordId, "ocr", "completed", "qwen re-ocr finished");
+    logPipelineEvent(recordId, "ocr", "started", "reset for ocr");
     recordEventService.recordChanged(recordId, "status");
-
-    // Re-run downstream pipeline
-    startPostOcrPipeline(recordId);
   }
 
   /** Enqueue PDF build and translation jobs, then transition to pdf_pending. */

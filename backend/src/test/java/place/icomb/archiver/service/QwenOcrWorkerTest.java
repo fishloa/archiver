@@ -135,8 +135,10 @@ class QwenOcrWorkerTest {
     assertThat(textCount).isZero();
   }
 
+  @Autowired private JobService jobService;
+
   @Test
-  void triggersPostOcrPipelineWhenLastQwenJobCompletes() {
+  void resetAndOcrTriggersFullPipeline() {
     wireMock.stubFor(
         post(urlEqualTo("/api/generate"))
             .willReturn(
@@ -144,7 +146,6 @@ class QwenOcrWorkerTest {
                     .withBody("{\"response\":\"Qwen OCR text\",\"done\":true}")));
 
     Long archiveId = createArchive();
-    // Record is already in 'complete' status (re-OCR scenario)
     Long recordId = createRecord(archiveId, "complete", 2);
 
     // Create 2 pages with existing paddle page_text
@@ -160,6 +161,24 @@ class QwenOcrWorkerTest {
     createTestImageFile(imgPath2);
     createPageText(page2, "paddle", "Old paddle text 2");
 
+    // Reset record to ocr_pending (cleans old data)
+    jobService.resetForOcr(recordId);
+    String statusAfterReset =
+        jdbc.sql("SELECT status FROM record WHERE id = :id")
+            .param("id", recordId)
+            .query(String.class)
+            .single();
+    assertThat(statusAfterReset).isEqualTo("ocr_pending");
+
+    // Old paddle page_text should be deleted by resetForOcr
+    long paddleCount =
+        jdbc.sql(
+                "SELECT count(*) FROM page_text WHERE engine = 'paddle' AND page_id IN (SELECT id FROM page WHERE record_id = :rid)")
+            .param("rid", recordId)
+            .query(Long.class)
+            .single();
+    assertThat(paddleCount).isZero();
+
     // Enqueue 2 Qwen jobs
     Long job1 = createJob(recordId, page1, "ocr_page_qwen3vl", "pending");
     Long job2 = createJob(recordId, page2, "ocr_page_qwen3vl", "pending");
@@ -171,9 +190,9 @@ class QwenOcrWorkerTest {
             .param("id", recordId)
             .query(String.class)
             .single();
-    assertThat(statusAfterFirst).isEqualTo("complete");
+    assertThat(statusAfterFirst).isEqualTo("ocr_pending");
 
-    // Process second job — should trigger pipeline re-run
+    // Process second job — checkRecordOcrComplete triggers naturally
     worker.pollAndProcess();
 
     // Record should now be in pdf_pending (post-OCR pipeline started)
@@ -183,15 +202,6 @@ class QwenOcrWorkerTest {
             .query(String.class)
             .single();
     assertThat(statusAfterSecond).isEqualTo("pdf_pending");
-
-    // Old paddle page_text should be deleted
-    long paddleCount =
-        jdbc.sql(
-                "SELECT count(*) FROM page_text WHERE engine = 'paddle' AND page_id IN (SELECT id FROM page WHERE record_id = :rid)")
-            .param("rid", recordId)
-            .query(Long.class)
-            .single();
-    assertThat(paddleCount).isZero();
 
     // Qwen page_text should exist for both pages
     long qwenCount =
