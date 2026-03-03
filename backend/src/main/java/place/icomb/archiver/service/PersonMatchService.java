@@ -8,6 +8,7 @@ import java.net.http.HttpResponse;
 import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -330,6 +331,17 @@ public class PersonMatchService {
         // Blend LLM score (70%) with heuristic score (30%) to preserve geographic/temporal signals
         double blended = llmScore * 0.7 + Math.min(candidate.score(), 1.0) * 0.3;
         results.add(new MatchResult(personId, candidate.personName, blended, candidate.context));
+      }
+
+      // Include strong heuristic candidates the LLM missed (score > 1.0 = boosted)
+      Set<Integer> llmIds = results.stream().map(MatchResult::personId).collect(Collectors.toSet());
+      for (MatchResult mr : candidates) {
+        if (!llmIds.contains(mr.personId()) && mr.score() > 1.0) {
+          // Include at reduced confidence (heuristic-only)
+          results.add(
+              new MatchResult(
+                  mr.personId(), mr.personName(), Math.min(mr.score(), 1.0) * 0.8, mr.context()));
+        }
       }
 
       // Sort by score descending, limit to MAX_MATCHES_PER_PAGE
