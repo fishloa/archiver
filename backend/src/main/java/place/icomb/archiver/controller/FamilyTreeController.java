@@ -157,7 +157,8 @@ public class FamilyTreeController {
       map.put("personId", m.personId());
       map.put("personName", m.personName());
       map.put("maxScore", m.maxScore());
-      map.put("pageCount", m.pageCount());
+      map.put("pageCount", m.pageSeqs().size());
+      map.put("pageSeqs", m.pageSeqs());
       // Enrich with family tree data
       Person p = familyTreeService.getPerson(m.personId());
       if (p != null) {

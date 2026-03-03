@@ -285,6 +285,7 @@ export interface RecordPersonMatch {
   personName: string;
   maxScore: number;
   pageCount: number;
+  pageSeqs: number[];
   section: string | null;
   code: string | null;
   birthYear: number | null;

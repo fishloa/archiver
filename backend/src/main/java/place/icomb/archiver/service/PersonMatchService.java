@@ -69,6 +69,8 @@ public class PersonMatchService {
     if (pages.isEmpty()) return List.of();
 
     List<Long> pageIds = pages.stream().map(p -> p.getId()).toList();
+    Map<Long, Integer> pageIdToSeq =
+        pages.stream().collect(java.util.stream.Collectors.toMap(p -> p.getId(), p -> p.getSeq()));
 
     // Ensure all pages are computed
     for (Long pageId : pageIds) {
@@ -82,7 +84,9 @@ public class PersonMatchService {
     // Aggregate by personId
     Map<Integer, RecordPersonMatchBuilder> byPerson = new LinkedHashMap<>();
     for (PagePersonMatch m : allMatches) {
-      byPerson.computeIfAbsent(m.getPersonId(), k -> new RecordPersonMatchBuilder(m)).addMatch(m);
+      byPerson
+          .computeIfAbsent(m.getPersonId(), k -> new RecordPersonMatchBuilder(m, pageIdToSeq))
+          .addMatch(m);
     }
 
     List<RecordPersonMatch> results = new ArrayList<>();
@@ -580,19 +584,21 @@ public class PersonMatchService {
   }
 
   public record RecordPersonMatch(
-      int personId, String personName, double maxScore, int pageCount) {}
+      int personId, String personName, double maxScore, List<Integer> pageSeqs) {}
 
   private static class RecordPersonMatchBuilder {
     int personId;
     String personName;
     double maxScore;
     Set<Long> pageIds = new HashSet<>();
+    Map<Long, Integer> pageIdToSeq;
 
-    RecordPersonMatchBuilder(PagePersonMatch first) {
+    RecordPersonMatchBuilder(PagePersonMatch first, Map<Long, Integer> pageIdToSeq) {
       this.personId = first.getPersonId();
       this.personName = first.getPersonName();
       this.maxScore = first.getScore();
       this.pageIds.add(first.getPageId());
+      this.pageIdToSeq = pageIdToSeq;
     }
 
     void addMatch(PagePersonMatch m) {
@@ -601,7 +607,9 @@ public class PersonMatchService {
     }
 
     RecordPersonMatch build() {
-      return new RecordPersonMatch(personId, personName, maxScore, pageIds.size());
+      List<Integer> seqs =
+          pageIds.stream().map(id -> pageIdToSeq.getOrDefault(id, 0)).sorted().toList();
+      return new RecordPersonMatch(personId, personName, maxScore, seqs);
     }
   }
 }

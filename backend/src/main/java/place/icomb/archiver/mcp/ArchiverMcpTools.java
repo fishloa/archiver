@@ -217,7 +217,7 @@ public class ArchiverMcpTools {
       entry.put("personId", m.personId());
       entry.put("personName", m.personName());
       entry.put("maxScore", m.maxScore());
-      entry.put("pageCount", m.pageCount());
+      entry.put("pageCount", m.pageSeqs().size());
       out.add(entry);
     }
     return out;

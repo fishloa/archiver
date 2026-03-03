@@ -6,7 +6,7 @@
 		ArrowLeft, Download, FileDown, ChevronDown, Clock,
 		CircleCheckBig, AlertTriangle, Play, ExternalLink,
 		FileText, Hash, Calendar, Archive, Bookmark, Layers,
-		BookmarkCheck, X, Users, RotateCcw, ShieldAlert
+		BookmarkCheck, X, Users, RotateCcw, ShieldAlert, Baby, Skull
 	} from 'lucide-svelte';
 	import type { PipelineEvent, JobStat } from '$lib/server/api';
 	import { isKept, keptCount, keptPagesParam, clearKept } from '$lib/kept-pages.svelte';
@@ -379,26 +379,41 @@
 					<Users size={14} strokeWidth={2} />
 					{$t('record.peopleMentioned')}
 				</h3>
-				<div class="space-y-2">
+				<div class="space-y-2.5">
 					{#each personMatches as match}
-						<a
-							href="/family-tree?personId={match.personId}"
-							class="group flex items-center justify-between gap-2 px-2.5 py-1.5 -mx-1 rounded-md vui-transition hover:bg-bg-deep"
-						>
-							<div class="min-w-0">
-								<div class="text-[length:var(--vui-text-sm)] text-text font-medium group-hover:text-accent vui-transition truncate">
+						<div class="px-2.5 py-1.5 -mx-1 rounded-md">
+							<a
+								href="/family-tree?personId={match.personId}"
+								class="group flex items-center gap-2 vui-transition"
+							>
+								<span class="text-[length:var(--vui-text-sm)] text-text font-medium group-hover:text-accent vui-transition truncate">
 									{match.personName}
-								</div>
-								{#if match.birthYear || match.deathYear}
-									<div class="text-[length:var(--vui-text-xs)] text-text-sub">
-										{match.birthYear ?? '?'}–{match.deathYear ?? '?'}
-									</div>
+								</span>
+								{#if match.birthYear}
+									<span class="flex items-center gap-0.5 text-[length:var(--vui-text-xs)] text-text-sub">
+										<Baby size={12} strokeWidth={2} class="text-accent" />
+										{match.birthYear}
+									</span>
 								{/if}
-							</div>
-							<div class="flex-shrink-0 text-[length:var(--vui-text-xs)] text-text-sub tabular-nums">
-								{match.pageCount} pg{match.pageCount === 1 ? '' : 's'}
-							</div>
-						</a>
+								{#if match.deathYear}
+									<span class="flex items-center gap-0.5 text-[length:var(--vui-text-xs)] text-text-sub">
+										<Skull size={12} strokeWidth={2} class="text-red-400" />
+										{match.deathYear}
+									</span>
+								{/if}
+							</a>
+							{#if match.pageSeqs && match.pageSeqs.length > 0}
+								<div class="flex items-center gap-1 mt-1 flex-wrap">
+									<span class="text-[length:var(--vui-text-xs)] text-text-sub">pg:</span>
+									{#each match.pageSeqs as seq}
+										<a
+											href="/records/{data.record.id}/pages/{seq}"
+											class="text-[length:var(--vui-text-xs)] text-accent hover:underline tabular-nums"
+										>{seq}</a>
+									{/each}
+								</div>
+							{/if}
+						</div>
 					{/each}
 				</div>
 			</div>
