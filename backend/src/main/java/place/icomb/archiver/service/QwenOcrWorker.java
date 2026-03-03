@@ -9,6 +9,7 @@ import java.net.http.HttpResponse;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
+import java.time.Instant;
 import java.util.Base64;
 import java.util.List;
 import java.util.Map;
@@ -17,14 +18,15 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
-import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import place.icomb.archiver.model.Attachment;
 import place.icomb.archiver.model.Job;
 import place.icomb.archiver.model.Page;
+import place.icomb.archiver.model.PageText;
 import place.icomb.archiver.repository.AttachmentRepository;
 import place.icomb.archiver.repository.PageRepository;
+import place.icomb.archiver.repository.PageTextRepository;
 
 /**
  * Internal OCR worker that claims {@code ocr_page_qwen3vl} jobs and processes them via Ollama's
@@ -44,7 +46,7 @@ public class QwenOcrWorker {
   private final PageRepository pageRepository;
   private final AttachmentRepository attachmentRepository;
   private final StorageService storageService;
-  private final JdbcTemplate jdbcTemplate;
+  private final PageTextRepository pageTextRepository;
   private final ObjectMapper objectMapper = new ObjectMapper();
   private final HttpClient httpClient;
   private final String ollamaUrl;
@@ -55,14 +57,14 @@ public class QwenOcrWorker {
       PageRepository pageRepository,
       AttachmentRepository attachmentRepository,
       StorageService storageService,
-      JdbcTemplate jdbcTemplate,
+      PageTextRepository pageTextRepository,
       @Value("${archiver.ocr.qwen.ollama-url}") String ollamaUrl,
       @Value("${archiver.ocr.qwen.model}") String model) {
     this.jobService = jobService;
     this.pageRepository = pageRepository;
     this.attachmentRepository = attachmentRepository;
     this.storageService = storageService;
-    this.jdbcTemplate = jdbcTemplate;
+    this.pageTextRepository = pageTextRepository;
     this.ollamaUrl = ollamaUrl;
     this.model = model;
     this.httpClient = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(30)).build();
@@ -116,10 +118,12 @@ public class QwenOcrWorker {
 
     String ocrText = callOllama(base64Image);
 
-    jdbcTemplate.update(
-        "INSERT INTO page_text (page_id, engine, confidence, text_raw, created_at) VALUES (?, 'qwen3vl', NULL, ?, now())",
-        page.getId(),
-        ocrText);
+    PageText pt = new PageText();
+    pt.setPageId(page.getId());
+    pt.setEngine("qwen3vl");
+    pt.setTextRaw(ocrText);
+    pt.setCreatedAt(Instant.now());
+    pageTextRepository.save(pt);
 
     log.info(
         "Qwen OCR: page={} record={} chars={}", page.getId(), job.getRecordId(), ocrText.length());

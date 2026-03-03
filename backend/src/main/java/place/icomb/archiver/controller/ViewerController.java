@@ -177,7 +177,7 @@ public class ViewerController {
             "ocr_pending",
             recordsByStatus,
             pagesByStatus,
-            new String[] {"ocr_page_paddle"},
+            new String[] {"ocr_page_paddle", "ocr_page_qwen3vl"},
             jobsByKind,
             workerCounts);
     ocrStage.put("pagesDone", ocrPagesDone);

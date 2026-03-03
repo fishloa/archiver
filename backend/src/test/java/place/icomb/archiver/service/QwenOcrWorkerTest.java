@@ -136,6 +136,83 @@ class QwenOcrWorkerTest {
   }
 
   @Test
+  void triggersPostOcrPipelineWhenLastQwenJobCompletes() {
+    wireMock.stubFor(
+        post(urlEqualTo("/api/generate"))
+            .willReturn(
+                ok().withHeader("Content-Type", "application/json")
+                    .withBody("{\"response\":\"Qwen OCR text\",\"done\":true}")));
+
+    Long archiveId = createArchive();
+    // Record is already in 'complete' status (re-OCR scenario)
+    Long recordId = createRecord(archiveId, "complete", 2);
+
+    // Create 2 pages with existing paddle page_text
+    String imgPath1 = "records/" + recordId + "/attachments/pages/p0001.jpg";
+    Long att1 = createAttachment(recordId, "page_image", imgPath1);
+    Long page1 = createPage(recordId, 1, att1);
+    createTestImageFile(imgPath1);
+    createPageText(page1, "paddle", "Old paddle text 1");
+
+    String imgPath2 = "records/" + recordId + "/attachments/pages/p0002.jpg";
+    Long att2 = createAttachment(recordId, "page_image", imgPath2);
+    Long page2 = createPage(recordId, 2, att2);
+    createTestImageFile(imgPath2);
+    createPageText(page2, "paddle", "Old paddle text 2");
+
+    // Enqueue 2 Qwen jobs
+    Long job1 = createJob(recordId, page1, "ocr_page_qwen3vl", "pending");
+    Long job2 = createJob(recordId, page2, "ocr_page_qwen3vl", "pending");
+
+    // Process first job — should NOT trigger pipeline yet (job2 still pending)
+    worker.pollAndProcess();
+    String statusAfterFirst =
+        jdbc.sql("SELECT status FROM record WHERE id = :id")
+            .param("id", recordId)
+            .query(String.class)
+            .single();
+    assertThat(statusAfterFirst).isEqualTo("complete");
+
+    // Process second job — should trigger pipeline re-run
+    worker.pollAndProcess();
+
+    // Record should now be in pdf_pending (post-OCR pipeline started)
+    String statusAfterSecond =
+        jdbc.sql("SELECT status FROM record WHERE id = :id")
+            .param("id", recordId)
+            .query(String.class)
+            .single();
+    assertThat(statusAfterSecond).isEqualTo("pdf_pending");
+
+    // Old paddle page_text should be deleted
+    long paddleCount =
+        jdbc.sql(
+                "SELECT count(*) FROM page_text WHERE engine = 'paddle' AND page_id IN (SELECT id FROM page WHERE record_id = :rid)")
+            .param("rid", recordId)
+            .query(Long.class)
+            .single();
+    assertThat(paddleCount).isZero();
+
+    // Qwen page_text should exist for both pages
+    long qwenCount =
+        jdbc.sql(
+                "SELECT count(*) FROM page_text WHERE engine = 'qwen3vl' AND page_id IN (SELECT id FROM page WHERE record_id = :rid)")
+            .param("rid", recordId)
+            .query(Long.class)
+            .single();
+    assertThat(qwenCount).isEqualTo(2);
+
+    // build_searchable_pdf job should be enqueued
+    long pdfJobs =
+        jdbc.sql(
+                "SELECT count(*) FROM job WHERE record_id = :rid AND kind = 'build_searchable_pdf' AND status = 'pending'")
+            .param("rid", recordId)
+            .query(Long.class)
+            .single();
+    assertThat(pdfJobs).isEqualTo(1);
+  }
+
+  @Test
   void doesNothingWhenNoJobsPending() {
     worker.pollAndProcess();
   }
@@ -207,6 +284,18 @@ class QwenOcrWorkerTest {
         .param("status", status)
         .query(Long.class)
         .single();
+  }
+
+  private void createPageText(Long pageId, String engine, String textRaw) {
+    jdbc.sql(
+            """
+            INSERT INTO page_text (page_id, engine, text_raw, created_at)
+            VALUES (:pid, :engine, :text, now())
+            """)
+        .param("pid", pageId)
+        .param("engine", engine)
+        .param("text", textRaw)
+        .update();
   }
 
   private String getJobStatus(Long jobId) {
