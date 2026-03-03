@@ -6,6 +6,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.ResponseEntity;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -24,6 +25,12 @@ public class AdminPipelineController {
   public AdminPipelineController(JdbcTemplate jdbcTemplate, JobService jobService) {
     this.jdbcTemplate = jdbcTemplate;
     this.jobService = jobService;
+  }
+
+  /** Returns 200 for admin users. Used by nginx auth_request to gate admin-only proxies. */
+  @GetMapping("/check")
+  public ResponseEntity<Void> checkAdmin() {
+    return ResponseEntity.ok().build();
   }
 
   @PostMapping("/enqueue-reocr")
