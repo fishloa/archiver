@@ -124,6 +124,9 @@ export const en = {
 	'pipeline.scrapers': 'Active Scrapers',
 	'pipeline.noScrapers': 'No scrapers running',
 	'pipeline.ingested': 'ingested',
+	'pipeline.sources': 'Sources',
+	'pipeline.active': 'Active',
+	'pipeline.idle': 'Idle',
 
 	// Pipeline stage descriptions
 	'pipeline.desc.downloading': 'Downloading document metadata and page images from archive catalogs',

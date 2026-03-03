@@ -106,6 +106,15 @@ export interface SearchResponse {
   size: number;
 }
 
+export interface WorkerDetail {
+  kind: string;
+  label: string;
+  workers: number;
+  busy: number;
+  pending: number;
+  failed: number;
+}
+
 export interface PipelineStage {
   name: string;
   records: number;
@@ -117,6 +126,7 @@ export interface PipelineStage {
   workersConnected?: number;
   pagesDone?: number;
   pagesTotal?: number;
+  workerDetails?: WorkerDetail[];
 }
 
 export interface ScraperInfo {
@@ -132,6 +142,28 @@ export interface PipelineStats {
   stages: PipelineStage[];
   totals: { records: number; pages: number };
   scrapers?: ScraperInfo[];
+}
+
+export interface SourceInstance {
+  scraperId: string;
+  sourceSystem: string;
+  sourceName: string;
+  recordsIngested: number;
+  pagesIngested: number;
+  lastSeen: string;
+}
+
+export interface SourceStatus {
+  sourceSystem: string;
+  displayName: string;
+  totalRecords: number;
+  instances: SourceInstance[];
+}
+
+export async function fetchSourceStatus(): Promise<SourceStatus[]> {
+  const res = await fetch(`${backendUrl()}/api/viewer/source-status`);
+  if (!res.ok) throw new Error(`Backend error: ${res.status}`);
+  return res.json();
 }
 
 export async function fetchPipelineStats(): Promise<PipelineStats> {

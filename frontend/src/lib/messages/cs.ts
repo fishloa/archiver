@@ -126,6 +126,9 @@ export const cs: Record<MessageKey, string> = {
 	'pipeline.scrapers': 'Aktivn\u00ed scrapery',
 	'pipeline.noScrapers': '\u017d\u00e1dn\u00e9 scrapery neběží',
 	'pipeline.ingested': 'přijato',
+	'pipeline.sources': 'Zdroje',
+	'pipeline.active': 'Aktivní',
+	'pipeline.idle': 'Neaktivní',
 
 	// Pipeline stage descriptions
 	'pipeline.desc.downloading': 'Stahování metadat dokumentů a obrázků stránek z archivních katalogů',

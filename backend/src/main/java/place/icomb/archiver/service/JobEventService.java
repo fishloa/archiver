@@ -76,6 +76,28 @@ public class JobEventService {
     return counts;
   }
 
+  /** Counts unique workers that handle any of the given job kinds. */
+  public int countUniqueWorkers(String... kinds) {
+    var kindSet = java.util.Set.of(kinds);
+    Instant cutoff = Instant.now().minusSeconds(WORKER_TTL_SECONDS);
+    int count = 0;
+    var it = workers.entrySet().iterator();
+    while (it.hasNext()) {
+      var entry = it.next();
+      if (entry.getValue().lastSeen().isBefore(cutoff)) {
+        it.remove();
+        continue;
+      }
+      for (String kind : entry.getValue().kinds()) {
+        if (kindSet.contains(kind)) {
+          count++;
+          break;
+        }
+      }
+    }
+    return count;
+  }
+
   // ---------------------------------------------------------------------------
   // Scraper tracking (via heartbeat endpoint)
   // ---------------------------------------------------------------------------

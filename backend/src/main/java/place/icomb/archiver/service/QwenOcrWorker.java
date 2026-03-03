@@ -48,6 +48,7 @@ public class QwenOcrWorker {
   private static final String JOB_KIND = "ocr_page_qwen3vl";
 
   private final JobService jobService;
+  private final JobEventService jobEventService;
   private final PageRepository pageRepository;
   private final AttachmentRepository attachmentRepository;
   private final StorageService storageService;
@@ -62,6 +63,7 @@ public class QwenOcrWorker {
 
   public QwenOcrWorker(
       JobService jobService,
+      JobEventService jobEventService,
       PageRepository pageRepository,
       AttachmentRepository attachmentRepository,
       StorageService storageService,
@@ -70,6 +72,7 @@ public class QwenOcrWorker {
       @Value("${archiver.ocr.qwen.model}") String model,
       @Value("${archiver.ocr.qwen.concurrency:1}") int concurrency) {
     this.jobService = jobService;
+    this.jobEventService = jobEventService;
     this.pageRepository = pageRepository;
     this.attachmentRepository = attachmentRepository;
     this.storageService = storageService;
@@ -88,6 +91,11 @@ public class QwenOcrWorker {
 
   @Scheduled(fixedDelayString = "${archiver.ocr.qwen.poll-interval:5000}")
   public void pollAndProcess() {
+    // Register each concurrency slot as a separate worker so the dashboard shows all threads
+    for (int i = 0; i < concurrency; i++) {
+      jobEventService.touchWorker("qwen-ocr-" + i, JOB_KIND);
+    }
+
     // Fill up to concurrency slots
     while (inflight.get() < concurrency) {
       Optional<Job> claimed = jobService.claimJob(JOB_KIND);

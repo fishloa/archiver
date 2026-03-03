@@ -12,7 +12,7 @@
 		AlertTriangle,
 		Radio
 	} from 'lucide-svelte';
-	import type { PipelineStage, ScraperInfo } from '$lib/server/api';
+	import type { PipelineStage, ScraperInfo, SourceStatus } from '$lib/server/api';
 	import { language, t } from '$lib/i18n';
 
 	let { data } = $props();
@@ -71,31 +71,43 @@
 	</div>
 </div>
 
-<!-- Active scrapers -->
-<div class="scrapers-section vui-animate-fade-in mb-6" style="max-width: 640px">
+<!-- Sources -->
+<div class="sources-section vui-animate-fade-in mb-6" style="max-width: 640px">
 	<h2 class="text-[length:var(--vui-text-sm)] font-semibold text-text-sub mb-3 flex items-center gap-2">
 		<Radio size={14} />
-		{$t('pipeline.scrapers')}
+		{$t('pipeline.sources')}
 	</h2>
-	{#if data.stats.scrapers && data.stats.scrapers.length > 0}
-		<div class="flex flex-col gap-2">
-			{#each data.stats.scrapers as scraper}
-				<div class="scraper-card">
+	{#if data.sources && data.sources.length > 0}
+		<div class="flex flex-col gap-1.5">
+			{#each data.sources as source}
+				{@const isActive = source.instances.length > 0}
+				<div class="source-card" class:source-active={isActive}>
 					<div class="flex items-center gap-2.5">
-						<span class="scraper-dot"></span>
+						<span class="source-dot" class:source-dot-active={isActive}></span>
 						<div class="min-w-0 flex-1">
-							<div class="scraper-name">{scraper.sourceName}</div>
-							<div class="scraper-system">{scraper.sourceSystem}</div>
+							<span class="source-name">{source.displayName}</span>
+							<span class="source-count">({fmt(source.totalRecords)})</span>
 						</div>
-						<div class="scraper-counts">
-							<span class="scraper-num">{fmt(scraper.recordsIngested)}</span>
-							<span class="scraper-label">{$t('pipeline.records')}</span>
-							<span class="count-sep">&middot;</span>
-							<span class="scraper-num">{fmt(scraper.pagesIngested)}</span>
-							<span class="scraper-label">{$t('pipeline.pages')}</span>
-							<span class="scraper-label" style="margin-left: 2px">{$t('pipeline.ingested')}</span>
-						</div>
+						<span class="source-status-label" class:source-status-active={isActive}>
+							{isActive ? $t('pipeline.active') : $t('pipeline.idle')}
+						</span>
 					</div>
+					{#if isActive}
+						<div class="source-instances">
+							{#each source.instances as instance}
+								<div class="instance-row">
+									<span class="instance-id">{instance.scraperId.slice(0, 8)}</span>
+									<span class="instance-stats">
+										<span class="instance-num">{fmt(instance.recordsIngested)}</span>
+										<span class="instance-label">{$t('pipeline.records')}</span>
+										<span class="count-sep">&middot;</span>
+										<span class="instance-num">{fmt(instance.pagesIngested)}</span>
+										<span class="instance-label">{$t('pipeline.pages')}</span>
+									</span>
+								</div>
+							{/each}
+						</div>
+					{/if}
 				</div>
 			{/each}
 		</div>
@@ -170,41 +182,81 @@
 					<!-- Workers row -->
 					{#if hasJobs}
 						<div class="workers-row">
-							<!-- Worker dots -->
-							<div class="worker-dots">
-								{#each Array(MAX_WORKER_SLOTS) as _, w}
-									{#if w < busy}
-										<!-- Busy worker: spinning -->
-										<div class="worker-dot worker-busy" style="--dot-color: {cfg.color}">
-											<svg viewBox="0 0 20 20" class="worker-spinner">
-												<circle cx="10" cy="10" r="7" fill="none" stroke={cfg.color} stroke-width="2.5" opacity="0.2" />
-												<circle cx="10" cy="10" r="7" fill="none" stroke={cfg.color} stroke-width="2.5" stroke-dasharray="20 24" stroke-linecap="round" class="spin-arc" />
-											</svg>
+							{#if stage.workerDetails && stage.workerDetails.length > 0}
+								<!-- Per-kind worker entries (e.g. OCR with PaddleOCR + Qwen) -->
+								<div class="worker-detail-list">
+									{#each stage.workerDetails as wd}
+										{@const wdIdle = Math.max(0, wd.workers - wd.busy)}
+										<div class="worker-detail-row">
+											<div class="worker-detail-header">
+												<span class="worker-detail-dot" class:worker-detail-dot-active={wd.workers > 0 && (wd.busy > 0 || wd.pending > 0)}></span>
+												<span class="worker-detail-label">{wd.label}</span>
+												{#if wd.workers > 0}
+													<span class="worker-detail-count" style="color: {cfg.color}">{wd.busy}/{wd.workers}</span>
+													<span class="worker-detail-status">{$t('pipeline.busy')}</span>
+												{:else}
+													<span class="worker-detail-status text-muted">{$t('pipeline.noWorkers')}</span>
+												{/if}
+												{#if wd.pending > 0}
+													<span class="worker-detail-pending">{fmt(wd.pending)} pending</span>
+												{/if}
+												{#if wd.failed > 0}
+													<span class="failed-label">
+														<AlertTriangle size={10} class="inline -mt-0.5" />
+														{fmt(wd.failed)} {$t('pipeline.failed')}
+													</span>
+												{/if}
+											</div>
+											<!-- Worker dots for this kind -->
+											<div class="worker-dots">
+												{#each Array(wd.workers) as _, w}
+													{#if w < wd.busy}
+														<div class="worker-dot worker-busy" style="--dot-color: {cfg.color}">
+															<svg viewBox="0 0 20 20" class="worker-spinner">
+																<circle cx="10" cy="10" r="7" fill="none" stroke={cfg.color} stroke-width="2.5" opacity="0.2" />
+																<circle cx="10" cy="10" r="7" fill="none" stroke={cfg.color} stroke-width="2.5" stroke-dasharray="20 24" stroke-linecap="round" class="spin-arc" />
+															</svg>
+														</div>
+													{:else}
+														<div class="worker-dot worker-idle" style="background: {cfg.color}"></div>
+													{/if}
+												{/each}
+											</div>
 										</div>
-									{:else if w < busy + idle}
-										<!-- Idle worker: solid dot -->
-										<div class="worker-dot worker-idle" style="background: {cfg.color}"></div>
+									{/each}
+								</div>
+							{:else}
+								<!-- Generic worker dots (non-OCR stages) -->
+								<div class="worker-dots">
+									{#each Array(MAX_WORKER_SLOTS) as _, w}
+										{#if w < busy}
+											<div class="worker-dot worker-busy" style="--dot-color: {cfg.color}">
+												<svg viewBox="0 0 20 20" class="worker-spinner">
+													<circle cx="10" cy="10" r="7" fill="none" stroke={cfg.color} stroke-width="2.5" opacity="0.2" />
+													<circle cx="10" cy="10" r="7" fill="none" stroke={cfg.color} stroke-width="2.5" stroke-dasharray="20 24" stroke-linecap="round" class="spin-arc" />
+												</svg>
+											</div>
+										{:else if w < busy + idle}
+											<div class="worker-dot worker-idle" style="background: {cfg.color}"></div>
+										{:else}
+											<div class="worker-dot worker-empty"></div>
+										{/if}
+									{/each}
+								</div>
+								<div class="worker-label">
+									{#if workers > 0}
+										<span style="color: {cfg.color}">{busy}/{workers}</span> {$t('pipeline.busy')}
 									{:else}
-										<!-- Empty slot -->
-										<div class="worker-dot worker-empty"></div>
+										<span class="text-muted">{$t('pipeline.noWorkers')}</span>
 									{/if}
-								{/each}
-							</div>
-
-							<!-- Worker label -->
-							<div class="worker-label">
-								{#if workers > 0}
-									<span style="color: {cfg.color}">{busy}/{workers}</span> {$t('pipeline.busy')}
-								{:else}
-									<span class="text-muted">{$t('pipeline.noWorkers')}</span>
-								{/if}
-								{#if failed > 0}
-									<span class="failed-label">
-										<AlertTriangle size={10} class="inline -mt-0.5" />
-										{fmt(failed)} {$t('pipeline.failed')}
-									</span>
-								{/if}
-							</div>
+									{#if failed > 0}
+										<span class="failed-label">
+											<AlertTriangle size={10} class="inline -mt-0.5" />
+											{fmt(failed)} {$t('pipeline.failed')}
+										</span>
+									{/if}
+								</div>
+							{/if}
 						</div>
 					{/if}
 				</div>
@@ -449,60 +501,153 @@
 		color: var(--vui-danger);
 	}
 
-	/* Scraper cards */
-	.scraper-card {
-		border: 1.5px solid rgba(110,198,240,0.3);
-		border-radius: 8px;
-		background: var(--vui-surface);
-		padding: 10px 14px;
+	/* Per-kind worker detail rows */
+	.worker-detail-list {
+		display: flex;
+		flex-direction: column;
+		gap: 8px;
 	}
 
-	.scraper-dot {
+	.worker-detail-row {
+		display: flex;
+		flex-direction: column;
+		gap: 4px;
+	}
+
+	.worker-detail-header {
+		display: flex;
+		align-items: center;
+		gap: 6px;
+		font-size: 11px;
+		font-variant-numeric: tabular-nums;
+	}
+
+	.worker-detail-dot {
+		width: 6px;
+		height: 6px;
+		border-radius: 50%;
+		background: var(--vui-text-muted);
+		opacity: 0.4;
+		flex-shrink: 0;
+	}
+
+	.worker-detail-dot-active {
+		background: #34d399;
+		opacity: 1;
+		animation: source-pulse 2s ease-in-out infinite;
+	}
+
+	.worker-detail-label {
+		font-weight: 600;
+		color: var(--vui-text);
+	}
+
+	.worker-detail-count {
+		font-weight: 600;
+	}
+
+	.worker-detail-status {
+		color: var(--vui-text-muted);
+	}
+
+	.worker-detail-pending {
+		color: var(--vui-text-muted);
+		margin-left: auto;
+	}
+
+	/* Source cards */
+	.source-card {
+		border: 1.5px solid var(--vui-border);
+		border-radius: 8px;
+		background: var(--vui-surface);
+		padding: 8px 14px;
+	}
+
+	.source-card.source-active {
+		border-color: rgba(52, 211, 153, 0.4);
+	}
+
+	.source-dot {
 		width: 8px;
 		height: 8px;
 		border-radius: 50%;
-		background: #34d399;
+		background: var(--vui-text-muted);
+		opacity: 0.4;
 		flex-shrink: 0;
-		animation: scraper-pulse 2s ease-in-out infinite;
 	}
 
-	@keyframes scraper-pulse {
+	.source-dot-active {
+		background: #34d399;
+		opacity: 1;
+		animation: source-pulse 2s ease-in-out infinite;
+	}
+
+	@keyframes source-pulse {
 		0%, 100% { opacity: 1; }
 		50% { opacity: 0.4; }
 	}
 
-	.scraper-name {
+	.source-name {
 		font-size: 13px;
 		font-weight: 600;
 		color: var(--vui-text);
-		white-space: nowrap;
-		overflow: hidden;
-		text-overflow: ellipsis;
 	}
 
-	.scraper-system {
-		font-size: 11px;
+	.source-count {
+		font-size: 12px;
 		color: var(--vui-text-muted);
-		white-space: nowrap;
-		overflow: hidden;
-		text-overflow: ellipsis;
-	}
-
-	.scraper-counts {
-		display: flex;
-		align-items: baseline;
-		gap: 3px;
-		flex-shrink: 0;
+		margin-left: 4px;
 		font-variant-numeric: tabular-nums;
 	}
 
-	.scraper-num {
-		font-size: 16px;
-		font-weight: 700;
+	.source-status-label {
+		font-size: 11px;
+		color: var(--vui-text-muted);
+		flex-shrink: 0;
+	}
+
+	.source-status-active {
+		color: #34d399;
+		font-weight: 600;
+	}
+
+	.source-instances {
+		margin-top: 6px;
+		padding-top: 6px;
+		border-top: 1px solid var(--vui-border);
+		display: flex;
+		flex-direction: column;
+		gap: 3px;
+		padding-left: 20px;
+	}
+
+	.instance-row {
+		display: flex;
+		align-items: baseline;
+		gap: 8px;
+		font-size: 11px;
+	}
+
+	.instance-id {
+		color: var(--vui-text-muted);
+		font-family: monospace;
+		font-size: 10px;
+	}
+
+	.instance-stats {
+		display: flex;
+		align-items: baseline;
+		gap: 3px;
+		font-variant-numeric: tabular-nums;
+	}
+
+	.instance-num {
+		font-size: 12px;
+		font-weight: 600;
 		color: var(--vui-text);
 	}
 
-	.scraper-label {
+	.instance-label {
 		font-size: 10px;
 		color: var(--vui-text-muted);
 	}

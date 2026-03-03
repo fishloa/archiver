@@ -126,6 +126,9 @@ export const de: Record<MessageKey, string> = {
 	'pipeline.scrapers': 'Aktive Scraper',
 	'pipeline.noScrapers': 'Keine Scraper aktiv',
 	'pipeline.ingested': 'aufgenommen',
+	'pipeline.sources': 'Quellen',
+	'pipeline.active': 'Aktiv',
+	'pipeline.idle': 'Inaktiv',
 
 	// Pipeline stage descriptions
 	'pipeline.desc.downloading': 'Herunterladen von Dokumentmetadaten und Seitenbildern aus Archivkatalogen',

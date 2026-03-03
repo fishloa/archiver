@@ -67,6 +67,63 @@ public class ViewerController {
     this.jobEventService = jobEventService;
   }
 
+  @GetMapping("/viewer/source-status")
+  public ResponseEntity<List<Map<String, Object>>> sourceStatus() {
+    // 1. All distinct source_system values with record counts
+    List<Map<String, Object>> sourceCounts =
+        jdbcTemplate.queryForList(
+            "SELECT source_system, count(*) AS cnt FROM record GROUP BY source_system");
+
+    // 2. Currently active scraper instances
+    List<Map<String, Object>> activeScrapers = jobEventService.getActiveScrapers();
+
+    // Build a map: sourceSystem -> list of active instances
+    Map<String, List<Map<String, Object>>> instancesBySource = new LinkedHashMap<>();
+    Map<String, String> displayNameFromScraper = new LinkedHashMap<>();
+    for (var scraper : activeScrapers) {
+      String ss = (String) scraper.get("sourceSystem");
+      instancesBySource.computeIfAbsent(ss, k -> new ArrayList<>()).add(scraper);
+      displayNameFromScraper.putIfAbsent(ss, (String) scraper.get("sourceName"));
+    }
+
+    // 3. Combine into result
+    List<Map<String, Object>> result = new ArrayList<>();
+    for (var row : sourceCounts) {
+      String sourceSystem = (String) row.get("source_system");
+      long totalRecords = ((Number) row.get("cnt")).longValue();
+      List<Map<String, Object>> instances = instancesBySource.getOrDefault(sourceSystem, List.of());
+      String displayName = displayNameFromScraper.getOrDefault(sourceSystem, sourceSystem);
+
+      Map<String, Object> entry = new LinkedHashMap<>();
+      entry.put("sourceSystem", sourceSystem);
+      entry.put("displayName", displayName);
+      entry.put("totalRecords", totalRecords);
+      entry.put("instances", instances);
+      result.add(entry);
+    }
+
+    // Also include active scrapers for source systems not yet in the DB
+    for (var ss : instancesBySource.keySet()) {
+      boolean found = result.stream().anyMatch(e -> ss.equals(e.get("sourceSystem")));
+      if (!found) {
+        Map<String, Object> entry = new LinkedHashMap<>();
+        entry.put("sourceSystem", ss);
+        entry.put("displayName", displayNameFromScraper.get(ss));
+        entry.put("totalRecords", 0L);
+        entry.put("instances", instancesBySource.get(ss));
+        result.add(entry);
+      }
+    }
+
+    // Sort: active sources first, then by totalRecords descending
+    result.sort(
+        Comparator.<Map<String, Object>, Boolean>comparing(
+                e -> ((List<?>) e.get("instances")).isEmpty())
+            .thenComparing(e -> -((Number) e.get("totalRecords")).longValue()));
+
+    return ResponseEntity.ok(result);
+  }
+
   @GetMapping("/pipeline/stats")
   public ResponseEntity<Map<String, Object>> pipelineStats() {
     // Record counts per status
@@ -182,6 +239,33 @@ public class ViewerController {
             workerCounts);
     ocrStage.put("pagesDone", ocrPagesDone);
     ocrStage.put("pagesTotal", ocrPagesTotal);
+    // Override worker count — paddle and qwen are different workers, need unique count not max
+    ocrStage.put(
+        "workersConnected",
+        jobEventService.countUniqueWorkers("ocr_page_paddle", "ocr_page_qwen3vl"));
+    // Per-kind worker breakdown so frontend can show labeled entries
+    List<Map<String, Object>> ocrWorkerDetails = new ArrayList<>();
+    for (String kind : new String[] {"ocr_page_paddle", "ocr_page_qwen3vl"}) {
+      int kWorkers = workerCounts.getOrDefault(kind, 0);
+      long kRunning = jobsByKind.getOrDefault(kind, Map.of()).getOrDefault("claimed", 0L);
+      long kPending = jobsByKind.getOrDefault(kind, Map.of()).getOrDefault("pending", 0L);
+      long kFailed = jobsByKind.getOrDefault(kind, Map.of()).getOrDefault("failed", 0L);
+      String label =
+          switch (kind) {
+            case "ocr_page_paddle" -> "PaddleOCR";
+            case "ocr_page_qwen3vl" -> "Qwen VL";
+            default -> kind;
+          };
+      Map<String, Object> detail = new LinkedHashMap<>();
+      detail.put("kind", kind);
+      detail.put("label", label);
+      detail.put("workers", kWorkers);
+      detail.put("busy", (int) Math.min(kRunning, kWorkers));
+      detail.put("pending", kPending);
+      detail.put("failed", kFailed);
+      ocrWorkerDetails.add(detail);
+    }
+    ocrStage.put("workerDetails", ocrWorkerDetails);
     stages.add(ocrStage);
 
     stages.add(
