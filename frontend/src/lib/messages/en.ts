@@ -121,7 +121,7 @@ export const en = {
 	'pipeline.busy': 'busy',
 	'pipeline.noWorkers': 'no workers',
 	'pipeline.failed': 'failed',
-	'pipeline.scrapers': 'Active Scrapers',
+	'pipeline.scrapers': 'Scrapers',
 	'pipeline.noScrapers': 'No scrapers running',
 	'pipeline.ingested': 'ingested',
 	'pipeline.sources': 'Sources',

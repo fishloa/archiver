@@ -67,59 +67,48 @@ public class ViewerController {
     this.jobEventService = jobEventService;
   }
 
+  /** Known scrapers: id, display name, sourceSystem value they report in heartbeats. */
+  private static final List<String[]> KNOWN_SCRAPERS =
+      List.of(
+          new String[] {"scraper-cz", "Czech National Archives", "vademecum.nacr.cz"},
+          new String[] {"scraper-ebadatelna", "Czech Security Archives", "ebadatelna.cz"},
+          new String[] {"scraper-findbuch", "Findbuch Austria", "findbuch.at"},
+          new String[] {"scraper-oesta", "Austrian State Archives", "archivinformationssystem.at"},
+          new String[] {"scraper-matricula", "Matricula Online", "matricula-online.eu"},
+          new String[] {"manual", "Manual Import", ""});
+
   @GetMapping("/viewer/source-status")
   public ResponseEntity<List<Map<String, Object>>> sourceStatus() {
-    // 1. All distinct source_system values with record counts
-    List<Map<String, Object>> sourceCounts =
-        jdbcTemplate.queryForList(
-            "SELECT source_system, count(*) AS cnt FROM record GROUP BY source_system");
-
-    // 2. Currently active scraper instances
     List<Map<String, Object>> activeScrapers = jobEventService.getActiveScrapers();
 
-    // Build a map: sourceSystem -> list of active instances
+    // Group active instances by their sourceSystem
     Map<String, List<Map<String, Object>>> instancesBySource = new LinkedHashMap<>();
-    Map<String, String> displayNameFromScraper = new LinkedHashMap<>();
     for (var scraper : activeScrapers) {
       String ss = (String) scraper.get("sourceSystem");
       instancesBySource.computeIfAbsent(ss, k -> new ArrayList<>()).add(scraper);
-      displayNameFromScraper.putIfAbsent(ss, (String) scraper.get("sourceName"));
     }
 
-    // 3. Combine into result
     List<Map<String, Object>> result = new ArrayList<>();
-    for (var row : sourceCounts) {
-      String sourceSystem = (String) row.get("source_system");
-      long totalRecords = ((Number) row.get("cnt")).longValue();
-      List<Map<String, Object>> instances = instancesBySource.getOrDefault(sourceSystem, List.of());
-      String displayName = displayNameFromScraper.getOrDefault(sourceSystem, sourceSystem);
+    for (String[] def : KNOWN_SCRAPERS) {
+      String id = def[0];
+      String name = def[1];
+      String sourceSystem = def[2];
+      List<Map<String, Object>> instances =
+          sourceSystem.isEmpty()
+              ? List.of()
+              : instancesBySource.getOrDefault(sourceSystem, List.of());
 
       Map<String, Object> entry = new LinkedHashMap<>();
-      entry.put("sourceSystem", sourceSystem);
-      entry.put("displayName", displayName);
-      entry.put("totalRecords", totalRecords);
+      entry.put("id", id);
+      entry.put("name", name);
       entry.put("instances", instances);
       result.add(entry);
     }
 
-    // Also include active scrapers for source systems not yet in the DB
-    for (var ss : instancesBySource.keySet()) {
-      boolean found = result.stream().anyMatch(e -> ss.equals(e.get("sourceSystem")));
-      if (!found) {
-        Map<String, Object> entry = new LinkedHashMap<>();
-        entry.put("sourceSystem", ss);
-        entry.put("displayName", displayNameFromScraper.get(ss));
-        entry.put("totalRecords", 0L);
-        entry.put("instances", instancesBySource.get(ss));
-        result.add(entry);
-      }
-    }
-
-    // Sort: active sources first, then by totalRecords descending
+    // Sort: active scrapers first
     result.sort(
         Comparator.<Map<String, Object>, Boolean>comparing(
-                e -> ((List<?>) e.get("instances")).isEmpty())
-            .thenComparing(e -> -((Number) e.get("totalRecords")).longValue()));
+            e -> ((List<?>) e.get("instances")).isEmpty()));
 
     return ResponseEntity.ok(result);
   }

@@ -144,23 +144,20 @@ export interface PipelineStats {
   scrapers?: ScraperInfo[];
 }
 
-export interface SourceInstance {
+export interface ScraperInstance {
   scraperId: string;
-  sourceSystem: string;
   sourceName: string;
   recordsIngested: number;
   pagesIngested: number;
-  lastSeen: string;
 }
 
-export interface SourceStatus {
-  sourceSystem: string;
-  displayName: string;
-  totalRecords: number;
-  instances: SourceInstance[];
+export interface ScraperEntry {
+  id: string;
+  name: string;
+  instances: ScraperInstance[];
 }
 
-export async function fetchSourceStatus(): Promise<SourceStatus[]> {
+export async function fetchSourceStatus(): Promise<ScraperEntry[]> {
   const res = await fetch(`${backendUrl()}/api/viewer/source-status`);
   if (!res.ok) throw new Error(`Backend error: ${res.status}`);
   return res.json();

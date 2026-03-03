@@ -123,7 +123,7 @@ export const cs: Record<MessageKey, string> = {
 	'pipeline.busy': 'pracuje',
 	'pipeline.noWorkers': 'žádní pracovníci',
 	'pipeline.failed': 'selhalo',
-	'pipeline.scrapers': 'Aktivn\u00ed scrapery',
+	'pipeline.scrapers': 'Scrapery',
 	'pipeline.noScrapers': '\u017d\u00e1dn\u00e9 scrapery neběží',
 	'pipeline.ingested': 'přijato',
 	'pipeline.sources': 'Zdroje',

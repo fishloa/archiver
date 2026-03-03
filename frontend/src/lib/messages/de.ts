@@ -123,7 +123,7 @@ export const de: Record<MessageKey, string> = {
 	'pipeline.busy': 'besch\u00e4ftigt',
 	'pipeline.noWorkers': 'keine Arbeiter',
 	'pipeline.failed': 'fehlgeschlagen',
-	'pipeline.scrapers': 'Aktive Scraper',
+	'pipeline.scrapers': 'Scraper',
 	'pipeline.noScrapers': 'Keine Scraper aktiv',
 	'pipeline.ingested': 'aufgenommen',
 	'pipeline.sources': 'Quellen',

@@ -2,7 +2,6 @@
 	import { onMount } from 'svelte';
 	import { invalidate } from '$app/navigation';
 	import {
-		CloudDownload,
 		Inbox,
 		ScanText,
 		FileText,
@@ -12,7 +11,7 @@
 		AlertTriangle,
 		Radio
 	} from 'lucide-svelte';
-	import type { PipelineStage, ScraperInfo, SourceStatus } from '$lib/server/api';
+	import type { PipelineStage, ScraperEntry } from '$lib/server/api';
 	import { language, t } from '$lib/i18n';
 
 	let { data } = $props();
@@ -36,7 +35,6 @@
 	const MAX_WORKER_SLOTS = 12;
 
 	const stageConfig = $derived([
-		{ icon: CloudDownload, color: '#6ec6f0', dimBg: 'rgba(110,198,240,0.08)', borderColor: 'rgba(110,198,240,0.35)', desc: $t('pipeline.desc.downloading') },
 		{ icon: Inbox, color: '#a78bfa', dimBg: 'rgba(167,139,250,0.08)', borderColor: 'rgba(167,139,250,0.35)', desc: $t('pipeline.desc.inbox') },
 		{ icon: ScanText, color: '#f59e0b', dimBg: 'rgba(245,158,11,0.08)', borderColor: 'rgba(245,158,11,0.35)', desc: $t('pipeline.desc.ocr') },
 		{ icon: FileText, color: '#f472b6', dimBg: 'rgba(244,114,182,0.08)', borderColor: 'rgba(244,114,182,0.35)', desc: $t('pipeline.desc.pdf') },
@@ -44,6 +42,9 @@
 		{ icon: BrainCircuit, color: '#c084fc', dimBg: 'rgba(192,132,252,0.08)', borderColor: 'rgba(192,132,252,0.35)', desc: $t('pipeline.desc.embedding') },
 		{ icon: CircleCheckBig, color: '#34d399', dimBg: 'rgba(52,211,153,0.08)', borderColor: 'rgba(52,211,153,0.35)', desc: $t('pipeline.desc.completed') }
 	]);
+
+	/** Backend stages[0] is "Scraping" — skip it, Sources card replaces it */
+	const displayStages = $derived(data.stats.stages.slice(1));
 
 	function fmt(n: number): string {
 		return n.toLocaleString();
@@ -71,57 +72,63 @@
 	</div>
 </div>
 
-<!-- Sources -->
-<div class="sources-section vui-animate-fade-in mb-6" style="max-width: 640px">
-	<h2 class="text-[length:var(--vui-text-sm)] font-semibold text-text-sub mb-3 flex items-center gap-2">
-		<Radio size={14} />
-		{$t('pipeline.sources')}
-	</h2>
-	{#if data.sources && data.sources.length > 0}
-		<div class="flex flex-col gap-1.5">
-			{#each data.sources as source}
-				{@const isActive = source.instances.length > 0}
-				<div class="source-card" class:source-active={isActive}>
-					<div class="flex items-center gap-2.5">
-						<span class="source-dot" class:source-dot-active={isActive}></span>
-						<div class="min-w-0 flex-1">
-							<span class="source-name">{source.displayName}</span>
-							<span class="source-count">({fmt(source.totalRecords)})</span>
-						</div>
-						<span class="source-status-label" class:source-status-active={isActive}>
-							{isActive ? $t('pipeline.active') : $t('pipeline.idle')}
-						</span>
-					</div>
-					{#if isActive}
-						<div class="source-instances">
-							{#each source.instances as instance}
-								<div class="instance-row">
-									<span class="instance-id">{instance.scraperId.slice(0, 8)}</span>
-									<span class="instance-stats">
-										<span class="instance-num">{fmt(instance.recordsIngested)}</span>
-										<span class="instance-label">{$t('pipeline.records')}</span>
-										<span class="count-sep">&middot;</span>
-										<span class="instance-num">{fmt(instance.pagesIngested)}</span>
-										<span class="instance-label">{$t('pipeline.pages')}</span>
-									</span>
-								</div>
-							{/each}
-						</div>
-					{/if}
+<!-- Scrapers card -->
+<div class="sources-card-wrapper vui-animate-fade-in" style="max-width: 640px">
+	<div class="stage-card" style="border-color: rgba(110,198,240,0.35)">
+		<div class="accent-bar" style="background: #6ec6f0"></div>
+		<div class="card-body">
+			<div class="card-header" style="margin-bottom: 10px">
+				<div class="card-icon" style="background: rgba(110,198,240,0.08)">
+					<Radio size={16} color="#6ec6f0" strokeWidth={2} />
 				</div>
-			{/each}
+				<div>
+					<div class="card-title" style="color: #6ec6f0">{$t('pipeline.scrapers')}</div>
+				</div>
+			</div>
+			{#if data.sources && data.sources.length > 0}
+				<div class="flex flex-col gap-1.5">
+					{#each data.sources as scraper}
+						{@const isActive = scraper.instances.length > 0}
+						<div class="source-card" class:source-active={isActive}>
+							<div class="flex items-center gap-2.5">
+								<span class="source-dot" class:source-dot-active={isActive}></span>
+								<span class="source-name">{scraper.name}</span>
+								<span class="source-status-label" class:source-status-active={isActive}>
+									{isActive ? $t('pipeline.active') : $t('pipeline.idle')}
+								</span>
+							</div>
+							{#if isActive}
+								<div class="source-instances">
+									{#each scraper.instances as instance}
+										<div class="instance-row">
+											<span class="instance-id">{instance.scraperId.slice(0, 8)}</span>
+											<span class="instance-stats">
+												<span class="instance-num">{fmt(instance.recordsIngested)}</span>
+												<span class="instance-label">{$t('pipeline.records')}</span>
+												<span class="count-sep">&middot;</span>
+												<span class="instance-num">{fmt(instance.pagesIngested)}</span>
+												<span class="instance-label">{$t('pipeline.pages')}</span>
+											</span>
+										</div>
+									{/each}
+								</div>
+							{/if}
+						</div>
+					{/each}
+				</div>
+			{:else}
+				<p class="text-[length:var(--vui-text-xs)] text-text-sub opacity-60">{$t('pipeline.noScrapers')}</p>
+			{/if}
 		</div>
-	{:else}
-		<p class="text-[length:var(--vui-text-xs)] text-text-sub opacity-60">{$t('pipeline.noScrapers')}</p>
-	{/if}
+	</div>
 </div>
 
 <!-- Vertical pipeline -->
 <div class="pipeline vui-animate-fade-in">
-	{#each data.stats.stages as stage, i}
+	{#each displayStages as stage, i}
 		{@const cfg = stageConfig[i]}
 		{@const hasJobs = stage.jobsPending !== undefined}
-		{@const isLast = i === data.stats.stages.length - 1}
+		{@const isLast = i === displayStages.length - 1}
 		{@const running = stage.jobsRunning ?? 0}
 		{@const pending = stage.jobsPending ?? 0}
 		{@const failed = stage.jobsFailed ?? 0}
@@ -555,6 +562,11 @@
 		margin-left: auto;
 	}
 
+	/* Sources card wrapper */
+	.sources-card-wrapper {
+		margin-bottom: 24px;
+	}
+
 	/* Source cards */
 	.source-card {
 		border: 1.5px solid var(--vui-border);
@@ -593,14 +605,8 @@
 		color: var(--vui-text);
 	}
 
-	.source-count {
-		font-size: 12px;
-		color: var(--vui-text-muted);
-		margin-left: 4px;
-		font-variant-numeric: tabular-nums;
-	}
-
 	.source-status-label {
+		margin-left: auto;
 		font-size: 11px;
 		color: var(--vui-text-muted);
 		flex-shrink: 0;
