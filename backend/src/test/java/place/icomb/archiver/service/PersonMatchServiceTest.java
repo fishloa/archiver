@@ -215,6 +215,46 @@ class PersonMatchServiceTest {
   }
 
   @Test
+  void sectionBoostBohemianContext() {
+    Person bohemianPerson = new Person();
+    bohemianPerson.id = 1;
+    bohemianPerson.name = "Test";
+    bohemianPerson.section = "CZERNIN 3";
+    bohemianPerson.children = List.of();
+    bohemianPerson.spouses = List.of();
+
+    Person austrianPerson = new Person();
+    austrianPerson.id = 2;
+    austrianPerson.name = "Test";
+    austrianPerson.section = "CZERNIN 2";
+    austrianPerson.children = List.of();
+    austrianPerson.spouses = List.of();
+
+    // Bohemian text should boost CZERNIN 3
+    String bohemianText = "property in bohemia was confiscated by the protectorate authorities";
+    assertThat(matchService.computeSectionBoost(bohemianText, bohemianPerson))
+        .as("CZERNIN 3 boosted in Bohemian context")
+        .isEqualTo(1.25);
+    assertThat(matchService.computeSectionBoost(bohemianText, austrianPerson))
+        .as("CZERNIN 2 penalized in Bohemian context")
+        .isEqualTo(0.85);
+
+    // Austrian text should boost CZERNIN 2
+    String austrianText = "the estate in graz was administered by the steiermark court";
+    assertThat(matchService.computeSectionBoost(austrianText, austrianPerson))
+        .as("CZERNIN 2 boosted in Austrian context")
+        .isEqualTo(1.25);
+    assertThat(matchService.computeSectionBoost(austrianText, bohemianPerson))
+        .as("CZERNIN 3 penalized in Austrian context")
+        .isEqualTo(0.85);
+
+    // Neutral text — no boost
+    String neutralText = "the document was signed in 1942";
+    assertThat(matchService.computeSectionBoost(neutralText, bohemianPerson)).isEqualTo(1.0);
+    assertThat(matchService.computeSectionBoost(neutralText, austrianPerson)).isEqualTo(1.0);
+  }
+
+  @Test
   void noMatchesForIrrelevantText() {
     String text = "This document discusses agricultural policies in 1950s Czechoslovakia.";
 

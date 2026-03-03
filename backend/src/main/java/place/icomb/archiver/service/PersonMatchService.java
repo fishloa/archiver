@@ -203,6 +203,11 @@ public class PersonMatchService {
               return mc.bestScore < MIN_SCORE;
             });
 
+    // Apply geographic/section boost based on location clues in text
+    for (var mc : candidates.values()) {
+      mc.bestScore *= computeSectionBoost(normalizedText, mc.person);
+    }
+
     // Sort by score, return top candidates for LLM input
     return candidates.values().stream()
         .sorted(Comparator.comparingDouble((MatchCandidate mc) -> mc.bestScore).reversed())
@@ -407,6 +412,46 @@ public class PersonMatchService {
 
     // Boost: person was plausibly alive at document time (allow > 1.0 for ranking)
     return score * 1.15;
+  }
+
+  // Geographic keywords that indicate a Bohemian context (CZERNIN 3)
+  private static final List<String> BOHEMIAN_KEYWORDS =
+      List.of(
+          "bohemia",
+          "bohmen",
+          "protectorate",
+          "protektorat",
+          "prague",
+          "prag",
+          "praha",
+          "dymokury",
+          "chlumec");
+  // Geographic keywords that indicate an Austrian/Styrian context (CZERNIN 2)
+  private static final List<String> AUSTRIAN_KEYWORDS =
+      List.of("graz", "steiermark", "styria", "klagenfurt", "austria", "osterreich");
+
+  /**
+   * Boosts score for people whose family tree section matches geographic clues in the document
+   * text. CZERNIN 3 = Bohemian cadet line, CZERNIN 2 = Austrian/Styrian line.
+   */
+  double computeSectionBoost(String normalizedText, Person person) {
+    if (person.section == null) return 1.0;
+
+    boolean bohemianContext = BOHEMIAN_KEYWORDS.stream().anyMatch(normalizedText::contains);
+    boolean austrianContext = AUSTRIAN_KEYWORDS.stream().anyMatch(normalizedText::contains);
+
+    // No geographic clues or ambiguous → no boost
+    if (!bohemianContext && !austrianContext) return 1.0;
+    if (bohemianContext && austrianContext) return 1.0;
+
+    if (bohemianContext && person.section.contains("CZERNIN 3")) return 1.25;
+    if (austrianContext && person.section.contains("CZERNIN 2")) return 1.25;
+
+    // Mild penalty for wrong section when there IS a clear geographic signal
+    if (bohemianContext && person.section.contains("CZERNIN 2")) return 0.85;
+    if (austrianContext && person.section.contains("CZERNIN 3")) return 0.85;
+
+    return 1.0;
   }
 
   private String getBestText(Long pageId) {
