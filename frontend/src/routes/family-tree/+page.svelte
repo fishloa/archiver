@@ -337,7 +337,6 @@
 		justify-content: space-between;
 		align-items: flex-start;
 		gap: 16px;
-		flex-wrap: wrap;
 		margin-bottom: 12px;
 	}
 
@@ -385,6 +384,7 @@
 	.detail-kinship {
 		text-align: right;
 		flex-shrink: 0;
+		margin-left: auto;
 	}
 
 	.kinship-badge {
