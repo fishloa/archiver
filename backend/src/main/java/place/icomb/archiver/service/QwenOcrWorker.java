@@ -3,7 +3,6 @@ package place.icomb.archiver.service;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.net.URI;
-import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.file.Files;
@@ -54,7 +53,7 @@ public class QwenOcrWorker {
   private final StorageService storageService;
   private final PageTextRepository pageTextRepository;
   private final ObjectMapper objectMapper = new ObjectMapper();
-  private final HttpClient httpClient;
+  private final ResilientHttpClient httpClient;
   private final String ollamaUrl;
   private final String model;
   private final int concurrency;
@@ -81,7 +80,8 @@ public class QwenOcrWorker {
     this.model = model;
     this.concurrency = concurrency;
     this.executor = Executors.newFixedThreadPool(concurrency);
-    this.httpClient = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(30)).build();
+    this.httpClient =
+        ResilientHttpClient.builder().connectTimeout(Duration.ofSeconds(30)).maxRetries(3).build();
     log.info(
         "Qwen OCR worker enabled (ollama={}, model={}, concurrency={})",
         ollamaUrl,
