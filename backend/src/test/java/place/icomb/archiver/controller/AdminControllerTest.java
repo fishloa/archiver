@@ -118,7 +118,11 @@ class AdminControllerTest {
 
   @Test
   void listUsersReturnsArray() throws Exception {
-    var req = HttpRequest.newBuilder(URI.create(base())).GET().build();
+    var req =
+        HttpRequest.newBuilder(URI.create(base()))
+            .header("X-Auth-Email", ADMIN_EMAIL)
+            .GET()
+            .build();
     var resp = http.send(req, HttpResponse.BodyHandlers.ofString());
 
     assertThat(resp.statusCode()).isEqualTo(200);
@@ -131,7 +135,11 @@ class AdminControllerTest {
   void listUsersIncludesEmails() throws Exception {
     createTestUser("AdminTest ListEmail", "user", List.of(TEST_EMAIL));
 
-    var req = HttpRequest.newBuilder(URI.create(base())).GET().build();
+    var req =
+        HttpRequest.newBuilder(URI.create(base()))
+            .header("X-Auth-Email", ADMIN_EMAIL)
+            .GET()
+            .build();
     var resp = http.send(req, HttpResponse.BodyHandlers.ofString());
 
     List<Map<String, Object>> users =

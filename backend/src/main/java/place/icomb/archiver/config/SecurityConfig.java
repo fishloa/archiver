@@ -39,6 +39,9 @@ public class SecurityConfig {
                     // MCP server endpoints — read-only tools, no auth needed
                     .requestMatchers("/api/mcp/**")
                     .permitAll()
+                    // Admin GET endpoints — admin only (must precede general GET permit)
+                    .requestMatchers(HttpMethod.GET, "/api/admin/**")
+                    .hasRole("ADMIN")
                     // GET requests are read-only — allow anonymous
                     .requestMatchers(HttpMethod.GET, "/api/**")
                     .permitAll()
