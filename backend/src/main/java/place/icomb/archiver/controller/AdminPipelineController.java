@@ -48,7 +48,7 @@ public class AdminPipelineController {
           AND NOT EXISTS (
             SELECT 1 FROM job j
             WHERE j.page_id = p.id AND j.kind = 'ocr_page_qwen3vl'
-              AND j.status IN ('pending', 'running')
+              AND j.status IN ('pending', 'claimed')
           )
         """;
     if (recordId > 0) {
