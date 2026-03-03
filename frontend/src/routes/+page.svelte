@@ -20,6 +20,30 @@
 	const hasResults = $derived(data.results && data.results.length > 0);
 	const showLanding = $derived(!data.q);
 
+	// Build formatted AI answer with clickable links
+	const formattedAnswer = $derived.by(() => {
+		if (!data.answer) return '';
+		// HTML-escape to prevent XSS
+		let text = data.answer
+			.replace(/&/g, '&amp;')
+			.replace(/</g, '&lt;')
+			.replace(/>/g, '&gt;')
+			.replace(/"/g, '&quot;');
+		// Linkify record references: #NNNN → link to /records/NNNN
+		text = text.replace(/#(\d+)/g, '<a href="/records/$1" class="ai-link">#$1</a>');
+		// Linkify person names (longest first to avoid partial matches)
+		if (data.personRefs) {
+			for (const ref of data.personRefs) {
+				const escaped = ref.name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+				text = text.replace(
+					new RegExp(escaped, 'g'),
+					`<a href="/family-tree?personId=${ref.personId}" class="ai-link">${ref.name}</a>`
+				);
+			}
+		}
+		return text;
+	});
+
 	// Build page numbers: show up to 10 pages, centered on current
 	const maxPages = $derived(data.hasMore ? data.page + 2 : data.page + 1);
 	const pageNumbers = $derived.by(() => {
@@ -185,7 +209,7 @@
 						<BrainCircuit size={14} />
 						<span>{$t('search.aiOverview')}</span>
 					</div>
-					<p class="ai-text">{data.answer}</p>
+					<p class="ai-text">{@html formattedAnswer}</p>
 				</div>
 			{/if}
 
@@ -441,6 +465,16 @@
 		color: var(--vui-text);
 		white-space: pre-wrap;
 		margin: 0;
+	}
+
+	.ai-text :global(.ai-link) {
+		color: var(--vui-accent);
+		text-decoration: underline;
+		text-underline-offset: 2px;
+	}
+
+	.ai-text :global(.ai-link:hover) {
+		opacity: 0.8;
 	}
 
 	/* ---- Results ---- */
