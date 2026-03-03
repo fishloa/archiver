@@ -242,16 +242,24 @@ public class PersonMatchService {
         Person p = familyTreeService.getPerson(mr.personId);
         prompt.append("- ID ").append(mr.personId).append(": ").append(mr.personName);
         if (p != null) {
+          prompt.append(" [").append(p.section).append("]");
           if (p.birthYear != null) prompt.append(", born ").append(p.birthYear);
           if (p.deathYear != null) prompt.append(", died ").append(p.deathYear);
           if (p.birthPlace != null && !p.birthPlace.isBlank())
             prompt.append(", birthplace: ").append(p.birthPlace);
+          if (p.fullEntry != null && !p.fullEntry.isBlank())
+            prompt.append(" | entry: ").append(p.fullEntry);
         }
         prompt.append(" (heuristic score: ").append(String.format("%.2f", mr.score)).append(")\n");
       }
       prompt.append(
           "\nIdentify which candidates are ACTUALLY referenced in the document text. "
               + "Consider name matches, titles (Graf/Count), locations, dates, and context. "
+              + "The Czernin family has 3 branches: CZERNIN 1 (Bohemian main line), "
+              + "CZERNIN 2 (Austrian/Styrian line), CZERNIN 3 (Bohemian cadet line). "
+              + "Use locations, dates, and context clues to pick the correct branch. "
+              + "Many family members share first names — disambiguate carefully using "
+              + "birth/death years, birthplaces, and the full genealogical entry. "
               + "Only include people with clear textual evidence — do not guess.\n\n"
               + "Respond with JSON only:\n"
               + "{\"matches\": [{\"personId\": N, \"score\": 0.0-1.0, \"evidence\": \"brief quote\"}]}\n"
