@@ -83,6 +83,9 @@
 							{#if p.birthYear || p.deathYear}
 								<span class="detail-lifespan">
 									{p.birthYear ?? '?'} &ndash; {p.deathYear ?? '?'}
+									{#if p.birthYear && p.deathYear}
+										<span class="detail-age">(aged {p.deathYear - p.birthYear})</span>
+									{/if}
 								</span>
 							{/if}
 						</div>
@@ -371,6 +374,12 @@
 		font-weight: 700;
 		color: var(--vui-text);
 		font-size: 14px;
+	}
+
+	.detail-age {
+		font-weight: 400;
+		color: var(--vui-text-muted);
+		font-size: 13px;
 	}
 
 	.detail-kinship {
