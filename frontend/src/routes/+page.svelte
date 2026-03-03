@@ -20,6 +20,20 @@
 	const hasResults = $derived(data.results && data.results.length > 0);
 	const showLanding = $derived(!data.q);
 
+	// Resolve deferred person refs into reactive state
+	let resolvedPersonRefs = $state<{ name: string; personId: number }[]>([]);
+	$effect(() => {
+		const val = data.personRefs;
+		resolvedPersonRefs = [];
+		if (Array.isArray(val)) {
+			resolvedPersonRefs = val;
+		} else if (val) {
+			(val as Promise<{ name: string; personId: number }[]>).then((refs) => {
+				resolvedPersonRefs = refs;
+			});
+		}
+	});
+
 	// Build formatted AI answer with clickable links
 	const formattedAnswer = $derived.by(() => {
 		if (!data.answer) return '';
@@ -32,14 +46,12 @@
 		// Linkify record references: #NNNN → link to /records/NNNN
 		text = text.replace(/#(\d+)/g, '<a href="/records/$1" class="ai-link">#$1</a>');
 		// Linkify person names (longest first to avoid partial matches)
-		if (data.personRefs) {
-			for (const ref of data.personRefs) {
-				const escaped = ref.name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-				text = text.replace(
-					new RegExp(escaped, 'g'),
-					`<a href="/family-tree?personId=${ref.personId}" class="ai-link">${ref.name}</a>`
-				);
-			}
+		for (const ref of resolvedPersonRefs) {
+			const escaped = ref.name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+			text = text.replace(
+				new RegExp(escaped, 'g'),
+				`<a href="/family-tree?personId=${ref.personId}" class="ai-link">${ref.name}</a>`
+			);
 		}
 		return text;
 	});
