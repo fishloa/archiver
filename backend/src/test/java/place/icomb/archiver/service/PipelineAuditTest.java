@@ -289,19 +289,19 @@ class PipelineAuditTest {
   }
 
   @Test
-  void pass2_failedJobAtThreeAttempts_alsoRetried() {
+  void pass2_failedJobAtThreeAttempts_staysFailed() {
     Long archiveId = createArchive();
     Long recordId = createRecord(archiveId, "ocr_pending", 1);
     Long pageId = createPage(recordId, 1);
 
-    // All failed jobs are now retried regardless of attempt count
+    // Jobs with 3+ attempts are poison pills — leave them permanently failed
     Long jobId =
         createJobWithError(
             recordId, pageId, "ocr_page_paddle", "failed", 3, "Persistent OCR failure");
 
     jobService.auditPipeline();
 
-    assertThat(getJobStatus(jobId)).isEqualTo("pending");
+    assertThat(getJobStatus(jobId)).isEqualTo("failed");
   }
 
   @Test
