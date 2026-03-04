@@ -53,7 +53,7 @@ public class QwenOcrWorker {
   private final StorageService storageService;
   private final PageTextRepository pageTextRepository;
   private final ObjectMapper objectMapper = new ObjectMapper();
-  private final ResilientHttpClient httpClient;
+  private final java.net.http.HttpClient httpClient;
   private final String ollamaUrl;
   private final String model;
   private final int concurrency;
@@ -81,7 +81,7 @@ public class QwenOcrWorker {
     this.concurrency = concurrency;
     this.executor = Executors.newFixedThreadPool(concurrency);
     this.httpClient =
-        ResilientHttpClient.builder().connectTimeout(Duration.ofSeconds(30)).maxRetries(3).build();
+        java.net.http.HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(30)).build();
     log.info(
         "Qwen OCR worker enabled (ollama={}, model={}, concurrency={})",
         ollamaUrl,

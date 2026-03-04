@@ -276,12 +276,12 @@ public class JobService {
     }
     total += staleClaimed;
 
-    // --- Pass 2: Retry all failed jobs (reset to pending, clear error) ---
+    // --- Pass 2: Retry failed jobs with < 3 attempts (skip poison jobs) ---
     int failedRetried =
         jdbcTemplate.update(
             """
-            UPDATE job SET status = 'pending', error = NULL, finished_at = NULL, attempts = 0
-            WHERE status = 'failed'
+            UPDATE job SET status = 'pending', error = NULL, finished_at = NULL
+            WHERE status = 'failed' AND attempts < 3
             """);
     if (failedRetried > 0) {
       log.info("Audit: retried {} failed jobs", failedRetried);
