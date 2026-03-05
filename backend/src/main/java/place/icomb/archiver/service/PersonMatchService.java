@@ -72,12 +72,7 @@ public class PersonMatchService {
     Map<Long, Integer> pageIdToSeq =
         pages.stream().collect(java.util.stream.Collectors.toMap(p -> p.getId(), p -> p.getSeq()));
 
-    // Ensure all pages are computed
-    for (Long pageId : pageIds) {
-      if (!matchRepo.existsByPageId(pageId)) {
-        matchPage(pageId);
-      }
-    }
+    // Return only cached matches — don't trigger LLM calls on page view
 
     List<PagePersonMatch> allMatches = matchRepo.findByPageIdIn(pageIds);
 
