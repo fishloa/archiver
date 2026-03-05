@@ -144,12 +144,20 @@ public class QwenOcrWorker {
   }
 
   private void awaitInflight() {
+    long lastTouch = System.currentTimeMillis();
     while (inflight.get() > 0) {
       try {
         Thread.sleep(100);
       } catch (InterruptedException e) {
         Thread.currentThread().interrupt();
         break;
+      }
+      // Re-touch workers every 30s so they don't expire from the dashboard
+      if (System.currentTimeMillis() - lastTouch > 30_000) {
+        for (int i = 0; i < concurrency; i++) {
+          jobEventService.touchWorker("qwen-ocr-" + i, JOB_KIND);
+        }
+        lastTouch = System.currentTimeMillis();
       }
     }
   }
