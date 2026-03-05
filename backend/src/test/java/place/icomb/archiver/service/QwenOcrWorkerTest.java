@@ -59,7 +59,8 @@ class QwenOcrWorkerTest {
     registry.add("spring.datasource.username", postgres::getUsername);
     registry.add("spring.datasource.password", postgres::getPassword);
     registry.add("archiver.ocr.qwen.enabled", () -> "true");
-    registry.add("archiver.ocr.qwen.ollama-url", wireMock::baseUrl);
+    registry.add("archiver.ocr.qwen.base-url", wireMock::baseUrl);
+    registry.add("archiver.ocr.qwen.api-key", () -> "test-key");
     registry.add("archiver.ocr.qwen.model", () -> "test-model");
     registry.add("archiver.ocr.qwen.poll-interval", () -> "999999999");
   }
@@ -85,10 +86,11 @@ class QwenOcrWorkerTest {
   @Test
   void claimsJobAndInsertsPageText() {
     wireMock.stubFor(
-        post(urlEqualTo("/api/generate"))
+        post(urlEqualTo("/chat/completions"))
             .willReturn(
                 ok().withHeader("Content-Type", "application/json")
-                    .withBody("{\"response\":\"Hello World OCR text\",\"done\":true}")));
+                    .withBody(
+                        "{\"choices\":[{\"message\":{\"content\":\"Hello World OCR text\"}}]}")));
 
     Long archiveId = createArchive();
     Long recordId = createRecord(archiveId, "complete", 1);
@@ -113,7 +115,8 @@ class QwenOcrWorkerTest {
   @Test
   void failsJobOnOllamaError() {
     wireMock.stubFor(
-        post(urlEqualTo("/api/generate")).willReturn(serverError().withBody("model not found")));
+        post(urlEqualTo("/chat/completions"))
+            .willReturn(serverError().withBody("model not found")));
 
     Long archiveId = createArchive();
     Long recordId = createRecord(archiveId, "complete", 1);
@@ -140,10 +143,10 @@ class QwenOcrWorkerTest {
   @Test
   void resetAndOcrTriggersFullPipeline() {
     wireMock.stubFor(
-        post(urlEqualTo("/api/generate"))
+        post(urlEqualTo("/chat/completions"))
             .willReturn(
                 ok().withHeader("Content-Type", "application/json")
-                    .withBody("{\"response\":\"Qwen OCR text\",\"done\":true}")));
+                    .withBody("{\"choices\":[{\"message\":{\"content\":\"Qwen OCR text\"}}]}")));
 
     Long archiveId = createArchive();
     Long recordId = createRecord(archiveId, "complete", 2);

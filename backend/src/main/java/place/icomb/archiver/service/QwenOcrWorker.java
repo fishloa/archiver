@@ -31,9 +31,13 @@ import place.icomb.archiver.repository.PageRepository;
 import place.icomb.archiver.repository.PageTextRepository;
 
 /**
- * Internal OCR worker that claims {@code ocr_page_qwen3vl} jobs and processes them via Ollama's
- * Qwen2.5-VL model. Reads page images directly from disk and writes OCR results directly to the DB,
- * avoiding HTTP round-trips to itself.
+ * Internal OCR worker that claims {@code ocr_page_qwen3vl} jobs and processes them via any
+ * OpenAI-compatible vision API (DeepInfra, Fireworks, Together AI, Ollama, etc.). Reads page images
+ * directly from disk and writes OCR results directly to the DB.
+ *
+ * <p>Configure with {@code archiver.ocr.qwen.base-url} (e.g. {@code
+ * https://api.deepinfra.com/v1/openai}) and optional {@code archiver.ocr.qwen.api-key}. For Ollama,
+ * use {@code http://host:11434/v1} with no API key.
  *
  * <p>Supports concurrent processing via {@code archiver.ocr.qwen.concurrency} (default 1).
  *
@@ -54,7 +58,8 @@ public class QwenOcrWorker {
   private final PageTextRepository pageTextRepository;
   private final ObjectMapper objectMapper = new ObjectMapper();
   private final java.net.http.HttpClient httpClient;
-  private final String ollamaUrl;
+  private final String baseUrl;
+  private final String apiKey;
   private final String model;
   private final int concurrency;
   private final ExecutorService executor;
@@ -67,7 +72,8 @@ public class QwenOcrWorker {
       AttachmentRepository attachmentRepository,
       StorageService storageService,
       PageTextRepository pageTextRepository,
-      @Value("${archiver.ocr.qwen.ollama-url}") String ollamaUrl,
+      @Value("${archiver.ocr.qwen.base-url}") String baseUrl,
+      @Value("${archiver.ocr.qwen.api-key:}") String apiKey,
       @Value("${archiver.ocr.qwen.model}") String model,
       @Value("${archiver.ocr.qwen.concurrency:1}") int concurrency) {
     this.jobService = jobService;
@@ -76,17 +82,19 @@ public class QwenOcrWorker {
     this.attachmentRepository = attachmentRepository;
     this.storageService = storageService;
     this.pageTextRepository = pageTextRepository;
-    this.ollamaUrl = ollamaUrl;
+    this.baseUrl = baseUrl;
+    this.apiKey = apiKey;
     this.model = model;
     this.concurrency = concurrency;
     this.executor = Executors.newFixedThreadPool(concurrency);
     this.httpClient =
         java.net.http.HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(30)).build();
     log.info(
-        "Qwen OCR worker enabled (ollama={}, model={}, concurrency={})",
-        ollamaUrl,
+        "Qwen OCR worker enabled (base-url={}, model={}, concurrency={}, auth={})",
+        baseUrl,
         model,
-        concurrency);
+        concurrency,
+        apiKey.isEmpty() ? "none" : "api-key");
   }
 
   @Scheduled(fixedDelayString = "${archiver.ocr.qwen.poll-interval:5000}")
@@ -162,7 +170,7 @@ public class QwenOcrWorker {
     byte[] imageBytes = Files.readAllBytes(imagePath);
     String base64Image = Base64.getEncoder().encodeToString(imageBytes);
 
-    String ocrText = callOllama(base64Image);
+    String ocrText = callVisionApi(base64Image);
 
     PageText pt = new PageText();
     pt.setPageId(page.getId());
@@ -177,35 +185,51 @@ public class QwenOcrWorker {
     jobService.completeJob(job.getId(), null);
   }
 
-  private String callOllama(String base64Image) throws Exception {
+  private String callVisionApi(String base64Image) throws Exception {
+    String dataUri = "data:image/jpeg;base64," + base64Image;
     String requestBody =
         objectMapper.writeValueAsString(
             Map.of(
                 "model",
                 model,
-                "prompt",
-                "Extract all text from this document image. Return only the raw text content, preserving the original layout as much as possible. Do not add any commentary or explanation.",
-                "images",
-                List.of(base64Image),
+                "messages",
+                List.of(
+                    Map.of(
+                        "role",
+                        "user",
+                        "content",
+                        List.of(
+                            Map.of("type", "image_url", "image_url", Map.of("url", dataUri)),
+                            Map.of(
+                                "type",
+                                "text",
+                                "text",
+                                "Extract all text from this document image. Return only the raw text content, preserving the original layout as much as possible. Do not add any commentary or explanation.")))),
+                "max_tokens",
+                4096,
                 "stream",
                 false));
 
-    HttpRequest request =
+    HttpRequest.Builder reqBuilder =
         HttpRequest.newBuilder()
-            .uri(URI.create(ollamaUrl + "/api/generate"))
+            .uri(URI.create(baseUrl + "/chat/completions"))
             .header("Content-Type", "application/json")
             .POST(HttpRequest.BodyPublishers.ofString(requestBody))
-            .timeout(Duration.ofSeconds(300))
-            .build();
+            .timeout(Duration.ofSeconds(300));
 
-    HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+    if (!apiKey.isEmpty()) {
+      reqBuilder.header("Authorization", "Bearer " + apiKey);
+    }
+
+    HttpResponse<String> response =
+        httpClient.send(reqBuilder.build(), HttpResponse.BodyHandlers.ofString());
 
     if (response.statusCode() != 200) {
       throw new RuntimeException(
-          "Ollama returned HTTP " + response.statusCode() + ": " + response.body());
+          "Vision API returned HTTP " + response.statusCode() + ": " + response.body());
     }
 
     JsonNode json = objectMapper.readTree(response.body());
-    return json.get("response").asText();
+    return json.get("choices").get(0).get("message").get("content").asText();
   }
 }

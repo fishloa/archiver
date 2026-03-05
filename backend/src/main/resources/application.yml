@@ -52,8 +52,9 @@ archiver:
   ocr:
     qwen:
       enabled: ${QWEN_OCR_ENABLED:false}
-      ollama-url: ${QWEN_OLLAMA_URL:http://192.168.16.28:11434}
-      model: ${QWEN_OCR_MODEL:qwen2.5vl:7b}
+      base-url: ${QWEN_BASE_URL:https://api.deepinfra.com/v1/openai}
+      api-key: ${QWEN_API_KEY:}
+      model: ${QWEN_OCR_MODEL:Qwen/Qwen2.5-VL-32B-Instruct}
       poll-interval: ${QWEN_OCR_POLL_INTERVAL:5000}
       concurrency: ${QWEN_OCR_CONCURRENCY:1}
 

@@ -7,13 +7,15 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 Digital archive management system — scrapes, OCRs, translates, embeds, and indexes historical documents.
 
 ```
-scrapers ──→ backend (Spring Boot) ←── ocr-worker-paddle
-                  ↕↑                ←── pdf-worker
-               PostgreSQL           ←── translate-worker
-                  ↕↑                ←── embed-worker
-            archiver_store
-                  ↕↑
-          frontend (SvelteKit)
+                        host nginx (:443, TLS)
+                              ↓
+scrapers ──→            web (nginx :8099, OAuth2)
+                       ↙              ↘
+          frontend (SvelteKit)    backend (Spring Boot) ←── ocr-worker-paddle
+                                       ↕↑               ←── pdf-worker
+                                    PostgreSQL           ←── translate-worker
+                                       ↕↑               ←── embed-worker
+                                 archiver_store
 ```
 
 All workers communicate **only** via the backend HTTP API (`/api/processor/*`).
@@ -30,17 +32,23 @@ Only the backend touches PostgreSQL and archiver_store.
 | ocr-worker-paddle | Python + PaddleOCR v3 | GPU-based OCR (nvidia runtime, 2 replicas) |
 | pdf-worker | Python + reportlab | Builds searchable PDFs with invisible text overlay |
 | translate-worker | Python + MarianMT | de→en and cs→en translation (nvidia runtime, 2 replicas) |
-| embed-worker | Python + OpenAI | Chunks text, embeds via text-embedding-3-small, stores vectors |
+| embed-worker | Python + TEI | Chunks text, embeds via BGE-M3 (1024-dim, multilingual) |
+| entity-worker | Python | Named entity extraction (dormant — commented out in compose) |
+| ocr-worker-qwen3vl | Python + Ollama | Qwen2.5-VL OCR via Ollama (not containerized, runs on Mac Studio) |
+| web | nginx | Internal reverse proxy: OAuth2 routing, SSE buffering, backend/frontend dispatch |
 | scraper-cz | Python | Czech National Archives (Zoomify tiles → PDF) |
 | scraper-ebadatelna | Python | Czech Archive of Security Forces (auth required) |
 | scraper-findbuch | Python | Austrian victims/property database (auth required) |
 | scraper-oesta | Python | Austrian State Archives |
 | scraper-matricula | Python | Matricula Online church records |
+| scraper-arolsen | Python | Arolsen Archives (German Holocaust documentation) |
+| scraper-ddb | Python | Deutsche Digitale Bibliothek (German Digital Library) |
 
 ### Document Pipeline
 
 ```
-ingesting → ocr_pending → ocr_done → pdf_pending → pdf_done → (future: entities)
+ingesting → ocr_pending → ocr_done → pdf_pending → pdf_done → translating → complete
+                                                              → entities_pending → entities_done (future)
 ```
 
 When all OCR jobs complete for a record, `JobService.startPostOcrPipeline()` auto-enqueues:
@@ -72,6 +80,8 @@ make test-entity          # cd entity-worker && pytest -v
 make test-frontend        # cd frontend && npm test
 make test                 # all of the above
 make lint                 # all linters (spotless, ruff, eslint+prettier)
+make test-smoke           # web/test-endpoints.sh (quick endpoint smoke test)
+make validate-deploy      # web/validate-deploy.sh (full proxy chain validation)
 ```
 
 ### Single test / targeted commands
@@ -95,7 +105,8 @@ cd frontend && npm run check
 
 ### Backend tests
 
-Tests use Testcontainers (PostgreSQL) and REST Assured. Requires Docker running.
+Tests use Testcontainers (PostgreSQL). Requires Docker running.
+New tests should use Java `HttpClient` (not REST Assured — Groovy 5 compat issues with Spring Boot 4.0).
 Config: `backend/src/test/resources/application-test.yml`.
 
 ## Backend Details
@@ -104,7 +115,7 @@ Config: `backend/src/test/resources/application-test.yml`.
 - Spring Data JDBC (not JPA) — entities use `@Table`, no `@Entity`
 - MapStruct for DTO mapping
 - `BeanPropertyRowMapper` maps snake_case columns to camelCase Java fields
-- Flyway migrations in `backend/src/main/resources/db/migration/V*.sql` (currently V1–V8)
+- Flyway migrations in `backend/src/main/resources/db/migration/V*.sql` (currently V1–V16)
 - SpringDoc OpenAPI at `/swagger-ui.html`
 - `--enable-preview` Java flag enabled for compilation and tests
 - Spotless with Google Java Format for code formatting
@@ -168,8 +179,8 @@ docker build -f ocr-worker-paddle/Dockerfile -t dockerregistry.icomb.place/archi
 
 - **ONLY the backend talks to PostgreSQL and archiver_store.** Workers, scrapers, and frontend communicate exclusively via the backend HTTP API.
 - ISO 639-1 language codes everywhere (2-char: de, cs, en)
-- Job kinds: `ocr_page_paddle`, `build_searchable_pdf`, `translate_page`, `translate_record`, `embed_record`
-- Record statuses: `ingesting`, `ingested`, `ocr_pending`, `ocr_done`, `pdf_pending`, `pdf_done`
+- Job kinds: `ocr_page_paddle`, `ocr_page_qwen3vl`, `build_searchable_pdf`, `translate_page`, `translate_record`, `embed_record`, `extract_entities`
+- Record statuses: `ingesting`, `ingested`, `ocr_pending`, `ocr_in_progress`, `ocr_done`, `pdf_pending`, `pdf_done`, `translating`, `entities_pending`, `entities_done`, `complete`, `error`
 - Python linting: `ruff` (line-length 100, target py310)
 - Java formatting: `spotlessApply` (Google Java Format)
 
