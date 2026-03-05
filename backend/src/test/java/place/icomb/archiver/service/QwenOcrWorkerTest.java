@@ -186,25 +186,16 @@ class QwenOcrWorkerTest {
     Long job1 = createJob(recordId, page1, "ocr_page_qwen3vl", "pending");
     Long job2 = createJob(recordId, page2, "ocr_page_qwen3vl", "pending");
 
-    // Process first job — should NOT trigger pipeline yet (job2 still pending)
+    // Process all pending jobs — continuous filling picks up both in one call
     worker.pollAndProcess();
-    String statusAfterFirst =
+
+    // Record should now be in pdf_pending (post-OCR pipeline started after both completed)
+    String statusAfterAll =
         jdbc.sql("SELECT status FROM record WHERE id = :id")
             .param("id", recordId)
             .query(String.class)
             .single();
-    assertThat(statusAfterFirst).isEqualTo("ocr_pending");
-
-    // Process second job — checkRecordOcrComplete triggers naturally
-    worker.pollAndProcess();
-
-    // Record should now be in pdf_pending (post-OCR pipeline started)
-    String statusAfterSecond =
-        jdbc.sql("SELECT status FROM record WHERE id = :id")
-            .param("id", recordId)
-            .query(String.class)
-            .single();
-    assertThat(statusAfterSecond).isEqualTo("pdf_pending");
+    assertThat(statusAfterAll).isEqualTo("pdf_pending");
 
     // Qwen page_text should exist for both pages
     long qwenCount =

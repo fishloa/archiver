@@ -99,59 +99,34 @@ public class QwenOcrWorker {
 
   @Scheduled(fixedDelayString = "${archiver.ocr.qwen.poll-interval:5000}")
   public void pollAndProcess() {
-    // Register each concurrency slot as a separate worker so the dashboard shows all threads
+    // Register workers so the dashboard shows them
     for (int i = 0; i < concurrency; i++) {
       jobEventService.touchWorker("qwen-ocr-" + i, JOB_KIND);
     }
 
-    // Fill up to concurrency slots
-    while (inflight.get() < concurrency) {
-      Optional<Job> claimed = jobService.claimJob(JOB_KIND);
-      if (claimed.isEmpty()) {
-        break;
-      }
-      Job job = claimed.get();
-      inflight.incrementAndGet();
-      executor.submit(
-          () -> {
-            long start = System.currentTimeMillis();
-            try {
-              processJob(job);
-              long elapsed = System.currentTimeMillis() - start;
-              log.info(
-                  "Qwen OCR completed: job={} page={} record={} ({}ms) [inflight={}]",
-                  job.getId(),
-                  job.getPageId(),
-                  job.getRecordId(),
-                  elapsed,
-                  inflight.get());
-            } catch (Exception e) {
-              log.error(
-                  "Qwen OCR failed: job={} page={} record={}: {}",
-                  job.getId(),
-                  job.getPageId(),
-                  job.getRecordId(),
-                  e.getMessage(),
-                  e);
-              jobService.failJob(job.getId(), e.getMessage());
-            } finally {
-              inflight.decrementAndGet();
-            }
-          });
-    }
-    // Wait for all inflight jobs to finish before the next poll cycle
-    awaitInflight();
-  }
-
-  private void awaitInflight() {
+    // Continuously fill slots as they free up, rather than waiting for the whole batch
     long lastTouch = System.currentTimeMillis();
-    while (inflight.get() > 0) {
+    boolean exhausted = false;
+    while (!exhausted) {
+      // Top up to concurrency
+      while (inflight.get() < concurrency) {
+        Optional<Job> claimed = jobService.claimJob(JOB_KIND);
+        if (claimed.isEmpty()) {
+          exhausted = true;
+          break;
+        }
+        submitJob(claimed.get());
+      }
+      if (exhausted || inflight.get() == 0) break;
+
+      // Wait briefly for a slot to free up, then refill
       try {
-        Thread.sleep(100);
+        Thread.sleep(200);
       } catch (InterruptedException e) {
         Thread.currentThread().interrupt();
         break;
       }
+
       // Re-touch workers every 30s so they don't expire from the dashboard
       if (System.currentTimeMillis() - lastTouch > 30_000) {
         for (int i = 0; i < concurrency; i++) {
@@ -160,6 +135,46 @@ public class QwenOcrWorker {
         lastTouch = System.currentTimeMillis();
       }
     }
+
+    // Wait for remaining inflight jobs before next scheduled poll
+    while (inflight.get() > 0) {
+      try {
+        Thread.sleep(200);
+      } catch (InterruptedException e) {
+        Thread.currentThread().interrupt();
+        break;
+      }
+    }
+  }
+
+  private void submitJob(Job job) {
+    inflight.incrementAndGet();
+    executor.submit(
+        () -> {
+          long start = System.currentTimeMillis();
+          try {
+            processJob(job);
+            long elapsed = System.currentTimeMillis() - start;
+            log.info(
+                "Qwen OCR completed: job={} page={} record={} ({}ms) [inflight={}]",
+                job.getId(),
+                job.getPageId(),
+                job.getRecordId(),
+                elapsed,
+                inflight.get());
+          } catch (Exception e) {
+            log.error(
+                "Qwen OCR failed: job={} page={} record={}: {}",
+                job.getId(),
+                job.getPageId(),
+                job.getRecordId(),
+                e.getMessage(),
+                e);
+            jobService.failJob(job.getId(), e.getMessage());
+          } finally {
+            inflight.decrementAndGet();
+          }
+        });
   }
 
   private void processJob(Job job) throws Exception {
