@@ -24,6 +24,7 @@ public class JobService {
   private final JdbcTemplate jdbcTemplate;
   private final JobEventService jobEventService;
   private final RecordEventService recordEventService;
+  private PipelineStateMachine stateMachine;
 
   public JobService(
       JobRepository jobRepository,
@@ -34,6 +35,11 @@ public class JobService {
     this.jdbcTemplate = jdbcTemplate;
     this.jobEventService = jobEventService;
     this.recordEventService = recordEventService;
+  }
+
+  /** Injected after construction to break circular dependency (StateMachine → JobService). */
+  void setStateMachine(PipelineStateMachine stateMachine) {
+    this.stateMachine = stateMachine;
   }
 
   /** Creates a new pending job and fires a NOTIFY on the appropriate channel. */
@@ -78,57 +84,12 @@ public class JobService {
     job = jobRepository.save(job);
     recordEventService.pipelineChanged(job.getKind(), "completed");
 
-    // Check if all OCR jobs for this record are now complete
-    if (job.getRecordId() != null && isOcrKind(job.getKind())) {
-      checkRecordOcrComplete(job.getRecordId());
-    }
-
-    // Check if PDF build is complete
-    if (job.getRecordId() != null && "build_searchable_pdf".equals(job.getKind())) {
-      checkRecordPdfComplete(job.getRecordId());
-    }
-
-    // Check if all translation jobs for this record are done
-    if (job.getRecordId() != null
-        && ("translate_page".equals(job.getKind()) || "translate_record".equals(job.getKind()))) {
-      checkRecordTranslationComplete(job.getRecordId());
-    }
-
-    // Check if embedding is complete
-    if (job.getRecordId() != null && "embed_record".equals(job.getKind())) {
-      checkRecordEmbeddingComplete(job.getRecordId());
+    // Let the state machine evaluate guards and chain through any applicable transitions
+    if (job.getRecordId() != null) {
+      stateMachine.autoAdvance(job.getRecordId());
     }
 
     return job;
-  }
-
-  /**
-   * If all OCR jobs for this record are completed, transition from ocr_pending to ocr_done, then
-   * start the post-OCR pipeline.
-   */
-  private void checkRecordOcrComplete(Long recordId) {
-    Long pendingJobs =
-        jdbcTemplate.queryForObject(
-            """
-            SELECT count(*) FROM job j
-            WHERE j.record_id = ?
-              AND j.kind IN ('ocr_page_paddle', 'ocr_page_abbyy', 'ocr_page_qwen3vl')
-              AND j.status IN ('pending', 'claimed')
-            """,
-            Long.class,
-            recordId);
-    if (pendingJobs != null && pendingJobs == 0) {
-      int updated =
-          jdbcTemplate.update(
-              "UPDATE record SET status = 'ocr_done', updated_at = now() WHERE id = ? AND status = 'ocr_pending'",
-              recordId);
-      if (updated > 0) {
-        log.info("Record {} transitioned to ocr_done", recordId);
-        logPipelineEvent(recordId, "ocr", "completed", null);
-        recordEventService.recordChanged(recordId, "status");
-        startPostOcrPipeline(recordId);
-      }
-    }
   }
 
   /**
@@ -143,7 +104,7 @@ public class JobService {
         UPDATE job SET status = 'completed', error = 'cancelled for ocr reset',
           finished_at = now()
         WHERE record_id = ?
-          AND kind IN ('build_searchable_pdf', 'translate_page', 'translate_record', 'embed_record')
+          AND kind IN ('build_searchable_pdf', 'translate_page', 'translate_record', 'embed_record', 'match_persons')
           AND status IN ('pending', 'claimed')
         """,
         recordId);
@@ -167,86 +128,6 @@ public class JobService {
         recordId);
 
     logPipelineEvent(recordId, "ocr", "started", "reset for ocr");
-    recordEventService.recordChanged(recordId, "status");
-  }
-
-  /** Enqueue PDF build and translation jobs, then transition to pdf_pending. */
-  void startPostOcrPipeline(Long recordId) {
-    // Check if this record has any pages
-    Long pageCount =
-        jdbcTemplate.queryForObject(
-            "SELECT count(*) FROM page WHERE record_id = ?", Long.class, recordId);
-    boolean hasPages = pageCount != null && pageCount > 0;
-
-    // Get the record's language fields
-    var langRow =
-        jdbcTemplate.queryForMap("SELECT lang, metadata_lang FROM record WHERE id = ?", recordId);
-    String contentLang = (String) langRow.get("lang");
-    String metadataLang = (String) langRow.get("metadata_lang");
-
-    // Only enqueue PDF build if record has pages
-    if (hasPages) {
-      enqueueJob("build_searchable_pdf", recordId, null, null);
-    } else {
-      log.info("Record {} has no pages, skipping PDF build", recordId);
-    }
-
-    // Enqueue metadata translation — skip if metadata is already English
-    if (metadataLang == null || !"en".equals(metadataLang)) {
-      String metaPayload = metadataLang != null ? "{\"lang\":\"" + metadataLang + "\"}" : null;
-      enqueueJob("translate_record", recordId, null, metaPayload);
-    } else {
-      log.info(
-          "Record {} metadata is English (metadata_lang=en), skipping metadata translation",
-          recordId);
-    }
-
-    // Enqueue OCR text translation (auto-detect language from text)
-    // Skip if content is explicitly marked as English or no pages
-    int translateCount = 0;
-    if (hasPages && (contentLang == null || !"en".equals(contentLang))) {
-      List<Long> pageIds =
-          jdbcTemplate.queryForList(
-              "SELECT p.id FROM page p WHERE p.record_id = ? ORDER BY p.seq", Long.class, recordId);
-      for (Long pageId : pageIds) {
-        // No lang in payload → translator auto-detects from text content
-        enqueueJob("translate_page", recordId, pageId, null);
-      }
-      translateCount = pageIds.size();
-    } else if (!hasPages) {
-      log.info("Record {} has no pages, skipping page translation", recordId);
-    } else {
-      // English content: copy OCR text directly to text_en so the UI can display it
-      int copied =
-          jdbcTemplate.update(
-              "UPDATE page_text SET text_en = text_raw WHERE page_id IN (SELECT id FROM page WHERE record_id = ?) AND (text_en IS NULL OR text_en = '')",
-              recordId);
-      log.info(
-          "Record {} content is English (lang=en), copied text_raw→text_en for {} pages",
-          recordId,
-          copied);
-    }
-
-    if (hasPages) {
-      // Normal flow: transition to pdf_pending
-      jdbcTemplate.update(
-          "UPDATE record SET status = 'pdf_pending', updated_at = now() WHERE id = ? AND status = 'ocr_done'",
-          recordId);
-      log.info(
-          "Record {} → pdf_pending ({} translate jobs + 1 pdf job enqueued)",
-          recordId,
-          translateCount);
-      logPipelineEvent(recordId, "pdf_build", "started", null);
-      logPipelineEvent(recordId, "translation", "started", translateCount + " page jobs enqueued");
-    } else {
-      // No pages: skip PDF entirely, go straight to translating (for metadata translation)
-      jdbcTemplate.update(
-          "UPDATE record SET status = 'translating', updated_at = now() WHERE id = ? AND status = 'ocr_done'",
-          recordId);
-      log.info("Record {} → translating (no pages, metadata-only record)", recordId);
-      logPipelineEvent(recordId, "pdf_build", "completed", "skipped (no pages)");
-      logPipelineEvent(recordId, "translation", "started", "metadata-only");
-    }
     recordEventService.recordChanged(recordId, "status");
   }
 
@@ -314,13 +195,13 @@ public class JobService {
       int pc = ((Number) langRow.get("page_count")).intValue();
 
       if (pc == 0) {
-        // Metadata-only record — skip OCR entirely
+        // Metadata-only record — skip OCR entirely, let state machine chain forward
         jdbcTemplate.update(
             "UPDATE record SET status = 'ocr_done', updated_at = now() WHERE id = ?", recordId);
         logPipelineEvent(recordId, "ingest", "completed", "from audit: 0 pages (metadata-only)");
         logPipelineEvent(recordId, "ocr", "completed", "skipped (no pages)");
         recordEventService.recordChanged(recordId, "status");
-        startPostOcrPipeline(recordId);
+        stateMachine.autoAdvance(recordId);
       } else {
         String ocrPayload = lang != null ? "{\"lang\":\"" + lang + "\"}" : null;
         List<Long> pageIds =
@@ -357,7 +238,7 @@ public class JobService {
       log.info("Audit: record {} ocr_pending → ocr_done (0 pages)", recordId);
       logPipelineEvent(recordId, "ocr", "completed", "skipped (no pages)");
       recordEventService.recordChanged(recordId, "status");
-      startPostOcrPipeline(recordId);
+      stateMachine.autoAdvance(recordId);
     }
     total += ocrPendingNoPages.size();
 
@@ -385,7 +266,7 @@ public class JobService {
       log.info("Audit: record {} ocr_pending → ocr_done (all text pre-populated)", recordId);
       logPipelineEvent(recordId, "ocr", "completed", "all text pre-populated");
       recordEventService.recordChanged(recordId, "status");
-      startPostOcrPipeline(recordId);
+      stateMachine.autoAdvance(recordId);
     }
     total += ocrPendingAllDone.size();
 
@@ -406,7 +287,7 @@ public class JobService {
 
     for (Long recordId : ocrDoneStuck) {
       log.info("Audit: re-queuing post-OCR pipeline for stuck record {}", recordId);
-      startPostOcrPipeline(recordId);
+      stateMachine.autoAdvance(recordId);
     }
     total += ocrDoneStuck.size();
 
@@ -472,8 +353,8 @@ public class JobService {
             Long.class);
 
     for (Long recordId : pdfPendingStuck) {
-      log.info("Audit: nudging pdf_pending → pdf_done for record {}", recordId);
-      checkRecordPdfComplete(recordId);
+      log.info("Audit: nudging pdf_pending for record {}", recordId);
+      stateMachine.autoAdvance(recordId);
     }
     total += pdfPendingStuck.size();
 
@@ -602,13 +483,32 @@ public class JobService {
             Long.class);
 
     for (Long recordId : embeddingDone) {
-      jdbcTemplate.update(
-          "UPDATE record SET status = 'complete', updated_at = now() WHERE id = ?", recordId);
-      log.info("Audit: record {} embedding → complete", recordId);
-      logPipelineEvent(recordId, "embedding", "completed", "from audit");
-      recordEventService.recordChanged(recordId, "status");
+      log.info("Audit: advancing stuck embedding record {}", recordId);
+      stateMachine.autoAdvance(recordId);
     }
     total += embeddingDone.size();
+
+    // --- Pass 9b: Stuck matching records where match job is done ---
+    List<Long> matchingDone =
+        jdbcTemplate.queryForList(
+            """
+        SELECT r.id FROM record r
+        WHERE r.status = 'matching'
+          AND EXISTS (
+            SELECT 1 FROM job j
+            WHERE j.record_id = r.id
+              AND j.kind = 'match_persons'
+              AND j.status = 'completed'
+          )
+        ORDER BY r.id
+        """,
+            Long.class);
+
+    for (Long recordId : matchingDone) {
+      log.info("Audit: advancing stuck matching record {}", recordId);
+      stateMachine.autoAdvance(recordId);
+    }
+    total += matchingDone.size();
 
     // --- Pass 10: Backfill embedding for complete records that were never embedded ---
     List<Long> completeUnembedded =
@@ -639,7 +539,8 @@ public class JobService {
         "Pipeline audit complete: {} stale jobs reset, {} failed retried, {} ingesting fixed, "
             + "{} ocr_pending text-done, {} ocr_done re-queued, {} pdf_pending nudged, "
             + "{} pdf_done→translating, {} pdf_done→embedding, "
-            + "{} translating→embedding, {} translation events backfilled, {} embedding→complete, "
+            + "{} translating→embedding, {} translation events backfilled, "
+            + "{} embedding advanced, {} matching advanced, "
             + "{} complete→embedding backfill ({} total)",
         staleClaimed,
         failedRetried,
@@ -652,6 +553,7 @@ public class JobService {
         translatingDone.size(),
         translationEventsMissing.size(),
         embeddingDone.size(),
+        matchingDone.size(),
         completeUnembedded.size(),
         total);
     return total;
@@ -728,7 +630,7 @@ public class JobService {
                 UPDATE job SET status = 'completed', error = 'cancelled by admin reset',
                   finished_at = now()
                 WHERE record_id = ?
-                  AND kind IN ('translate_page', 'translate_record', 'embed_record')
+                  AND kind IN ('translate_page', 'translate_record', 'embed_record', 'match_persons')
                   AND status IN ('pending', 'claimed')
                 """,
                 recordId);
@@ -784,7 +686,7 @@ public class JobService {
                 """
                 UPDATE job SET status = 'completed', error = 'cancelled by admin reset',
                   finished_at = now()
-                WHERE record_id = ? AND kind = 'embed_record'
+                WHERE record_id = ? AND kind IN ('embed_record', 'match_persons')
                   AND status IN ('pending', 'claimed')
                 """,
                 recordId);
@@ -842,67 +744,6 @@ public class JobService {
     return job;
   }
 
-  /**
-   * After a build_searchable_pdf job completes, set the record's pdf_attachment_id and transition
-   * to pdf_done.
-   */
-  private void checkRecordPdfComplete(Long recordId) {
-    // Find the searchable_pdf attachment
-    Long pdfAttId =
-        jdbcTemplate.queryForObject(
-            "SELECT id FROM attachment WHERE record_id = ? AND role = 'searchable_pdf' ORDER BY id DESC LIMIT 1",
-            Long.class,
-            recordId);
-    if (pdfAttId != null) {
-      int updated =
-          jdbcTemplate.update(
-              "UPDATE record SET pdf_attachment_id = ?, status = 'pdf_done', updated_at = now() WHERE id = ? AND status = 'pdf_pending'",
-              pdfAttId,
-              recordId);
-      if (updated > 0) {
-        log.info("Record {} → pdf_done (pdf_attachment_id={})", recordId, pdfAttId);
-        logPipelineEvent(recordId, "pdf_build", "completed", "attachment_id=" + pdfAttId);
-        // Check if translation is still running → move to 'translating', otherwise 'complete'
-        Long pendingTranslation =
-            jdbcTemplate.queryForObject(
-                "SELECT count(*) FROM job WHERE record_id = ? AND kind IN ('translate_page', 'translate_record') AND status != 'completed'",
-                Long.class,
-                recordId);
-        if (pendingTranslation != null && pendingTranslation > 0) {
-          jdbcTemplate.update(
-              "UPDATE record SET status = 'translating', updated_at = now() WHERE id = ? AND status = 'pdf_done'",
-              recordId);
-          log.info(
-              "Record {} → translating ({} translation jobs remaining)",
-              recordId,
-              pendingTranslation);
-        } else {
-          int embeddingUpdated =
-              jdbcTemplate.update(
-                  "UPDATE record SET status = 'embedding', updated_at = now() WHERE id = ? AND status = 'pdf_done'",
-                  recordId);
-          if (embeddingUpdated > 0) {
-            // Check if there were any translation jobs at all
-            Long totalTranslation =
-                jdbcTemplate.queryForObject(
-                    "SELECT count(*) FROM job WHERE record_id = ? AND kind IN ('translate_page', 'translate_record')",
-                    Long.class,
-                    recordId);
-            if (totalTranslation != null && totalTranslation > 0) {
-              log.info("Record {} → embedding (translation finished before pdf)", recordId);
-              logPipelineEvent(recordId, "translation", "completed", "finished before pdf");
-            } else {
-              log.info("Record {} → embedding (no translation needed)", recordId);
-            }
-            enqueueJob("embed_record", recordId, null, null);
-            logPipelineEvent(recordId, "embedding", "started", null);
-          }
-        }
-      }
-      recordEventService.recordChanged(recordId, "status");
-    }
-  }
-
   private void logPipelineEvent(Long recordId, String stage, String event, String detail) {
     jdbcTemplate.update(
         "INSERT INTO pipeline_event (record_id, stage, event, detail, created_at) VALUES (?, ?, ?, ?, now())",
@@ -910,40 +751,6 @@ public class JobService {
         stage,
         event,
         detail);
-  }
-
-  private void checkRecordTranslationComplete(Long recordId) {
-    Long pending =
-        jdbcTemplate.queryForObject(
-            "SELECT count(*) FROM job WHERE record_id = ? AND kind IN ('translate_page', 'translate_record') AND status != 'completed'",
-            Long.class,
-            recordId);
-    if (pending != null && pending == 0) {
-      logPipelineEvent(recordId, "translation", "completed", null);
-      // Transition to 'embedding' and enqueue embed job
-      int updated =
-          jdbcTemplate.update(
-              "UPDATE record SET status = 'embedding', updated_at = now() WHERE id = ? AND status = 'translating'",
-              recordId);
-      if (updated > 0) {
-        log.info("Record {} → embedding (all translation done)", recordId);
-        enqueueJob("embed_record", recordId, null, null);
-        logPipelineEvent(recordId, "embedding", "started", null);
-        recordEventService.recordChanged(recordId, "status");
-      }
-    }
-  }
-
-  private void checkRecordEmbeddingComplete(Long recordId) {
-    int updated =
-        jdbcTemplate.update(
-            "UPDATE record SET status = 'complete', updated_at = now() WHERE id = ? AND status = 'embedding'",
-            recordId);
-    if (updated > 0) {
-      log.info("Record {} → complete (embedding done)", recordId);
-      logPipelineEvent(recordId, "embedding", "completed", null);
-      recordEventService.recordChanged(recordId, "status");
-    }
   }
 
   /** Returns the Postgres NOTIFY channel name for a given job kind. */
@@ -955,6 +762,7 @@ public class JobService {
       case "generate_thumbs" -> "ocr_jobs";
       case "translate_page", "translate_record" -> "translate_jobs";
       case "embed_record" -> "embed_jobs";
+      case "match_persons" -> "match_jobs";
       default -> "ocr_jobs";
     };
   }

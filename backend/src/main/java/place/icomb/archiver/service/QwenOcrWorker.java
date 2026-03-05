@@ -12,16 +12,8 @@ import java.time.Instant;
 import java.util.Base64;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.atomic.AtomicInteger;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
-import org.springframework.scheduling.annotation.Scheduled;
-import org.springframework.stereotype.Service;
 import place.icomb.archiver.model.Attachment;
 import place.icomb.archiver.model.Job;
 import place.icomb.archiver.model.Page;
@@ -35,23 +27,14 @@ import place.icomb.archiver.repository.PageTextRepository;
  * OpenAI-compatible vision API (DeepInfra, Fireworks, Together AI, Ollama, etc.). Reads page images
  * directly from disk and writes OCR results directly to the DB.
  *
- * <p>Configure with {@code archiver.ocr.qwen.base-url} (e.g. {@code
- * https://api.deepinfra.com/v1/openai}) and optional {@code archiver.ocr.qwen.api-key}. For Ollama,
- * use {@code http://host:11434/v1} with no API key.
- *
- * <p>Supports concurrent processing via {@code archiver.ocr.qwen.concurrency} (default 1).
- *
- * <p>Disabled by default ({@code archiver.ocr.qwen.enabled=false}).
+ * <p>Instances are created by {@link place.icomb.archiver.config.WorkerSchedulingConfig}. Scale via
+ * {@code archiver.ocr.qwen.concurrency} (each unit = one single-threaded worker instance).
  */
-@Service
-@ConditionalOnProperty(name = "archiver.ocr.qwen.enabled", havingValue = "true")
-public class QwenOcrWorker {
+public class QwenOcrWorker extends GenericWorker {
 
   private static final Logger log = LoggerFactory.getLogger(QwenOcrWorker.class);
   private static final String JOB_KIND = "ocr_page_qwen3vl";
 
-  private final JobService jobService;
-  private final JobEventService jobEventService;
   private final PageRepository pageRepository;
   private final AttachmentRepository attachmentRepository;
   private final StorageService storageService;
@@ -61,23 +44,19 @@ public class QwenOcrWorker {
   private final String baseUrl;
   private final String apiKey;
   private final String model;
-  private final int concurrency;
-  private final ExecutorService executor;
-  private final AtomicInteger inflight = new AtomicInteger(0);
 
   public QwenOcrWorker(
+      String workerId,
       JobService jobService,
       JobEventService jobEventService,
       PageRepository pageRepository,
       AttachmentRepository attachmentRepository,
       StorageService storageService,
       PageTextRepository pageTextRepository,
-      @Value("${archiver.ocr.qwen.base-url}") String baseUrl,
-      @Value("${archiver.ocr.qwen.api-key:}") String apiKey,
-      @Value("${archiver.ocr.qwen.model}") String model,
-      @Value("${archiver.ocr.qwen.concurrency:1}") int concurrency) {
-    this.jobService = jobService;
-    this.jobEventService = jobEventService;
+      String baseUrl,
+      String apiKey,
+      String model) {
+    super(jobService, jobEventService, JOB_KIND, workerId);
     this.pageRepository = pageRepository;
     this.attachmentRepository = attachmentRepository;
     this.storageService = storageService;
@@ -85,99 +64,17 @@ public class QwenOcrWorker {
     this.baseUrl = baseUrl;
     this.apiKey = apiKey;
     this.model = model;
-    this.concurrency = concurrency;
-    this.executor = Executors.newFixedThreadPool(concurrency);
     this.httpClient =
         java.net.http.HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(30)).build();
-    log.info(
-        "Qwen OCR worker enabled (base-url={}, model={}, concurrency={}, auth={})",
-        baseUrl,
-        model,
-        concurrency,
-        apiKey.isEmpty() ? "none" : "api-key");
   }
 
-  @Scheduled(fixedDelayString = "${archiver.ocr.qwen.poll-interval:5000}")
-  public void pollAndProcess() {
-    // Register workers so the dashboard shows them
-    for (int i = 0; i < concurrency; i++) {
-      jobEventService.touchWorker("qwen-ocr-" + i, JOB_KIND);
-    }
-
-    // Continuously fill slots as they free up, rather than waiting for the whole batch
-    long lastTouch = System.currentTimeMillis();
-    boolean exhausted = false;
-    while (!exhausted) {
-      // Top up to concurrency
-      while (inflight.get() < concurrency) {
-        Optional<Job> claimed = jobService.claimJob(JOB_KIND);
-        if (claimed.isEmpty()) {
-          exhausted = true;
-          break;
-        }
-        submitJob(claimed.get());
-      }
-      if (exhausted || inflight.get() == 0) break;
-
-      // Wait briefly for a slot to free up, then refill
-      try {
-        Thread.sleep(200);
-      } catch (InterruptedException e) {
-        Thread.currentThread().interrupt();
-        break;
-      }
-
-      // Re-touch workers every 30s so they don't expire from the dashboard
-      if (System.currentTimeMillis() - lastTouch > 30_000) {
-        for (int i = 0; i < concurrency; i++) {
-          jobEventService.touchWorker("qwen-ocr-" + i, JOB_KIND);
-        }
-        lastTouch = System.currentTimeMillis();
-      }
-    }
-
-    // Wait for remaining inflight jobs before next scheduled poll
-    while (inflight.get() > 0) {
-      try {
-        Thread.sleep(200);
-      } catch (InterruptedException e) {
-        Thread.currentThread().interrupt();
-        break;
-      }
-    }
+  @Override
+  protected Logger log() {
+    return log;
   }
 
-  private void submitJob(Job job) {
-    inflight.incrementAndGet();
-    executor.submit(
-        () -> {
-          long start = System.currentTimeMillis();
-          try {
-            processJob(job);
-            long elapsed = System.currentTimeMillis() - start;
-            log.info(
-                "Qwen OCR completed: job={} page={} record={} ({}ms) [inflight={}]",
-                job.getId(),
-                job.getPageId(),
-                job.getRecordId(),
-                elapsed,
-                inflight.get());
-          } catch (Exception e) {
-            log.error(
-                "Qwen OCR failed: job={} page={} record={}: {}",
-                job.getId(),
-                job.getPageId(),
-                job.getRecordId(),
-                e.getMessage(),
-                e);
-            jobService.failJob(job.getId(), e.getMessage());
-          } finally {
-            inflight.decrementAndGet();
-          }
-        });
-  }
-
-  private void processJob(Job job) throws Exception {
+  @Override
+  protected void processJob(Job job) throws Exception {
     Page page =
         pageRepository
             .findById(job.getPageId())
@@ -204,8 +101,6 @@ public class QwenOcrWorker {
 
     log.info(
         "Qwen OCR: page={} record={} chars={}", page.getId(), job.getRecordId(), ocrText.length());
-
-    jobService.completeJob(job.getId(), null);
   }
 
   private String callVisionApi(String base64Image) throws Exception {

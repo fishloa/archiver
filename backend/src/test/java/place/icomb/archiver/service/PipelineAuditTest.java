@@ -575,7 +575,7 @@ class PipelineAuditTest {
     int fixed = jobService.auditPipeline();
 
     assertThat(fixed).isGreaterThanOrEqualTo(1);
-    // checkRecordPdfComplete now transitions beyond pdf_done to embedding (no translations pending)
+    // State machine chains: pdf_pending → pdf_done → embedding (no translations pending)
     assertThat(getRecordStatus(recordId)).isEqualTo("embedding");
 
     // pdf_attachment_id should be set on the record

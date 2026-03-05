@@ -41,6 +41,7 @@ public class IngestService {
   private final PageTextRepository pageTextRepository;
   private final StorageService storageService;
   private final JobService jobService;
+  private final PipelineStateMachine stateMachine;
   private final JdbcTemplate jdbcTemplate;
   private final RecordEventService recordEventService;
 
@@ -51,6 +52,7 @@ public class IngestService {
       PageTextRepository pageTextRepository,
       StorageService storageService,
       JobService jobService,
+      PipelineStateMachine stateMachine,
       JdbcTemplate jdbcTemplate,
       RecordEventService recordEventService) {
     this.recordRepository = recordRepository;
@@ -59,6 +61,7 @@ public class IngestService {
     this.pageTextRepository = pageTextRepository;
     this.storageService = storageService;
     this.jobService = jobService;
+    this.stateMachine = stateMachine;
     this.jdbcTemplate = jdbcTemplate;
     this.recordEventService = recordEventService;
   }
@@ -253,6 +256,7 @@ public class IngestService {
           recordId);
 
       recordEventService.recordChanged(recordId, "completed");
+      stateMachine.autoAdvance(recordId);
       return record;
     }
 
@@ -288,7 +292,7 @@ public class IngestService {
           recordId);
 
       recordEventService.recordChanged(recordId, "completed");
-      jobService.startPostOcrPipeline(recordId);
+      stateMachine.autoAdvance(recordId);
       return record;
     }
 

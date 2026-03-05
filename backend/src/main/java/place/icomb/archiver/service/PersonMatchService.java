@@ -72,7 +72,7 @@ public class PersonMatchService {
     Map<Long, Integer> pageIdToSeq =
         pages.stream().collect(java.util.stream.Collectors.toMap(p -> p.getId(), p -> p.getSeq()));
 
-    // Return only cached matches — don't trigger LLM calls on page view
+    // Return only pre-computed matches (computed by matchRecord in the pipeline)
 
     List<PagePersonMatch> allMatches = matchRepo.findByPageIdIn(pageIds);
 
@@ -91,6 +91,19 @@ public class PersonMatchService {
 
     results.sort(Comparator.comparingDouble(RecordPersonMatch::maxScore).reversed());
     return results;
+  }
+
+  /** Compute person matches for all pages in a record. Called from the pipeline after embedding. */
+  public void matchRecord(Long recordId) {
+    var pages = pageRepo.findByRecordId(recordId);
+    int matched = 0;
+    for (var page : pages) {
+      if (!matchRepo.existsByPageId(page.getId())) {
+        var results = matchPage(page.getId());
+        if (!results.isEmpty()) matched++;
+      }
+    }
+    log.info("Record {} person matching: {}/{} pages had matches", recordId, matched, pages.size());
   }
 
   public void invalidateAll() {

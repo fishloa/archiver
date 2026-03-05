@@ -26,6 +26,9 @@ import org.springframework.test.context.DynamicPropertySource;
 import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
+import place.icomb.archiver.repository.AttachmentRepository;
+import place.icomb.archiver.repository.PageRepository;
+import place.icomb.archiver.repository.PageTextRepository;
 
 @Testcontainers
 @ActiveProfiles("test")
@@ -47,11 +50,18 @@ class QwenOcrWorkerTest {
     wireMock.start();
   }
 
-  @Autowired private QwenOcrWorker worker;
+  @Autowired private JobService jobService;
+  @Autowired private JobEventService jobEventService;
+  @Autowired private PageRepository pageRepository;
+  @Autowired private AttachmentRepository attachmentRepository;
+  @Autowired private StorageService storageService;
+  @Autowired private PageTextRepository pageTextRepository;
   @Autowired private JdbcClient jdbc;
 
   @Value("${archiver.storage.root}")
   private String storageRoot;
+
+  private QwenOcrWorker worker;
 
   @DynamicPropertySource
   static void configureProperties(DynamicPropertyRegistry registry) {
@@ -73,6 +83,18 @@ class QwenOcrWorkerTest {
   @BeforeEach
   void setUp() {
     wireMock.resetAll();
+    worker =
+        new QwenOcrWorker(
+            "qwen-ocr-test",
+            jobService,
+            jobEventService,
+            pageRepository,
+            attachmentRepository,
+            storageService,
+            pageTextRepository,
+            wireMock.baseUrl(),
+            "test-key",
+            "test-model");
     jdbc.sql("DELETE FROM pipeline_event").update();
     jdbc.sql("DELETE FROM text_chunk").update();
     jdbc.sql("DELETE FROM job").update();
@@ -138,8 +160,6 @@ class QwenOcrWorkerTest {
     assertThat(textCount).isZero();
   }
 
-  @Autowired private JobService jobService;
-
   @Test
   void resetAndOcrTriggersFullPipeline() {
     wireMock.stubFor(
@@ -186,7 +206,7 @@ class QwenOcrWorkerTest {
     Long job1 = createJob(recordId, page1, "ocr_page_qwen3vl", "pending");
     Long job2 = createJob(recordId, page2, "ocr_page_qwen3vl", "pending");
 
-    // Process all pending jobs — continuous filling picks up both in one call
+    // Process all pending jobs
     worker.pollAndProcess();
 
     // Record should now be in pdf_pending (post-OCR pipeline started after both completed)

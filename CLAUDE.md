@@ -47,15 +47,18 @@ Only the backend touches PostgreSQL and archiver_store.
 ### Document Pipeline
 
 ```
-ingesting → ocr_pending → ocr_done → pdf_pending → pdf_done → translating → complete
+ingesting → ocr_pending → ocr_done → pdf_pending → pdf_done → translating → embedding → matching → complete
                                                               → entities_pending → entities_done (future)
 ```
 
-When all OCR jobs complete for a record, `JobService.startPostOcrPipeline()` auto-enqueues:
+Pipeline transitions are managed by `PipelineStateMachine` — a formal state machine with guards, actions, and validated transitions. `autoAdvance(recordId)` chains through all applicable transitions.
+
+When all OCR jobs complete for a record, the state machine auto-enqueues:
 - `build_searchable_pdf` (1 per record)
 - `translate_record` (metadata translation, uses `record.metadata_lang`)
 - `translate_page` (per page, auto-detects language from text)
 - `embed_record` (chunks English text, generates embeddings)
+- `match_persons` (heuristic + LLM person matching against family tree)
 
 ### Language Handling
 
@@ -133,7 +136,9 @@ Config: `backend/src/test/resources/application-test.yml`.
 
 ### Key service files
 
-- `service/JobService.java` — job orchestration, pipeline transitions
+- `service/JobService.java` — job orchestration, audit pipeline
+- `service/PipelineStateMachine.java` — formal state machine for pipeline transitions (guards, actions, chaining)
+- `service/PersonMatchWorker.java` — internal scheduled worker for `match_persons` jobs
 - `service/IngestService.java` — record creation, OCR job enqueuing
 - `service/StorageService.java` — file storage abstraction over archiver_store
 - `service/PdfExportService.java` — PDF generation from page images
@@ -179,8 +184,8 @@ docker build -f ocr-worker-paddle/Dockerfile -t dockerregistry.icomb.place/archi
 
 - **ONLY the backend talks to PostgreSQL and archiver_store.** Workers, scrapers, and frontend communicate exclusively via the backend HTTP API.
 - ISO 639-1 language codes everywhere (2-char: de, cs, en)
-- Job kinds: `ocr_page_paddle`, `ocr_page_qwen3vl`, `build_searchable_pdf`, `translate_page`, `translate_record`, `embed_record`, `extract_entities`
-- Record statuses: `ingesting`, `ingested`, `ocr_pending`, `ocr_in_progress`, `ocr_done`, `pdf_pending`, `pdf_done`, `translating`, `entities_pending`, `entities_done`, `complete`, `error`
+- Job kinds: `ocr_page_paddle`, `ocr_page_qwen3vl`, `build_searchable_pdf`, `translate_page`, `translate_record`, `embed_record`, `match_persons`, `extract_entities`
+- Record statuses: `ingesting`, `ingested`, `ocr_pending`, `ocr_in_progress`, `ocr_done`, `pdf_pending`, `pdf_done`, `translating`, `embedding`, `matching`, `entities_pending`, `entities_done`, `complete`, `error`
 - Python linting: `ruff` (line-length 100, target py310)
 - Java formatting: `spotlessApply` (Google Java Format)
 
