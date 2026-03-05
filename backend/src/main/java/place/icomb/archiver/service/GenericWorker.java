@@ -48,6 +48,7 @@ public abstract class GenericWorker {
                 job.getId(),
                 job.getRecordId(),
                 elapsed);
+        jobEventService.touchWorker(workerId, jobKind);
       } catch (Exception e) {
         log()
             .error(
