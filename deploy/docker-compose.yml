@@ -81,6 +81,11 @@ services:
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
       EMBED_TEI_URL: http://embed-tei:80
       EMBED_TEI_KEY: ${TEI_API_KEY}
+      QWEN_OCR_ENABLED: ${QWEN_OCR_ENABLED:-false}
+      QWEN_BASE_URL: ${QWEN_BASE_URL:-https://api.deepinfra.com/v1/openai}
+      QWEN_API_KEY: ${QWEN_API_KEY:-}
+      QWEN_OCR_MODEL: ${QWEN_OCR_MODEL:-Qwen/Qwen2.5-VL-32B-Instruct}
+      QWEN_OCR_CONCURRENCY: ${QWEN_OCR_CONCURRENCY:-1}
     restart: unless-stopped
 
   frontend:
