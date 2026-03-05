@@ -20,13 +20,12 @@ export const load: PageServerLoad = async ({ params }) => {
 			fetchRecordTimeline(id),
 		]);
 
-		// Fetch person matches (non-blocking)
-		let personMatches: RecordPersonMatch[] = [];
-		try {
-			personMatches = await fetchRecordPersonMatches(id);
-		} catch {
-			// Person matching not available
-		}
+		// Fetch person matches with 3s timeout so slow LLM calls don't block page load
+		const timeout = new Promise<RecordPersonMatch[]>((resolve) => setTimeout(() => resolve([]), 3000));
+		const personMatches = await Promise.race([
+			fetchRecordPersonMatches(id).catch(() => [] as RecordPersonMatch[]),
+			timeout,
+		]);
 
 		return { record, pages, timeline, personMatches };
 	} catch (e) {
