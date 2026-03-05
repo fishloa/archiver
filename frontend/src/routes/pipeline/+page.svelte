@@ -455,6 +455,7 @@
 		display: flex;
 		gap: 5px;
 		flex-wrap: wrap;
+		max-width: calc(15 * (18px + 5px));
 	}
 
 	.worker-dot {
