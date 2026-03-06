@@ -176,7 +176,7 @@
 						</div>
 					</div>
 
-					<!-- Page progress bar -->
+					<!-- Progress bar: prefer page-based, fall back to job-based -->
 					{#if stage.pagesTotal && stage.pagesTotal > 0}
 						{@const pct = Math.round((stage.pagesDone ?? 0) / stage.pagesTotal * 100)}
 						<div class="progress-row">
@@ -186,6 +186,19 @@
 							<span class="progress-label">
 								<span style="color: {cfg.color}">{fmt(stage.pagesDone ?? 0)}</span>
 								/ {fmt(stage.pagesTotal)} pages
+								<span class="progress-pct" style="color: {cfg.color}">{pct}%</span>
+							</span>
+						</div>
+					{:else if (stage.jobsCompleted ?? 0) + (stage.jobsPending ?? 0) + (stage.jobsRunning ?? 0) > 0}
+						{@const jobsTotal = (stage.jobsCompleted ?? 0) + (stage.jobsPending ?? 0) + (stage.jobsRunning ?? 0)}
+						{@const pct = Math.round((stage.jobsCompleted ?? 0) / jobsTotal * 100)}
+						<div class="progress-row">
+							<div class="progress-track">
+								<div class="progress-fill" style="width: {pct}%; background: {cfg.color}"></div>
+							</div>
+							<span class="progress-label">
+								<span style="color: {cfg.color}">{fmt(stage.jobsCompleted ?? 0)}</span>
+								/ {fmt(jobsTotal)} jobs
 								<span class="progress-pct" style="color: {cfg.color}">{pct}%</span>
 							</span>
 						</div>
