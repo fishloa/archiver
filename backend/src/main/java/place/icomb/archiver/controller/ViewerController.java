@@ -648,6 +648,9 @@ public class ViewerController {
           .contentLength(pdfBytes.length)
           .body(resource);
     } catch (IOException e) {
+      if (e.getMessage() != null && e.getMessage().contains("No valid pages")) {
+        return ResponseEntity.notFound().build();
+      }
       return ResponseEntity.internalServerError().build();
     }
   }

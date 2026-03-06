@@ -50,6 +50,7 @@ archiver:
   anthropic:
     api-key: ${ANTHROPIC_API_KEY:}
   ocr:
+    default-engine: ${OCR_DEFAULT_ENGINE:ocr_page_qwen3vl}
     qwen:
       enabled: ${QWEN_OCR_ENABLED:false}
       base-url: ${QWEN_BASE_URL:https://api.deepinfra.com/v1/openai}

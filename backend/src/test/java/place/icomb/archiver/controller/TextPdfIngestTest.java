@@ -145,14 +145,14 @@ class TextPdfIngestTest {
     assertThat(completeResp.statusCode()).isEqualTo(200);
     @SuppressWarnings("unchecked")
     Map<String, Object> completeJson = json.readValue(completeResp.body(), Map.class);
-    // Status should be ocr_pending but with 0 OCR jobs enqueued (all skipped)
+    // State machine should advance past OCR (text pre-populated) into later pipeline stages
     String status = (String) completeJson.get("status");
-    assertThat(status).isIn("ocr_pending", "ocr_done");
+    assertThat(status).isNotIn("ingesting", "ocr_pending");
 
     // Verify no OCR jobs were enqueued
     int ocrJobs =
         jdbc.sql(
-                "SELECT count(*) FROM job WHERE record_id = :rid AND kind = 'ocr_page_paddle' AND status != 'completed'")
+                "SELECT count(*) FROM job WHERE record_id = :rid AND kind LIKE 'ocr_%' AND status != 'completed'")
             .param("rid", recordId)
             .query(Integer.class)
             .single();

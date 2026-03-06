@@ -7,7 +7,6 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.time.Instant;
 import java.util.HexFormat;
-import java.util.List;
 import java.util.Optional;
 import javax.imageio.ImageIO;
 import org.apache.pdfbox.Loader;
@@ -40,7 +39,6 @@ public class IngestService {
   private final PageRepository pageRepository;
   private final PageTextRepository pageTextRepository;
   private final StorageService storageService;
-  private final JobService jobService;
   private final PipelineStateMachine stateMachine;
   private final JdbcTemplate jdbcTemplate;
   private final RecordEventService recordEventService;
@@ -51,7 +49,6 @@ public class IngestService {
       PageRepository pageRepository,
       PageTextRepository pageTextRepository,
       StorageService storageService,
-      JobService jobService,
       PipelineStateMachine stateMachine,
       JdbcTemplate jdbcTemplate,
       RecordEventService recordEventService) {
@@ -60,7 +57,6 @@ public class IngestService {
     this.pageRepository = pageRepository;
     this.pageTextRepository = pageTextRepository;
     this.storageService = storageService;
-    this.jobService = jobService;
     this.stateMachine = stateMachine;
     this.jdbcTemplate = jdbcTemplate;
     this.recordEventService = recordEventService;
@@ -227,9 +223,8 @@ public class IngestService {
   }
 
   /**
-   * Marks the record as ingested, transitions to ocr_pending, and enqueues OCR jobs for all pages.
-   * Pages that already have OCR text (from a previous run / repair) are skipped. Fires a NOTIFY on
-   * the ocr_jobs channel.
+   * Marks the record as ingested and delegates to the state machine for next steps (OCR enqueuing,
+   * text-pdf skip, metadata-only skip, etc).
    */
   @Transactional
   public Record completeIngest(Long recordId) {
@@ -238,97 +233,14 @@ public class IngestService {
             .findById(recordId)
             .orElseThrow(() -> new IllegalArgumentException("Record not found: " + recordId));
 
-    // Enqueue OCR jobs for all pages, passing language in payload
-    String ocrPayload = record.getLang() != null ? "{\"lang\":\"" + record.getLang() + "\"}" : null;
-    List<Page> pages = pageRepository.findByRecordId(recordId);
-
-    if (pages.isEmpty()) {
-      // No pages — skip OCR entirely, go straight to ocr_done and start post-OCR pipeline
-      record.setStatus("ocr_done");
-      record.setUpdatedAt(Instant.now());
-      record = recordRepository.save(record);
-
-      jdbcTemplate.update(
-          "INSERT INTO pipeline_event (record_id, stage, event, detail, created_at) VALUES (?, 'ingest', 'completed', '0 pages (metadata-only)', now())",
-          recordId);
-      jdbcTemplate.update(
-          "INSERT INTO pipeline_event (record_id, stage, event, detail, created_at) VALUES (?, 'ocr', 'completed', 'skipped (no pages)', now())",
-          recordId);
-
-      recordEventService.recordChanged(recordId, "completed");
-      stateMachine.autoAdvance(recordId);
-      return record;
-    }
-
-    int enqueued = 0;
-    for (Page page : pages) {
-      // Skip pages that already have OCR text (repair scenario / text-pdf)
-      Boolean hasText =
-          jdbcTemplate.queryForObject(
-              "SELECT EXISTS(SELECT 1 FROM page_text WHERE page_id = ?)",
-              Boolean.class,
-              page.getId());
-      if (hasText != null && hasText) {
-        continue;
-      }
-      enqueued++;
-    }
-
-    int skipped = pages.size() - enqueued;
-
-    if (enqueued == 0) {
-      // All pages already have text (e.g. text-pdf ingest) — skip OCR entirely
-      record.setStatus("ocr_done");
-      record.setUpdatedAt(Instant.now());
-      record = recordRepository.save(record);
-
-      String detail = pages.size() + " pages (all already OCR'd)";
-      jdbcTemplate.update(
-          "INSERT INTO pipeline_event (record_id, stage, event, detail, created_at) VALUES (?, 'ingest', 'completed', ?, now())",
-          recordId,
-          detail);
-      jdbcTemplate.update(
-          "INSERT INTO pipeline_event (record_id, stage, event, detail, created_at) VALUES (?, 'ocr', 'completed', 'skipped (text pre-populated)', now())",
-          recordId);
-
-      recordEventService.recordChanged(recordId, "completed");
-      stateMachine.autoAdvance(recordId);
-      return record;
-    }
-
-    record.setStatus("ocr_pending");
-    record.setUpdatedAt(Instant.now());
-    record = recordRepository.save(record);
-
-    // Now actually enqueue the jobs
-    for (Page page : pages) {
-      Boolean hasText =
-          jdbcTemplate.queryForObject(
-              "SELECT EXISTS(SELECT 1 FROM page_text WHERE page_id = ?)",
-              Boolean.class,
-              page.getId());
-      if (hasText != null && hasText) {
-        continue;
-      }
-      jobService.enqueueJob("ocr_page_paddle", recordId, page.getId(), ocrPayload);
-    }
-
-    String detail = enqueued + " pages" + (skipped > 0 ? " (" + skipped + " already OCR'd)" : "");
-
     jdbcTemplate.update(
-        "INSERT INTO pipeline_event (record_id, stage, event, detail, created_at) VALUES (?, 'ingest', 'completed', ?, now())",
-        recordId,
-        detail);
-    jdbcTemplate.update(
-        "INSERT INTO pipeline_event (record_id, stage, event, detail, created_at) VALUES (?, 'ocr', 'started', ?, now())",
-        recordId,
-        enqueued + " jobs enqueued" + (skipped > 0 ? " (" + skipped + " skipped)" : ""));
-
-    // Fire NOTIFY so listeners can pick up work immediately
-    jdbcTemplate.execute("NOTIFY ocr_jobs");
+        "INSERT INTO pipeline_event (record_id, stage, event, created_at) VALUES (?, 'ingest', 'completed', now())",
+        recordId);
 
     recordEventService.recordChanged(recordId, "completed");
-    return record;
+    stateMachine.autoAdvance(recordId);
+
+    return recordRepository.findById(recordId).orElse(record);
   }
 
   /**

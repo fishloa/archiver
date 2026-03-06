@@ -26,6 +26,7 @@ public class PipelineStateMachine {
   private final JdbcTemplate jdbcTemplate;
   private final JobService jobService;
   private final RecordEventService recordEventService;
+  private final String defaultOcrEngine;
 
   private final Map<PipelineState, List<Transition>> transitions =
       new EnumMap<>(PipelineState.class);
@@ -197,10 +198,16 @@ public class PipelineStateMachine {
   }
 
   public PipelineStateMachine(
-      JdbcTemplate jdbcTemplate, JobService jobService, RecordEventService recordEventService) {
+      JdbcTemplate jdbcTemplate,
+      JobService jobService,
+      RecordEventService recordEventService,
+      @org.springframework.beans.factory.annotation.Value(
+              "${archiver.ocr.default-engine:ocr_page_qwen3vl}")
+          String defaultOcrEngine) {
     this.jdbcTemplate = jdbcTemplate;
     this.jobService = jobService;
     this.recordEventService = recordEventService;
+    this.defaultOcrEngine = defaultOcrEngine;
     // Break circular dependency: JobService ← PipelineStateMachine → JobService
     jobService.setStateMachine(this);
     defineTransitions();
@@ -209,11 +216,20 @@ public class PipelineStateMachine {
   private void defineTransitions() {
     // INGESTING → OCR_PENDING: has pages that need OCR
     addTransition(
-        INGESTING, OCR_PENDING, ctx -> ctx.hasPages() && !ctx.hasPrePopulatedText(), ctx -> {});
+        INGESTING,
+        OCR_PENDING,
+        ctx -> ctx.hasPages() && !ctx.hasPrePopulatedText(),
+        ctx -> enqueueOcrJobs(ctx));
 
     // INGESTING → OCR_DONE: no pages OR all text pre-populated
     addTransition(
-        INGESTING, OCR_DONE, ctx -> !ctx.hasPages() || ctx.hasPrePopulatedText(), ctx -> {});
+        INGESTING,
+        OCR_DONE,
+        ctx -> !ctx.hasPages() || ctx.hasPrePopulatedText(),
+        ctx -> {
+          String detail = !ctx.hasPages() ? "skipped (no pages)" : "skipped (text pre-populated)";
+          logPipelineEvent(ctx.recordId, "ocr", "completed", detail);
+        });
 
     // OCR_PENDING → OCR_DONE: all OCR jobs complete
     addTransition(
@@ -401,6 +417,39 @@ public class PipelineStateMachine {
   }
 
   // --- Side-effect helpers ---
+
+  private void enqueueOcrJobs(RecordContext ctx) {
+    Long recordId = ctx.recordId;
+    String lang = ctx.contentLang();
+    String ocrPayload = lang != null ? "{\"lang\":\"" + lang + "\"}" : null;
+
+    List<Long> pageIds =
+        jdbcTemplate.queryForList(
+            """
+            SELECT p.id FROM page p
+            WHERE p.record_id = ?
+              AND NOT EXISTS (SELECT 1 FROM page_text pt WHERE pt.page_id = p.id)
+            ORDER BY p.seq
+            """,
+            Long.class,
+            recordId);
+
+    for (Long pageId : pageIds) {
+      jobService.enqueueJob(defaultOcrEngine, recordId, pageId, ocrPayload);
+    }
+
+    int skipped =
+        (int)
+            (jdbcTemplate.queryForObject(
+                    "SELECT count(*) FROM page WHERE record_id = ?", Long.class, recordId)
+                - pageIds.size());
+
+    String detail =
+        pageIds.size() + " pages" + (skipped > 0 ? " (" + skipped + " already OCR'd)" : "");
+    logPipelineEvent(recordId, "ocr", "started", detail + " via " + defaultOcrEngine);
+
+    jdbcTemplate.execute("NOTIFY ocr_jobs");
+  }
 
   private void enqueuePostOcrJobs(RecordContext ctx, boolean includesPdf) {
     Long recordId = ctx.recordId;
