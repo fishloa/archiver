@@ -116,16 +116,43 @@ public class SemanticSearchController {
         keywordBoostExpr = sb.toString();
       }
 
-      // Use ORDER BY <=> LIMIT to leverage the HNSW index (fast ANN lookup),
-      // then apply keyword scoring on the small candidate set.
+      // Hybrid search: combine vector nearest-neighbors with keyword-matching chunks.
+      // Vector-only misses keyword hits outside the top-200; keyword-only misses semantic matches.
+      String keywordFilter;
+      List<Object> kwFilterParams = new ArrayList<>();
+      if (keywords.isEmpty()) {
+        keywordFilter = "FALSE";
+      } else {
+        StringBuilder sb = new StringBuilder("(");
+        for (int i = 0; i < keywords.size(); i++) {
+          if (i > 0) sb.append(" OR ");
+          sb.append("lower(tc.content) LIKE '%' || ? || '%'");
+          kwFilterParams.add(keywords.get(i));
+        }
+        sb.append(")");
+        keywordFilter = sb.toString();
+      }
+
       String sql =
           """
-          WITH candidates AS (
+          WITH vec_candidates AS (
             SELECT tc.record_id, tc.page_id, tc.chunk_index, tc.content,
                    1 - (tc.embedding <=> ?::vector) AS sem_score
             FROM text_chunk tc
             ORDER BY tc.embedding <=> ?::vector
             LIMIT 200
+          ),
+          kw_candidates AS (
+            SELECT tc.record_id, tc.page_id, tc.chunk_index, tc.content,
+                   1 - (tc.embedding <=> ?::vector) AS sem_score
+            FROM text_chunk tc
+            WHERE %s
+            LIMIT 500
+          ),
+          candidates AS (
+            SELECT * FROM vec_candidates
+            UNION
+            SELECT * FROM kw_candidates
           ),
           scored AS (
             SELECT c.*,
@@ -152,11 +179,13 @@ public class SemanticSearchController {
           ORDER BY r.hybrid_score DESC
           LIMIT ?
           """
-              .formatted(keywordBoostExpr);
+              .formatted(keywordFilter, keywordBoostExpr);
 
       List<Object> allParams = new ArrayList<>();
-      allParams.add(vecStr.toString()); // candidates: sem_score
-      allParams.add(vecStr.toString()); // candidates: ORDER BY
+      allParams.add(vecStr.toString()); // vec_candidates: sem_score
+      allParams.add(vecStr.toString()); // vec_candidates: ORDER BY
+      allParams.add(vecStr.toString()); // kw_candidates: sem_score
+      allParams.addAll(kwFilterParams); // kw_candidates: WHERE filter
       allParams.addAll(params); // keyword ?'s in scored CTE
       allParams.add(limit);
 
