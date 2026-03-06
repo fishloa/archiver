@@ -4,7 +4,6 @@
 
 	let { data } = $props();
 
-	let sourceLang = $state('de');
 	let sourceText = $state('');
 	let translatedText = $state('');
 	let loading = $state(false);
@@ -13,10 +12,27 @@
 	const langNames: Record<string, string> = {
 		de: 'Deutsch',
 		cs: 'Čeština',
-		en: 'English'
+		en: 'English',
+		fr: 'Français',
+		pl: 'Polski',
+		hu: 'Magyar'
 	};
 
-	let pairs = $derived(data.pairs);
+	let pairs = $derived(data.pairs ?? []);
+	let sourceLangs = $derived([...new Set(pairs.map((p: any) => p.source))]);
+	let sourceLang = $state(pairs[0]?.source ?? 'de');
+
+	let targetLangsForSource = $derived(
+		pairs.filter((p: any) => p.source === sourceLang).map((p: any) => p.target)
+	);
+	let targetLang = $state(data.defaultTargetLang ?? 'en');
+
+	// If selected target isn't available for current source, pick first available
+	$effect(() => {
+		if (targetLangsForSource.length > 0 && !targetLangsForSource.includes(targetLang)) {
+			targetLang = targetLangsForSource[0];
+		}
+	});
 
 	async function translate() {
 		if (!sourceText.trim()) return;
@@ -32,7 +48,7 @@
 				body: JSON.stringify({
 					text: sourceText,
 					sourceLang,
-					targetLang: 'en'
+					targetLang
 				})
 			});
 
@@ -61,12 +77,17 @@
 	<div class="lang-selector">
 		<label for="source-lang">{$t('translate.from')}</label>
 		<select id="source-lang" bind:value={sourceLang}>
-			{#each pairs as pair}
-				<option value={pair.source}>{langNames[pair.source] ?? pair.source}</option>
+			{#each sourceLangs as lang}
+				<option value={lang}>{langNames[lang] ?? lang}</option>
 			{/each}
 		</select>
 		<span class="arrow">→</span>
-		<span class="target-lang">{langNames['en']}</span>
+		<label for="target-lang">{$t('translate.to')}</label>
+		<select id="target-lang" bind:value={targetLang}>
+			{#each targetLangsForSource as lang}
+				<option value={lang}>{langNames[lang] ?? lang}</option>
+			{/each}
+		</select>
 	</div>
 
 	<div class="translation-area">

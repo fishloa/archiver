@@ -212,8 +212,9 @@ export const en = {
 
 	// Translate
 	'translate.title': 'Translate',
-	'translate.subtitle': 'Translate German or Czech text to English using neural machine translation',
+	'translate.subtitle': 'Translate text using neural machine translation',
 	'translate.from': 'From',
+	'translate.to': 'To',
 	'translate.sourceText': 'Source',
 	'translate.sourcePlaceholder': 'Enter text to translate...',
 	'translate.result': 'Translation',

@@ -31,7 +31,10 @@ class TranslateResponse(BaseModel):
 
 @app.get("/capabilities")
 def capabilities():
-    return {"pairs": [{"source": "de", "target": "en"}, {"source": "cs", "target": "en"}]}
+    if _translator is None:
+        return {"pairs": []}
+    pairs = [{"source": s, "target": t} for s, t in _translator.available_pairs()]
+    return {"pairs": pairs}
 
 
 @app.post("/translate")
@@ -39,22 +42,20 @@ def translate(req: TranslateRequest) -> TranslateResponse:
     if _translator is None:
         raise HTTPException(status_code=503, detail="Translator not initialized")
 
-    if req.target_lang != "en":
-        raise HTTPException(
-            status_code=400, detail=f"Unsupported target language: {req.target_lang}"
-        )
-
-    if req.source_lang not in ("de", "cs"):
-        raise HTTPException(
-            status_code=400, detail=f"Unsupported source language: {req.source_lang}"
-        )
-
     if not req.text or not req.text.strip():
         return TranslateResponse(
             translated_text="", source_lang=req.source_lang, target_lang=req.target_lang
         )
 
-    translated = _translator.translate(req.text, source_lang=req.source_lang)
+    try:
+        translated = _translator.translate(
+            req.text, source_lang=req.source_lang, target_lang=req.target_lang
+        )
+    except OSError as e:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Unsupported pair: {req.source_lang}→{req.target_lang}",
+        ) from e
 
     return TranslateResponse(
         translated_text=translated,

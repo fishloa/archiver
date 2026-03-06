@@ -272,6 +272,18 @@ export async function searchFamilyTree(
   return res.json();
 }
 
+export async function fetchTranslateCapabilities(): Promise<{
+  pairs: { source: string; target: string }[];
+}> {
+  try {
+    const res = await fetch(`${backendUrl()}/api/translate/capabilities`);
+    if (!res.ok) return { pairs: [] };
+    return res.json();
+  } catch {
+    return { pairs: [] };
+  }
+}
+
 export async function relatePerson(personId: number, refId?: number): Promise<any | null> {
   const params = new URLSearchParams({ personId: String(personId) });
   if (refId != null) params.set("refId", String(refId));

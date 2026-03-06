@@ -214,8 +214,9 @@ export const cs: Record<MessageKey, string> = {
 
 	// Translate
 	'translate.title': 'Překlad',
-	'translate.subtitle': 'Přeložte německý nebo český text do angličtiny pomocí neuronového strojového překladu',
+	'translate.subtitle': 'Přeložte text pomocí neuronového strojového překladu',
 	'translate.from': 'Z',
+	'translate.to': 'Do',
 	'translate.sourceText': 'Zdrojový text',
 	'translate.sourcePlaceholder': 'Zadejte text k překladu...',
 	'translate.result': 'Překlad',

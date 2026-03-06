@@ -214,8 +214,9 @@ export const de: Record<MessageKey, string> = {
 
 	// Translate
 	'translate.title': 'Übersetzen',
-	'translate.subtitle': 'Deutschen oder tschechischen Text mit neuronaler maschineller Übersetzung ins Englische übersetzen',
+	'translate.subtitle': 'Text mit neuronaler maschineller Übersetzung übersetzen',
 	'translate.from': 'Von',
+	'translate.to': 'Nach',
 	'translate.sourceText': 'Quelltext',
 	'translate.sourcePlaceholder': 'Text zum Übersetzen eingeben...',
 	'translate.result': 'Übersetzung',

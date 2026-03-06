@@ -18,7 +18,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		return json({ error: 'No text provided' }, { status: 400 });
 	}
 
-	const res = await fetch(`${backendUrl()}/api/translate/claude`, {
+	const res = await fetch(`${backendUrl()}/api/translate`, {
 		method: 'POST',
 		headers: {
 			'Content-Type': 'application/json',

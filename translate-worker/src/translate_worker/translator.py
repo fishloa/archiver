@@ -10,9 +10,8 @@ from transformers import MarianMTModel, MarianTokenizer
 
 log = logging.getLogger(__name__)
 
-# Model identifiers
-MODEL_DE_EN = "Helsinki-NLP/opus-mt-de-en"
-MODEL_CS_EN = "Helsinki-NLP/opus-mt-cs-en"
+# Model naming convention: Helsinki-NLP/opus-mt-{src}-{tgt}
+MODEL_PREFIX = "Helsinki-NLP/opus-mt-"
 
 # MarianMT has a max token limit of 512; chunk text conservatively at ~400 chars
 MAX_CHUNK_CHARS = 400
@@ -41,27 +40,36 @@ class Translator:
             self._models[model_name] = model
         return self._tokenizers[model_name], self._models[model_name]
 
-    def detect_language(self, text: str) -> str:
-        """Detect whether text is German ('de') or Czech ('cs').
+    def available_pairs(self) -> list[tuple[str, str]]:
+        """Return (src, tgt) pairs for all locally cached opus-mt models."""
+        import os
 
-        Defaults to 'de' if detection is uncertain.
-        """
+        hf_home = os.environ.get("HF_HOME", os.path.expanduser("~/.cache/huggingface"))
+        hub_dir = os.path.join(hf_home, "hub")
+        pairs = []
+        if not os.path.isdir(hub_dir):
+            return pairs
+        for name in os.listdir(hub_dir):
+            if name.startswith("models--Helsinki-NLP--opus-mt-"):
+                suffix = name.replace("models--Helsinki-NLP--opus-mt-", "")
+                parts = suffix.split("-")
+                if len(parts) == 2:
+                    pairs.append((parts[0], parts[1]))
+        return sorted(pairs)
+
+    def detect_language(self, text: str) -> str:
+        """Detect source language from text."""
         try:
             lang = detect(text)
-            if lang in ("de", "cs"):
-                return lang
-            # langdetect may return related codes; map common ones
-            if lang in ("sk",):  # Slovak is close to Czech
+            if lang in ("sk",):
                 return "cs"
-            return "de"
+            return lang
         except LangDetectException:
             return "de"
 
-    def _get_model_for_lang(self, source_lang: str) -> str:
-        """Return the model name for a source language."""
-        if source_lang == "cs":
-            return MODEL_CS_EN
-        return MODEL_DE_EN
+    def _get_model_name(self, source_lang: str, target_lang: str) -> str:
+        """Return the model name for a source→target pair."""
+        return f"{MODEL_PREFIX}{source_lang}-{target_lang}"
 
     def _split_chunks(self, text: str) -> list[str]:
         """Split text into chunks of ~MAX_CHUNK_CHARS at sentence/paragraph boundaries."""
@@ -125,15 +133,18 @@ class Translator:
 
         return tokenizer.batch_decode(translated, skip_special_tokens=True)[0]
 
-    def translate(self, text: str, source_lang: str | None = None) -> str:
-        """Translate text to English.
+    def translate(
+        self, text: str, source_lang: str | None = None, target_lang: str = "en"
+    ) -> str:
+        """Translate text between any supported language pair.
 
         Args:
             text: The source text to translate.
-            source_lang: ISO 639-1 code ('de', 'cs', etc). Detected automatically if None.
+            source_lang: ISO 639-1 code. Detected automatically if None.
+            target_lang: ISO 639-1 code for the target language (default: 'en').
 
         Returns:
-            Translated English text, or the original text if already English.
+            Translated text, or the original if source == target.
         """
         if not text or not text.strip():
             return ""
@@ -143,12 +154,11 @@ class Translator:
         if source_lang is None:
             source_lang = self.detect_language(text)
 
-        # Skip translation if text is already in English
-        if source_lang == "en":
-            log.info("Text is already English (%d chars), skipping translation", len(text))
+        if source_lang == target_lang:
+            log.info("Source == target (%s, %d chars), skipping", source_lang, len(text))
             return text
 
-        model_name = self._get_model_for_lang(source_lang)
+        model_name = self._get_model_name(source_lang, target_lang)
         tokenizer, model = self._load_model(model_name)
 
         chunks = self._split_chunks(text)
