@@ -133,7 +133,7 @@ public class QwenOcrWorker extends GenericWorker {
             .uri(URI.create(baseUrl + "/chat/completions"))
             .header("Content-Type", "application/json")
             .POST(HttpRequest.BodyPublishers.ofString(requestBody))
-            .timeout(Duration.ofSeconds(300));
+            .timeout(Duration.ofSeconds(600));
 
     if (!apiKey.isEmpty()) {
       reqBuilder.header("Authorization", "Bearer " + apiKey);
