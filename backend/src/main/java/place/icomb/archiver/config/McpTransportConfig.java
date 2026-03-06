@@ -1,6 +1,8 @@
 package place.icomb.archiver.config;
 
+import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.json.JsonMapper;
 import io.modelcontextprotocol.json.jackson.JacksonMcpJsonMapper;
 import io.modelcontextprotocol.server.transport.WebMvcStreamableServerTransportProvider;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
@@ -20,10 +22,14 @@ public class McpTransportConfig {
 
   @Bean
   @ConditionalOnMissingBean
-  public WebMvcStreamableServerTransportProvider webMvcStreamableServerTransportProvider(
-      ObjectMapper objectMapper) {
+  public WebMvcStreamableServerTransportProvider webMvcStreamableServerTransportProvider() {
+    ObjectMapper mapper =
+        JsonMapper.builder()
+            .disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES)
+            .enable(DeserializationFeature.ACCEPT_EMPTY_STRING_AS_NULL_OBJECT)
+            .build();
     return WebMvcStreamableServerTransportProvider.builder()
-        .jsonMapper(new JacksonMcpJsonMapper(objectMapper))
+        .jsonMapper(new JacksonMcpJsonMapper(mapper))
         .mcpEndpoint("/api/mcp/sse")
         .build();
   }
