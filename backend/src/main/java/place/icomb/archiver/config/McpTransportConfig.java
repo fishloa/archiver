@@ -13,8 +13,9 @@ import org.springframework.web.servlet.function.ServerResponse;
 @Configuration
 @ConditionalOnProperty(
     prefix = "spring.ai.mcp.server",
-    name = "protocol",
-    havingValue = "STREAMABLE")
+    name = "enabled",
+    havingValue = "true",
+    matchIfMissing = true)
 public class McpTransportConfig {
 
   @Bean

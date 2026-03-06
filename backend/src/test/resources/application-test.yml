@@ -8,6 +8,9 @@ spring:
     enabled: true
     clean-disabled: false
 
+spring.ai.mcp.server:
+  enabled: false
+
 archiver:
   storage:
     root: ${java.io.tmpdir}/archiver-test-storage
