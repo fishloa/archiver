@@ -140,7 +140,7 @@ public class SemanticSearchController {
                    1 - (tc.embedding <=> ?::vector) AS sem_score
             FROM text_chunk tc
             ORDER BY tc.embedding <=> ?::vector
-            LIMIT 200
+            LIMIT 500
           ),
           kw_candidates AS (
             SELECT tc.record_id, tc.page_id, tc.chunk_index, tc.content,
@@ -175,7 +175,7 @@ public class SemanticSearchController {
           JOIN record rec ON rec.id = r.record_id
           LEFT JOIN page p ON p.id = r.page_id
           WHERE r.rn = 1
-            AND (r.kw_score > 0 OR r.sem_score >= 0.65)
+            AND (r.kw_score > 0 OR r.sem_score >= 0.45)
           ORDER BY r.hybrid_score DESC
           LIMIT ?
           """
