@@ -1,6 +1,7 @@
 package place.icomb.archiver.model;
 
 import java.time.Instant;
+import java.util.List;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.relational.core.mapping.Table;
 
@@ -23,7 +24,7 @@ public class Record {
   private String containerType;
   private String containerNumber;
   private String findingAidNumber;
-  private String indexTerms;
+  private List<String> indexTerms;
   private String rawSourceMetadata;
   private String lang;
   private String metadataLang;
@@ -167,11 +168,11 @@ public class Record {
     this.findingAidNumber = findingAidNumber;
   }
 
-  public String getIndexTerms() {
+  public List<String> getIndexTerms() {
     return indexTerms;
   }
 
-  public void setIndexTerms(String indexTerms) {
+  public void setIndexTerms(List<String> indexTerms) {
     this.indexTerms = indexTerms;
   }
 

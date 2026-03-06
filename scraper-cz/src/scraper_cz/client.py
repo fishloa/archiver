@@ -18,6 +18,14 @@ SOURCE_SYSTEM = "vademecum.nacr.cz"
 DEFAULT_ARCHIVE_ID = 1
 
 
+def _parse_index_terms(raw: str | None) -> list[str] | None:
+    """Split a comma/semicolon-separated string into a list, or return None."""
+    if not raw or not raw.strip():
+        return None
+    terms = [t.strip() for t in raw.replace(";", ",").split(",") if t.strip()]
+    return terms or None
+
+
 class BackendClient:
     """HTTP client for the archiver backend API.
 
@@ -79,7 +87,7 @@ class BackendClient:
             "containerType": metadata.get("karton_type") or None,
             "containerNumber": metadata.get("karton_number") or None,
             "findingAidNumber": metadata.get("finding_aid_number") or None,
-            "indexTerms": metadata.get("rejstrikova_hesla") or None,
+            "indexTerms": _parse_index_terms(metadata.get("rejstrikova_hesla")),
             "rawSourceMetadata": jsonmod.dumps(metadata, ensure_ascii=False),
             "lang": cfg.lang,
             "metadataLang": cfg.metadata_lang,

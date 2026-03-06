@@ -363,7 +363,7 @@
 					<div class="mt-3 pt-3 border-t border-border">
 						<div class="text-[length:var(--vui-text-xs)] text-text-sub mb-1.5">{$t('record.indexTerms')}</div>
 						<div class="flex flex-wrap gap-1.5">
-							{#each record.indexTerms.split(/[;,]/).map((s: string) => s.trim()).filter(Boolean) as term}
+							{#each record.indexTerms as term}
 								<span class="px-2 py-0.5 rounded-full bg-bg-deep border border-border text-[length:var(--vui-text-xs)] text-text-sub">{term}</span>
 							{/each}
 						</div>

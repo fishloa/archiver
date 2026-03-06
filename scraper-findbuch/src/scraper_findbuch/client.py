@@ -18,6 +18,14 @@ SOURCE_SYSTEM = "findbuch.at"
 DEFAULT_ARCHIVE_ID = 3
 
 
+def _parse_index_terms(raw: str | None) -> list[str] | None:
+    """Split a comma/semicolon-separated string into a list, or return None."""
+    if not raw or not raw.strip():
+        return None
+    terms = [t.strip() for t in raw.replace(";", ",").split(",") if t.strip()]
+    return terms or None
+
+
 class BackendClient:
     """HTTP client for the archiver backend API.
 
@@ -75,7 +83,7 @@ class BackendClient:
             "description": metadata.get("description", ""),
             "dateRangeText": metadata.get("dateRangeText", ""),
             "referenceCode": metadata.get("referenceCode", ""),
-            "indexTerms": metadata.get("indexTerms") or None,
+            "indexTerms": _parse_index_terms(metadata.get("indexTerms")),
             "rawSourceMetadata": jsonmod.dumps(metadata, ensure_ascii=False),
             "lang": cfg.lang,
             "metadataLang": cfg.metadata_lang,

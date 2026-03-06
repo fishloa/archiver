@@ -19,7 +19,7 @@ public record IngestRecordRequest(
     String containerType,
     String containerNumber,
     String findingAidNumber,
-    String indexTerms,
+    java.util.List<String> indexTerms,
     String rawSourceMetadata,
     String lang,
     String metadataLang,

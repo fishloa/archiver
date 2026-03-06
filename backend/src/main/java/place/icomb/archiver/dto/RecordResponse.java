@@ -19,7 +19,7 @@ public record RecordResponse(
     String containerType,
     String containerNumber,
     String findingAidNumber,
-    String indexTerms,
+    java.util.List<String> indexTerms,
     String rawSourceMetadata,
     Long pdfAttachmentId,
     String titleEn,
