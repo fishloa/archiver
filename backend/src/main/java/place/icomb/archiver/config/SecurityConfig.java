@@ -1,5 +1,6 @@
 package place.icomb.archiver.config;
 
+import java.util.List;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -9,6 +10,9 @@ import org.springframework.security.config.annotation.web.configuration.EnableWe
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.web.cors.CorsConfiguration;
+import org.springframework.web.cors.CorsConfigurationSource;
+import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 import place.icomb.archiver.repository.AppUserRepository;
 
 @Configuration
@@ -27,7 +31,8 @@ public class SecurityConfig {
 
   @Bean
   public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
-    http.csrf(csrf -> csrf.disable())
+    http.cors(cors -> cors.configurationSource(mcpCorsSource()))
+        .csrf(csrf -> csrf.disable())
         .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
         .addFilterBefore(
             new ProxyAuthFilter(appUserRepository), UsernamePasswordAuthenticationFilter.class)
@@ -100,5 +105,17 @@ public class SecurityConfig {
                     .permitAll());
 
     return http.build();
+  }
+
+  private CorsConfigurationSource mcpCorsSource() {
+    CorsConfiguration config = new CorsConfiguration();
+    config.setAllowedOrigins(List.of("*"));
+    config.setAllowedMethods(List.of("GET", "POST", "OPTIONS"));
+    config.setAllowedHeaders(List.of("*"));
+    config.setExposedHeaders(List.of("*"));
+
+    UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+    source.registerCorsConfiguration("/api/mcp/**", config);
+    return source;
   }
 }
