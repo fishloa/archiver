@@ -39,6 +39,7 @@ public class ArchiverMcpTools {
 
   @McpTool(
       name = "list_archives",
+      title = "List Archives",
       description =
           "List all archives in the system with record counts. "
               + "Returns archive id, name, country, and number of records in each.")
@@ -51,6 +52,7 @@ public class ArchiverMcpTools {
 
   @McpTool(
       name = "search_documents",
+      title = "Search Documents",
       description =
           "Full-text keyword search across record titles, descriptions, reference codes, and OCR"
               + " text. Supports multi-word queries (AND logic) and exclusions with -prefix. Returns"
@@ -73,6 +75,7 @@ public class ArchiverMcpTools {
 
   @McpTool(
       name = "semantic_search",
+      title = "Semantic Search",
       description =
           "Natural language vector similarity search across OCR text chunks. Uses OpenAI embeddings"
               + " + pgvector with keyword boosting. Best for conceptual queries like 'letters about"
@@ -90,6 +93,7 @@ public class ArchiverMcpTools {
 
   @McpTool(
       name = "get_document",
+      title = "Get Document",
       description =
           "Get a complete document by record ID. Returns full metadata (title, description, date"
               + " range, reference code, both original and English translation), all pages with OCR"
@@ -100,6 +104,7 @@ public class ArchiverMcpTools {
 
   @McpTool(
       name = "browse_documents",
+      title = "Browse Documents",
       description =
           "Browse documents with optional archive filter. Returns paginated list of records "
               + "sorted by creation date (newest first). Use this to explore what's in an archive.")
@@ -117,6 +122,7 @@ public class ArchiverMcpTools {
 
   @McpTool(
       name = "search_family_tree",
+      title = "Search Family Tree",
       description =
           "Fuzzy search the Czernin family genealogy by name. Handles diacritics, typos, and "
               + "partial matches. Returns matching people with birth/death years, genealogy codes, "
@@ -143,6 +149,7 @@ public class ArchiverMcpTools {
 
   @McpTool(
       name = "get_person",
+      title = "Get Person",
       description =
           "Get full details for a person in the Czernin family tree by their ID. Returns name,"
               + " birth/death info, life events (birth, death, marriages), children, spouses, and"
@@ -204,6 +211,7 @@ public class ArchiverMcpTools {
 
   @McpTool(
       name = "find_people_in_document",
+      title = "Find People in Document",
       description =
           "Find Czernin family members mentioned in a document's OCR text. Uses fuzzy name "
               + "matching with temporal disambiguation (boosts people alive during the document's "
