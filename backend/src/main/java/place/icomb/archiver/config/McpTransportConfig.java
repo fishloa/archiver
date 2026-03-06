@@ -3,25 +3,26 @@ package place.icomb.archiver.config;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.modelcontextprotocol.json.jackson.JacksonMcpJsonMapper;
 import io.modelcontextprotocol.server.transport.WebMvcStreamableServerTransportProvider;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.servlet.function.RouterFunction;
 import org.springframework.web.servlet.function.ServerResponse;
 
 @Configuration
+@ConditionalOnProperty(
+    prefix = "spring.ai.mcp.server",
+    name = "protocol",
+    havingValue = "STREAMABLE")
 public class McpTransportConfig {
 
   @Bean
   @ConditionalOnMissingBean
   public WebMvcStreamableServerTransportProvider webMvcStreamableServerTransportProvider(
-      @Autowired(required = false) @Qualifier("mcpServerObjectMapper") ObjectMapper mcpMapper,
-      ObjectMapper defaultMapper) {
-    ObjectMapper mapper = mcpMapper != null ? mcpMapper : defaultMapper;
+      ObjectMapper objectMapper) {
     return WebMvcStreamableServerTransportProvider.builder()
-        .jsonMapper(new JacksonMcpJsonMapper(mapper))
+        .jsonMapper(new JacksonMcpJsonMapper(objectMapper))
         .mcpEndpoint("/api/mcp/sse")
         .build();
   }

@@ -27,7 +27,7 @@ spring.ai.mcp.server:
   type: SYNC
   protocol: STREAMABLE
   streamable-http:
-    endpoint: /api/mcp/sse
+    mcp-endpoint: /api/mcp/sse
 
 springdoc:
   api-docs:
