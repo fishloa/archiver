@@ -42,7 +42,12 @@ public class ArchiverMcpTools {
       title = "List Archives",
       description =
           "List all archives in the system with record counts. "
-              + "Returns archive id, name, country, and number of records in each.")
+              + "Returns archive id, name, country, and number of records in each.",
+      annotations =
+          @McpTool.McpAnnotations(
+              title = "List Archives",
+              readOnlyHint = true,
+              destructiveHint = false))
   public List<Map<String, Object>> listArchives() {
     return jdbcTemplate.queryForList(
         "SELECT a.id, a.name, a.country, COUNT(r.id) AS record_count "
@@ -56,7 +61,12 @@ public class ArchiverMcpTools {
       description =
           "Full-text keyword search across record titles, descriptions, reference codes, and OCR"
               + " text. Supports multi-word queries (AND logic) and exclusions with -prefix. Returns"
-              + " paginated results with metadata.")
+              + " paginated results with metadata.",
+      annotations =
+          @McpTool.McpAnnotations(
+              title = "Search Documents",
+              readOnlyHint = true,
+              destructiveHint = false))
   public Map<String, Object> searchDocuments(
       @McpToolParam(
               description = "Search query. Multiple words are AND'd. Prefix with - to exclude.")
@@ -79,7 +89,12 @@ public class ArchiverMcpTools {
       description =
           "Natural language vector similarity search across OCR text chunks. Uses OpenAI embeddings"
               + " + pgvector with keyword boosting. Best for conceptual queries like 'letters about"
-              + " property confiscation'. Returns matching text chunks with record context.")
+              + " property confiscation'. Returns matching text chunks with record context.",
+      annotations =
+          @McpTool.McpAnnotations(
+              title = "Semantic Search",
+              readOnlyHint = true,
+              destructiveHint = false))
   public Object semanticSearch(
       @McpToolParam(description = "Natural language search query") String query,
       @McpToolParam(description = "Max results to return. Default 10.", required = false)
@@ -97,7 +112,12 @@ public class ArchiverMcpTools {
       description =
           "Get a complete document by record ID. Returns full metadata (title, description, date"
               + " range, reference code, both original and English translation), all pages with OCR"
-              + " text (original + English), and links to images/PDF.")
+              + " text (original + English), and links to images/PDF.",
+      annotations =
+          @McpTool.McpAnnotations(
+              title = "Get Document",
+              readOnlyHint = true,
+              destructiveHint = false))
   public Map<String, Object> getDocument(@McpToolParam(description = "Record ID") Long recordId) {
     return apiController.getDocument(recordId, "https://archiver.icomb.place/api");
   }
@@ -107,7 +127,12 @@ public class ArchiverMcpTools {
       title = "Browse Documents",
       description =
           "Browse documents with optional archive filter. Returns paginated list of records "
-              + "sorted by creation date (newest first). Use this to explore what's in an archive.")
+              + "sorted by creation date (newest first). Use this to explore what's in an archive.",
+      annotations =
+          @McpTool.McpAnnotations(
+              title = "Browse Documents",
+              readOnlyHint = true,
+              destructiveHint = false))
   public Map<String, Object> browseDocuments(
       @McpToolParam(description = "Filter by archive ID", required = false) Long archiveId,
       @McpToolParam(description = "Page number (0-based). Default 0.", required = false)
@@ -126,7 +151,12 @@ public class ArchiverMcpTools {
       description =
           "Fuzzy search the Czernin family genealogy by name. Handles diacritics, typos, and "
               + "partial matches. Returns matching people with birth/death years, genealogy codes, "
-              + "and relevance scores.")
+              + "and relevance scores.",
+      annotations =
+          @McpTool.McpAnnotations(
+              title = "Search Family Tree",
+              readOnlyHint = true,
+              destructiveHint = false))
   public List<Map<String, Object>> searchFamilyTree(
       @McpToolParam(description = "Name to search for (e.g. 'Eugen Czernin', 'Theobald')") String q,
       @McpToolParam(description = "Max results. Default 10.", required = false) Integer limit) {
@@ -153,7 +183,12 @@ public class ArchiverMcpTools {
       description =
           "Get full details for a person in the Czernin family tree by their ID. Returns name,"
               + " birth/death info, life events (birth, death, marriages), children, spouses, and"
-              + " kinship relationship to Alexander Friedrich Josef Czernin.")
+              + " kinship relationship to Alexander Friedrich Josef Czernin.",
+      annotations =
+          @McpTool.McpAnnotations(
+              title = "Get Person",
+              readOnlyHint = true,
+              destructiveHint = false))
   public Map<String, Object> getPerson(
       @McpToolParam(description = "Person ID from the family tree") int personId) {
     Person person = familyTreeService.getPerson(personId);
@@ -215,7 +250,12 @@ public class ArchiverMcpTools {
       description =
           "Find Czernin family members mentioned in a document's OCR text. Uses fuzzy name "
               + "matching with temporal disambiguation (boosts people alive during the document's "
-              + "date range). Returns matched people with confidence scores and text context.")
+              + "date range). Returns matched people with confidence scores and text context.",
+      annotations =
+          @McpTool.McpAnnotations(
+              title = "Find People in Document",
+              readOnlyHint = true,
+              destructiveHint = false))
   public List<Map<String, Object>> findPeopleInDocument(
       @McpToolParam(description = "Record ID of the document to analyze") Long recordId) {
     var matches = personMatchService.getRecordMatches(recordId);
