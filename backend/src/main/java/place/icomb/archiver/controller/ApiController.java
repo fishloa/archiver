@@ -4,7 +4,6 @@ import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import org.springframework.jdbc.core.BeanPropertyRowMapper;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -14,6 +13,7 @@ import org.springframework.web.bind.annotation.RestController;
 import place.icomb.archiver.model.Page;
 import place.icomb.archiver.model.PageText;
 import place.icomb.archiver.model.Record;
+import place.icomb.archiver.model.RecordRowMapper;
 import place.icomb.archiver.repository.ArchiveRepository;
 import place.icomb.archiver.repository.PageRepository;
 import place.icomb.archiver.repository.PageTextRepository;
@@ -218,7 +218,7 @@ public class ApiController {
     List<Record> rows =
         jdbcTemplate.query(
             "SELECT * FROM record r " + where + " ORDER BY r.created_at DESC LIMIT ? OFFSET ?",
-            new BeanPropertyRowMapper<>(Record.class),
+            RecordRowMapper.INSTANCE,
             queryParams.toArray());
 
     List<Map<String, Object>> results = new java.util.ArrayList<>();
@@ -279,7 +279,7 @@ public class ApiController {
     List<Record> rows =
         jdbcTemplate.query(
             "SELECT * FROM record " + where + " ORDER BY created_at DESC LIMIT ? OFFSET ?",
-            new BeanPropertyRowMapper<>(Record.class),
+            RecordRowMapper.INSTANCE,
             queryParams.toArray());
 
     List<Map<String, Object>> results = new java.util.ArrayList<>();

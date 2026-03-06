@@ -7,7 +7,6 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
-import org.springframework.jdbc.core.BeanPropertyRowMapper;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -19,6 +18,7 @@ import place.icomb.archiver.dto.PageResponse;
 import place.icomb.archiver.dto.RecordResponse;
 import place.icomb.archiver.model.Page;
 import place.icomb.archiver.model.Record;
+import place.icomb.archiver.model.RecordRowMapper;
 import place.icomb.archiver.repository.ArchiveRepository;
 import place.icomb.archiver.repository.PageRepository;
 import place.icomb.archiver.repository.RecordRepository;
@@ -96,7 +96,7 @@ public class CatalogueController {
     List<Record> rows =
         jdbcTemplate.query(
             "SELECT * FROM record " + where + " ORDER BY " + col + " " + dir + " LIMIT ? OFFSET ?",
-            new BeanPropertyRowMapper<>(Record.class),
+            RecordRowMapper.INSTANCE,
             concatParams(params, size, offset));
     Pageable pageable = PageRequest.of(page, size);
     org.springframework.data.domain.Page<RecordResponse> result =
