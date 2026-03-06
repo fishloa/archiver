@@ -2,6 +2,10 @@ package place.icomb.archiver.service;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import java.awt.Graphics2D;
+import java.awt.RenderingHints;
+import java.awt.image.BufferedImage;
+import java.io.ByteArrayOutputStream;
 import java.net.URI;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
@@ -12,6 +16,7 @@ import java.time.Instant;
 import java.util.Base64;
 import java.util.List;
 import java.util.Map;
+import javax.imageio.ImageIO;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import place.icomb.archiver.model.Attachment;
@@ -34,6 +39,7 @@ public class QwenOcrWorker extends GenericWorker {
 
   private static final Logger log = LoggerFactory.getLogger(QwenOcrWorker.class);
   private static final String JOB_KIND = "ocr_page_qwen3vl";
+  private static final int MAX_IMAGE_DIMENSION = 2048;
 
   private final PageRepository pageRepository;
   private final AttachmentRepository attachmentRepository;
@@ -87,7 +93,7 @@ public class QwenOcrWorker extends GenericWorker {
                 () -> new IllegalStateException("Attachment not found: " + page.getAttachmentId()));
 
     Path imagePath = storageService.getPath(attachment);
-    byte[] imageBytes = Files.readAllBytes(imagePath);
+    byte[] imageBytes = downsizeIfNeeded(imagePath);
     String base64Image = Base64.getEncoder().encodeToString(imageBytes);
 
     String ocrText = callVisionApi(base64Image);
@@ -101,6 +107,36 @@ public class QwenOcrWorker extends GenericWorker {
 
     log.info(
         "Qwen OCR: page={} record={} chars={}", page.getId(), job.getRecordId(), ocrText.length());
+  }
+
+  private byte[] downsizeIfNeeded(Path imagePath) throws Exception {
+    BufferedImage img = ImageIO.read(imagePath.toFile());
+    int w = img.getWidth();
+    int h = img.getHeight();
+    int longest = Math.max(w, h);
+    if (longest <= MAX_IMAGE_DIMENSION) {
+      return Files.readAllBytes(imagePath);
+    }
+    double scale = (double) MAX_IMAGE_DIMENSION / longest;
+    int newW = (int) (w * scale);
+    int newH = (int) (h * scale);
+    BufferedImage resized = new BufferedImage(newW, newH, BufferedImage.TYPE_INT_RGB);
+    Graphics2D g = resized.createGraphics();
+    g.setRenderingHint(
+        RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BILINEAR);
+    g.drawImage(img, 0, 0, newW, newH, null);
+    g.dispose();
+    ByteArrayOutputStream baos = new ByteArrayOutputStream();
+    ImageIO.write(resized, "jpg", baos);
+    log.debug(
+        "Resized {}x{} → {}x{} ({}KB → {}KB)",
+        w,
+        h,
+        newW,
+        newH,
+        Files.size(imagePath) / 1024,
+        baos.size() / 1024);
+    return baos.toByteArray();
   }
 
   private String callVisionApi(String base64Image) throws Exception {
