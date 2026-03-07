@@ -615,7 +615,8 @@ public class ViewerController {
     Resource resource = storageService.streamFile(attachment);
     return ResponseEntity.ok()
         .contentType(MediaType.APPLICATION_PDF)
-        .header(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=\"record-" + recordId + ".pdf\"")
+        .header(
+            HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"record-" + recordId + ".pdf\"")
         .body(resource);
   }
 
