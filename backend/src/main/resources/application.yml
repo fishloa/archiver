@@ -58,6 +58,12 @@ archiver:
       model: ${QWEN_OCR_MODEL:Qwen/Qwen2.5-VL-32B-Instruct}
       poll-interval: ${QWEN_OCR_POLL_INTERVAL:5000}
       concurrency: ${QWEN_OCR_CONCURRENCY:1}
+    claude:
+      enabled: ${CLAUDE_OCR_ENABLED:false}
+      api-key: ${ANTHROPIC_API_KEY:}
+      model: ${CLAUDE_OCR_MODEL:claude-haiku-4-5-20251001}
+      poll-interval: ${CLAUDE_OCR_POLL_INTERVAL:5000}
+      concurrency: ${CLAUDE_OCR_CONCURRENCY:1}
 
 management:
   endpoints:

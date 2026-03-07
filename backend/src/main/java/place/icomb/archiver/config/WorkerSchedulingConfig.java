@@ -11,6 +11,7 @@ import org.springframework.scheduling.config.ScheduledTaskRegistrar;
 import place.icomb.archiver.repository.AttachmentRepository;
 import place.icomb.archiver.repository.PageRepository;
 import place.icomb.archiver.repository.PageTextRepository;
+import place.icomb.archiver.service.ClaudeOcrWorker;
 import place.icomb.archiver.service.JobEventService;
 import place.icomb.archiver.service.JobService;
 import place.icomb.archiver.service.PersonMatchService;
@@ -42,6 +43,12 @@ public class WorkerSchedulingConfig implements SchedulingConfigurer {
   private final int qwenConcurrency;
   private final long qwenPollInterval;
 
+  private final boolean claudeOcrEnabled;
+  private final String claudeApiKey;
+  private final String claudeModel;
+  private final int claudeConcurrency;
+  private final long claudePollInterval;
+
   private final boolean personMatchEnabled;
   private final long personMatchPollInterval;
 
@@ -59,6 +66,11 @@ public class WorkerSchedulingConfig implements SchedulingConfigurer {
       @Value("${archiver.ocr.qwen.model:}") String qwenModel,
       @Value("${archiver.ocr.qwen.concurrency:1}") int qwenConcurrency,
       @Value("${archiver.ocr.qwen.poll-interval:5000}") long qwenPollInterval,
+      @Value("${archiver.ocr.claude.enabled:false}") boolean claudeOcrEnabled,
+      @Value("${archiver.ocr.claude.api-key:}") String claudeApiKey,
+      @Value("${archiver.ocr.claude.model:claude-haiku-4-5-20251001}") String claudeModel,
+      @Value("${archiver.ocr.claude.concurrency:1}") int claudeConcurrency,
+      @Value("${archiver.ocr.claude.poll-interval:5000}") long claudePollInterval,
       @Value("${archiver.person-match.enabled:true}") boolean personMatchEnabled,
       @Value("${archiver.person-match.poll-interval:5000}") long personMatchPollInterval) {
     this.jobService = jobService;
@@ -74,13 +86,21 @@ public class WorkerSchedulingConfig implements SchedulingConfigurer {
     this.qwenModel = qwenModel;
     this.qwenConcurrency = qwenConcurrency;
     this.qwenPollInterval = qwenPollInterval;
+    this.claudeOcrEnabled = claudeOcrEnabled;
+    this.claudeApiKey = claudeApiKey;
+    this.claudeModel = claudeModel;
+    this.claudeConcurrency = claudeConcurrency;
+    this.claudePollInterval = claudePollInterval;
     this.personMatchEnabled = personMatchEnabled;
     this.personMatchPollInterval = personMatchPollInterval;
   }
 
   @Override
   public void configureTasks(ScheduledTaskRegistrar registrar) {
-    int totalWorkers = (qwenEnabled ? qwenConcurrency : 0) + (personMatchEnabled ? 1 : 0);
+    int totalWorkers =
+        (qwenEnabled ? qwenConcurrency : 0)
+            + (claudeOcrEnabled ? claudeConcurrency : 0)
+            + (personMatchEnabled ? 1 : 0);
     if (totalWorkers == 0) return;
 
     registrar.setScheduler(Executors.newScheduledThreadPool(totalWorkers));
@@ -107,6 +127,28 @@ public class WorkerSchedulingConfig implements SchedulingConfigurer {
           qwenBaseUrl,
           qwenModel,
           qwenPollInterval);
+    }
+
+    if (claudeOcrEnabled) {
+      for (int i = 0; i < claudeConcurrency; i++) {
+        var worker =
+            new ClaudeOcrWorker(
+                "claude-ocr-" + i,
+                jobService,
+                jobEventService,
+                pageRepository,
+                attachmentRepository,
+                storageService,
+                pageTextRepository,
+                claudeApiKey,
+                claudeModel);
+        registrar.addFixedDelayTask(worker::pollAndProcess, Duration.ofMillis(claudePollInterval));
+      }
+      log.info(
+          "Registered {} Claude OCR worker(s) (model={}, poll={}ms)",
+          claudeConcurrency,
+          claudeModel,
+          claudePollInterval);
     }
 
     if (personMatchEnabled) {
