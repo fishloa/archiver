@@ -92,11 +92,20 @@ public class QwenOcrWorker extends GenericWorker {
             .orElseThrow(
                 () -> new IllegalStateException("Attachment not found: " + page.getAttachmentId()));
 
+    // Extract language hint from job payload (e.g. {"lang":"de"})
+    String lang = null;
+    if (job.getPayload() != null) {
+      JsonNode payload = objectMapper.readTree(job.getPayload());
+      if (payload.has("lang")) {
+        lang = payload.get("lang").asText();
+      }
+    }
+
     Path imagePath = storageService.getPath(attachment);
     byte[] imageBytes = downsizeIfNeeded(imagePath);
     String base64Image = Base64.getEncoder().encodeToString(imageBytes);
 
-    String ocrText = callVisionApi(base64Image);
+    String ocrText = callVisionApi(base64Image, lang);
 
     PageText pt = new PageText();
     pt.setPageId(page.getId());
@@ -107,6 +116,20 @@ public class QwenOcrWorker extends GenericWorker {
 
     log.info(
         "Qwen OCR: page={} record={} chars={}", page.getId(), job.getRecordId(), ocrText.length());
+  }
+
+  private static String langName(String iso) {
+    return switch (iso) {
+      case "de" -> "German";
+      case "cs" -> "Czech";
+      case "en" -> "English";
+      case "fr" -> "French";
+      case "pl" -> "Polish";
+      case "hu" -> "Hungarian";
+      case "it" -> "Italian";
+      case "ru" -> "Russian";
+      default -> iso;
+    };
   }
 
   private byte[] downsizeIfNeeded(Path imagePath) throws Exception {
@@ -139,8 +162,16 @@ public class QwenOcrWorker extends GenericWorker {
     return baos.toByteArray();
   }
 
-  private String callVisionApi(String base64Image) throws Exception {
+  private String callVisionApi(String base64Image, String lang) throws Exception {
     String dataUri = "data:image/jpeg;base64," + base64Image;
+    String prompt =
+        "Extract all text from this document image. Return only the raw text content, preserving the original layout as much as possible. Do not add any commentary or explanation.";
+    if (lang != null && !lang.isEmpty()) {
+      prompt +=
+          " The document is written in "
+              + langName(lang)
+              + ". Output the text in its original language only — never transliterate or convert to a different script.";
+    }
     String requestBody =
         objectMapper.writeValueAsString(
             Map.of(
@@ -154,11 +185,7 @@ public class QwenOcrWorker extends GenericWorker {
                         "content",
                         List.of(
                             Map.of("type", "image_url", "image_url", Map.of("url", dataUri)),
-                            Map.of(
-                                "type",
-                                "text",
-                                "text",
-                                "Extract all text from this document image. Return only the raw text content, preserving the original layout as much as possible. Do not add any commentary or explanation.")))),
+                            Map.of("type", "text", "text", prompt)))),
                 "max_tokens",
                 4096,
                 "stream",
