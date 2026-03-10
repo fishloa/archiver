@@ -228,10 +228,10 @@ class PipelineAuditTest {
     Long recordId = createRecord(archiveId, "ocr_pending", 1);
     Long pageId = createPage(recordId, 1);
 
-    // A job claimed only 30 minutes ago — should NOT be reset
+    // A job claimed only 5 minutes ago — should NOT be reset
     Long jobId =
         createJobWithStartedAt(
-            recordId, pageId, "ocr_page_paddle", "claimed", 1, "now() - interval '30 minutes'");
+            recordId, pageId, "ocr_page_paddle", "claimed", 1, "now() - interval '5 minutes'");
 
     jobService.auditPipeline();
 

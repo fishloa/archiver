@@ -144,13 +144,14 @@ public class JobService {
   public int auditPipeline() {
     int total = 0;
 
-    // --- Pass 1: Reset stale claimed jobs (claimed > 1 hour ago) back to pending ---
+    // --- Pass 1: Reset stale claimed jobs (claimed > 10 min ago) back to pending ---
+    //     Workers that restart lose their claimed jobs; 10 min is generous for any job type.
     int staleClaimed =
         jdbcTemplate.update(
             """
             UPDATE job SET status = 'pending', started_at = NULL, attempts = attempts
             WHERE status = 'claimed'
-              AND started_at < now() - interval '1 hour'
+              AND started_at < now() - interval '10 minutes'
             """);
     if (staleClaimed > 0) {
       log.info("Audit: reset {} stale claimed jobs to pending", staleClaimed);

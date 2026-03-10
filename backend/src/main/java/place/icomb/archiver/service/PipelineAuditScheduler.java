@@ -29,8 +29,8 @@ public class PipelineAuditScheduler {
     runAudit();
   }
 
-  /** Runs every 30 minutes after the previous run completes. */
-  @Scheduled(fixedDelay = 1_800_000)
+  /** Runs every 5 minutes after the previous run completes. */
+  @Scheduled(fixedDelay = 300_000)
   public void runAudit() {
     try {
       int count = jobService.auditPipeline();
