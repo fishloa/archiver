@@ -192,7 +192,7 @@ docker build -f ocr-worker-paddle/Dockerfile -t dockerregistry.icomb.place/archi
 ## Machine-Readable API (`/api/v1/`)
 
 Designed for LLM tool use — returns self-contained JSON with full text content and links.
-Base URL: `https://archiver.icomb.place/api/v1`
+Base URL: `https://archive.czernin.eu/api/v1`
 
 | Endpoint | Description |
 |----------|-------------|

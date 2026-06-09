@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Interactive local ingestor for the archiver pipeline.
 
-Uploads a directory/zip of JPG scans to archiver.icomb.place, prompts
+Uploads a directory/zip of JPG scans to archive.czernin.eu, prompts
 for basic metadata, and triggers OCR + downstream processing.
 
 Usage:
@@ -17,7 +17,7 @@ from pathlib import Path
 
 import httpx
 
-BACKEND_URL = "https://archiver.icomb.place"
+BACKEND_URL = "https://archive.czernin.eu"
 TIMEOUT = 60.0
 
 
@@ -241,7 +241,7 @@ def main():
     print(f"OK (status={result.get('status', '?')})")
 
     print(f"\nDone! Record ID: {record_id}")
-    print(f"View at: https://archiver.icomb.place/records/{record_id}")
+    print(f"View at: https://archive.czernin.eu/records/{record_id}")
     print(f"API:     {BACKEND_URL}/api/v1/documents/{record_id}")
     client.close()
 

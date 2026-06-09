@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # ─────────────────────────────────────────────────────────────────────
-# Deployment validation for archiver.icomb.place
+# Deployment validation for archive.czernin.eu
 #
 # Tests the FULL proxy chain: browser → host nginx (443) →
 # web container nginx (8099/8080) → backend (8080) / frontend (3000)
@@ -14,10 +14,10 @@
 #   - Profile endpoints returning wrong status codes
 #
 # Usage: ./validate-deploy.sh [BASE_URL]
-# Default: https://archiver.icomb.place
+# Default: https://archive.czernin.eu
 # ─────────────────────────────────────────────────────────────────────
 
-BASE="${1:-https://archiver.icomb.place}"
+BASE="${1:-https://archive.czernin.eu}"
 PASS=0
 FAIL=0
 WARN=0

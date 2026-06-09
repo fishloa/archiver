@@ -80,7 +80,7 @@ public class ArchiverMcpTools {
         archiveId,
         page != null ? page : 0,
         size != null ? size : 20,
-        "https://archiver.icomb.place/api");
+        "https://archive.czernin.eu/api");
   }
 
   @McpTool(
@@ -119,7 +119,7 @@ public class ArchiverMcpTools {
               readOnlyHint = true,
               destructiveHint = false))
   public Map<String, Object> getDocument(@McpToolParam(description = "Record ID") Long recordId) {
-    return apiController.getDocument(recordId, "https://archiver.icomb.place/api");
+    return apiController.getDocument(recordId, "https://archive.czernin.eu/api");
   }
 
   @McpTool(
@@ -142,7 +142,7 @@ public class ArchiverMcpTools {
         archiveId,
         page != null ? page : 0,
         size != null ? size : 20,
-        "https://archiver.icomb.place/api");
+        "https://archive.czernin.eu/api");
   }
 
   @McpTool(

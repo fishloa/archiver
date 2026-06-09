@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 # Smoke test for archiver endpoints through the full proxy chain.
 # Usage: ./test-endpoints.sh [BASE_URL]
-# Default: https://archiver.icomb.place
+# Default: https://archive.czernin.eu
 
-BASE="${1:-https://archiver.icomb.place}"
+BASE="${1:-https://archive.czernin.eu}"
 PASS=0
 FAIL=0
 
