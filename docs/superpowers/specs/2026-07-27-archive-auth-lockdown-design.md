@@ -123,9 +123,17 @@ Two independent layers; both required.
      name through Docker's embedded DNS (`127.0.0.11`) and caches the result
      ~30s, so it self-heals across redeploys without a lookup per request.
    - **CIDR**, `archiver.auth.trusted-cidrs`, default
-     `127.0.0.1/32, ::1/128, 192.168.16.0/22` — loopback plus the trusted LAN,
-     per the threat model. Loopback costs nothing in production: only a process
-     inside the backend container can be a loopback peer.
+     `127.0.0.1/32, ::1/128, 10.0.9.0/24, 192.168.16.0/22` — loopback, the
+     `archiver_default` container network, and the trusted LAN. Loopback costs
+     nothing in production: only a process inside the backend container can be a
+     loopback peer.
+
+     `10.0.9.0/24` is **required, not a convenience**. SvelteKit's server side
+     calls `BACKEND_URL: http://backend:8080` directly, container-to-container,
+     forwarding `X-Auth-Email` (`frontend/src/lib/server/api.ts:10`,
+     `frontend/src/routes/translate/+server.ts:25`). The peer is the frontend
+     container (`10.0.9.9`), not the web container. Without this entry every
+     authenticated page in the UI breaks.
 
    A peer matching either is trusted. Anything else — which is every WAN client
    — has `X-Auth-Email` discarded and proceeds anonymous. Fail closed: an
@@ -149,11 +157,12 @@ Two independent layers; both required.
 - **Any LAN host can assert any identity.** Accepted for now, per the threat
   model. This is the largest residual item and the reason the follow-up ship
   exists. Emptying `trusted-cidrs` closes it.
-- **Any container on `archiver_default`** can do the same — workers and scrapers
-  reach `backend:8080` and, once `trusted-cidrs` is emptied, would be rejected
-  by address; until then they are covered by neither entry and are in fact
-  already rejected, since `10.0.9.0/24` is not in the LAN CIDR. Worth noting so
-  nobody later "fixes" a worker by widening the set.
+- **Any container on `archiver_default` can do the same** — workers, scrapers,
+  TEI. They do not need `X-Auth-Email` (they authenticate with the processor
+  Bearer token) but the CIDR grants it to them anyway, because it cannot
+  distinguish them from the frontend by address. Narrowing this means trusting
+  `web` and `frontend` by hostname and dropping `10.0.9.0/24`, which is the
+  cleaner end state but a larger change than this ship.
 - **Compromise of the web container.** Unavoidable; asserting identity is its job.
 - **Docker address reuse.** If `web` is recreated and its old address goes to
   another container inside the DNS cache window, the cache is briefly wrong.
@@ -317,9 +326,11 @@ Spring AI 2.0.0-M2 is unproven here. Own spec, own plan.
 
 ## Follow-up ships
 
-- **Narrow the trusted set to the proxy alone.** Empty `archiver.auth.trusted-cidrs`
-  so only the resolved `web` address is trusted. Closes LAN identity spoofing.
-  Config change plus the two deferred assertions in `validate-deploy.sh`.
+- **Narrow the trusted set to named containers.** Drop both `192.168.16.0/22` and
+  `10.0.9.0/24`, and set `trusted-proxy-hosts: web,frontend` instead. Closes LAN
+  identity spoofing and stops workers being trusted for something they never
+  needed. Mostly config, plus the deferred LAN assertion in
+  `validate-deploy.sh`. Verify the frontend resolves to a stable name first.
 - **MCP OAuth** — Phase 3b below, own spec.
 
 ## Out of scope
