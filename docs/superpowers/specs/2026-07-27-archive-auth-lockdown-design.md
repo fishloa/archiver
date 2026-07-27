@@ -84,14 +84,19 @@ against other routes cannot be ruled out.
 
 ### Threat model
 
-WAN is the threat. The LAN is not treated as hostile, so **network reachability**
-of `backend:8080` from the LAN is accepted and stays — the backend is not being
-moved off `ipvlan-lan` and Spring is not being bound to a single interface.
+WAN is the threat. The LAN is trusted, for now, both for reachability and for
+identity. The backend stays on `ipvlan-lan`, Spring is not bound to a single
+interface, and `X-Auth-Email` is honoured from the reverse proxy *and* from any
+LAN peer.
 
-That is a separate question from **identity**. The backend trusts `X-Auth-Email`
-from the reverse proxy and from nothing else. Not the LAN, not the other
-containers on `archiver_default`. Being able to reach the port does not confer
-the ability to claim an identity.
+The consequence, stated plainly: after this ship, anything on
+`192.168.16.0/22` can still assert any identity, including admin, by calling
+`http://192.168.19.0:8080` with a chosen `X-Auth-Email`. That is a deliberate,
+temporary acceptance — it keeps local tooling and the existing test suite
+working. Narrowing the trusted set to the proxy alone is a follow-up ship, and
+the config is shaped so that it is a one-line change when you want it.
+
+What this ship does close is the WAN path, which is the whole objective.
 
 ### Fix
 
@@ -102,53 +107,61 @@ Two independent layers; both required.
    other two survive, and the explicit clear documents the invariant for any
    location added later.
 
-2. **Backend — trusted peer only.** `ProxyAuthFilter` honours `X-Auth-Email`
-   only when the request's TCP peer is the reverse proxy. No shared secret.
+2. **Backend — trusted peer check.** `ProxyAuthFilter` honours `X-Auth-Email`
+   only when the request's TCP peer is in a configured trusted set. No shared
+   secret.
 
    The check uses `request.getRemoteAddr()` — the actual TCP peer — and must
    never consult `X-Forwarded-For` or `X-Real-IP`, both of which are
    client-controlled and would reintroduce the same class of defect.
 
-   The proxy's address is dynamic: `archiver-web-1` is `10.0.9.16` on
-   `archiver_default` today and changes on redeploy. Resolving a pinned IP from
-   config would break on every stack update and fail open or fail closed at
-   random. Instead the filter resolves the proxy's hostname through Docker's
-   embedded DNS (`127.0.0.11`) and compares the peer against the resulting
-   address set, with a short cache (~30s) so it self-heals across redeploys
-   without a DNS lookup per request.
+   Two kinds of entry in the trusted set:
 
-   Configuration: `archiver.auth.trusted-proxy-host`, default `web`. If the name
-   does not resolve, or the peer is not in the set, `X-Auth-Email` is discarded
-   and the request proceeds anonymous — fail closed, never fall back to
-   trusting the header.
+   - **Hostname**, `archiver.auth.trusted-proxy-hosts`, default `web`. The
+     proxy's address is dynamic — `archiver-web-1` is `10.0.9.16` today and
+     changes on redeploy — so a pinned IP would rot. The filter resolves the
+     name through Docker's embedded DNS (`127.0.0.11`) and caches the result
+     ~30s, so it self-heals across redeploys without a lookup per request.
+   - **CIDR**, `archiver.auth.trusted-cidrs`, default
+     `127.0.0.1/32, ::1/128, 192.168.16.0/22` — loopback plus the trusted LAN,
+     per the threat model. Loopback costs nothing in production: only a process
+     inside the backend container can be a loopback peer.
 
-   **Existing tests break.** `AdminControllerTest`, `AuthControllerTest`,
-   `ProfileControllerTest` and `AdminPipelineControllerTest` all send
-   `X-Auth-Email` from a local `HttpClient`, so their peer is loopback and the
-   header would be discarded. Set `archiver.auth.trusted-proxy-host: localhost`
-   in `application-test.yml`. The new spoofing regression test must then override
-   it to a value that does *not* cover loopback, so it exercises the reject path
-   rather than passing vacuously.
+   A peer matching either is trusted. Anything else — which is every WAN client
+   — has `X-Auth-Email` discarded and proceeds anonymous. Fail closed: an
+   unresolvable hostname or malformed CIDR drops that entry, it never widens the
+   set.
+
+   Narrowing to proxy-only later means emptying `trusted-cidrs`. Keep the two
+   settings independent so that is a config change, not a code change.
+
+   **Existing tests need no changes.** `AdminControllerTest`,
+   `AuthControllerTest`, `ProfileControllerTest` and `AdminPipelineControllerTest`
+   send `X-Auth-Email` from a local `HttpClient`; loopback is in the default
+   trusted set, so they keep passing as written. No `application-test.yml` edit.
+
+   The one exception is the new spoofing regression test, which must override
+   `trusted-cidrs` to empty and `trusted-proxy-hosts` to a name that does not
+   resolve to loopback — otherwise it passes vacuously and proves nothing.
 
 ### Residual risk of peer-IP trust
 
-The trusted set is the resolved address of the `web` container alone, so workers,
-scrapers and LAN hosts are all untrusted for identity purposes — reaching the
-port gains them nothing.
+- **Any LAN host can assert any identity.** Accepted for now, per the threat
+  model. This is the largest residual item and the reason the follow-up ship
+  exists. Emptying `trusted-cidrs` closes it.
+- **Any container on `archiver_default`** can do the same — workers and scrapers
+  reach `backend:8080` and, once `trusted-cidrs` is emptied, would be rejected
+  by address; until then they are covered by neither entry and are in fact
+  already rejected, since `10.0.9.0/24` is not in the LAN CIDR. Worth noting so
+  nobody later "fixes" a worker by widening the set.
+- **Compromise of the web container.** Unavoidable; asserting identity is its job.
+- **Docker address reuse.** If `web` is recreated and its old address goes to
+  another container inside the DNS cache window, the cache is briefly wrong.
+  Bounded by the ~30s TTL. Keep the TTL short; do not cache negative results.
 
-What remains:
-
-- Compromise of the web container itself. Unavoidable; it is the component whose
-  entire job is to assert identity.
-- Docker address reuse. If the web container is recreated and its previous
-  address is handed to another container within the DNS cache window, the cache
-  is briefly wrong. Bounded by the ~30s TTL, and the consequence is a stale
-  address being trusted for that window. Keep the TTL short; do not cache
-  negative results.
-
-Layer 1 remains worthwhile even though layer 2 subsumes it: it stops a spoofed
-header from ever entering the network, and keeps the WAN path safe if the
-trusted-peer resolution ever fails open through a bug.
+Layer 1 still earns its place: it stops a spoofed header entering the network at
+all, and keeps the WAN path safe if trusted-peer resolution ever fails open
+through a bug.
 
 ### Tests
 
@@ -159,8 +172,12 @@ trusted-peer resolution ever fails open through a bug.
 - Integration test: `GET /api/admin/users` with a spoofed `X-Auth-Email` from an
   untrusted peer returns 403. This is the regression test for the defect above
   and must fail against current `main`.
-- `web/validate-deploy.sh`: spoofed-header probe through nginx asserting non-200,
-  and the same probe against the backend's LAN address asserting non-200.
+- `ProxyAuthFilter` unit test: peer in `trusted-cidrs` but not the resolved
+  hostname → authenticated, and vice versa. Both entry kinds work independently.
+- `web/validate-deploy.sh`: spoofed-header probe through nginx from the WAN side
+  asserting non-200. Do **not** assert anything about the backend's LAN address —
+  spoofing there is expected to succeed under the current threat model, and a
+  test asserting otherwise would fail. Add it when `trusted-cidrs` is emptied.
 
 ## Phase 1 — deny by default
 
@@ -297,6 +314,13 @@ dynamic client registration (RFC 7591), an authorize endpoint delegating to the
 existing proxies, a token endpoint, and Bearer validation mapping the token
 subject back to `app_user`. Spring Authorization Server on Spring Boot 4.0 with
 Spring AI 2.0.0-M2 is unproven here. Own spec, own plan.
+
+## Follow-up ships
+
+- **Narrow the trusted set to the proxy alone.** Empty `archiver.auth.trusted-cidrs`
+  so only the resolved `web` address is trusted. Closes LAN identity spoofing.
+  Config change plus the two deferred assertions in `validate-deploy.sh`.
+- **MCP OAuth** — Phase 3b below, own spec.
 
 ## Out of scope
 
