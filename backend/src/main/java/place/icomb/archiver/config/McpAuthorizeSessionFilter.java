@@ -51,10 +51,18 @@ public class McpAuthorizeSessionFilter extends OncePerRequestFilter {
           .findByEmail(normalised.toLowerCase())
           .ifPresent(
               user -> {
+                // Deliberately no auth.setDetails(user) here (unlike ProxyAuthFilter, which this
+                // filter is otherwise modeled on): this Authentication gets persisted as JSON by
+                // JdbcOAuth2AuthorizationService while the authorization request is in flight (e.g.
+                // across the redirect to the consent page and back), using Spring Security's own
+                // hardened Jackson module with a fixed PolymorphicTypeValidator allowlist. AppUser
+                // isn't on that allowlist, so writing it succeeds but reading it back throws
+                // InvalidTypeIdException -- surfacing as an opaque 403 on the consent-accept POST.
+                // The allowlist check and role are already resolved by this point (baked into
+                // buildAuthorities below), so nothing downstream needs the raw AppUser back.
                 var auth =
                     new UsernamePasswordAuthenticationToken(
                         normalised, null, buildAuthorities(user));
-                auth.setDetails(user);
                 SecurityContextHolder.getContext().setAuthentication(auth);
               });
     }

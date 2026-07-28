@@ -184,6 +184,97 @@ class McpAuthorizeSessionFilterTest {
     assertThat(response.headers().firstValue("Location").orElse("")).contains("/signin");
   }
 
+  // Regression test for a live production bug: McpAuthorizeSessionFilter used to call
+  // auth.setDetails(user), storing the raw AppUser domain object on the Authentication. Spring
+  // persists that Authentication as JSON via JdbcOAuth2AuthorizationService while a consent-
+  // pending authorization request is in flight, using Spring Security's own hardened Jackson
+  // module -- which only allows a fixed set of known-safe types. AppUser was never one of them,
+  // so the write succeeded but the read-back (needed to resolve the pending request when the
+  // consent form is submitted) threw InvalidTypeIdException, surfacing as an opaque 403 on the
+  // consent-accept POST. The other tests in this class use a client with
+  // requireAuthorizationConsent(false), which bypasses this path entirely -- this test uses a
+  // client that requires consent (the real Claude.ai/DCR default) specifically to exercise it.
+  @Test
+  void authorizeThenConsentRoundTripSucceedsForAllowlistedUser() throws Exception {
+    String clientId = "consent-required-client";
+    if (registeredClientRepository.findByClientId(clientId) == null) {
+      RegisteredClient client =
+          RegisteredClient.withId(clientId)
+              .clientId(clientId)
+              .clientAuthenticationMethod(ClientAuthenticationMethod.NONE)
+              .authorizationGrantType(AuthorizationGrantType.AUTHORIZATION_CODE)
+              .redirectUri(TEST_REDIRECT_URI)
+              .scope("mcp.read")
+              .clientSettings(ClientSettings.builder().requireAuthorizationConsent(true).build())
+              .build();
+      registeredClientRepository.save(client);
+    }
+
+    String state = "consent-round-trip-test-state";
+    String authorizeQuery =
+        "response_type=code&client_id="
+            + clientId
+            + "&scope=mcp.read"
+            + "&redirect_uri=https%3A%2F%2Fexample.com%2Fcallback"
+            + "&code_challenge="
+            + TEST_CODE_CHALLENGE
+            + "&code_challenge_method=S256"
+            + "&state="
+            + state;
+
+    var authorizeRequest =
+        HttpRequest.newBuilder(
+                URI.create("http://localhost:" + port + "/oauth2/authorize?" + authorizeQuery))
+            .header("X-Auth-Email", ALLOWLISTED_EMAIL)
+            .GET()
+            .build();
+    var authorizeResponse =
+        HttpClient.newBuilder()
+            .followRedirects(HttpClient.Redirect.NEVER)
+            .build()
+            .send(authorizeRequest, HttpResponse.BodyHandlers.ofString());
+
+    assertThat(authorizeResponse.statusCode())
+        .as("consent-requiring client must show the consent page, not redirect straight through")
+        .isEqualTo(200);
+
+    // The default consent page embeds its own internally-generated correlation token in a hidden
+    // "state" form field -- distinct from the OAuth `state` query parameter above, which the
+    // client controls and Spring never echoes back here. The consent POST must carry this
+    // internal token, not the original OAuth state, or
+    // OAuth2AuthorizationConsentAuthenticationProvider
+    // fails to resolve the pending authorization ("OAuth 2.0 Parameter: state").
+    java.util.regex.Matcher consentStateMatcher =
+        java.util.regex.Pattern.compile("name=\"state\" value=\"([^\"]+)\"")
+            .matcher(authorizeResponse.body());
+    assertThat(consentStateMatcher.find())
+        .as("consent page must embed a hidden state field")
+        .isTrue();
+    String consentState = consentStateMatcher.group(1);
+
+    String consentBody = "client_id=" + clientId + "&state=" + consentState + "&scope=mcp.read";
+    var consentRequest =
+        HttpRequest.newBuilder(URI.create("http://localhost:" + port + "/oauth2/authorize"))
+            .header("X-Auth-Email", ALLOWLISTED_EMAIL)
+            .header("Content-Type", "application/x-www-form-urlencoded")
+            .POST(HttpRequest.BodyPublishers.ofString(consentBody))
+            .build();
+    var consentResponse =
+        HttpClient.newBuilder()
+            .followRedirects(HttpClient.Redirect.NEVER)
+            .build()
+            .send(consentRequest, HttpResponse.BodyHandlers.ofString());
+
+    assertThat(consentResponse.statusCode())
+        .as(
+            "submitting consent must redirect back to the client with an authorization code, not"
+                + " fail with a server error")
+        .isEqualTo(302);
+    assertThat(consentResponse.headers().firstValue("Location").orElse(""))
+        .as("redirect must carry an authorization code")
+        .contains("code=");
+  }
+
   @Test
   void nonAllowlistedEmailRedirectsToSigninRatherThanAuthenticating() throws Exception {
     var request =
