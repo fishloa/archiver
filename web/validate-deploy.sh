@@ -434,6 +434,63 @@ check_latency "API search" "$BASE/api/search?q=test&page=0&size=1" 2000
 check_latency "Family tree search" "$BASE/api/family-tree/search?q=alexander&limit=3" 2000
 check_latency "Family tree relate" "$BASE/api/family-tree/relate?personId=2" 2000
 
+# ── 12. Authenticated Path (opt-in) ──────────────────────────────────
+echo ""
+bold "12. Authenticated Path (opt-in)"
+echo "────────────────────────────────────────"
+
+# Every check above this point is anonymous. The 2026-07-28 auth-lockdown
+# review (finding C1) found a bug where SvelteKit's server-side reads
+# never sent X-Auth-Email, so every content page 500'd for every
+# signed-in user -- while all ~100 anonymous checks in this suite kept
+# passing. An anonymous-only run structurally cannot catch that class of
+# regression. There is no practical way to obtain a real oauth2-proxy
+# session non-interactively, so this section is opt-in: point
+# ARCHIVER_COOKIE_JAR at a cookie-jar file (Netscape format, as produced
+# by `curl -c jar.txt` or exported from a browser after a real Google/
+# Apple sign-in) containing a valid _oauth2_proxy session cookie.
+AUTH_SKIPPED=0
+if [[ -n "${ARCHIVER_COOKIE_JAR:-}" && -f "${ARCHIVER_COOKIE_JAR}" ]]; then
+    echo "Using cookie jar: $ARCHIVER_COOKIE_JAR"
+    check_status "Authenticated records list status" \
+        "$BASE/api/records?page=0&size=1&sortBy=id&sortDir=desc" "200" \
+        -b "$ARCHIVER_COOKIE_JAR"
+    check_body "Authenticated records list returns content" \
+        "$BASE/api/records?page=0&size=1&sortBy=id&sortDir=desc" '"content"' \
+        -b "$ARCHIVER_COOKIE_JAR"
+    check_status "Authenticated /records page loads" "$BASE/records" "200" \
+        -b "$ARCHIVER_COOKIE_JAR"
+    check_body_absent "Authenticated /records is not the sign-in page" \
+        "$BASE/records" 'id="googleBtn"' -b "$ARCHIVER_COOKIE_JAR"
+    check_status "Authenticated /api/auth/me status" "$BASE/api/auth/me" "200" \
+        -b "$ARCHIVER_COOKIE_JAR"
+    check_body "Authenticated /api/auth/me reports authenticated" \
+        "$BASE/api/auth/me" '"authenticated":true' -b "$ARCHIVER_COOKIE_JAR"
+else
+    AUTH_SKIPPED=1
+    WARN=$((WARN + 1))
+    echo ""
+    red "  ################################################################"
+    echo ""
+    red "  ##  SKIPPED: AUTHENTICATED CHECKS DID NOT RUN                ##"
+    echo ""
+    red "  ################################################################"
+    echo ""
+    echo "    Every check in this script, including the ones above, is"
+    echo "    ANONYMOUS. This run CANNOT detect a regression that only"
+    echo "    breaks the signed-in path (this is exactly how C1 -- every"
+    echo "    content page 500ing for real users -- shipped past an"
+    echo "    all-green anonymous suite in the 2026-07-28 review)."
+    echo ""
+    echo "    To enable: set ARCHIVER_COOKIE_JAR to a cookie-jar file"
+    echo "    holding a valid oauth2-proxy session cookie, then re-run:"
+    echo ""
+    echo "        ARCHIVER_COOKIE_JAR=/path/to/cookies.txt ./validate-deploy.sh"
+    echo ""
+    red "  ################################################################"
+    echo ""
+fi
+
 # ─────────────────────────────────────────────────────────────────────
 echo ""
 echo "══════════════════════════════════════════════════════════════"
@@ -460,6 +517,16 @@ fi
 TOTAL=$((PASS + FAIL))
 echo "Total: $TOTAL checks"
 echo ""
+
+if [[ "$AUTH_SKIPPED" -eq 1 ]]; then
+    yellow "  NOTE: authenticated checks were SKIPPED -- this result only covers"
+    echo ""
+    yellow "  anonymous callers. Set ARCHIVER_COOKIE_JAR to also validate the"
+    echo ""
+    yellow "  signed-in path (see \"12. Authenticated Path\" section above)."
+    echo ""
+    echo ""
+fi
 
 if [[ "$FAIL" -gt 0 ]]; then
     red "DEPLOY VALIDATION FAILED"
