@@ -16,8 +16,7 @@
 		<p class="hint">If you believe it should be, contact the archive owner.</p>
 
 		<div class="signout-row">
-			<a class="btn-primary" href="/oauth2-google/sign_out?rd=/signin">Sign out (Google)</a>
-			<a class="btn-primary" href="/oauth2-apple/sign_out?rd=/signin">Sign out (Apple)</a>
+			<a class="btn-primary" href="/signout">Sign out</a>
 		</div>
 	</section>
 </div>
