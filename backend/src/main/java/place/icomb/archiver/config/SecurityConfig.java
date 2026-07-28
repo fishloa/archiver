@@ -12,9 +12,6 @@ import org.springframework.security.config.annotation.web.configuration.EnableWe
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
-import org.springframework.web.cors.CorsConfiguration;
-import org.springframework.web.cors.CorsConfigurationSource;
-import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 import place.icomb.archiver.repository.AppUserRepository;
 
 @Configuration
@@ -23,7 +20,6 @@ public class SecurityConfig {
 
   private final AppUserRepository appUserRepository;
   private final String processorToken;
-  private final String mcpToken;
   private final TrustedPeerResolver trustedPeerResolver;
 
   public SecurityConfig(
@@ -31,16 +27,19 @@ public class SecurityConfig {
       @Value("${archiver.processor.token}") String processorToken,
       @Value("${archiver.auth.trusted-cidrs:}") String trustedCidrs,
       @Value("${archiver.auth.trusted-proxy-hosts:}") String trustedProxyHosts,
-      @Value("${archiver.auth.trusted-peer-cache-seconds:30}") long trustedPeerCacheSeconds,
-      @Value("${archiver.mcp.token:}") String mcpToken) {
+      @Value("${archiver.auth.trusted-peer-cache-seconds:30}") long trustedPeerCacheSeconds) {
     this.appUserRepository = appUserRepository;
     this.processorToken = processorToken;
-    this.mcpToken = mcpToken;
     this.trustedPeerResolver =
         new TrustedPeerResolver(
             splitCsv(trustedCidrs),
             splitCsv(trustedProxyHosts),
             Duration.ofSeconds(trustedPeerCacheSeconds));
+  }
+
+  @Bean
+  public TrustedPeerResolver trustedPeerResolver() {
+    return trustedPeerResolver;
   }
 
   private static List<String> splitCsv(String value) {
@@ -52,21 +51,16 @@ public class SecurityConfig {
 
   @Bean
   public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
-    http.cors(cors -> cors.configurationSource(mcpCorsSource()))
-        .csrf(csrf -> csrf.disable())
+    http.csrf(csrf -> csrf.disable())
         .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
         .addFilterBefore(
             new ProxyAuthFilter(appUserRepository, trustedPeerResolver),
             UsernamePasswordAuthenticationFilter.class)
         .addFilterBefore(
             new ProcessorTokenFilter(processorToken), UsernamePasswordAuthenticationFilter.class)
-        .addFilterBefore(new McpTokenFilter(mcpToken), UsernamePasswordAuthenticationFilter.class)
         .authorizeHttpRequests(
             auth ->
                 auth
-                    // MCP server endpoints — shared token until per-user OAuth lands
-                    .requestMatchers("/api/mcp/**")
-                    .hasRole("MCP")
                     // Admin GET endpoints — admin only (must precede general GET permit)
                     .requestMatchers(HttpMethod.GET, "/api/admin/**")
                     .hasRole("ADMIN")
@@ -121,17 +115,5 @@ public class SecurityConfig {
                     .authenticated());
 
     return http.build();
-  }
-
-  private CorsConfigurationSource mcpCorsSource() {
-    CorsConfiguration config = new CorsConfiguration();
-    config.setAllowedOrigins(List.of("https://claude.ai"));
-    config.setAllowedMethods(List.of("GET", "POST", "DELETE", "OPTIONS"));
-    config.setAllowedHeaders(List.of("Authorization", "Content-Type", "Accept", "Mcp-Session-Id"));
-    config.setExposedHeaders(List.of("Mcp-Session-Id"));
-
-    UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
-    source.registerCorsConfiguration("/api/mcp/**", config);
-    return source;
   }
 }
