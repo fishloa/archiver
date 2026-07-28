@@ -54,6 +54,16 @@ public class McpAuthorizationServerConfig {
             authorizationServerConfigurer.getEndpointsMatcher(),
             PathPatternRequestMatcher.withDefaults().matcher("/oauth2/register"));
 
+    // Use ignoringRequestMatchers(...), not disable(), to exempt this chain from CSRF. disable()
+    // fully deregisters the CsrfConfigurer, and OAuth2AuthorizationServerConfigurer.init() (invoked
+    // by the .with(authorizationServerConfigurer, ...) call below) itself calls http.csrf(...)
+    // again later, with its own narrower matcher. If the CsrfConfigurer isn't already registered at
+    // that point, that second call creates a brand-new CsrfConfigurer scoped only to the library's
+    // own endpoints -- silently excluding /oauth2/register again and reintroducing the CSRF 403
+    // this
+    // fix addresses. ignoringRequestMatchers(...) works because it leaves the configurer
+    // registered,
+    // so that later call additively customizes this SAME instance instead of replacing it.
     http.securityMatcher(endpointsMatcher)
         .csrf(csrf -> csrf.ignoringRequestMatchers(endpointsMatcher))
         .with(authorizationServerConfigurer, Customizer.withDefaults())
