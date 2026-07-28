@@ -63,6 +63,52 @@ class McpResourceServerConfigTest {
     assertThat(response.statusCode()).isIn(401, 403);
   }
 
+  // Regression test for a live production bug: an unauthenticated request to the RFC 9728
+  // protected-resource-metadata document was returning 403 rather than serving the document.
+  // Root cause was mcpResourceServerSecurityFilterChain's securityMatcher covering only
+  // "/api/mcp/**" -- Spring's own OAuth2ProtectedResourceMetadataFilter is registered as part of
+  // THIS chain's filters (via McpServerOAuth2Configurer), but a chain's filters only run for
+  // requests that first match its own securityMatcher, so requests to the metadata path fell
+  // through to the main application's deny-by-default chain instead of ever reaching the filter
+  // that serves it. MCP clients (including Claude.ai) fetch this document, unauthenticated, to
+  // discover which authorization server protects a resource -- if it 403s, the client never
+  // learns how to authenticate at all.
+  @Test
+  void protectedResourceMetadataIsPubliclyReadable() throws Exception {
+    var request =
+        HttpRequest.newBuilder(
+                URI.create("http://localhost:" + port + "/.well-known/oauth-protected-resource"))
+            .GET()
+            .build();
+    var response = HttpClient.newHttpClient().send(request, HttpResponse.BodyHandlers.ofString());
+
+    assertThat(response.statusCode())
+        .as("protected-resource metadata must be readable without authentication")
+        .isEqualTo(200);
+  }
+
+  // Some MCP clients (Claude.ai among them) probe this document per RFC 9728's path-appended
+  // convention: /.well-known/oauth-protected-resource + the exact resource path they're calling,
+  // not just the bare document. This must be routed to the same chain too, even if it 404s past
+  // that point (a real 404 from inside the chain is fine; falling through to the wrong chain and
+  // 403ing is not).
+  @Test
+  void pathAppendedProtectedResourceMetadataIsNotBlockedByTheWrongChain() throws Exception {
+    var request =
+        HttpRequest.newBuilder(
+                URI.create(
+                    "http://localhost:"
+                        + port
+                        + "/.well-known/oauth-protected-resource/api/mcp/sse"))
+            .GET()
+            .build();
+    var response = HttpClient.newHttpClient().send(request, HttpResponse.BodyHandlers.ofString());
+
+    assertThat(response.statusCode())
+        .as("must not be denied by the main application's deny-by-default chain")
+        .isNotEqualTo(403);
+  }
+
   @Test
   void oldSharedMcpTokenFilterNoLongerExists() {
     org.junit.jupiter.api.Assertions.assertThrows(

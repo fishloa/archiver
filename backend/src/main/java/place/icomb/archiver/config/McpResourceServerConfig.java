@@ -12,6 +12,9 @@ import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.oauth2.jwt.JwtValidators;
 import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.servlet.util.matcher.PathPatternRequestMatcher;
+import org.springframework.security.web.util.matcher.OrRequestMatcher;
+import org.springframework.security.web.util.matcher.RequestMatcher;
 import org.springframework.web.cors.CorsConfigurationSource;
 
 /**
@@ -67,7 +70,24 @@ public class McpResourceServerConfig {
     NimbusJwtDecoder jwtDecoder = NimbusJwtDecoder.withJwkSource(jwkSource).build();
     jwtDecoder.setJwtValidator(JwtValidators.createDefaultWithIssuer(issuer));
 
-    http.securityMatcher("/api/mcp/**")
+    // McpServerOAuth2Configurer registers Spring's own OAuth2ProtectedResourceMetadataFilter
+    // (RFC 9728) as part of THIS chain's filters -- but a chain's filters only ever run for
+    // requests that first match ITS OWN securityMatcher. "/api/mcp/**" alone never matches
+    // /.well-known/oauth-protected-resource (bare, or with the resource path appended, which
+    // MCP clients including Claude.ai probe per RFC 9728's path-appended convention), so those
+    // requests fell through to SecurityConfig's default deny-by-default chain and got a bare
+    // 403 instead of ever reaching the metadata filter -- the client never even learned this
+    // resource's authorization server from that document. Same class of gap as
+    // McpAuthorizationServerConfig's /oauth2/register matcher union.
+    RequestMatcher securityMatcher =
+        new OrRequestMatcher(
+            PathPatternRequestMatcher.withDefaults().matcher("/api/mcp/**"),
+            PathPatternRequestMatcher.withDefaults()
+                .matcher("/.well-known/oauth-protected-resource"),
+            PathPatternRequestMatcher.withDefaults()
+                .matcher("/.well-known/oauth-protected-resource/**"));
+
+    http.securityMatcher(securityMatcher)
         .cors(cors -> cors.configurationSource(mcpCorsSource))
         .csrf(csrf -> csrf.disable())
         .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
@@ -79,7 +99,16 @@ public class McpResourceServerConfig {
               mcpAuthorization.jwtDecoder(jwtDecoder);
               mcpAuthorization.validateAudienceClaim(true);
             })
-        .authorizeHttpRequests(auth -> auth.anyRequest().authenticated());
+        .authorizeHttpRequests(
+            auth ->
+                auth.requestMatchers(
+                        PathPatternRequestMatcher.withDefaults()
+                            .matcher("/.well-known/oauth-protected-resource"),
+                        PathPatternRequestMatcher.withDefaults()
+                            .matcher("/.well-known/oauth-protected-resource/**"))
+                    .permitAll()
+                    .anyRequest()
+                    .authenticated());
 
     return http.build();
   }
