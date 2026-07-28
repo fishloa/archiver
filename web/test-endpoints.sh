@@ -136,14 +136,27 @@ check "MCP endpoint requires auth token" "$BASE/api/mcp/sse" "401|403" -X POST
 # the proxy for a caller outside the trusted peer set (see
 # AuthSpoofingRegressionTest.java / TrustedPeerResolver). Before the fix
 # this returned 200 with the full user list.
+#
+# Scope note: through the public proxy this mainly re-verifies nginx's
+# own 401 -- location /api/ requires a valid oauth2 session before
+# proxy_pass and unconditionally overwrites X-Auth-Email with $auth_email
+# regardless of what the client sent, so this probe can't actually reach
+# the backend's TrustedPeerResolver guard the way a LAN-address request
+# could. That guard is covered at the integration level by
+# AuthSpoofingRegressionTest instead. This check still has value (it
+# proves the header isn't honoured through the path real clients use),
+# but it is not full coverage of the backend fix.
 spoof_code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 10 \
     -H 'X-Auth-Email: timothy.corbettclark@gmail.com' \
     "$BASE/api/admin/users" 2>/dev/null) || spoof_code="000"
-if [[ "$spoof_code" != "200" ]]; then
+if [[ "$spoof_code" == "000" || -z "$spoof_code" ]]; then
+    printf "  \033[31mFAIL\033[0m  %s (could not reach server, got '%s' -- inconclusive, not a pass)\n" "Spoofed X-Auth-Email rejected" "$spoof_code"
+    FAIL=$((FAIL + 1))
+elif [[ "$spoof_code" != "200" ]]; then
     printf "  \033[32mPASS\033[0m  %s (%s)\n" "Spoofed X-Auth-Email rejected" "$spoof_code"
     PASS=$((PASS + 1))
 else
-    printf "  \033[31mFAIL\033[0m  %s (got %s)\n" "Spoofed X-Auth-Email rejected" "$spoof_code"
+    printf "  \033[31mFAIL\033[0m  %s (got 200 -- privilege escalation regression)\n" "Spoofed X-Auth-Email rejected"
     FAIL=$((FAIL + 1))
 fi
 

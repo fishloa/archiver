@@ -181,6 +181,7 @@ check_body_absent "Family tree page does not leak archive content (unauthenticat
 
 check_status "Translate page" "$BASE/translate" "200"
 check_body "Translate page shows sign-in page (unauthenticated)" "$BASE/translate" 'id="googleBtn"'
+check_body_absent "Translate page does not leak archive content (unauthenticated)" "$BASE/translate" "sveltekit"
 
 check_status "Sign-in page" "$BASE/signin" "200"
 
@@ -196,14 +197,18 @@ check_body_absent "Record detail page does not leak archive content (unauthentic
 # Profile: no longer a SvelteKit-level 302 -- nginx rewrites to the sign-in page first.
 check_status "Profile without auth" "$BASE/profile" "200"
 check_body "Profile shows sign-in page (unauthenticated)" "$BASE/profile" 'id="googleBtn"'
+check_body_absent "Profile does not leak archive content (unauthenticated)" "$BASE/profile" "sveltekit"
 
 # Admin pages: no longer SvelteKit-level 307s -- same nginx rewrite applies.
 check_status "Admin users page (no auth)" "$BASE/admin/users" "200"
 check_body "Admin users page shows sign-in page (unauthenticated)" "$BASE/admin/users" 'id="googleBtn"'
+check_body_absent "Admin users page does not leak archive content (unauthenticated)" "$BASE/admin/users" "sveltekit"
 check_status "Admin audit page (no auth)" "$BASE/admin/audit" "200"
 check_body "Admin audit page shows sign-in page (unauthenticated)" "$BASE/admin/audit" 'id="googleBtn"'
+check_body_absent "Admin audit page does not leak archive content (unauthenticated)" "$BASE/admin/audit" "sveltekit"
 check_status "Admin events page (no auth)" "$BASE/admin/events" "200"
 check_body "Admin events page shows sign-in page (unauthenticated)" "$BASE/admin/events" 'id="googleBtn"'
+check_body_absent "Admin events page does not leak archive content (unauthenticated)" "$BASE/admin/events" "sveltekit"
 
 # ── 3. API Proxy Chain (browser → host nginx → web nginx → backend) ─
 echo ""
@@ -252,13 +257,25 @@ check_status "MCP endpoint (no auth)" "$BASE/api/mcp/sse" "401|403" -X POST
 # the proxy for a caller outside the trusted peer set (see
 # AuthSpoofingRegressionTest.java / TrustedPeerResolver). Before the fix
 # this returned 200 with the full user list.
+#
+# Scope note: through the public proxy this mainly re-verifies nginx's
+# own 401 -- location /api/ requires a valid oauth2 session before
+# proxy_pass and unconditionally overwrites X-Auth-Email with $auth_email
+# regardless of what the client sent, so this probe can't actually reach
+# the backend's TrustedPeerResolver guard the way a LAN-address request
+# could. That guard is covered at the integration level by
+# AuthSpoofingRegressionTest instead. This check still has value (it
+# proves the header isn't honoured through the path real clients use),
+# but it is not full coverage of the backend fix.
 spoof_code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 10 \
     -H 'X-Auth-Email: timothy.corbettclark@gmail.com' \
     "$BASE/api/admin/users" 2>/dev/null) || spoof_code="000"
-if [[ "$spoof_code" != "200" ]]; then
+if [[ "$spoof_code" == "000" || -z "$spoof_code" ]]; then
+    fail "Spoofed X-Auth-Email probe could not reach the server (got '$spoof_code') -- result is inconclusive, not a pass"
+elif [[ "$spoof_code" != "200" ]]; then
     pass "Spoofed X-Auth-Email rejected ($spoof_code)"
 else
-    fail "Spoofed X-Auth-Email accepted (got $spoof_code) -- privilege escalation regression"
+    fail "Spoofed X-Auth-Email accepted (200) -- privilege escalation regression"
 fi
 
 # ── 4. API Response Content ──────────────────────────────────────────
@@ -298,10 +315,12 @@ check_content_type "Records SSE (unauthenticated) returns JSON error" "$BASE/api
 # token it must not succeed, but the failure mode isn't necessarily nginx's
 # 401 -- assert "not 200" rather than a specific code.
 proc_code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 3 -H "Accept: text/event-stream" "$BASE/api/processor/events" 2>/dev/null) || proc_code="000"
-if [[ "$proc_code" != "200" ]]; then
+if [[ "$proc_code" == "000" || -z "$proc_code" ]]; then
+    fail "Processor SSE probe could not reach the server (got '$proc_code') -- result is inconclusive, not a pass"
+elif [[ "$proc_code" != "200" ]]; then
     pass "Processor SSE rejects unauthenticated caller ($proc_code)"
 else
-    fail "Processor SSE accepted unauthenticated caller (got $proc_code)"
+    fail "Processor SSE accepted unauthenticated caller (200)"
 fi
 
 # ── 6. Family Tree API ("This is Me" feature) ───────────────────────
