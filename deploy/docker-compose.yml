@@ -54,7 +54,13 @@ services:
       # response_mode reaches Apple — oauth2-proxy preserves query params
       # already present on the configured login URL and appends its own.
       OAUTH2_PROXY_SCOPE: "openid email"
+      # OIDC discovery overwrites login-url with Apple's discovered authorization
+      # endpoint, which silently drops our response_mode. Skipping discovery and
+      # declaring the three endpoints explicitly is what makes it stick.
+      OAUTH2_PROXY_SKIP_OIDC_DISCOVERY: "true"
       OAUTH2_PROXY_LOGIN_URL: "https://appleid.apple.com/auth/authorize?response_mode=form_post"
+      OAUTH2_PROXY_REDEEM_URL: "https://appleid.apple.com/auth/token"
+      OAUTH2_PROXY_OIDC_JWKS_URL: "https://appleid.apple.com/auth/keys"
       # form_post means Apple POSTs the callback cross-site from appleid.apple.com.
       # Browsers do not send SameSite=Lax cookies on a cross-site POST, so the
       # CSRF cookie would be missing and the callback would fail. None+Secure is
