@@ -1,6 +1,6 @@
 plugins {
     java
-    id("org.springframework.boot") version "4.0.2"
+    id("org.springframework.boot") version "4.1.0"
     id("io.spring.dependency-management") version "1.1.7"
     id("com.diffplug.spotless") version "7.0.2"
     jacoco
@@ -44,7 +44,7 @@ dependencies {
     implementation("org.apache.pdfbox:pdfbox:3.0.4")
 
     // MCP (Model Context Protocol) server via Spring AI
-    implementation(platform("org.springframework.ai:spring-ai-bom:2.0.0-M2"))
+    implementation(platform("org.springframework.ai:spring-ai-bom:2.0.0"))
     implementation("org.springframework.ai:spring-ai-starter-mcp-server-webmvc")
 
     // Test
