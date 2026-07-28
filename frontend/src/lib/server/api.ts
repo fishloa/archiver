@@ -18,6 +18,7 @@ export interface AuthUser {
   displayName?: string;
   role?: string;
   familyTreePersonId?: number;
+  signedInAs?: string;
 }
 
 export async function fetchCurrentUser(email: string): Promise<AuthUser> {
