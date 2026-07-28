@@ -87,20 +87,26 @@ public class TrustedPeerResolver {
 
     var resolved = new HashSet<String>();
     for (String hostname : hostnames) {
-      if (hostname == null || hostname.isBlank()) {
-        continue;
-      }
-      try {
-        for (InetAddress address : InetAddress.getAllByName(hostname.trim())) {
-          resolved.add(address.getHostAddress());
-        }
-      } catch (UnknownHostException e) {
-        log.warn("Trusted proxy hostname '{}' did not resolve; ignoring it", hostname);
-      }
+      resolved.addAll(lookup(hostname));
     }
 
     cachedHostAddresses = Set.copyOf(resolved);
     cacheExpiresAt = now.plus(cacheTtl);
     return cachedHostAddresses;
+  }
+
+  protected Set<String> lookup(String hostname) {
+    var resolved = new HashSet<String>();
+    if (hostname == null || hostname.isBlank()) {
+      return resolved;
+    }
+    try {
+      for (InetAddress address : InetAddress.getAllByName(hostname.trim())) {
+        resolved.add(address.getHostAddress());
+      }
+    } catch (UnknownHostException e) {
+      log.warn("Trusted proxy hostname '{}' did not resolve; ignoring it", hostname);
+    }
+    return resolved;
   }
 }
