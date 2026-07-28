@@ -113,7 +113,8 @@ public class SecurityConfig {
                     .hasAnyRole("USER", "ADMIN")
                     .requestMatchers(HttpMethod.DELETE, "/api/**")
                     .hasAnyRole("USER", "ADMIN")
-                    // Everything else — actuator health, swagger, static resources
+                    // Only actuator health is public — swagger and static resources now
+                    // require authentication, matched by the anyRequest() rule below
                     .requestMatchers("/actuator/health/**")
                     .permitAll()
                     .anyRequest()
