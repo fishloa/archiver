@@ -73,6 +73,7 @@ services:
       DATASOURCE_PASSWORD: ${DB_PASSWORD}
       ARCHIVER_STORAGE_ROOT: /data/archiver_store
       ARCHIVER_PROCESSOR_TOKEN: ${PROCESSOR_TOKEN}
+      MCP_TOKEN: ${MCP_TOKEN}
       ARCHIVER_ESCALATION_CONFIDENCE_MIN: "0.70"
       ARCHIVER_ESCALATION_TEXT_MIN_CHARS: "200"
       ARCHIVER_ESCALATION_JUNK_RATIO_MAX: "0.25"
@@ -107,6 +108,7 @@ services:
     user: "${CONTAINER_USER:-1012:1012}"
     environment:
       BACKEND_URL: http://backend:8080
+      PROCESSOR_TOKEN: ${PROCESSOR_TOKEN}
     depends_on:
       - backend
     restart: "no"
@@ -184,6 +186,7 @@ services:
     user: "${CONTAINER_USER:-1012:1012}"
     environment:
       BACKEND_URL: http://backend:8080
+      PROCESSOR_TOKEN: ${PROCESSOR_TOKEN}
       EBADATELNA_EMAIL: ${EBADATELNA_EMAIL:-}
       EBADATELNA_PASSWORD: ${EBADATELNA_PASSWORD:-}
     depends_on:
@@ -195,6 +198,7 @@ services:
     user: "${CONTAINER_USER:-1012:1012}"
     environment:
       BACKEND_URL: http://backend:8080
+      PROCESSOR_TOKEN: ${PROCESSOR_TOKEN}
       FINDBUCH_USERNAME: ${FINDBUCH_USERNAME:-}
       FINDBUCH_PASSWORD: ${FINDBUCH_PASSWORD:-}
     depends_on:
@@ -206,6 +210,7 @@ services:
     user: "${CONTAINER_USER:-1012:1012}"
     environment:
       BACKEND_URL: http://backend:8080
+      PROCESSOR_TOKEN: ${PROCESSOR_TOKEN}
     depends_on:
       - backend
     restart: "no"
@@ -215,6 +220,7 @@ services:
     user: "${CONTAINER_USER:-1012:1012}"
     environment:
       BACKEND_URL: http://backend:8080
+      PROCESSOR_TOKEN: ${PROCESSOR_TOKEN}
     depends_on:
       - backend
     restart: "no"
