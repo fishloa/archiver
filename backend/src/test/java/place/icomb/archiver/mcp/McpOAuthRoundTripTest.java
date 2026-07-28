@@ -60,6 +60,15 @@ import org.testcontainers.junit.jupiter.Testcontainers;
  * token against McpResourceServerConfig's own audience validation -- every earlier test either
  * registered a client directly (bypassing DCR and the consent step entirely) or hit the
  * consent-required assumption-skip before reaching token exchange.
+ *
+ * <p>The {@code resource} value used here is the FULL MCP endpoint URL ({@code .../api/mcp/sse}),
+ * not just its path prefix -- matching what Claude.ai itself sends (confirmed via its own RFC 9728
+ * protected-resource-metadata probe at {@code /.well-known/oauth-protected-resource/api/mcp/sse} in
+ * production nginx logs), and exactly what surfaced the next live bug: McpResourceServerConfig
+ * originally configured {@code resourcePath("/api/mcp")} (the route prefix), not {@code
+ * "/api/mcp/sse"} (the actual endpoint) -- so every real, correctly-issued token still failed
+ * audience validation, because the validator's own expected-audience string never matched what a
+ * real client actually requested.
  */
 @Testcontainers
 @ActiveProfiles("test")
@@ -158,7 +167,7 @@ class McpOAuthRoundTripTest {
     // rejects with "aud claim is not valid". Sending it is the CLIENT's responsibility per spec --
     // a real MCP client (Claude.ai included) is expected to include it once it reaches this point
     // in the flow, which nothing tested before this task had actually reached.
-    String resource = java.net.URLEncoder.encode(base() + "/api/mcp", "UTF-8");
+    String resource = java.net.URLEncoder.encode(base() + "/api/mcp/sse", "UTF-8");
 
     // No `scope` param -- Dynamic Client Registration's default
     // OAuth2ClientRegistrationAuthenticationValidator unconditionally rejects a `scope` field in
@@ -259,6 +268,23 @@ class McpOAuthRoundTripTest {
     var mcpResponse = http.send(mcpRequest, HttpResponse.BodyHandlers.ofString());
 
     assertThat(mcpResponse.statusCode()).isNotIn(401, 403);
+
+    // Real MCP clients (Claude.ai confirmed) also probe with a plain GET before falling back to
+    // this app's actual (POST-only, Streamable HTTP) transport. A valid, correctly-audienced
+    // token must never be rejected by the SECURITY layer regardless of HTTP method -- a 404 here
+    // (no GET handler registered, since this transport is POST-only) is fine; a 401/403 would mean
+    // the audience validation is STILL broken for this exact request shape, which is exactly what
+    // regressed in production (resourcePath mismatch -- see McpResourceServerConfig).
+    var getMcpRequest =
+        HttpRequest.newBuilder(URI.create(base() + "/api/mcp/sse"))
+            .header("Authorization", "Bearer " + accessToken)
+            .header("Accept", "text/event-stream")
+            .GET()
+            .build();
+    var getMcpResponse = http.send(getMcpRequest, HttpResponse.BodyHandlers.ofString());
+    assertThat(getMcpResponse.statusCode())
+        .as("a validly-audienced token must never be rejected by the security layer on GET")
+        .isNotIn(401, 403);
   }
 
   // Regression test for a live production bug found during Task 10's manual Claude.ai

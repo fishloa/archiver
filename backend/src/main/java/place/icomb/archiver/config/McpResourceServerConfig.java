@@ -35,9 +35,20 @@ import org.springframework.web.cors.CorsConfigurationSource;
  * entirely; audience validation (`validateAudienceClaim(true)`) still wraps whichever decoder is
  * supplied, confirmed by decompiling {@code McpServerOAuth2Configurer.getJwtDecoder(String)}.
  *
- * <p>Also sets {@code resourcePath("/api/mcp")} -- the library's default resource path is {@code
- * /mcp} (baked into {@code McpServerOAuth2Configurer}'s constructor), which would compute the wrong
- * expected audience for requests actually mounted at {@code /api/mcp/**}.
+ * <p>Also sets {@code resourcePath("/api/mcp/sse")} -- the library's default resource path is
+ * {@code /mcp} (baked into {@code McpServerOAuth2Configurer}'s constructor), which would compute
+ * the wrong expected audience for requests actually mounted at {@code /api/mcp/**}. This must be
+ * the exact endpoint path, not just its prefix ({@code /api/mcp}): {@code
+ * ResourceIdentifier.getResource()} builds the expected audience string from this configured path
+ * verbatim, and real MCP clients (Claude.ai confirmed, via its own RFC 9728
+ * protected-resource-metadata probe at {@code /.well-known/oauth-protected-resource/api/mcp/sse})
+ * send the FULL canonical endpoint URL as the RFC 8707 {@code resource} parameter when requesting a
+ * token -- not just its path prefix. A mismatch here (this was originally {@code "/api/mcp"}) means
+ * the issued token's {@code aud} claim (set verbatim from whatever the client requested, confirmed
+ * via decompiling {@code ResourceIdentifierAudienceTokenCustomizer}) never matches what this
+ * validator expects, and every real call is rejected with "aud claim is not valid" -- discovered
+ * live: Claude.ai could complete DCR, consent, and token exchange, then had every single MCP call
+ * rejected in a token-refresh retry loop.
  *
  * <p>Also explicitly disables CSRF, forces a stateless session policy, and applies the shared
  * Claude.ai CORS configuration ({@link McpCorsConfig}) on this chain. Spring Security resolves each
@@ -95,7 +106,7 @@ public class McpResourceServerConfig {
             McpServerOAuth2Configurer.mcpServerOAuth2(),
             (mcpAuthorization) -> {
               mcpAuthorization.authorizationServer(issuer);
-              mcpAuthorization.resourcePath("/api/mcp");
+              mcpAuthorization.resourcePath("/api/mcp/sse");
               mcpAuthorization.jwtDecoder(jwtDecoder);
               mcpAuthorization.validateAudienceClaim(true);
             })
