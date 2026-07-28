@@ -2,7 +2,7 @@ import type { PageServerLoad } from './$types';
 import type { RequestEvent } from '@sveltejs/kit';
 import { searchFamilyTree, relatePerson, fetchFamilyPerson, updateProfile } from '$lib/server/api';
 
-export const load: PageServerLoad = async ({ url, parent }) => {
+export const load: PageServerLoad = async ({ url, parent, locals }) => {
 	const q = url.searchParams.get('q') || '';
 	const personId = url.searchParams.get('personId');
 
@@ -14,12 +14,15 @@ export const load: PageServerLoad = async ({ url, parent }) => {
 	let person: any = null;
 
 	if (q) {
-		results = await searchFamilyTree(q, 10);
+		results = await searchFamilyTree(locals.userEmail, q, 10);
 	}
 
 	if (personId) {
 		const pid = parseInt(personId);
-		[relationship, person] = await Promise.all([relatePerson(pid, refId), fetchFamilyPerson(pid)]);
+		[relationship, person] = await Promise.all([
+			relatePerson(locals.userEmail, pid, refId),
+			fetchFamilyPerson(locals.userEmail, pid)
+		]);
 	}
 
 	return { q, results, relationship, person, personId: personId ? parseInt(personId) : null };

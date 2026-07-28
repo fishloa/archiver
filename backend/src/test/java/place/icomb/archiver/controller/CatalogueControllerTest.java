@@ -40,6 +40,8 @@ class CatalogueControllerTest {
   private final HttpClient http = HttpClient.newHttpClient();
   private final ObjectMapper mapper = new ObjectMapper();
 
+  private static final String TEST_EMAIL = "catalogue-test@example.com";
+
   @DynamicPropertySource
   static void configureProperties(DynamicPropertyRegistry registry) {
     registry.add("spring.datasource.url", () -> postgres.getJdbcUrl() + "&stringtype=unspecified");
@@ -50,6 +52,19 @@ class CatalogueControllerTest {
   @BeforeEach
   void setUp() {
     jdbc.sql("DELETE FROM record WHERE title LIKE 'CatTest%'").update();
+
+    jdbc.sql("DELETE FROM app_user_email WHERE email = :email").param("email", TEST_EMAIL).update();
+    jdbc.sql("DELETE FROM app_user WHERE display_name = 'CatalogueTest User'").update();
+    Long userId =
+        jdbc.sql(
+                "INSERT INTO app_user (display_name, role) VALUES ('CatalogueTest User', 'user')"
+                    + " RETURNING id")
+            .query(Long.class)
+            .single();
+    jdbc.sql("INSERT INTO app_user_email (user_id, email) VALUES (:uid, :email)")
+        .param("uid", userId)
+        .param("email", TEST_EMAIL)
+        .update();
   }
 
   @Test
@@ -83,6 +98,7 @@ class CatalogueControllerTest {
                         + "/api/records?archiveId="
                         + archiveId
                         + "&sortBy=createdAt&sortDir=desc"))
+            .header("X-Auth-Email", TEST_EMAIL)
             .GET()
             .build();
 

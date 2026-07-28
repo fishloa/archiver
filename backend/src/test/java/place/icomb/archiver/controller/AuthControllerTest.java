@@ -153,4 +153,31 @@ class AuthControllerTest {
     Map<String, Object> body = mapper.readValue(resp.body(), Map.class);
     assertThat(body.get("authenticated")).isEqualTo(false);
   }
+
+  @Test
+  void reportsSignedInAsForAnEmailThatIsNotOnTheAllowlist() throws Exception {
+    var request =
+        HttpRequest.newBuilder(URI.create("http://localhost:" + port + "/api/auth/me"))
+            .header("X-Auth-Email", "stranger@example.com")
+            .GET()
+            .build();
+    var response = HttpClient.newHttpClient().send(request, HttpResponse.BodyHandlers.ofString());
+
+    assertThat(response.statusCode()).isEqualTo(200);
+    assertThat(response.body()).contains("\"authenticated\":false");
+    assertThat(response.body()).contains("\"signedInAs\":\"stranger@example.com\"");
+  }
+
+  @Test
+  void omitsSignedInAsWhenNoEmailWasPresented() throws Exception {
+    var request =
+        HttpRequest.newBuilder(URI.create("http://localhost:" + port + "/api/auth/me"))
+            .GET()
+            .build();
+    var response = HttpClient.newHttpClient().send(request, HttpResponse.BodyHandlers.ofString());
+
+    assertThat(response.statusCode()).isEqualTo(200);
+    assertThat(response.body()).contains("\"authenticated\":false");
+    assertThat(response.body()).doesNotContain("signedInAs");
+  }
 }

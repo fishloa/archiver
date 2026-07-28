@@ -10,9 +10,12 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.util.List;
 import java.util.Map;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.server.LocalServerPort;
+import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
@@ -35,8 +38,12 @@ class FamilyTreeControllerTest {
 
   @LocalServerPort private int port;
 
+  @Autowired private JdbcClient jdbc;
+
   private final HttpClient http = HttpClient.newHttpClient();
   private final ObjectMapper mapper = new ObjectMapper();
+
+  private static final String TEST_EMAIL = "family-tree-test@example.com";
 
   @DynamicPropertySource
   static void configureProperties(DynamicPropertyRegistry registry) {
@@ -45,16 +52,41 @@ class FamilyTreeControllerTest {
     registry.add("spring.datasource.password", postgres::getPassword);
   }
 
+  @BeforeEach
+  void setUp() {
+    jdbc.sql("DELETE FROM app_user_email WHERE email = :email").param("email", TEST_EMAIL).update();
+    jdbc.sql("DELETE FROM app_user WHERE display_name = 'FamilyTreeTest User'").update();
+    Long userId =
+        jdbc.sql(
+                "INSERT INTO app_user (display_name, role) VALUES ('FamilyTreeTest User', 'user')"
+                    + " RETURNING id")
+            .query(Long.class)
+            .single();
+    jdbc.sql("INSERT INTO app_user_email (user_id, email) VALUES (:uid, :email)")
+        .param("uid", userId)
+        .param("email", TEST_EMAIL)
+        .update();
+  }
+
   private String base() {
     return "http://localhost:" + port + "/api/family-tree";
+  }
+
+  private HttpRequest.Builder authedGet(String url) {
+    return HttpRequest.newBuilder(URI.create(url)).header("X-Auth-Email", TEST_EMAIL).GET();
+  }
+
+  private HttpRequest.Builder authedPost(String url) {
+    return HttpRequest.newBuilder(URI.create(url))
+        .header("X-Auth-Email", TEST_EMAIL)
+        .POST(HttpRequest.BodyPublishers.noBody());
   }
 
   // ── Search ──
 
   @Test
   void searchReturnsResults() throws Exception {
-    var req =
-        HttpRequest.newBuilder(URI.create(base() + "/search?q=alexander&limit=5")).GET().build();
+    var req = authedGet(base() + "/search?q=alexander&limit=5").build();
     var resp = http.send(req, HttpResponse.BodyHandlers.ofString());
 
     assertThat(resp.statusCode()).isEqualTo(200);
@@ -66,8 +98,7 @@ class FamilyTreeControllerTest {
 
   @Test
   void searchRespectsLimit() throws Exception {
-    var req =
-        HttpRequest.newBuilder(URI.create(base() + "/search?q=czernin&limit=2")).GET().build();
+    var req = authedGet(base() + "/search?q=czernin&limit=2").build();
     var resp = http.send(req, HttpResponse.BodyHandlers.ofString());
 
     assertThat(resp.statusCode()).isEqualTo(200);
@@ -78,10 +109,7 @@ class FamilyTreeControllerTest {
 
   @Test
   void searchNoMatchReturnsEmpty() throws Exception {
-    var req =
-        HttpRequest.newBuilder(URI.create(base() + "/search?q=zzzzzznotaperson&limit=5"))
-            .GET()
-            .build();
+    var req = authedGet(base() + "/search?q=zzzzzznotaperson&limit=5").build();
     var resp = http.send(req, HttpResponse.BodyHandlers.ofString());
 
     assertThat(resp.statusCode()).isEqualTo(200);
@@ -95,7 +123,7 @@ class FamilyTreeControllerTest {
   @Test
   void getPersonReturnsDetail() throws Exception {
     // Person 1 is always Alexander (the root person)
-    var req = HttpRequest.newBuilder(URI.create(base() + "/person/1")).GET().build();
+    var req = authedGet(base() + "/person/1").build();
     var resp = http.send(req, HttpResponse.BodyHandlers.ofString());
 
     assertThat(resp.statusCode()).isEqualTo(200);
@@ -107,7 +135,7 @@ class FamilyTreeControllerTest {
 
   @Test
   void getPersonNotFoundReturns404() throws Exception {
-    var req = HttpRequest.newBuilder(URI.create(base() + "/person/999999")).GET().build();
+    var req = authedGet(base() + "/person/999999").build();
     var resp = http.send(req, HttpResponse.BodyHandlers.ofString());
 
     assertThat(resp.statusCode()).isEqualTo(404);
@@ -115,7 +143,7 @@ class FamilyTreeControllerTest {
 
   @Test
   void getPersonHasParentAndChildren() throws Exception {
-    var req = HttpRequest.newBuilder(URI.create(base() + "/person/1")).GET().build();
+    var req = authedGet(base() + "/person/1").build();
     var resp = http.send(req, HttpResponse.BodyHandlers.ofString());
 
     Map<String, Object> body = mapper.readValue(resp.body(), Map.class);
@@ -130,16 +158,14 @@ class FamilyTreeControllerTest {
   @Test
   void relateReturnsKinship() throws Exception {
     // First find a person via search
-    var searchReq =
-        HttpRequest.newBuilder(URI.create(base() + "/search?q=czernin&limit=1")).GET().build();
+    var searchReq = authedGet(base() + "/search?q=czernin&limit=1").build();
     var searchResp = http.send(searchReq, HttpResponse.BodyHandlers.ofString());
     List<Map<String, Object>> searchResults =
         mapper.readValue(searchResp.body(), new TypeReference<List<Map<String, Object>>>() {});
     assertThat(searchResults).isNotEmpty();
     int personId = ((Number) searchResults.getFirst().get("personId")).intValue();
 
-    var req =
-        HttpRequest.newBuilder(URI.create(base() + "/relate?personId=" + personId)).GET().build();
+    var req = authedGet(base() + "/relate?personId=" + personId).build();
     var resp = http.send(req, HttpResponse.BodyHandlers.ofString());
 
     assertThat(resp.statusCode()).isEqualTo(200);
@@ -151,7 +177,7 @@ class FamilyTreeControllerTest {
 
   @Test
   void relateNotFoundReturns404() throws Exception {
-    var req = HttpRequest.newBuilder(URI.create(base() + "/relate?personId=999999")).GET().build();
+    var req = authedGet(base() + "/relate?personId=999999").build();
     var resp = http.send(req, HttpResponse.BodyHandlers.ofString());
 
     assertThat(resp.statusCode()).isEqualTo(404);
@@ -162,8 +188,7 @@ class FamilyTreeControllerTest {
   @Test
   void relateWithRefIdUsesCustomReference() throws Exception {
     // Search for two different people
-    var searchReq =
-        HttpRequest.newBuilder(URI.create(base() + "/search?q=czernin&limit=5")).GET().build();
+    var searchReq = authedGet(base() + "/search?q=czernin&limit=5").build();
     var searchResp = http.send(searchReq, HttpResponse.BodyHandlers.ofString());
     List<Map<String, Object>> results =
         mapper.readValue(searchResp.body(), new TypeReference<List<Map<String, Object>>>() {});
@@ -173,11 +198,7 @@ class FamilyTreeControllerTest {
     int refId = ((Number) results.get(1).get("personId")).intValue();
 
     // Relate with custom ref
-    var req =
-        HttpRequest.newBuilder(
-                URI.create(base() + "/relate?personId=" + personId + "&refId=" + refId))
-            .GET()
-            .build();
+    var req = authedGet(base() + "/relate?personId=" + personId + "&refId=" + refId).build();
     var resp = http.send(req, HttpResponse.BodyHandlers.ofString());
 
     assertThat(resp.statusCode()).isEqualTo(200);
@@ -190,8 +211,7 @@ class FamilyTreeControllerTest {
   @Test
   void relateWithRefIdDifferentFromDefault() throws Exception {
     // Person 1 = Alexander. Get relate without refId (default) and with refId=different person
-    var searchReq =
-        HttpRequest.newBuilder(URI.create(base() + "/search?q=czernin&limit=3")).GET().build();
+    var searchReq = authedGet(base() + "/search?q=czernin&limit=3").build();
     var searchResp = http.send(searchReq, HttpResponse.BodyHandlers.ofString());
     List<Map<String, Object>> results =
         mapper.readValue(searchResp.body(), new TypeReference<List<Map<String, Object>>>() {});
@@ -200,19 +220,14 @@ class FamilyTreeControllerTest {
     int personId = ((Number) results.get(0).get("personId")).intValue();
 
     // Default relate (ref = Alexander)
-    var defaultReq =
-        HttpRequest.newBuilder(URI.create(base() + "/relate?personId=" + personId)).GET().build();
+    var defaultReq = authedGet(base() + "/relate?personId=" + personId).build();
     var defaultResp = http.send(defaultReq, HttpResponse.BodyHandlers.ofString());
     Map<String, Object> defaultBody = mapper.readValue(defaultResp.body(), Map.class);
 
     // Find a different ref person
     int refId = ((Number) results.get(1).get("personId")).intValue();
 
-    var customReq =
-        HttpRequest.newBuilder(
-                URI.create(base() + "/relate?personId=" + personId + "&refId=" + refId))
-            .GET()
-            .build();
+    var customReq = authedGet(base() + "/relate?personId=" + personId + "&refId=" + refId).build();
     var customResp = http.send(customReq, HttpResponse.BodyHandlers.ofString());
     Map<String, Object> customBody = mapper.readValue(customResp.body(), Map.class);
 
@@ -223,10 +238,7 @@ class FamilyTreeControllerTest {
 
   @Test
   void relateWithInvalidRefIdReturns404() throws Exception {
-    var req =
-        HttpRequest.newBuilder(URI.create(base() + "/relate?personId=1&refId=999999"))
-            .GET()
-            .build();
+    var req = authedGet(base() + "/relate?personId=1&refId=999999").build();
     var resp = http.send(req, HttpResponse.BodyHandlers.ofString());
 
     assertThat(resp.statusCode()).isEqualTo(404);
@@ -236,7 +248,7 @@ class FamilyTreeControllerTest {
 
   @Test
   void pageMatchesReturnsEmptyForUnknownPage() throws Exception {
-    var req = HttpRequest.newBuilder(URI.create(base() + "/page-matches/999999")).GET().build();
+    var req = authedGet(base() + "/page-matches/999999").build();
     var resp = http.send(req, HttpResponse.BodyHandlers.ofString());
 
     assertThat(resp.statusCode()).isEqualTo(200);
@@ -247,7 +259,7 @@ class FamilyTreeControllerTest {
 
   @Test
   void recordMatchesReturnsEmptyForUnknownRecord() throws Exception {
-    var req = HttpRequest.newBuilder(URI.create(base() + "/record-matches/999999")).GET().build();
+    var req = authedGet(base() + "/record-matches/999999").build();
     var resp = http.send(req, HttpResponse.BodyHandlers.ofString());
 
     assertThat(resp.statusCode()).isEqualTo(200);
@@ -260,10 +272,7 @@ class FamilyTreeControllerTest {
 
   @Test
   void reloadReturnsCount() throws Exception {
-    var req =
-        HttpRequest.newBuilder(URI.create(base() + "/reload"))
-            .POST(HttpRequest.BodyPublishers.noBody())
-            .build();
+    var req = authedPost(base() + "/reload").build();
     var resp = http.send(req, HttpResponse.BodyHandlers.ofString());
 
     assertThat(resp.statusCode()).isEqualTo(200);
@@ -274,10 +283,7 @@ class FamilyTreeControllerTest {
 
   @Test
   void invalidateMatchesReturnsOk() throws Exception {
-    var req =
-        HttpRequest.newBuilder(URI.create(base() + "/invalidate-matches"))
-            .POST(HttpRequest.BodyPublishers.noBody())
-            .build();
+    var req = authedPost(base() + "/invalidate-matches").build();
     var resp = http.send(req, HttpResponse.BodyHandlers.ofString());
 
     assertThat(resp.statusCode()).isEqualTo(200);

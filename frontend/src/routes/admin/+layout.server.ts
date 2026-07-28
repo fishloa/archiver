@@ -8,6 +8,14 @@ export const load: LayoutServerLoad = async ({ locals }) => {
 	}
 
 	const user = await fetchCurrentUser(locals.userEmail);
+
+	// A backend blip (5xx or thrown fetch error) reports authenticated: false
+	// even for a genuine admin. Don't bounce them out of /admin on that basis --
+	// see routes/+layout.server.ts for the same reasoning.
+	if (user.backendUnavailable) {
+		return;
+	}
+
 	if (!user.authenticated || user.role !== 'admin') {
 		redirect(307, '/');
 	}

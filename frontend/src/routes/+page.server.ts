@@ -3,7 +3,7 @@ import type { RecordPersonMatch } from '$lib/server/api';
 import { env } from '$env/dynamic/private';
 import type { PageServerLoad } from './$types';
 
-export const load: PageServerLoad = async ({ url }) => {
+export const load: PageServerLoad = async ({ url, locals }) => {
 	const q = url.searchParams.get('q') ?? '';
 	const page = Number(url.searchParams.get('page') ?? '0');
 
@@ -15,7 +15,7 @@ export const load: PageServerLoad = async ({ url }) => {
 	const offset = page * limit;
 
 	// Semantic search
-	const searchResult = await semanticSearch(q, limit + offset + 1);
+	const searchResult = await semanticSearch(locals.userEmail, q, limit + offset + 1);
 	const allResults = searchResult.results || [];
 	const results = allResults.slice(offset, offset + limit);
 	const hasMore = allResults.length > offset + limit;
@@ -85,7 +85,7 @@ Question: ${q}`
 	// Record #links work immediately; person name links appear when this resolves.
 	const uniqueRecordIds = [...new Set(results.map((c) => c.recordId))];
 	const personRefsPromise = (answer && uniqueRecordIds.length > 0)
-		? Promise.all(uniqueRecordIds.map((rid) => fetchRecordPersonMatches(rid)))
+		? Promise.all(uniqueRecordIds.map((rid) => fetchRecordPersonMatches(locals.userEmail, rid)))
 			.then((matchArrays) => {
 				const seen = new Set<number>();
 				const refs: { name: string; personId: number }[] = [];

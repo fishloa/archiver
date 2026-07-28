@@ -73,6 +73,8 @@ class SemanticSearchTest {
     registry.add("archiver.embed.tei-key", () -> "test-tei-key");
   }
 
+  private static final String TEST_EMAIL = "semantic-search-test@example.com";
+
   private String base() {
     return "http://localhost:" + port + "/api";
   }
@@ -81,6 +83,19 @@ class SemanticSearchTest {
   void setUp() {
     teiServer.resetAll();
     jdbc.sql("DELETE FROM text_chunk").update();
+
+    jdbc.sql("DELETE FROM app_user_email WHERE email = :email").param("email", TEST_EMAIL).update();
+    jdbc.sql("DELETE FROM app_user WHERE display_name = 'SemanticSearchTest User'").update();
+    Long userId =
+        jdbc.sql(
+                "INSERT INTO app_user (display_name, role) VALUES ('SemanticSearchTest User',"
+                    + " 'user') RETURNING id")
+            .query(Long.class)
+            .single();
+    jdbc.sql("INSERT INTO app_user_email (user_id, email) VALUES (:uid, :email)")
+        .param("uid", userId)
+        .param("email", TEST_EMAIL)
+        .update();
   }
 
   @Test
@@ -110,6 +125,7 @@ class SemanticSearchTest {
             HttpRequest.newBuilder()
                 .uri(URI.create(base() + "/search/semantic"))
                 .header("Content-Type", "application/json")
+                .header("X-Auth-Email", TEST_EMAIL)
                 .POST(HttpRequest.BodyPublishers.ofString(body))
                 .build(),
             HttpResponse.BodyHandlers.ofString());
@@ -185,6 +201,7 @@ class SemanticSearchTest {
             HttpRequest.newBuilder()
                 .uri(URI.create(base() + "/search/semantic"))
                 .header("Content-Type", "application/json")
+                .header("X-Auth-Email", TEST_EMAIL)
                 .POST(HttpRequest.BodyPublishers.ofString(body))
                 .build(),
             HttpResponse.BodyHandlers.ofString());

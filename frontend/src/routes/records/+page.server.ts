@@ -1,7 +1,7 @@
 import { fetchRecords, fetchArchives } from '$lib/server/api';
 import type { PageServerLoad } from './$types';
 
-export const load: PageServerLoad = async ({ url }) => {
+export const load: PageServerLoad = async ({ url, locals }) => {
 	const page = Number(url.searchParams.get('page') ?? '0');
 	const size = Number(url.searchParams.get('size') ?? '20');
 	const sortBy = url.searchParams.get('sortBy') ?? 'createdAt';
@@ -11,8 +11,8 @@ export const load: PageServerLoad = async ({ url }) => {
 	const archiveId = archiveIdParam ? Number(archiveIdParam) : undefined;
 
 	const [records, archives] = await Promise.all([
-		fetchRecords(page, size, sortBy, sortDir, status, archiveId),
-		fetchArchives()
+		fetchRecords(locals.userEmail, page, size, sortBy, sortDir, status, archiveId),
+		fetchArchives(locals.userEmail)
 	]);
 	return { records, archives, sortBy, sortDir, status: status ?? '', archiveId: archiveId ?? 0 };
 };

@@ -1,5 +1,7 @@
 package place.icomb.archiver.config;
 
+import java.time.Duration;
+import java.util.Arrays;
 import java.util.List;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
@@ -21,12 +23,31 @@ public class SecurityConfig {
 
   private final AppUserRepository appUserRepository;
   private final String processorToken;
+  private final String mcpToken;
+  private final TrustedPeerResolver trustedPeerResolver;
 
   public SecurityConfig(
       AppUserRepository appUserRepository,
-      @Value("${archiver.processor.token}") String processorToken) {
+      @Value("${archiver.processor.token}") String processorToken,
+      @Value("${archiver.auth.trusted-cidrs:}") String trustedCidrs,
+      @Value("${archiver.auth.trusted-proxy-hosts:}") String trustedProxyHosts,
+      @Value("${archiver.auth.trusted-peer-cache-seconds:30}") long trustedPeerCacheSeconds,
+      @Value("${archiver.mcp.token:}") String mcpToken) {
     this.appUserRepository = appUserRepository;
     this.processorToken = processorToken;
+    this.mcpToken = mcpToken;
+    this.trustedPeerResolver =
+        new TrustedPeerResolver(
+            splitCsv(trustedCidrs),
+            splitCsv(trustedProxyHosts),
+            Duration.ofSeconds(trustedPeerCacheSeconds));
+  }
+
+  private static List<String> splitCsv(String value) {
+    if (value == null || value.isBlank()) {
+      return List.of();
+    }
+    return Arrays.stream(value.split(",")).map(String::trim).filter(s -> !s.isEmpty()).toList();
   }
 
   @Bean
@@ -35,21 +56,27 @@ public class SecurityConfig {
         .csrf(csrf -> csrf.disable())
         .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
         .addFilterBefore(
-            new ProxyAuthFilter(appUserRepository), UsernamePasswordAuthenticationFilter.class)
+            new ProxyAuthFilter(appUserRepository, trustedPeerResolver),
+            UsernamePasswordAuthenticationFilter.class)
         .addFilterBefore(
             new ProcessorTokenFilter(processorToken), UsernamePasswordAuthenticationFilter.class)
+        .addFilterBefore(new McpTokenFilter(mcpToken), UsernamePasswordAuthenticationFilter.class)
         .authorizeHttpRequests(
             auth ->
                 auth
-                    // MCP server endpoints — read-only tools, no auth needed
+                    // MCP server endpoints — shared token until per-user OAuth lands
                     .requestMatchers("/api/mcp/**")
-                    .permitAll()
+                    .hasRole("MCP")
                     // Admin GET endpoints — admin only (must precede general GET permit)
                     .requestMatchers(HttpMethod.GET, "/api/admin/**")
                     .hasRole("ADMIN")
-                    // GET requests are read-only — allow anonymous
-                    .requestMatchers(HttpMethod.GET, "/api/**")
+                    // Auth endpoint — must precede the general GET permit below so it isn't
+                    // shadowed; /api/auth/me must answer for a signed-out caller.
+                    .requestMatchers("/api/auth/**")
                     .permitAll()
+                    // All reads require an allowlisted user
+                    .requestMatchers(HttpMethod.GET, "/api/**")
+                    .hasAnyRole("USER", "ADMIN", "PROCESSOR")
                     // Worker/scraper ingest — bearer token or admin only
                     .requestMatchers(HttpMethod.POST, "/api/ingest/**")
                     .hasAnyRole("PROCESSOR", "ADMIN")
@@ -62,23 +89,9 @@ public class SecurityConfig {
                     .hasAnyRole("PROCESSOR", "ADMIN")
                     .requestMatchers(HttpMethod.PUT, "/api/processor/**")
                     .hasAnyRole("PROCESSOR", "ADMIN")
-                    // Semantic search is a read-only POST
-                    .requestMatchers(HttpMethod.POST, "/api/search/semantic")
-                    .permitAll()
                     // Claude translation — requires login
                     .requestMatchers(HttpMethod.POST, "/api/translate/claude")
                     .hasAnyRole("USER", "ADMIN")
-                    // On-demand worker translation
-                    .requestMatchers(HttpMethod.POST, "/api/translate")
-                    .permitAll()
-                    // Family tree maintenance — idempotent
-                    .requestMatchers(HttpMethod.POST, "/api/family-tree/reload")
-                    .permitAll()
-                    .requestMatchers(HttpMethod.POST, "/api/family-tree/invalidate-matches")
-                    .permitAll()
-                    // Auth endpoint
-                    .requestMatchers("/api/auth/**")
-                    .permitAll()
                     // Self-service profile — requires login
                     .requestMatchers(HttpMethod.PUT, "/api/profile")
                     .hasAnyRole("USER", "ADMIN")
@@ -100,19 +113,22 @@ public class SecurityConfig {
                     .hasAnyRole("USER", "ADMIN")
                     .requestMatchers(HttpMethod.DELETE, "/api/**")
                     .hasAnyRole("USER", "ADMIN")
-                    // Everything else (actuator, swagger, etc.)
+                    // Only actuator health is public — swagger and static resources now
+                    // require authentication, matched by the anyRequest() rule below
+                    .requestMatchers("/actuator/health/**")
+                    .permitAll()
                     .anyRequest()
-                    .permitAll());
+                    .authenticated());
 
     return http.build();
   }
 
   private CorsConfigurationSource mcpCorsSource() {
     CorsConfiguration config = new CorsConfiguration();
-    config.setAllowedOrigins(List.of("*"));
-    config.setAllowedMethods(List.of("GET", "POST", "OPTIONS"));
-    config.setAllowedHeaders(List.of("*"));
-    config.setExposedHeaders(List.of("*"));
+    config.setAllowedOrigins(List.of("https://claude.ai"));
+    config.setAllowedMethods(List.of("GET", "POST", "DELETE", "OPTIONS"));
+    config.setAllowedHeaders(List.of("Authorization", "Content-Type", "Accept", "Mcp-Session-Id"));
+    config.setExposedHeaders(List.of("Mcp-Session-Id"));
 
     UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
     source.registerCorsConfiguration("/api/mcp/**", config);

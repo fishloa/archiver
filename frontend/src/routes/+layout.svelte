@@ -90,7 +90,7 @@
 					<a href="/profile" class="user-link" title={user.email}>
 						{user.displayName || user.email}
 					</a>
-					<a href="/oauth2-google/sign_out?rd=/" class="signout-btn" title={$t('nav.signOut')}>
+					<a href="/signout" class="signout-btn" title={$t('nav.signOut')}>
 						<LogOut size={16} strokeWidth={1.8} />
 					</a>
 				{:else}

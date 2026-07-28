@@ -18,17 +18,31 @@ export interface AuthUser {
   displayName?: string;
   role?: string;
   familyTreePersonId?: number;
+  signedInAs?: string;
+  // Set when we could not get a definitive answer from the backend (5xx or
+  // a network failure), as opposed to a genuine "authenticated: false"
+  // response, which the backend always returns as a 200 for a signed-in
+  // user who simply isn't on the allowlist (see AuthController#me). Callers
+  // must NOT treat backendUnavailable as "not allowlisted" -- it means
+  // "couldn't ask", not "no".
+  backendUnavailable?: boolean;
 }
 
 export async function fetchCurrentUser(email: string): Promise<AuthUser> {
-  const res = await fetch(`${backendUrl()}/api/auth/me`, {
-    headers: authHeaders(email),
-  });
-  if (!res.ok) return { authenticated: false };
-  return res.json();
+  try {
+    const res = await fetch(`${backendUrl()}/api/auth/me`, {
+      headers: authHeaders(email),
+    });
+    if (res.status >= 500) return { authenticated: false, backendUnavailable: true };
+    if (!res.ok) return { authenticated: false };
+    return res.json();
+  } catch {
+    return { authenticated: false, backendUnavailable: true };
+  }
 }
 
 export async function fetchRecords(
+  email: string | undefined,
   page: number,
   size: number,
   sortBy: string,
@@ -44,7 +58,9 @@ export async function fetchRecords(
   });
   if (status) params.set("status", status);
   if (archiveId) params.set("archiveId", String(archiveId));
-  const res = await fetch(`${backendUrl()}/api/records?${params}`);
+  const res = await fetch(`${backendUrl()}/api/records?${params}`, {
+    headers: authHeaders(email),
+  });
   if (!res.ok) throw new Error(`Backend error: ${res.status}`);
   return res.json();
 }
@@ -55,20 +71,26 @@ export interface ArchiveInfo {
   country: string;
 }
 
-export async function fetchArchives(): Promise<ArchiveInfo[]> {
-  const res = await fetch(`${backendUrl()}/api/records/archives`);
+export async function fetchArchives(email?: string): Promise<ArchiveInfo[]> {
+  const res = await fetch(`${backendUrl()}/api/records/archives`, {
+    headers: authHeaders(email),
+  });
   if (!res.ok) throw new Error(`Backend error: ${res.status}`);
   return res.json();
 }
 
-export async function fetchRecord(id: number): Promise<RecordResponse> {
-  const res = await fetch(`${backendUrl()}/api/records/${id}`);
+export async function fetchRecord(email: string | undefined, id: number): Promise<RecordResponse> {
+  const res = await fetch(`${backendUrl()}/api/records/${id}`, {
+    headers: authHeaders(email),
+  });
   if (!res.ok) throw new Error(`Backend error: ${res.status}`);
   return res.json();
 }
 
-export async function fetchRecordPages(id: number): Promise<PageResponse[]> {
-  const res = await fetch(`${backendUrl()}/api/records/${id}/pages`);
+export async function fetchRecordPages(email: string | undefined, id: number): Promise<PageResponse[]> {
+  const res = await fetch(`${backendUrl()}/api/records/${id}/pages`, {
+    headers: authHeaders(email),
+  });
   if (!res.ok) throw new Error(`Backend error: ${res.status}`);
   return res.json();
 }
@@ -81,8 +103,10 @@ export interface PageTextResponse {
   textEn: string;
 }
 
-export async function fetchPageText(pageId: number): Promise<PageTextResponse> {
-  const res = await fetch(`${backendUrl()}/api/pages/${pageId}/text`);
+export async function fetchPageText(email: string | undefined, pageId: number): Promise<PageTextResponse> {
+  const res = await fetch(`${backendUrl()}/api/pages/${pageId}/text`, {
+    headers: authHeaders(email),
+  });
   if (!res.ok) throw new Error(`Backend error: ${res.status}`);
   return res.json();
 }
@@ -157,14 +181,18 @@ export interface ScraperEntry {
   instances: ScraperInstance[];
 }
 
-export async function fetchSourceStatus(): Promise<ScraperEntry[]> {
-  const res = await fetch(`${backendUrl()}/api/viewer/source-status`);
+export async function fetchSourceStatus(email?: string): Promise<ScraperEntry[]> {
+  const res = await fetch(`${backendUrl()}/api/viewer/source-status`, {
+    headers: authHeaders(email),
+  });
   if (!res.ok) throw new Error(`Backend error: ${res.status}`);
   return res.json();
 }
 
-export async function fetchPipelineStats(): Promise<PipelineStats> {
-  const res = await fetch(`${backendUrl()}/api/pipeline/stats`);
+export async function fetchPipelineStats(email?: string): Promise<PipelineStats> {
+  const res = await fetch(`${backendUrl()}/api/pipeline/stats`, {
+    headers: authHeaders(email),
+  });
   if (!res.ok) throw new Error(`Backend error: ${res.status}`);
   return res.json();
 }
@@ -191,9 +219,12 @@ export interface RecordTimeline {
 }
 
 export async function fetchRecordTimeline(
+  email: string | undefined,
   recordId: number,
 ): Promise<RecordTimeline> {
-  const res = await fetch(`${backendUrl()}/api/records/${recordId}/timeline`);
+  const res = await fetch(`${backendUrl()}/api/records/${recordId}/timeline`, {
+    headers: authHeaders(email),
+  });
   if (!res.ok) throw new Error(`Backend error: ${res.status}`);
   const data: { type: string; data: unknown }[] = await res.json();
   const events = (data.find((d) => d.type === "events")?.data ??
@@ -202,8 +233,10 @@ export async function fetchRecordTimeline(
   return { events, jobs };
 }
 
-export async function fetchAdminStats(): Promise<Record<string, unknown>> {
-  const res = await fetch(`${backendUrl()}/api/admin/stats`);
+export async function fetchAdminStats(email?: string): Promise<Record<string, unknown>> {
+  const res = await fetch(`${backendUrl()}/api/admin/stats`, {
+    headers: authHeaders(email),
+  });
   if (!res.ok) throw new Error(`Backend error: ${res.status}`);
   return res.json();
 }
@@ -218,6 +251,7 @@ export async function runAudit(email?: string): Promise<{ fixed: number }> {
 }
 
 export async function searchPages(
+  email: string | undefined,
   q: string,
   page: number = 0,
   size: number = 20,
@@ -227,7 +261,9 @@ export async function searchPages(
     page: String(page),
     size: String(size),
   });
-  const res = await fetch(`${backendUrl()}/api/search?${params}`);
+  const res = await fetch(`${backendUrl()}/api/search?${params}`, {
+    headers: authHeaders(email),
+  });
   if (!res.ok) throw new Error(`Backend error: ${res.status}`);
   return res.json();
 }
@@ -250,12 +286,13 @@ export interface SemanticSearchResponse {
 }
 
 export async function semanticSearch(
+  email: string | undefined,
   query: string,
   limit: number = 10,
 ): Promise<SemanticSearchResponse> {
   const res = await fetch(`${backendUrl()}/api/search/semantic`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: { "Content-Type": "application/json", ...authHeaders(email) },
     body: JSON.stringify({ query, limit }),
   });
   if (!res.ok) throw new Error(`Backend error: ${res.status}`);
@@ -263,20 +300,25 @@ export async function semanticSearch(
 }
 
 export async function searchFamilyTree(
+  email: string | undefined,
   q: string,
   limit: number = 10,
 ): Promise<any[]> {
   const params = new URLSearchParams({ q, limit: String(limit) });
-  const res = await fetch(`${backendUrl()}/api/family-tree/search?${params}`);
+  const res = await fetch(`${backendUrl()}/api/family-tree/search?${params}`, {
+    headers: authHeaders(email),
+  });
   if (!res.ok) return [];
   return res.json();
 }
 
-export async function fetchTranslateCapabilities(): Promise<{
+export async function fetchTranslateCapabilities(email?: string): Promise<{
   pairs: { source: string; target: string }[];
 }> {
   try {
-    const res = await fetch(`${backendUrl()}/api/translate/capabilities`);
+    const res = await fetch(`${backendUrl()}/api/translate/capabilities`, {
+      headers: authHeaders(email),
+    });
     if (!res.ok) return { pairs: [] };
     return res.json();
   } catch {
@@ -284,18 +326,25 @@ export async function fetchTranslateCapabilities(): Promise<{
   }
 }
 
-export async function relatePerson(personId: number, refId?: number): Promise<any | null> {
+export async function relatePerson(
+  email: string | undefined,
+  personId: number,
+  refId?: number,
+): Promise<any | null> {
   const params = new URLSearchParams({ personId: String(personId) });
   if (refId != null) params.set("refId", String(refId));
   const res = await fetch(
     `${backendUrl()}/api/family-tree/relate?${params}`,
+    { headers: authHeaders(email) },
   );
   if (!res.ok) return null;
   return res.json();
 }
 
-export async function fetchFamilyPerson(personId: number): Promise<any | null> {
-  const res = await fetch(`${backendUrl()}/api/family-tree/person/${personId}`);
+export async function fetchFamilyPerson(email: string | undefined, personId: number): Promise<any | null> {
+  const res = await fetch(`${backendUrl()}/api/family-tree/person/${personId}`, {
+    headers: authHeaders(email),
+  });
   if (!res.ok) return null;
   return res.json();
 }
@@ -312,10 +361,12 @@ export interface PagePersonMatch {
 }
 
 export async function fetchPagePersonMatches(
+  email: string | undefined,
   pageId: number,
 ): Promise<PagePersonMatch[]> {
   const res = await fetch(
     `${backendUrl()}/api/family-tree/page-matches/${pageId}`,
+    { headers: authHeaders(email) },
   );
   if (!res.ok) return [];
   return res.json();
@@ -334,10 +385,12 @@ export interface RecordPersonMatch {
 }
 
 export async function fetchRecordPersonMatches(
+  email: string | undefined,
   recordId: number,
 ): Promise<RecordPersonMatch[]> {
   const res = await fetch(
     `${backendUrl()}/api/family-tree/record-matches/${recordId}`,
+    { headers: authHeaders(email) },
   );
   if (!res.ok) return [];
   return res.json();
