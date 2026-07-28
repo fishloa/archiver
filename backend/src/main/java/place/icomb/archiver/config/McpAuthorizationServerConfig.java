@@ -1,5 +1,7 @@
 package place.icomb.archiver.config;
 
+import com.nimbusds.jose.jwk.source.JWKSource;
+import com.nimbusds.jose.proc.SecurityContext;
 import org.springaicommunity.mcp.security.authorizationserver.config.McpAuthorizationServerConfigurer;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
@@ -8,14 +10,23 @@ import org.springframework.core.annotation.Order;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.config.annotation.web.configurers.oauth2.server.authorization.McpDefaultJwtCustomizer;
 import org.springframework.security.config.annotation.web.configurers.oauth2.server.authorization.OAuth2AuthorizationServerConfigurer;
+import org.springframework.security.oauth2.jwt.NimbusJwtEncoder;
 import org.springframework.security.oauth2.server.authorization.JdbcOAuth2AuthorizationConsentService;
 import org.springframework.security.oauth2.server.authorization.JdbcOAuth2AuthorizationService;
 import org.springframework.security.oauth2.server.authorization.OAuth2AuthorizationConsentService;
 import org.springframework.security.oauth2.server.authorization.OAuth2AuthorizationService;
 import org.springframework.security.oauth2.server.authorization.client.JdbcRegisteredClientRepository;
+import org.springframework.security.oauth2.server.authorization.client.RegisteredClient;
 import org.springframework.security.oauth2.server.authorization.client.RegisteredClientRepository;
+import org.springframework.security.oauth2.server.authorization.mcp.token.ResourceIdentifierAudienceTokenCustomizer;
 import org.springframework.security.oauth2.server.authorization.settings.AuthorizationServerSettings;
+import org.springframework.security.oauth2.server.authorization.settings.ClientSettings;
+import org.springframework.security.oauth2.server.authorization.token.DelegatingOAuth2TokenGenerator;
+import org.springframework.security.oauth2.server.authorization.token.JwtGenerator;
+import org.springframework.security.oauth2.server.authorization.token.OAuth2RefreshTokenGenerator;
+import org.springframework.security.oauth2.server.authorization.token.OAuth2TokenGenerator;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.logout.LogoutFilter;
 import org.springframework.security.web.servlet.util.matcher.PathPatternRequestMatcher;
@@ -152,9 +163,82 @@ public class McpAuthorizationServerConfig {
     return http.build();
   }
 
+  // McpAuthorizationServerConfigurer.getTokenGenerator() only builds its own OAuth2TokenGenerator
+  // (wired with ResourceIdentifierAudienceTokenCustomizer, which sets the `aud` claim from the
+  // token request's `resource` parameter, RFC 8707) if NEITHER an existing shared HttpSecurity
+  // object NOR a user-defined bean of that type is found -- confirmed via decompilation. In this
+  // chain, something (most likely OAuth2AuthorizationServerConfigurer's own `configure()` phase,
+  // building its own default generator via OAuth2TokenEndpointConfigurer) wins that race before
+  // the MCP configurer's init() ever gets to apply its audience-aware one: every issued JWT's
+  // `aud` claim came back set to the client_id (Spring's plain default), not the resource
+  // identifier, causing McpResourceServerConfig's audience validation to reject every real token
+  // with "aud claim is not valid" -- discovered via the full round-trip test, the first test in
+  // this whole plan to ever exercise a real issued token against the resource server chain.
+  // Defining this AS OUR OWN BEAN sidesteps the race entirely: Spring resolves a user bean before
+  // any configurer-internal shared-object logic runs, so this wins deterministically regardless
+  // of configurer init() ordering. Composition mirrors exactly what
+  // McpAuthorizationServerConfigurer.getTokenGenerator() builds internally (confirmed via
+  // decompilation): JwtGenerator + OAuth2RefreshTokenGenerator, delegated via
+  // DelegatingOAuth2TokenGenerator, with both the library's own default JWT customizer and the
+  // resource-audience customizer applied.
+  @Bean
+  public OAuth2TokenGenerator<?> tokenGenerator(JWKSource<SecurityContext> jwkSource) {
+    JwtGenerator jwtGenerator = new JwtGenerator(new NimbusJwtEncoder(jwkSource));
+    var resourceAudienceCustomizer = new ResourceIdentifierAudienceTokenCustomizer();
+    jwtGenerator.setJwtCustomizer(
+        context -> {
+          McpDefaultJwtCustomizer.DEFAULT_JWT_CUSTOMIZER.customize(context);
+          resourceAudienceCustomizer.customize(context);
+        });
+    return new DelegatingOAuth2TokenGenerator(jwtGenerator, new OAuth2RefreshTokenGenerator());
+  }
+
   @Bean
   public RegisteredClientRepository registeredClientRepository(JdbcTemplate jdbcTemplate) {
-    return new JdbcRegisteredClientRepository(jdbcTemplate);
+    RegisteredClientRepository delegate = new JdbcRegisteredClientRepository(jdbcTemplate);
+    return new RegisteredClientRepository() {
+      @Override
+      public void save(RegisteredClient registeredClient) {
+        delegate.save(skipConsentForScopelessClients(registeredClient));
+      }
+
+      @Override
+      public RegisteredClient findById(String id) {
+        return delegate.findById(id);
+      }
+
+      @Override
+      public RegisteredClient findByClientId(String clientId) {
+        return delegate.findByClientId(clientId);
+      }
+    };
+  }
+
+  // The default OAuth2ClientRegistrationAuthenticationValidator unconditionally rejects any
+  // `scope` field in a Dynamic Client Registration request body (RFC 7591 section 3.2.2), so
+  // every DCR-registered client -- including Claude.ai's -- ends up with zero scopes. Spring's
+  // default consent flow requires at least one approved scope to succeed:
+  // OAuth2AuthorizationConsentAuthenticationProvider throws access_denied when the set of
+  // consented scopes is empty and no prior consent exists, which is unconditionally true for a
+  // scopeless client -- there's nothing to check on the consent form, so consent can never
+  // complete. This isn't a UX nicety we're skipping -- it's structurally impossible for these
+  // clients, discovered when the real Claude.ai flow reproducibly failed at the consent-accept
+  // step with "OAuth 2.0 Parameter: client_id" (Spring's generic, misleadingly-labeled message
+  // for this exact empty-scope rejection). This system's actual authorization boundary is
+  // identity + allowlist (McpAuthorizeSessionFilter, Tasks 5-6), enforced before the consent page
+  // ever renders -- not OAuth scope, which McpResourceServerConfig doesn't check at all -- so
+  // skipping a consent screen that has nothing meaningful to show is the correct fix, not a
+  // workaround.
+  private static RegisteredClient skipConsentForScopelessClients(
+      RegisteredClient registeredClient) {
+    if (!registeredClient.getScopes().isEmpty()) {
+      return registeredClient;
+    }
+    ClientSettings settings =
+        ClientSettings.withSettings(registeredClient.getClientSettings().getSettings())
+            .requireAuthorizationConsent(false)
+            .build();
+    return RegisteredClient.from(registeredClient).clientSettings(settings).build();
   }
 
   @Bean

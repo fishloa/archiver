@@ -41,6 +41,25 @@ import org.testcontainers.junit.jupiter.Testcontainers;
  * {@code .scope("mcp.read")}, bypassing DCR) ends up with no scopes at all -- requesting one at
  * authorize time would fail scope validation. McpResourceServerConfig authenticates but does not
  * scope-check MCP calls, so no scope is actually required for this round trip to succeed.
+ *
+ * <p>Zero scopes has a further consequence beyond just "nothing to check": Spring's default consent
+ * flow requires at least one approved scope to succeed at all --
+ * OAuth2AuthorizationConsentAuthenticationProvider throws {@code access_denied} when the
+ * consented-scopes set is empty and there's no prior consent, which is unconditionally true for a
+ * scopeless client. This is why {@code registeredClientRepository} in McpAuthorizationServerConfig
+ * sets {@code requireAuthorizationConsent(false)} specifically for scopeless (DCR) clients --
+ * discovered when the real Claude.ai flow reproducibly failed at the consent-accept step ({@code
+ * confidentialDcrClientCanCompleteAuthorizeAndConsent} below reproduces this with a real DCR-issued
+ * {@code client_secret_post} client, matching Claude.ai's exact registration shape).
+ *
+ * <p>The main round trip also sends an RFC 8707 {@code resource} parameter on both the authorize
+ * and token requests -- required for the issued JWT's {@code aud} claim to be set to anything other
+ * than the client_id (see McpAuthorizationServerConfig's explicit {@code tokenGenerator} bean,
+ * needed because the library's own audience-aware generator never got applied due to yet another
+ * init()-ordering race). This test is the first in the whole plan to ever exercise a real issued
+ * token against McpResourceServerConfig's own audience validation -- every earlier test either
+ * registered a client directly (bypassing DCR and the consent step entirely) or hit the
+ * consent-required assumption-skip before reaching token exchange.
  */
 @Testcontainers
 @ActiveProfiles("test")
@@ -132,6 +151,23 @@ class McpOAuthRoundTripTest {
     // scope validation, so this test (unlike Task 6's, which registers a client directly with
     // `.scope("mcp.read")` and can therefore request it) omits scope entirely -- consistent
     // with McpResourceServerConfig, which authenticates but does not scope-check MCP calls.
+    // RFC 8707 resource parameter -- ResourceIdentifierAudienceTokenCustomizer (bundled with the
+    // MCP authorization-server library, confirmed via decompilation) only sets the issued JWT's
+    // `aud` claim when the token request carries this parameter; without it, `aud` falls back to
+    // Spring's own default (client_id), which McpResourceServerConfig's audience validation then
+    // rejects with "aud claim is not valid". Sending it is the CLIENT's responsibility per spec --
+    // a real MCP client (Claude.ai included) is expected to include it once it reaches this point
+    // in the flow, which nothing tested before this task had actually reached.
+    String resource = java.net.URLEncoder.encode(base() + "/api/mcp", "UTF-8");
+
+    // No `scope` param -- Dynamic Client Registration's default
+    // OAuth2ClientRegistrationAuthenticationValidator unconditionally rejects a `scope` field in
+    // the registration request body itself ("scope must not be set during Dynamic Client
+    // Registration", RFC 7591 section 3.2.2), so the resulting registered client has no scopes.
+    // Requesting a scope at authorize time that the client isn't registered for would fail
+    // scope validation, so this test (unlike Task 6's, which registers a client directly with
+    // `.scope("mcp.read")` and can therefore request it) omits scope entirely -- consistent
+    // with McpResourceServerConfig, which authenticates but does not scope-check MCP calls.
     var authorizeUri =
         URI.create(
             base()
@@ -139,6 +175,8 @@ class McpOAuthRoundTripTest {
                 + clientId
                 + "&redirect_uri="
                 + java.net.URLEncoder.encode(REDIRECT_URI, "UTF-8")
+                + "&resource="
+                + resource
                 + "&code_challenge="
                 + codeChallenge()
                 + "&code_challenge_method=S256&state=test-state");
@@ -149,28 +187,18 @@ class McpOAuthRoundTripTest {
             .build();
     var authorizeResponse = http.send(authorizeRequest, HttpResponse.BodyHandlers.ofString());
 
-    // A 302 to the redirect_uri with a code= param is the success path. If Spring AS shows a
-    // consent page instead (302 to a consent view, or 200 with a consent form) on first
-    // authorization for a new client, that is also acceptable here -- assert we did NOT get
-    // redirected to /signin, which is the one outcome that would mean the session-reuse filter
-    // failed.
+    // Scopeless DCR clients now get requireAuthorizationConsent(false) (see
+    // McpAuthorizationServerConfig.skipConsentForScopelessClients), so this must redirect
+    // straight through with a code, not show a consent page -- confirmed working by
+    // confidentialDcrClientCanCompleteAuthorizeAndConsent above; a consent page here would mean
+    // that fix regressed.
     String location = authorizeResponse.headers().firstValue("Location").orElse("");
-    assertThat(location).doesNotContain("/signin");
-
-    if (authorizeResponse.statusCode() != 302 || !location.contains("code=")) {
-      // Consent required. This is expected Spring AS default behaviour on first use, per the
-      // design spec's decision to keep the default consent screen rather than auto-approve.
-      // A JUnit test cannot click a consent button; report clearly rather than failing
-      // opaquely, since this is not itself a defect in Tasks 3-8.
-      org.junit.jupiter.api.Assumptions.assumeTrue(
-          false,
-          "Consent screen required and cannot be driven from a JUnit test (by design, per the"
-              + " spec). Authorize response: "
-              + authorizeResponse.statusCode()
-              + " -> "
-              + location
-              + ". Verify the full flow manually per Task 10 instead.");
-    }
+    assertThat(authorizeResponse.statusCode())
+        .as("scopeless DCR client must skip consent and redirect straight through: " + location)
+        .isEqualTo(302);
+    assertThat(location)
+        .as("redirect must carry an authorization code, not an OAuth error (" + location + ")")
+        .contains("code=");
 
     String code =
         java.util.Arrays.stream(location.split("[?&]"))
@@ -188,6 +216,8 @@ class McpOAuthRoundTripTest {
             + java.net.URLEncoder.encode(REDIRECT_URI, "UTF-8")
             + "&client_id="
             + clientId
+            + "&resource="
+            + resource
             + "&code_verifier="
             + CODE_VERIFIER;
     var tokenRequest =
@@ -200,6 +230,19 @@ class McpOAuthRoundTripTest {
     Map<String, Object> tokenJson = mapper.readValue(tokenResponse.body(), Map.class);
     String accessToken = (String) tokenJson.get("access_token");
     assertThat(accessToken).isNotBlank();
+
+    // Regression check for a live bug: the issued JWT's `aud` claim used to come back set to the
+    // client_id (Spring's plain default JWT customizer) rather than the resource identifier,
+    // because McpAuthorizationServerConfigurer's own audience-aware OAuth2TokenGenerator never
+    // actually got applied -- an init()-ordering race (same class of bug as the DCR
+    // AuthenticationProvider gap above), fixed by defining OAuth2TokenGenerator as an explicit
+    // bean in McpAuthorizationServerConfig instead of relying on the library's internal wiring.
+    String[] jwtParts = accessToken.split("\\.");
+    Map<String, Object> claims =
+        mapper.readValue(Base64.getUrlDecoder().decode(jwtParts[1]), Map.class);
+    assertThat(claims.get("aud"))
+        .as("issued token's audience must be the resource identifier, not the client_id")
+        .isEqualTo(java.net.URLDecoder.decode(resource, "UTF-8"));
 
     // 4. Call the MCP endpoint with the issued token
     var mcpRequest =
@@ -216,6 +259,68 @@ class McpOAuthRoundTripTest {
     var mcpResponse = http.send(mcpRequest, HttpResponse.BodyHandlers.ofString());
 
     assertThat(mcpResponse.statusCode()).isNotIn(401, 403);
+  }
+
+  // Regression test for a live production bug found during Task 10's manual Claude.ai
+  // verification: the real Claude.ai client registers via DCR with
+  // token_endpoint_auth_method=client_secret_post (a confidential client) -- unlike
+  // fullDcrAuthorizeTokenAndToolCallRoundTrip above, which uses "none" (a public client). The
+  // real flow's consent-accept POST failed with an OAuth error redirect
+  // (error=access_denied&error_description=OAuth+2.0+Parameter%3A+client_id) instead of a
+  // code=... redirect -- reproduced here with a real DCR-issued client_secret_post client to
+  // isolate whether the client's auth method is what triggers it.
+  @SuppressWarnings("unchecked")
+  @Test
+  void confidentialDcrClientCanCompleteAuthorizeAndConsent() throws Exception {
+    String dcrBody =
+        mapper.writeValueAsString(
+            Map.of(
+                "client_name", "confidential-test-client",
+                "redirect_uris", java.util.List.of(REDIRECT_URI),
+                "grant_types", java.util.List.of("authorization_code", "refresh_token"),
+                "response_types", java.util.List.of("code"),
+                "token_endpoint_auth_method", "client_secret_post"));
+    var dcrRequest =
+        HttpRequest.newBuilder(URI.create(base() + "/oauth2/register"))
+            .header("Content-Type", "application/json")
+            .POST(HttpRequest.BodyPublishers.ofString(dcrBody))
+            .build();
+    var dcrResponse = http.send(dcrRequest, HttpResponse.BodyHandlers.ofString());
+    assertThat(dcrResponse.statusCode()).isEqualTo(201);
+    Map<String, Object> dcrJson = mapper.readValue(dcrResponse.body(), Map.class);
+    String clientId = (String) dcrJson.get("client_id");
+    assertThat(clientId).isNotBlank();
+
+    var authorizeUri =
+        URI.create(
+            base()
+                + "/oauth2/authorize?response_type=code&client_id="
+                + clientId
+                + "&redirect_uri="
+                + java.net.URLEncoder.encode(REDIRECT_URI, "UTF-8")
+                + "&code_challenge="
+                + codeChallenge()
+                + "&code_challenge_method=S256&state=test-state");
+    var authorizeRequest =
+        HttpRequest.newBuilder(authorizeUri)
+            .header("X-Auth-Email", ALLOWLISTED_EMAIL)
+            .GET()
+            .build();
+    var authorizeResponse = http.send(authorizeRequest, HttpResponse.BodyHandlers.ofString());
+
+    // Scopeless DCR clients now get requireAuthorizationConsent(false) (see
+    // McpAuthorizationServerConfig.skipConsentForScopelessClients), so this must redirect
+    // straight through with a code, not show a consent page.
+    assertThat(authorizeResponse.statusCode())
+        .as("scopeless DCR client must skip consent and redirect straight through")
+        .isEqualTo(302);
+    String directLocation = authorizeResponse.headers().firstValue("Location").orElse("");
+    assertThat(directLocation)
+        .as(
+            "redirect must carry an authorization code, not an OAuth error ("
+                + directLocation
+                + ")")
+        .contains("code=");
   }
 
   @Test
