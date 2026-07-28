@@ -3,13 +3,16 @@ import type { PagePersonMatch } from '$lib/server/api';
 import { error } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
 
-export const load: PageServerLoad = async ({ params }) => {
+export const load: PageServerLoad = async ({ params, locals }) => {
 	const recordId = Number(params.id);
 	const seq = Number(params.seq);
 	if (isNaN(recordId) || isNaN(seq)) error(400, 'Invalid parameters');
 
 	try {
-		const [record, pages] = await Promise.all([fetchRecord(recordId), fetchRecordPages(recordId)]);
+		const [record, pages] = await Promise.all([
+			fetchRecord(locals.userEmail, recordId),
+			fetchRecordPages(locals.userEmail, recordId)
+		]);
 		const page = pages.find((p) => p.seq === seq);
 		if (!page) error(404, 'Page not found');
 
@@ -20,7 +23,7 @@ export const load: PageServerLoad = async ({ params }) => {
 		// Fetch OCR text (non-blocking — don't fail if no text yet)
 		let pageText = { pageId: page.id, text: '', confidence: 0, engine: '', textEn: '' };
 		try {
-			pageText = await fetchPageText(page.id);
+			pageText = await fetchPageText(locals.userEmail, page.id);
 		} catch {
 			// OCR text not available yet
 		}
@@ -28,7 +31,7 @@ export const load: PageServerLoad = async ({ params }) => {
 		// Fetch person matches (non-blocking)
 		let personMatches: PagePersonMatch[] = [];
 		try {
-			personMatches = await fetchPagePersonMatches(page.id);
+			personMatches = await fetchPagePersonMatches(locals.userEmail, page.id);
 		} catch {
 			// Person matching not available
 		}

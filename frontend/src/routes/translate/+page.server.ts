@@ -8,7 +8,7 @@ export const load: PageServerLoad = async ({ locals, cookies }) => {
 	}
 
 	const userLang = cookies.get('archiver_lang') || 'en';
-	const capabilities = await fetchTranslateCapabilities();
+	const capabilities = await fetchTranslateCapabilities(locals.userEmail);
 
 	return {
 		pairs: capabilities.pairs,

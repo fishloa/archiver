@@ -9,21 +9,21 @@ import type { RecordPersonMatch } from '$lib/server/api';
 import { error, fail } from '@sveltejs/kit';
 import type { PageServerLoad, Actions } from './$types';
 
-export const load: PageServerLoad = async ({ params }) => {
+export const load: PageServerLoad = async ({ params, locals }) => {
 	const id = Number(params.id);
 	if (isNaN(id)) error(400, 'Invalid record ID');
 
 	try {
 		const [record, pages, timeline] = await Promise.all([
-			fetchRecord(id),
-			fetchRecordPages(id),
-			fetchRecordTimeline(id),
+			fetchRecord(locals.userEmail, id),
+			fetchRecordPages(locals.userEmail, id),
+			fetchRecordTimeline(locals.userEmail, id),
 		]);
 
 		// Fetch person matches with 3s timeout so slow LLM calls don't block page load
 		const timeout = new Promise<RecordPersonMatch[]>((resolve) => setTimeout(() => resolve([]), 3000));
 		const personMatches = await Promise.race([
-			fetchRecordPersonMatches(id).catch(() => [] as RecordPersonMatch[]),
+			fetchRecordPersonMatches(locals.userEmail, id).catch(() => [] as RecordPersonMatch[]),
 			timeout,
 		]);
 
