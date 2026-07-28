@@ -9,6 +9,11 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.core.annotation.Order;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
+import org.springframework.security.oauth2.core.DelegatingOAuth2TokenValidator;
+import org.springframework.security.oauth2.core.OAuth2Error;
+import org.springframework.security.oauth2.core.OAuth2TokenValidator;
+import org.springframework.security.oauth2.core.OAuth2TokenValidatorResult;
+import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.jwt.JwtValidators;
 import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
 import org.springframework.security.web.SecurityFilterChain;
@@ -79,7 +84,30 @@ public class McpResourceServerConfig {
   public SecurityFilterChain mcpResourceServerSecurityFilterChain(HttpSecurity http)
       throws Exception {
     NimbusJwtDecoder jwtDecoder = NimbusJwtDecoder.withJwkSource(jwkSource).build();
-    jwtDecoder.setJwtValidator(JwtValidators.createDefaultWithIssuer(issuer));
+    // Deliberately NOT using McpServerOAuth2Configurer's own validateAudienceClaim(true): that
+    // wraps the decoder in AudienceValidationJwtDecoder, which computes its "expected audience"
+    // via ResourceIdentifier.getResource() -- built fresh from the CURRENT incoming request's own
+    // scheme/host (confirmed via decompilation), not from a fixed config value. Meanwhile
+    // McpAuthorizationServerConfig's token generator now issues a FIXED audience (issuer +
+    // resourcePath, from the archiver.mcp.oauth.issuer property -- confirmed live: Claude.ai's own
+    // token requests never carry an RFC 8707 `resource` parameter for the library's own
+    // audience customizer to key off). A fixed issuer vs. a per-request-dynamic expectation only
+    // agree when the incoming request's own host happens to equal the configured issuer exactly
+    // -- true in production (archive.czernin.eu on both sides) but NOT in this app's own test
+    // suite (requests hit http://localhost:<random port>, the issuer property stays the fixed
+    // production default). Building our own fixed-audience validator here, matched to the exact
+    // same computation the token generator uses, keeps both sides consistent in every environment
+    // rather than depending on the request's own host matching the configured issuer.
+    String expectedAudience = issuer + "/api/mcp/sse";
+    OAuth2TokenValidator<Jwt> audienceValidator =
+        jwt ->
+            jwt.getAudience().contains(expectedAudience)
+                ? OAuth2TokenValidatorResult.success()
+                : OAuth2TokenValidatorResult.failure(
+                    new OAuth2Error("invalid_token", "The aud claim is not valid", null));
+    jwtDecoder.setJwtValidator(
+        new DelegatingOAuth2TokenValidator<>(
+            JwtValidators.createDefaultWithIssuer(issuer), audienceValidator));
 
     // McpServerOAuth2Configurer registers Spring's own OAuth2ProtectedResourceMetadataFilter
     // (RFC 9728) as part of THIS chain's filters -- but a chain's filters only ever run for
@@ -108,7 +136,6 @@ public class McpResourceServerConfig {
               mcpAuthorization.authorizationServer(issuer);
               mcpAuthorization.resourcePath("/api/mcp/sse");
               mcpAuthorization.jwtDecoder(jwtDecoder);
-              mcpAuthorization.validateAudienceClaim(true);
             })
         .authorizeHttpRequests(
             auth ->

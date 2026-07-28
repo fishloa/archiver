@@ -20,7 +20,6 @@ import org.springframework.security.oauth2.server.authorization.OAuth2Authorizat
 import org.springframework.security.oauth2.server.authorization.client.JdbcRegisteredClientRepository;
 import org.springframework.security.oauth2.server.authorization.client.RegisteredClient;
 import org.springframework.security.oauth2.server.authorization.client.RegisteredClientRepository;
-import org.springframework.security.oauth2.server.authorization.mcp.token.ResourceIdentifierAudienceTokenCustomizer;
 import org.springframework.security.oauth2.server.authorization.settings.AuthorizationServerSettings;
 import org.springframework.security.oauth2.server.authorization.settings.ClientSettings;
 import org.springframework.security.oauth2.server.authorization.token.DelegatingOAuth2TokenGenerator;
@@ -176,19 +175,30 @@ public class McpAuthorizationServerConfig {
   // this whole plan to ever exercise a real issued token against the resource server chain.
   // Defining this AS OUR OWN BEAN sidesteps the race entirely: Spring resolves a user bean before
   // any configurer-internal shared-object logic runs, so this wins deterministically regardless
-  // of configurer init() ordering. Composition mirrors exactly what
+  // of configurer init() ordering. Composition mirrors what
   // McpAuthorizationServerConfigurer.getTokenGenerator() builds internally (confirmed via
   // decompilation): JwtGenerator + OAuth2RefreshTokenGenerator, delegated via
-  // DelegatingOAuth2TokenGenerator, with both the library's own default JWT customizer and the
-  // resource-audience customizer applied.
+  // DelegatingOAuth2TokenGenerator.
+  //
+  // Does NOT use ResourceIdentifierAudienceTokenCustomizer, though: that customizer only sets
+  // `aud` when the token request carries an RFC 8707 `resource` parameter (confirmed via
+  // decompilation) -- and real production traffic proved Claude.ai's own token requests never
+  // include one (every issued token's `aud` still came back as the client_id even after
+  // McpResourceServerConfig's resourcePath was corrected to match Claude's exact endpoint, since
+  // there was no `resource` param for that customizer to read at all). This system has exactly
+  // one resource server and one MCP endpoint, so there is nothing to ask the client to
+  // disambiguate -- every token is unconditionally audience-restricted to that one endpoint,
+  // matching exactly what McpResourceServerConfig's ResourceIdentifier computes at validation
+  // time (issuer + the same "/api/mcp/sse" resourcePath), rather than depending on optional,
+  // inconsistently-implemented client behavior.
   @Bean
   public OAuth2TokenGenerator<?> tokenGenerator(JWKSource<SecurityContext> jwkSource) {
+    String resource = issuer + "/api/mcp/sse";
     JwtGenerator jwtGenerator = new JwtGenerator(new NimbusJwtEncoder(jwkSource));
-    var resourceAudienceCustomizer = new ResourceIdentifierAudienceTokenCustomizer();
     jwtGenerator.setJwtCustomizer(
         context -> {
           McpDefaultJwtCustomizer.DEFAULT_JWT_CUSTOMIZER.customize(context);
-          resourceAudienceCustomizer.customize(context);
+          context.getClaims().claim("aud", resource);
         });
     return new DelegatingOAuth2TokenGenerator(jwtGenerator, new OAuth2RefreshTokenGenerator());
   }

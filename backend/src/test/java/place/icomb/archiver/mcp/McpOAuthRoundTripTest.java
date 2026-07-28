@@ -160,14 +160,10 @@ class McpOAuthRoundTripTest {
     // scope validation, so this test (unlike Task 6's, which registers a client directly with
     // `.scope("mcp.read")` and can therefore request it) omits scope entirely -- consistent
     // with McpResourceServerConfig, which authenticates but does not scope-check MCP calls.
-    // RFC 8707 resource parameter -- ResourceIdentifierAudienceTokenCustomizer (bundled with the
-    // MCP authorization-server library, confirmed via decompilation) only sets the issued JWT's
-    // `aud` claim when the token request carries this parameter; without it, `aud` falls back to
-    // Spring's own default (client_id), which McpResourceServerConfig's audience validation then
-    // rejects with "aud claim is not valid". Sending it is the CLIENT's responsibility per spec --
-    // a real MCP client (Claude.ai included) is expected to include it once it reaches this point
-    // in the flow, which nothing tested before this task had actually reached.
-    String resource = java.net.URLEncoder.encode(base() + "/api/mcp/sse", "UTF-8");
+    // No RFC 8707 `resource` parameter here -- confirmed live that Claude.ai's own token requests
+    // never send one, so McpAuthorizationServerConfig's token generator now sets the issued JWT's
+    // `aud` claim unconditionally (issuer + the MCP endpoint path), rather than depending on an
+    // optional, inconsistently-implemented client-supplied value.
 
     // No `scope` param -- Dynamic Client Registration's default
     // OAuth2ClientRegistrationAuthenticationValidator unconditionally rejects a `scope` field in
@@ -184,8 +180,6 @@ class McpOAuthRoundTripTest {
                 + clientId
                 + "&redirect_uri="
                 + java.net.URLEncoder.encode(REDIRECT_URI, "UTF-8")
-                + "&resource="
-                + resource
                 + "&code_challenge="
                 + codeChallenge()
                 + "&code_challenge_method=S256&state=test-state");
@@ -225,8 +219,6 @@ class McpOAuthRoundTripTest {
             + java.net.URLEncoder.encode(REDIRECT_URI, "UTF-8")
             + "&client_id="
             + clientId
-            + "&resource="
-            + resource
             + "&code_verifier="
             + CODE_VERIFIER;
     var tokenRequest =
@@ -245,13 +237,16 @@ class McpOAuthRoundTripTest {
     // because McpAuthorizationServerConfigurer's own audience-aware OAuth2TokenGenerator never
     // actually got applied -- an init()-ordering race (same class of bug as the DCR
     // AuthenticationProvider gap above), fixed by defining OAuth2TokenGenerator as an explicit
-    // bean in McpAuthorizationServerConfig instead of relying on the library's internal wiring.
+    // bean in McpAuthorizationServerConfig that unconditionally sets `aud` to issuer + the MCP
+    // endpoint path -- a FIXED value, deliberately not tied to the actual request's own host, so
+    // it agrees with McpResourceServerConfig's own fixed-audience validator in every environment
+    // (this test's own localhost:<random port> included, not just production).
     String[] jwtParts = accessToken.split("\\.");
     Map<String, Object> claims =
         mapper.readValue(Base64.getUrlDecoder().decode(jwtParts[1]), Map.class);
     assertThat(claims.get("aud"))
-        .as("issued token's audience must be the resource identifier, not the client_id")
-        .isEqualTo(java.net.URLDecoder.decode(resource, "UTF-8"));
+        .as("issued token's audience must be the fixed resource identifier, not the client_id")
+        .isEqualTo("https://archive.czernin.eu/api/mcp/sse");
 
     // 4. Call the MCP endpoint with the issued token
     var mcpRequest =
