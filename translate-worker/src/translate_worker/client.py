@@ -1,6 +1,5 @@
 """Translate worker API client — extends the shared ProcessorClient."""
 
-import httpx
 from worker_common import ProcessorClient as _Base
 
 
@@ -9,25 +8,16 @@ class ProcessorClient(_Base):
 
     def __init__(self, base_url: str, token: str):
         super().__init__(base_url, token, user_agent="translate-worker/0.1")
-        self._public_client = httpx.Client(
-            base_url=base_url,
-            timeout=120.0,
-            headers={"User-Agent": "translate-worker/0.1"},
-        )
-
-    def close(self):
-        super().close()
-        self._public_client.close()
 
     def get_page_text(self, page_id: int) -> dict:
-        """GET /api/pages/{page_id}/text — public endpoint."""
-        resp = self._public_client.get(f"/api/pages/{page_id}/text")
+        """GET /api/pages/{page_id}/text — requires PROCESSOR/USER/ADMIN role."""
+        resp = self._client.get(f"/api/pages/{page_id}/text")
         resp.raise_for_status()
         return resp.json()
 
     def get_record(self, record_id: int) -> dict:
-        """GET /api/records/{record_id} — public endpoint."""
-        resp = self._public_client.get(f"/api/records/{record_id}")
+        """GET /api/records/{record_id} — requires PROCESSOR/USER/ADMIN role."""
+        resp = self._client.get(f"/api/records/{record_id}")
         resp.raise_for_status()
         return resp.json()
 
