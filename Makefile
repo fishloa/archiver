@@ -20,6 +20,13 @@ test-scraper:
 lint-scraper:
 	ruff check scraper-cz/ && ruff format --check scraper-cz/
 
+# Bundesarchiv Scraper
+test-barch:
+	cd scraper-barch && pytest -v
+
+lint-barch:
+	ruff check scraper-barch/ && ruff format --check scraper-barch/
+
 # OCR Worker
 test-ocr:
 	cd ocr-worker-paddle && pytest -v

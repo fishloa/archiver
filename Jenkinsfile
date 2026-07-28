@@ -36,11 +36,12 @@ pipeline {
                     env.BUILD_SCRAPER_MATRICULA = params.BUILD_ALL || changed('scraper-matricula') || workerCommonChanged
                     env.BUILD_SCRAPER_AROLSEN = params.BUILD_ALL || changed('scraper-arolsen') || workerCommonChanged
                     env.BUILD_SCRAPER_DDB = params.BUILD_ALL || changed('scraper-ddb') || workerCommonChanged
+                    env.BUILD_SCRAPER_BARCH = params.BUILD_ALL || changed('scraper-barch') || workerCommonChanged
                     env.BUILD_OCR = params.BUILD_ALL || changed('ocr-worker-paddle') || workerCommonChanged
                     env.BUILD_PDF = params.BUILD_ALL || changed('pdf-worker') || workerCommonChanged
                     env.BUILD_TRANSLATE = params.BUILD_ALL || changed('translate-worker') || workerCommonChanged
                     env.BUILD_EMBED = params.BUILD_ALL || changed('embed-worker') || workerCommonChanged
-                    echo "backend=${env.BUILD_BACKEND} frontend=${env.BUILD_FRONTEND} web=${env.BUILD_WEB} oauth2-proxy-apple=${env.BUILD_OAUTH2_PROXY_APPLE} scraper-cz=${env.BUILD_SCRAPER} ebadatelna=${env.BUILD_SCRAPER_EBADATELNA} findbuch=${env.BUILD_SCRAPER_FINDBUCH} oesta=${env.BUILD_SCRAPER_OESTA} matricula=${env.BUILD_SCRAPER_MATRICULA} arolsen=${env.BUILD_SCRAPER_AROLSEN} ddb=${env.BUILD_SCRAPER_DDB} ocr=${env.BUILD_OCR} pdf=${env.BUILD_PDF} translate=${env.BUILD_TRANSLATE} embed=${env.BUILD_EMBED}"
+                    echo "backend=${env.BUILD_BACKEND} frontend=${env.BUILD_FRONTEND} web=${env.BUILD_WEB} oauth2-proxy-apple=${env.BUILD_OAUTH2_PROXY_APPLE} scraper-cz=${env.BUILD_SCRAPER} ebadatelna=${env.BUILD_SCRAPER_EBADATELNA} findbuch=${env.BUILD_SCRAPER_FINDBUCH} oesta=${env.BUILD_SCRAPER_OESTA} matricula=${env.BUILD_SCRAPER_MATRICULA} arolsen=${env.BUILD_SCRAPER_AROLSEN} ddb=${env.BUILD_SCRAPER_DDB} barch=${env.BUILD_SCRAPER_BARCH} ocr=${env.BUILD_OCR} pdf=${env.BUILD_PDF} translate=${env.BUILD_TRANSLATE} embed=${env.BUILD_EMBED}"
                 }
             }
         }
@@ -81,6 +82,16 @@ pipeline {
                             tar cf - worker-common scraper-cz | docker run --rm -i \
                                 python:3.13-slim \
                                 sh -c "mkdir -p /repo && cd /repo && tar xf - && pip install -e worker-common && pip install -e 'scraper-cz[test]' && pytest scraper-cz/tests -v"
+                        '''
+                    }
+                }
+                stage('test-scraper-barch') {
+                    when { expression { env.BUILD_SCRAPER_BARCH == 'true' } }
+                    steps {
+                        sh '''
+                            tar cf - worker-common scraper-barch | docker run --rm -i \
+                                python:3.13-slim \
+                                sh -c "mkdir -p /repo && cd /repo && tar xf - && pip install -e worker-common && pip install -e 'scraper-barch[test]' && pytest scraper-barch/tests -v"
                         '''
                     }
                 }
@@ -256,6 +267,17 @@ pipeline {
                         script {
                             dockerPush(registry, "${prefix}/scraper-ddb:latest")
                             dockerPush(registry, "${prefix}/scraper-ddb:\${GIT_COMMIT}")
+                        }
+                    }
+                }
+
+                stage('scraper-barch') {
+                    when { expression { env.BUILD_SCRAPER_BARCH == 'true' } }
+                    steps {
+                        sh "docker build -f scraper-barch/Dockerfile -t ${prefix}/scraper-barch:latest -t ${prefix}/scraper-barch:\${GIT_COMMIT} ."
+                        script {
+                            dockerPush(registry, "${prefix}/scraper-barch:latest")
+                            dockerPush(registry, "${prefix}/scraper-barch:\${GIT_COMMIT}")
                         }
                     }
                 }
