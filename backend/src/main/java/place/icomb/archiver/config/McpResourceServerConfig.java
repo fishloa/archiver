@@ -2,7 +2,6 @@ package place.icomb.archiver.config;
 
 import com.nimbusds.jose.jwk.source.JWKSource;
 import com.nimbusds.jose.proc.SecurityContext;
-import java.util.List;
 import org.springaicommunity.mcp.security.server.config.McpServerOAuth2Configurer;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
@@ -13,9 +12,7 @@ import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.oauth2.jwt.JwtValidators;
 import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
 import org.springframework.security.web.SecurityFilterChain;
-import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
-import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 /**
  * The Resource Server role: validates the per-user JWTs issued by McpAuthorizationServerConfig on
@@ -39,25 +36,28 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
  * /mcp} (baked into {@code McpServerOAuth2Configurer}'s constructor), which would compute the wrong
  * expected audience for requests actually mounted at {@code /api/mcp/**}.
  *
- * <p>Also explicitly disables CSRF, forces a stateless session policy, and re-registers the
- * Claude.ai CORS configuration on this chain. Spring Security resolves each incoming request to
- * exactly one {@code SecurityFilterChain} by matching {@code securityMatcher}s in {@code @Order};
- * once this chain's own matcher claims {@code /api/mcp/**}, SecurityConfig's default chain (and its
- * {@code cors()}/{@code csrf().disable()} configuration) never sees these requests again, so each
- * must be repeated here or Bearer-token MCP calls get 403'd by the default CSRF policy instead of
- * authenticated normally.
+ * <p>Also explicitly disables CSRF, forces a stateless session policy, and applies the shared
+ * Claude.ai CORS configuration ({@link McpCorsConfig}) on this chain. Spring Security resolves each
+ * incoming request to exactly one {@code SecurityFilterChain} by matching {@code securityMatcher}s
+ * in {@code @Order}; once this chain's own matcher claims {@code /api/mcp/**}, SecurityConfig's
+ * default chain (and its {@code cors()}/{@code csrf().disable()} configuration) never sees these
+ * requests again, so each must be repeated here or Bearer-token MCP calls get 403'd by the default
+ * CSRF policy instead of authenticated normally.
  */
 @Configuration
 public class McpResourceServerConfig {
 
   private final String issuer;
   private final JWKSource<SecurityContext> jwkSource;
+  private final CorsConfigurationSource mcpCorsSource;
 
   public McpResourceServerConfig(
       @Value("${archiver.mcp.oauth.issuer:https://archive.czernin.eu}") String issuer,
-      JWKSource<SecurityContext> jwkSource) {
+      JWKSource<SecurityContext> jwkSource,
+      CorsConfigurationSource mcpCorsSource) {
     this.issuer = issuer;
     this.jwkSource = jwkSource;
+    this.mcpCorsSource = mcpCorsSource;
   }
 
   @Bean
@@ -68,7 +68,7 @@ public class McpResourceServerConfig {
     jwtDecoder.setJwtValidator(JwtValidators.createDefaultWithIssuer(issuer));
 
     http.securityMatcher("/api/mcp/**")
-        .cors(cors -> cors.configurationSource(mcpCorsSource()))
+        .cors(cors -> cors.configurationSource(mcpCorsSource))
         .csrf(csrf -> csrf.disable())
         .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
         .with(
@@ -82,17 +82,5 @@ public class McpResourceServerConfig {
         .authorizeHttpRequests(auth -> auth.anyRequest().authenticated());
 
     return http.build();
-  }
-
-  private CorsConfigurationSource mcpCorsSource() {
-    CorsConfiguration config = new CorsConfiguration();
-    config.setAllowedOrigins(List.of("https://claude.ai"));
-    config.setAllowedMethods(List.of("GET", "POST", "DELETE", "OPTIONS"));
-    config.setAllowedHeaders(List.of("Authorization", "Content-Type", "Accept", "Mcp-Session-Id"));
-    config.setExposedHeaders(List.of("Mcp-Session-Id"));
-
-    UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
-    source.registerCorsConfiguration("/api/mcp/**", config);
-    return source;
   }
 }

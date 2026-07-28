@@ -12,9 +12,6 @@ import org.springframework.security.config.annotation.web.configuration.EnableWe
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
-import org.springframework.web.cors.CorsConfiguration;
-import org.springframework.web.cors.CorsConfigurationSource;
-import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 import place.icomb.archiver.repository.AppUserRepository;
 
 @Configuration
@@ -54,8 +51,7 @@ public class SecurityConfig {
 
   @Bean
   public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
-    http.cors(cors -> cors.configurationSource(mcpCorsSource()))
-        .csrf(csrf -> csrf.disable())
+    http.csrf(csrf -> csrf.disable())
         .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
         .addFilterBefore(
             new ProxyAuthFilter(appUserRepository, trustedPeerResolver),
@@ -119,17 +115,5 @@ public class SecurityConfig {
                     .authenticated());
 
     return http.build();
-  }
-
-  private CorsConfigurationSource mcpCorsSource() {
-    CorsConfiguration config = new CorsConfiguration();
-    config.setAllowedOrigins(List.of("https://claude.ai"));
-    config.setAllowedMethods(List.of("GET", "POST", "DELETE", "OPTIONS"));
-    config.setAllowedHeaders(List.of("Authorization", "Content-Type", "Accept", "Mcp-Session-Id"));
-    config.setExposedHeaders(List.of("Mcp-Session-Id"));
-
-    UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
-    source.registerCorsConfiguration("/api/mcp/**", config);
-    return source;
   }
 }
