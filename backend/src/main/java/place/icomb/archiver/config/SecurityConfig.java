@@ -1,5 +1,7 @@
 package place.icomb.archiver.config;
 
+import java.time.Duration;
+import java.util.Arrays;
 import java.util.List;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
@@ -21,12 +23,28 @@ public class SecurityConfig {
 
   private final AppUserRepository appUserRepository;
   private final String processorToken;
+  private final TrustedPeerResolver trustedPeerResolver;
 
   public SecurityConfig(
       AppUserRepository appUserRepository,
-      @Value("${archiver.processor.token}") String processorToken) {
+      @Value("${archiver.processor.token}") String processorToken,
+      @Value("${archiver.auth.trusted-cidrs:}") String trustedCidrs,
+      @Value("${archiver.auth.trusted-proxy-hosts:}") String trustedProxyHosts,
+      @Value("${archiver.auth.trusted-peer-cache-seconds:30}") long trustedPeerCacheSeconds) {
     this.appUserRepository = appUserRepository;
     this.processorToken = processorToken;
+    this.trustedPeerResolver =
+        new TrustedPeerResolver(
+            splitCsv(trustedCidrs),
+            splitCsv(trustedProxyHosts),
+            Duration.ofSeconds(trustedPeerCacheSeconds));
+  }
+
+  private static List<String> splitCsv(String value) {
+    if (value == null || value.isBlank()) {
+      return List.of();
+    }
+    return Arrays.stream(value.split(",")).map(String::trim).filter(s -> !s.isEmpty()).toList();
   }
 
   @Bean
@@ -35,7 +53,8 @@ public class SecurityConfig {
         .csrf(csrf -> csrf.disable())
         .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
         .addFilterBefore(
-            new ProxyAuthFilter(appUserRepository), UsernamePasswordAuthenticationFilter.class)
+            new ProxyAuthFilter(appUserRepository, trustedPeerResolver),
+            UsernamePasswordAuthenticationFilter.class)
         .addFilterBefore(
             new ProcessorTokenFilter(processorToken), UsernamePasswordAuthenticationFilter.class)
         .authorizeHttpRequests(
