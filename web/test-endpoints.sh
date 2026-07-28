@@ -119,7 +119,12 @@ check "Sign-in page" "$BASE/signin" "200"
 # the SVG. A plain 200 check would pass for the wrong reason.
 check "Logo path (unauthenticated)" "$BASE/logo.svg" "200"
 check_body "Logo path returns sign-in page, not the asset" "$BASE/logo.svg" 'id="googleBtn"'
-check_body_absent "Logo path does not leak SVG markup" "$BASE/logo.svg" "<svg"
+# signin.html itself contains three inline <svg> elements (logo mark, Google
+# and Apple button icons), so "<svg" is NOT a valid absence check here -- it
+# would always fail even on a correctly-locked-down deploy. "sodipodi" is an
+# Inkscape-only marker present throughout the real logo.svg export and never
+# present in signin.html, so it discriminates the two bodies correctly.
+check_body_absent "Logo path does not leak SVG markup" "$BASE/logo.svg" "sodipodi"
 
 # Anonymous-access probes (no cookie, no headers) -- explicit regression
 # coverage for the routes named in the auth-lockdown spec. /api/records

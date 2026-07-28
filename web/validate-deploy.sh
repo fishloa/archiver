@@ -23,9 +23,12 @@
 #     path -- the frontend reaches it server-side via BACKEND_URL
 #     instead, bypassing nginx), EXCEPT /api/mcp/ (no auth_request;
 #     gated by the backend's McpTokenFilter/ROLE_MCP instead) and
-#     /api/processor/events (no auth_request; gated by the backend's
+#     /api/processor/jobs/events (no auth_request; gated by the backend's
 #     ProcessorTokenFilter bearer token, for workers that have no
-#     browser session).
+#     browser session). In practice workers reach the backend directly
+#     via BACKEND_URL (http://backend:8080) and never traverse this
+#     proxy at all, so the un-gated nginx location is defensive, not
+#     load-bearing.
 #   - location / (all browser pages) auth_requests too, but
 #     `error_page 401 = /signin;` uses the `=` rewrite form, which
 #     forces the response to 200 and serves web/signin.html. A bare
@@ -309,12 +312,15 @@ check_status "Records SSE requires auth" "$BASE/api/records/events" "401" --max-
 check_content_type "Records SSE (unauthenticated) returns JSON error" "$BASE/api/records/events" "application/json" --max-time 3 -H "Accept: text/event-stream"
 
 # Processor SSE (workers connect to this): deliberately NOT auth_request-
-# gated at nginx -- location = /api/processor/events has no auth_request,
+# gated at nginx -- location = /api/processor/jobs/events (the real route,
+# ProcessorController's @GetMapping("/jobs/events")) has no auth_request,
 # because workers/scrapers have no browser session. Auth is enforced by
 # the backend's ProcessorTokenFilter (bearer token) instead. Without a
 # token it must not succeed, but the failure mode isn't necessarily nginx's
-# 401 -- assert "not 200" rather than a specific code.
-proc_code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 3 -H "Accept: text/event-stream" "$BASE/api/processor/events" 2>/dev/null) || proc_code="000"
+# 401 -- assert "not 200" rather than a specific code. Note: workers reach
+# the backend directly via BACKEND_URL, not through nginx, so this
+# un-gated location is defensive rather than load-bearing.
+proc_code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 3 -H "Accept: text/event-stream" "$BASE/api/processor/jobs/events" 2>/dev/null) || proc_code="000"
 if [[ "$proc_code" == "000" || -z "$proc_code" ]]; then
     fail "Processor SSE probe could not reach the server (got '$proc_code') -- result is inconclusive, not a pass"
 elif [[ "$proc_code" != "200" ]]; then
@@ -388,7 +394,12 @@ echo "────────────────────────�
 # static assets from the auth gate would still be caught.
 check_status "Logo path (unauthenticated)" "$BASE/logo.svg" "200"
 check_body "Logo path returns sign-in page, not the asset" "$BASE/logo.svg" 'id="googleBtn"'
-check_body_absent "Logo path does not leak SVG markup" "$BASE/logo.svg" "<svg"
+# signin.html itself contains three inline <svg> elements (logo mark, Google
+# and Apple button icons), so "<svg" is NOT a valid absence check here -- it
+# would always fail even on a correctly-locked-down deploy. "sodipodi" is an
+# Inkscape-only marker present throughout the real logo.svg export and never
+# present in signin.html, so it discriminates the two bodies correctly.
+check_body_absent "Logo path does not leak SVG markup" "$BASE/logo.svg" "sodipodi"
 
 # SvelteKit serves _app/ assets -- bundle paths are no longer discoverable
 # anonymously since "/" now returns signin.html (no /_app/ references), so
