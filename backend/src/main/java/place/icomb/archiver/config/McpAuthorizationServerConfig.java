@@ -1,6 +1,7 @@
 package place.icomb.archiver.config;
 
 import org.springaicommunity.mcp.security.authorizationserver.config.McpAuthorizationServerConfigurer;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.annotation.Order;
@@ -32,6 +33,13 @@ import place.icomb.archiver.repository.AppUserRepository;
  */
 @Configuration
 public class McpAuthorizationServerConfig {
+
+  private final String issuer;
+
+  public McpAuthorizationServerConfig(
+      @Value("${archiver.mcp.oauth.issuer:https://archive.czernin.eu}") String issuer) {
+    this.issuer = issuer;
+  }
 
   @Bean
   @Order(1)
@@ -89,7 +97,48 @@ public class McpAuthorizationServerConfig {
         .addFilterBefore(
             new McpAuthorizeSessionFilter(appUserRepository, trustedPeerResolver),
             LogoutFilter.class)
-        .with(authorizationServerConfigurer, Customizer.withDefaults())
+        // NOTE: explicitly enabling clientRegistrationEndpoint(...) here -- rather than leaving it
+        // to McpAuthorizationServerConfigurer.mcpAuthorizationServer() below, which also enables it
+        // by default -- is required, not redundant. OAuth2AuthorizationServerConfigurer.init(...)
+        // (invoked once, during http.build()'s init phase, in this `.with(...)` call's insertion
+        // order) iterates its OWN internal `configurers` map and calls `.init(http)` on each entry
+        // present AT THAT MOMENT -- this is what invokes
+        // OAuth2ClientRegistrationEndpointConfigurer.init(...), the method that actually registers
+        // the DCR AuthenticationProviders via http.authenticationProvider(...) (confirmed by
+        // decompiling OAuth2AuthorizationServerConfigurer.init()/lambda$init$2 and
+        // OAuth2ClientRegistrationEndpointConfigurer.init()). McpAuthorizationServerConfigurer's
+        // own
+        // init() (which runs SECOND, since it's added via `.with(...)` after this one) calls
+        // `.clientRegistrationEndpoint(...)` too, but only as part of a customizer passed to
+        // `HttpSecurity#oauth2AuthorizationServer(...)` -- which reaches the SAME configurer
+        // instance and adds OAuth2ClientRegistrationEndpointConfigurer to its map for the FIRST
+        // time only if it isn't already there. Added this late, its `.init(http)` never runs
+        // (authorizationServerConfigurer.init() already iterated the map before this addition) --
+        // only its `.configure(http)` runs later (that pass DOES pick up late additions), which
+        // registers the endpoint's filter/matcher but no AuthenticationProvider. That mismatch is
+        // exactly the previously-observed bug: POST /oauth2/register reached a real filter and
+        // produced an OAuth2ClientRegistrationAuthenticationToken, but ProviderManager had no
+        // AuthenticationProvider registered for it ("No AuthenticationProvider found for
+        // OAuth2ClientRegistrationAuthenticationToken"). Calling `.clientRegistrationEndpoint(...)`
+        // here -- synchronously, as part of THIS `.with(...)` call, before http.build() begins its
+        // init phase -- adds the sub-configurer to the map early enough that
+        // authorizationServerConfigurer.init() finds and initialises it correctly.
+        //
+        // openRegistrationAllowed(true) must ALSO be set here, not left to
+        // McpAuthorizationServerConfigurer's later customization of the same flag: the value is
+        // read and baked into the registered OAuth2ClientRegistrationAuthenticationProvider inside
+        // OAuth2ClientRegistrationEndpointConfigurer.init() (via
+        // createDefaultAuthenticationProviders,
+        // confirmed by decompiling both), which -- per the ordering explained above -- runs as part
+        // of THIS `.with(...)` call's authorizationServerConfigurer.init(), before
+        // McpAuthorizationServerConfigurer.init() ever executes. Leaving it unset here defaults to
+        // false (registration requires an already-authenticated caller / initial access token),
+        // which surfaced as DCR returning 401 even after the AuthenticationProvider itself was
+        // correctly registered.
+        .with(
+            authorizationServerConfigurer,
+            (asConfigurer) ->
+                asConfigurer.clientRegistrationEndpoint(dcr -> dcr.openRegistrationAllowed(true)))
         .with(McpAuthorizationServerConfigurer.mcpAuthorizationServer(), Customizer.withDefaults())
         .authorizeHttpRequests(auth -> auth.anyRequest().authenticated())
         .exceptionHandling(
@@ -122,6 +171,14 @@ public class McpAuthorizationServerConfig {
 
   @Bean
   public AuthorizationServerSettings authorizationServerSettings() {
-    return AuthorizationServerSettings.builder().build();
+    // Explicit issuer, rather than leaving it unset (which makes Spring Security compute `iss`
+    // dynamically per-request from scheme/host/port), so it always agrees with the issuer
+    // McpResourceServerConfig validates incoming JWTs against -- both read the SAME
+    // archiver.mcp.oauth.issuer property. Without this, any environment where the request's
+    // observed scheme/host doesn't exactly match the resource server's configured issuer (e.g.
+    // this application's own test suite, which talks to http://localhost:<random-port>, or
+    // production if a proxy ever fails to forward the right Host/X-Forwarded-* headers) would
+    // issue tokens whose `iss` claim fails validation on every single request.
+    return AuthorizationServerSettings.builder().issuer(issuer).build();
   }
 }
