@@ -332,6 +332,64 @@ Spring AI 2.0.0-M2 is unproven here. Own spec, own plan.
   needed. Mostly config, plus the deferred LAN assertion in
   `validate-deploy.sh`. Verify the frontend resolves to a stable name first.
 - **MCP OAuth** — Phase 3b below, own spec.
+- **Authenticated smoke coverage in CI.** `validate-deploy.sh` gained an opt-in
+  authenticated section, but it only runs when `ARCHIVER_COOKIE_JAR` points at a
+  live session, so in practice it is skipped. Every automated check is therefore
+  anonymous — which is precisely how the C1 defect below reached a final review
+  unnoticed. Worth a service account or a scripted sign-in.
+- **`ProcessorTokenFilter` constant-time comparison.** It still uses
+  `String.equals()` while `McpTokenFilter` uses `MessageDigest.isEqual`.
+- **`ROLE_MCP` is not path-scoped**, so it satisfies `anyRequest().authenticated()`
+  for `/api-docs`, `/swagger-ui` and `/actuator/info|metrics`. Same is already
+  true of `ROLE_PROCESSOR`. Low severity, fold into the trusted-set narrowing.
+- **`TrustedPeerResolver` cache-refill race** — concurrent requests at TTL expiry
+  each do a redundant DNS pass. Write order prevents torn reads, so trust is
+  never widened; only duplicated work.
+- **`set_real_ip_from 0.0.0.0/0`** in `web/nginx.conf` makes `$remote_addr`
+  WAN-controllable. Harmless today (no IP-based rules, and the backend's peer
+  check uses the real TCP peer), but access logs are forgeable and any future
+  IP-based rule would be pre-broken. Narrow to the host nginx's address.
+- **Deep links are lost on sign-in.** `error_page 401 = /signin` carries no `rd`,
+  so `signin.html` always falls back to `/`. `error_page 401 = /signin?rd=$request_uri`
+  would fix it.
+
+## Corrections to this spec, learned during implementation
+
+Recorded because each one cost real time and two were outright wrong premises
+in the design above.
+
+1. **The frontend did NOT forward `X-Auth-Email`.** This spec asserted it did,
+   citing `authHeaders()`. In fact only 13 of 30 helpers in
+   `frontend/src/lib/server/api.ts` called it; 17 read helpers sent no header and
+   worked only because `GET /api/**` was `permitAll()`. Post-lockdown they 403 and
+   `throw` in a load function, rendering a 500 on every content page for every
+   legitimate user. Nine per-task reviews could not see it — it lives at the seam
+   between "backend now requires a role" and "frontend never sent one". Fixed by
+   threading `email` through all 17 and their nine calling routes.
+2. **`/api/processor/events` does not exist.** The real route is
+   `/api/processor/jobs/events`. The spec, an nginx location and a smoke probe
+   were all premised on the wrong path. Workers reach `backend:8080` directly and
+   never traverse nginx, so nothing was broken — but the config was dead.
+3. **The Apple domain-association file is not needed.** It matters only for Sign
+   in with Apple JS and Hide My Email relay. oauth2-proxy uses the server-side
+   authorization code flow, where Apple validates the Return URL alone. A 12-byte
+   `placeholder` had sat on zelkova since June without consequence.
+4. **Apple rejects oauth2-proxy's default scope.** The generic `oidc` provider
+   sends `openid email profile`; `profile` is not a valid Apple scope. Apple
+   additionally requires `response_mode=form_post` for any scope beyond `openid`,
+   and `email` is mandatory here because the allowlist is keyed on email address.
+   `form_post` means a cross-site callback POST, which browsers will not send
+   `SameSite=Lax` cookies on — so the Apple proxy needs `SameSite=none`.
+   Critically, setting `login-url` with the parameter is **not** sufficient: OIDC
+   discovery overwrites it and silently drops `response_mode`. It requires
+   `SKIP_OIDC_DISCOVERY=true` plus explicit login/redeem/JWKS endpoints.
+5. **The matcher order in the plan was wrong.** Placing `GET /api/**` ahead of
+   `/api/auth/**` shadowed the latter and broke `/api/auth/me` for signed-out
+   callers — the very thing the plan required.
+6. **Jenkins builds `*/main` only**, and detects changes with `git diff HEAD~1`.
+   A fast-forward merge of a feature branch would therefore expose only the last
+   commit's files and **skip rebuilding the backend entirely**. Merge with
+   `--no-ff` so the merge commit's first-parent diff covers the whole branch.
 
 ## Out of scope
 
