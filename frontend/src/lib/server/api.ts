@@ -19,14 +19,26 @@ export interface AuthUser {
   role?: string;
   familyTreePersonId?: number;
   signedInAs?: string;
+  // Set when we could not get a definitive answer from the backend (5xx or
+  // a network failure), as opposed to a genuine "authenticated: false"
+  // response, which the backend always returns as a 200 for a signed-in
+  // user who simply isn't on the allowlist (see AuthController#me). Callers
+  // must NOT treat backendUnavailable as "not allowlisted" -- it means
+  // "couldn't ask", not "no".
+  backendUnavailable?: boolean;
 }
 
 export async function fetchCurrentUser(email: string): Promise<AuthUser> {
-  const res = await fetch(`${backendUrl()}/api/auth/me`, {
-    headers: authHeaders(email),
-  });
-  if (!res.ok) return { authenticated: false };
-  return res.json();
+  try {
+    const res = await fetch(`${backendUrl()}/api/auth/me`, {
+      headers: authHeaders(email),
+    });
+    if (res.status >= 500) return { authenticated: false, backendUnavailable: true };
+    if (!res.ok) return { authenticated: false };
+    return res.json();
+  } catch {
+    return { authenticated: false, backendUnavailable: true };
+  }
 }
 
 export async function fetchRecords(
