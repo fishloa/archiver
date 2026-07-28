@@ -43,6 +43,11 @@ public class SecurityConfig {
             Duration.ofSeconds(trustedPeerCacheSeconds));
   }
 
+  @Bean
+  public TrustedPeerResolver trustedPeerResolver() {
+    return trustedPeerResolver;
+  }
+
   private static List<String> splitCsv(String value) {
     if (value == null || value.isBlank()) {
       return List.of();
