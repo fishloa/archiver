@@ -47,6 +47,11 @@ dependencies {
     implementation(platform("org.springframework.ai:spring-ai-bom:2.0.0"))
     implementation("org.springframework.ai:spring-ai-starter-mcp-server-webmvc")
 
+    // MCP OAuth — per-user auth for /api/mcp/**, replacing the shared MCP_TOKEN
+    implementation("org.springaicommunity:mcp-authorization-server-spring-boot:0.1.13")
+    implementation("org.springaicommunity:mcp-server-security-spring-boot:0.1.13")
+    implementation("org.springframework.boot:spring-boot-starter-oauth2-resource-server")
+
     // Test
     testImplementation("org.springframework.boot:spring-boot-starter-test")
     testImplementation("org.springframework.security:spring-security-test")
