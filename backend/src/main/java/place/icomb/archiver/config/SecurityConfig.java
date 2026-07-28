@@ -23,7 +23,6 @@ public class SecurityConfig {
 
   private final AppUserRepository appUserRepository;
   private final String processorToken;
-  private final String mcpToken;
   private final TrustedPeerResolver trustedPeerResolver;
 
   public SecurityConfig(
@@ -31,11 +30,9 @@ public class SecurityConfig {
       @Value("${archiver.processor.token}") String processorToken,
       @Value("${archiver.auth.trusted-cidrs:}") String trustedCidrs,
       @Value("${archiver.auth.trusted-proxy-hosts:}") String trustedProxyHosts,
-      @Value("${archiver.auth.trusted-peer-cache-seconds:30}") long trustedPeerCacheSeconds,
-      @Value("${archiver.mcp.token:}") String mcpToken) {
+      @Value("${archiver.auth.trusted-peer-cache-seconds:30}") long trustedPeerCacheSeconds) {
     this.appUserRepository = appUserRepository;
     this.processorToken = processorToken;
-    this.mcpToken = mcpToken;
     this.trustedPeerResolver =
         new TrustedPeerResolver(
             splitCsv(trustedCidrs),
@@ -65,13 +62,9 @@ public class SecurityConfig {
             UsernamePasswordAuthenticationFilter.class)
         .addFilterBefore(
             new ProcessorTokenFilter(processorToken), UsernamePasswordAuthenticationFilter.class)
-        .addFilterBefore(new McpTokenFilter(mcpToken), UsernamePasswordAuthenticationFilter.class)
         .authorizeHttpRequests(
             auth ->
                 auth
-                    // MCP server endpoints — shared token until per-user OAuth lands
-                    .requestMatchers("/api/mcp/**")
-                    .hasRole("MCP")
                     // Admin GET endpoints — admin only (must precede general GET permit)
                     .requestMatchers(HttpMethod.GET, "/api/admin/**")
                     .hasRole("ADMIN")

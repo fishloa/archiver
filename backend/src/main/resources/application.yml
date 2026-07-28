@@ -44,6 +44,7 @@ archiver:
     token: ${MCP_TOKEN:}
     oauth:
       signing-key-b64: ${MCP_OAUTH_SIGNING_KEY_B64:}
+      issuer: ${MCP_OAUTH_ISSUER:https://archive.czernin.eu}
   auth:
     trusted-cidrs: ${AUTH_TRUSTED_CIDRS:127.0.0.1/32,::1/128,10.0.9.0/24,192.168.16.0/22}
     trusted-proxy-hosts: ${AUTH_TRUSTED_PROXY_HOSTS:web}
