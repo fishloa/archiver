@@ -17,12 +17,15 @@
 #   - location /api/ auth_requests against oauth2-proxy; unauthenticated
 #     callers get the synthetic @api_401 JSON body via
 #     `error_page 401 = @api_401` -- a real 401, before the backend is
-#     ever reached. This applies to every /api/* route below EXCEPT
-#     /api/auth/**  (backend permitAll, must answer 200 for signed-out
-#     callers), /api/mcp/ (no auth_request; gated by the backend's
-#     McpTokenFilter/ROLE_MCP instead) and /api/processor/events (no
-#     auth_request; gated by the backend's ProcessorTokenFilter bearer
-#     token, for workers that have no browser session).
+#     ever reached. This applies to every /api/* route below, including
+#     /api/auth/me (backend permitAll(), but no dedicated nginx location
+#     of its own, so it falls under this same gate through the public
+#     path -- the frontend reaches it server-side via BACKEND_URL
+#     instead, bypassing nginx), EXCEPT /api/mcp/ (no auth_request;
+#     gated by the backend's McpTokenFilter/ROLE_MCP instead) and
+#     /api/processor/events (no auth_request; gated by the backend's
+#     ProcessorTokenFilter bearer token, for workers that have no
+#     browser session).
 #   - location / (all browser pages) auth_requests too, but
 #     `error_page 401 = /signin;` uses the `=` rewrite form, which
 #     forces the response to 200 and serves web/signin.html. A bare
@@ -221,11 +224,18 @@ check_content_type "API 401 response is JSON" "$BASE/api/records/2635" "applicat
 
 # Auth-protected endpoints
 check_status "API profile (no auth)" "$BASE/api/profile" "401"
-# /api/auth/** is explicitly permitAll at the backend (SecurityConfig) so
-# the UI can tell "signed out" from "signed in but not allowlisted" --
-# must stay 200, with an authenticated:false body.
-check_status "API auth/me (no auth)" "$BASE/api/auth/me" "200"
-check_body "auth/me reports unauthenticated" "$BASE/api/auth/me" '"authenticated":false'
+# /api/auth/me is permitAll() at the backend (SecurityConfig), but it has
+# no dedicated location in web/nginx.conf -- it falls under the generic
+# location /api/'s auth_request gate like every other /api/ route, so
+# unauthenticated it's the synthetic @api_401 401, not the backend's
+# permitAll() response. This is fine: the UI's "signed out" vs "signed
+# in but not allowlisted" check (fetchCurrentUser in
+# frontend/src/lib/server/api.ts) only runs server-side from SvelteKit
+# load functions (routes/+layout.server.ts, routes/admin/+layout.server.ts),
+# which call BACKEND_URL (http://backend:8080) directly, bypassing nginx
+# entirely. Nothing calls this endpoint from the browser through the
+# public path, so the 401 here is correct, not a regression.
+check_status "API auth/me (no auth)" "$BASE/api/auth/me" "401"
 
 # Anonymous-access probes (no cookie, no headers) -- explicit regression
 # coverage for the routes named in the auth-lockdown spec. /api/records

@@ -100,11 +100,16 @@ check "SSE requires auth" "$BASE/api/records/events" "401" --max-time 3 -H "Acce
 # Auth-protected endpoints return 401 without auth
 check "Profile without auth" "$BASE/api/profile" "401"
 
-# GET /api/auth/me is deliberately permitAll at the backend so the UI can
-# distinguish "signed out" from "signed in but not allowlisted" -- must
-# stay 200, with an explicit authenticated:false body.
-check "Auth/me without auth" "$BASE/api/auth/me" "200"
-check_body "Auth/me reports unauthenticated" "$BASE/api/auth/me" '"authenticated":false'
+# /api/auth/me is permitAll() at the backend (SecurityConfig), but it has
+# no dedicated nginx location -- it falls under the generic location
+# /api/'s auth_request gate like everything else, so unauthenticated it's
+# the synthetic @api_401 401, same as any other /api/ route. This is
+# fine: the UI's "signed out" vs "signed in but not allowlisted" check
+# (fetchCurrentUser in frontend/src/lib/server/api.ts) only runs
+# server-side from SvelteKit load functions, which call BACKEND_URL
+# (http://backend:8080) directly, bypassing nginx entirely. Nothing
+# calls this endpoint from the browser through the public path.
+check "Auth/me without auth" "$BASE/api/auth/me" "401"
 
 # Sign-in page itself, unchanged.
 check "Sign-in page" "$BASE/signin" "200"
