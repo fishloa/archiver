@@ -1,7 +1,6 @@
 """Tests for the backend API client."""
 
 import json
-import urllib.parse
 
 import httpx
 import pytest
@@ -81,35 +80,41 @@ class TestCompleteIngest:
         client.complete_ingest("rec-001")  # should not raise
 
 
-class TestGetStatus:
-    def test_returns_status(self, client, httpx_mock: HTTPXMock):
-        encoded = urllib.parse.quote("R 43-II/1326", safe="")
+class TestGetAllStatuses:
+    def test_returns_map_keyed_by_source_record_id(self, client, httpx_mock: HTTPXMock):
+        """Uses the whole-source-system route — no per-record path segment at
+        all, so a signature containing '/' (e.g. 'R 43-II/1326') never
+        triggers Spring Security's encoded-slash rejection.
+        """
         httpx_mock.add_response(
-            url=f"{BASE}/api/ingest/status/{SOURCE_SYSTEM}/{encoded}",
+            url=f"{BASE}/api/ingest/status/{SOURCE_SYSTEM}",
             method="GET",
-            json={"status": "complete", "id": "rec-001"},
+            json={"R 43-II/1326": "ocr_pending", "R 43-II/1327": "complete"},
         )
-        status = client.get_status(SOURCE_SYSTEM, "R 43-II/1326")
-        assert status["status"] == "complete"
+        statuses = client.get_all_statuses(SOURCE_SYSTEM)
+        assert statuses["R 43-II/1326"] == "ocr_pending"
+        assert statuses["R 43-II/1327"] == "complete"
 
-    def test_encodes_slash_and_space_in_signature(self, client, httpx_mock: HTTPXMock):
-        """Signatures like 'R 43-II/1326' must not leak an extra path segment."""
+    def test_returns_empty_map_when_no_records(self, client, httpx_mock: HTTPXMock):
         httpx_mock.add_response(
-            url=f"{BASE}/api/ingest/status/{SOURCE_SYSTEM}/R%2043-II%2F1326",
+            url=f"{BASE}/api/ingest/status/{SOURCE_SYSTEM}",
             method="GET",
-            json={"status": "ocr_pending"},
+            json={},
         )
-        status = client.get_status(SOURCE_SYSTEM, "R 43-II/1326")
-        assert status["status"] == "ocr_pending"
+        assert client.get_all_statuses(SOURCE_SYSTEM) == {}
 
-    def test_returns_empty_on_404(self, client, httpx_mock: HTTPXMock):
+    def test_url_has_no_second_path_segment(self, client, httpx_mock: HTTPXMock):
+        """Regression guard: must call .../status/{system} only, never
+        .../status/{system}/{anything} (which is what 400s in production).
+        """
         httpx_mock.add_response(
-            url=f"{BASE}/api/ingest/status/{SOURCE_SYSTEM}/unknown",
+            url=f"{BASE}/api/ingest/status/{SOURCE_SYSTEM}",
             method="GET",
-            status_code=404,
+            json={},
         )
-        status = client.get_status(SOURCE_SYSTEM, "unknown")
-        assert status == {}
+        client.get_all_statuses(SOURCE_SYSTEM)
+        request = httpx_mock.get_requests()[0]
+        assert request.url.path == f"/api/ingest/status/{SOURCE_SYSTEM}"
 
 
 class TestRetries:

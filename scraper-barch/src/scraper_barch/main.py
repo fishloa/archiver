@@ -54,11 +54,17 @@ def ingest_record(
     client: BackendClient | None,
     session: InvenioSession,
     record_uuid: str,
+    known_statuses: dict[str, str],
     dry_run: bool = False,
     force: bool = False,
     max_pages: int | None = None,
 ) -> str:
     """Ingest a single record by Invenio UUID.
+
+    *known_statuses* is a pre-fetched map of sourceRecordId -> status
+    (from ``BackendClient.get_all_statuses``), used as the existence
+    check — see that method's docstring for why a per-record status
+    lookup can't be used here.
 
     Returns "ok", "skipped", or raises on failure.
     """
@@ -88,13 +94,13 @@ def ingest_record(
     assert client is not None  # only None in dry-run mode
 
     if not force:
-        current_status = client.get_status(SOURCE_SYSTEM, signature)
+        current_status = known_statuses.get(signature)
         if current_status:
             log.info(
                 "[SKIP] %s — already exists as %s (status=%s)",
                 label,
                 signature,
-                current_status.get("status"),
+                current_status,
             )
             return "skipped"
 
@@ -130,6 +136,7 @@ def ingest_from_zip(
     client: BackendClient | None,
     session: InvenioSession | None,
     zip_path: str,
+    known_statuses: dict[str, str],
     record_uuid: str | None = None,
     signature: str | None = None,
     dry_run: bool = False,
@@ -142,6 +149,10 @@ def ingest_from_zip(
     given (and the zip's page count is cross-checked against
     items[0].files); otherwise *signature* is used verbatim for the offline
     case, which skips the cross-check.
+
+    *known_statuses* is a pre-fetched map of sourceRecordId -> status (see
+    ``ingest_record`` / ``BackendClient.get_all_statuses``), used as the
+    existence check.
 
     No throttle is applied between page uploads here — there is no remote
     fetch to be polite about, since pages come from the local zip. The
@@ -191,12 +202,12 @@ def ingest_from_zip(
     assert client is not None  # only None in dry-run mode
 
     if not force:
-        current_status = client.get_status(SOURCE_SYSTEM, sig)
+        current_status = known_statuses.get(sig)
         if current_status:
             log.info(
                 "[SKIP] %s — already exists (status=%s)",
                 label,
-                current_status.get("status"),
+                current_status,
             )
             return "skipped"
 
@@ -222,6 +233,7 @@ def run_scrape(
     uuids: list[str],
     session: InvenioSession,
     client: BackendClient | None,
+    known_statuses: dict[str, str],
     dry_run: bool,
     force: bool,
     max_pages: int | None,
@@ -238,6 +250,7 @@ def run_scrape(
                 client,
                 session,
                 record_uuid,
+                known_statuses,
                 dry_run=dry_run,
                 force=force,
                 max_pages=max_pages,
@@ -352,9 +365,14 @@ def main():
     set_config(cfg)
 
     client = None
+    known_statuses: dict[str, str] = {}
     if not args.dry_run:
         wait_for_backend(cfg.require_backend())
         client = BackendClient()
+        # Fetch once per invocation and reuse across every record in this
+        # run — cheaper than a per-record HTTP call, and the per-record
+        # status route can't be used anyway (see get_all_statuses docstring).
+        known_statuses = client.get_all_statuses(SOURCE_SYSTEM)
 
     scraper_id = uuidmod.uuid4().hex[:12]
     if client:
@@ -370,6 +388,7 @@ def main():
                 client,
                 session,
                 args.from_zip,
+                known_statuses,
                 record_uuid=args.single_uuid,
                 signature=args.signature,
                 dry_run=args.dry_run,
@@ -391,6 +410,7 @@ def main():
             uuids,
             session,
             client,
+            known_statuses,
             args.dry_run,
             args.force,
             args.max_pages,

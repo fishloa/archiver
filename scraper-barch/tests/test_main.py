@@ -27,16 +27,20 @@ class FakeSession:
 
 
 class FakeClient:
-    """Stand-in for BackendClient — no network involved."""
+    """Stand-in for BackendClient — no network involved.
 
-    def __init__(self, statuses: dict | None = None):
-        self._statuses = statuses or {}
+    Existence checks no longer go through the client at all: the caller
+    (ingest_record / ingest_from_zip) is handed a pre-fetched
+    known_statuses dict directly, mirroring how main() calls
+    ``client.get_all_statuses(SOURCE_SYSTEM)`` once per run. So this fake
+    has no get_status/get_all_statuses method — if production code tried
+    to call one, these tests would fail with AttributeError.
+    """
+
+    def __init__(self):
         self.created: list[tuple] = []
         self.uploaded: list[tuple] = []
         self.completed: list[str] = []
-
-    def get_status(self, source_system, source_record_id):
-        return self._statuses.get(source_record_id, {})
 
     def create_record(self, source_system, source_record_id, metadata):
         record_id = f"rec-{len(self.created) + 1}"
@@ -53,13 +57,16 @@ class FakeClient:
     def heartbeat(self, *a, **kw):
         pass
 
+    def close(self):
+        pass
+
 
 class TestIngestRecordDryRun:
     def test_dry_run_does_not_touch_backend_or_download_images(
         self, sample_viewer_html
     ):
         session = FakeSession(sample_viewer_html)
-        result = ingest_record(None, session, UUID, dry_run=True)
+        result = ingest_record(None, session, UUID, {}, dry_run=True)
         assert result == "ok"
         assert session.viewer_calls == [UUID]
         assert session.downloaded == []  # dry-run never downloads page images
@@ -68,16 +75,18 @@ class TestIngestRecordDryRun:
 class TestIngestRecordSkipAndForce:
     def test_skips_when_already_exists(self, sample_viewer_html):
         session = FakeSession(sample_viewer_html)
-        client = FakeClient(statuses={SIGNATURE: {"status": "ocr_pending"}})
-        result = ingest_record(client, session, UUID)
+        client = FakeClient()
+        known_statuses = {SIGNATURE: "ocr_pending"}
+        result = ingest_record(client, session, UUID, known_statuses)
         assert result == "skipped"
         assert client.created == []
         assert session.downloaded == []
 
     def test_force_overrides_skip(self, sample_viewer_html):
         session = FakeSession(sample_viewer_html)
-        client = FakeClient(statuses={SIGNATURE: {"status": "ocr_pending"}})
-        result = ingest_record(client, session, UUID, force=True)
+        client = FakeClient()
+        known_statuses = {SIGNATURE: "ocr_pending"}
+        result = ingest_record(client, session, UUID, known_statuses, force=True)
         assert result == "ok"
         assert len(client.created) == 1
         assert client.created[0][1] == SIGNATURE
@@ -87,7 +96,7 @@ class TestIngestRecordSkipAndForce:
     def test_ingests_when_no_existing_status(self, sample_viewer_html):
         session = FakeSession(sample_viewer_html)
         client = FakeClient()
-        result = ingest_record(client, session, UUID)
+        result = ingest_record(client, session, UUID, {})
         assert result == "ok"
         assert len(client.created) == 1
 
@@ -99,7 +108,7 @@ class TestIngestRecordThrottling:
 
         session = FakeSession(sample_viewer_html)
         client = FakeClient()
-        result = ingest_record(client, session, UUID)
+        result = ingest_record(client, session, UUID, {})
 
         assert result == "ok"
         assert len(client.uploaded) == 3
@@ -112,7 +121,7 @@ class TestIngestRecordThrottling:
 
         session = FakeSession(sample_viewer_html)
         client = FakeClient()
-        ingest_record(client, session, UUID, max_pages=1)
+        ingest_record(client, session, UUID, {}, max_pages=1)
 
         assert len(client.uploaded) == 1
         assert len(sleeps) == 1
@@ -130,7 +139,7 @@ class TestIngestFromZip:
         zip_path = self._make_zip(tmp_path, n_pages=3)
         session = FakeSession(sample_viewer_html)
         result = ingest_from_zip(
-            None, session, zip_path, record_uuid=UUID, dry_run=True
+            None, session, zip_path, {}, record_uuid=UUID, dry_run=True
         )
         assert result == "ok"
 
@@ -138,7 +147,7 @@ class TestIngestFromZip:
         zip_path = self._make_zip(tmp_path, n_pages=3)
         session = FakeSession(sample_viewer_html)
         client = FakeClient()
-        result = ingest_from_zip(client, session, zip_path, record_uuid=UUID)
+        result = ingest_from_zip(client, session, zip_path, {}, record_uuid=UUID)
         assert result == "ok"
         assert len(client.uploaded) == 3
         assert client.created[0][1] == SIGNATURE
@@ -153,7 +162,7 @@ class TestIngestFromZip:
         session = FakeSession(sample_viewer_html)
         client = FakeClient()
         with pytest.raises(ValueError, match="does not match"):
-            ingest_from_zip(client, session, zip_path, record_uuid=UUID)
+            ingest_from_zip(client, session, zip_path, {}, record_uuid=UUID)
         assert client.created == []
 
     def test_offline_signature_path_skips_cross_check_and_session(self, tmp_path):
@@ -161,7 +170,7 @@ class TestIngestFromZip:
         client = FakeClient()
         # No session at all — the offline path never talks to Invenio.
         result = ingest_from_zip(
-            client, None, zip_path, signature="R 43-II/1326 (offline)"
+            client, None, zip_path, {}, signature="R 43-II/1326 (offline)"
         )
         assert result == "ok"
         assert client.created[0][1] == "R 43-II/1326 (offline)"
@@ -170,14 +179,17 @@ class TestIngestFromZip:
     def test_skip_if_exists_and_force_override(self, tmp_path, sample_viewer_html):
         zip_path = self._make_zip(tmp_path, n_pages=3)
         session = FakeSession(sample_viewer_html)
-        client = FakeClient(statuses={SIGNATURE: {"status": "complete"}})
+        client = FakeClient()
+        known_statuses = {SIGNATURE: "complete"}
 
-        skipped = ingest_from_zip(client, session, zip_path, record_uuid=UUID)
+        skipped = ingest_from_zip(
+            client, session, zip_path, known_statuses, record_uuid=UUID
+        )
         assert skipped == "skipped"
         assert client.created == []
 
         forced = ingest_from_zip(
-            client, session, zip_path, record_uuid=UUID, force=True
+            client, session, zip_path, known_statuses, record_uuid=UUID, force=True
         )
         assert forced == "ok"
         assert len(client.created) == 1
@@ -190,7 +202,7 @@ class TestIngestFromZip:
         zip_path = self._make_zip(tmp_path, n_pages=3)
         session = FakeSession(sample_viewer_html)
         client = FakeClient()
-        ingest_from_zip(client, session, zip_path, record_uuid=UUID)
+        ingest_from_zip(client, session, zip_path, {}, record_uuid=UUID)
         assert sleeps == []  # no throttle for local zip pages
 
 
@@ -213,6 +225,75 @@ class TestLoadUuidFile:
             "aaaa1111-bbbb-cccc-dddd-eeee00001111",
             "bbbb2222-cccc-dddd-eeee-ffff00002222",
         ]
+
+
+class CountingFakeClient(FakeClient):
+    """Like FakeClient, but counts get_all_statuses calls."""
+
+    def __init__(self):
+        super().__init__()
+        self.status_calls = 0
+
+    def get_all_statuses(self, source_system):
+        self.status_calls += 1
+        return {}
+
+
+class MultiUuidFakeSession:
+    """Stand-in InvenioSession usable across several UUIDs in one main() run."""
+
+    def __init__(self, html):
+        self.html = html
+
+    def get_viewer_page(self, uuid):
+        return self.html
+
+    def download_image(self, url):
+        return b"\xff\xd8fake"
+
+    def close(self):
+        pass
+
+
+class TestMainFetchesKnownStatusesOnce:
+    def test_fetches_status_map_once_regardless_of_uuid_count(
+        self, sample_viewer_html, monkeypatch
+    ):
+        """Regression guard for the coordinator's fix: known_statuses must be
+        fetched once per invocation (GET /api/ingest/status/{system}) and
+        reused across every record, never once per record.
+        """
+        holder: dict = {}
+
+        def make_client():
+            c = CountingFakeClient()
+            holder["client"] = c
+            return c
+
+        monkeypatch.setattr("scraper_barch.main.wait_for_backend", lambda url: None)
+        monkeypatch.setattr("scraper_barch.main.BackendClient", make_client)
+        monkeypatch.setattr(
+            "scraper_barch.main.InvenioSession",
+            lambda: MultiUuidFakeSession(sample_viewer_html),
+        )
+        monkeypatch.setattr("scraper_barch.main.time.sleep", lambda s: None)
+        second_uuid = "5ba0dead-af11-4732-9a76-0c434720aeb6"
+        monkeypatch.setattr(
+            "sys.argv",
+            [
+                "scraper-barch",
+                UUID,
+                second_uuid,
+                "--backend-url",
+                "http://test-backend:8000",
+            ],
+        )
+
+        main()
+
+        client = holder["client"]
+        assert client.status_calls == 1
+        assert len(client.created) == 2
 
 
 class TestCliFromZipValidation:

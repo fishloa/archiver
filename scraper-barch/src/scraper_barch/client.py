@@ -2,9 +2,6 @@
 
 import json as jsonmod
 import logging
-import urllib.parse
-
-import httpx
 
 from worker_common.http import ResilientClient
 
@@ -141,28 +138,25 @@ class BackendClient:
         self._client.delete(f"/api/ingest/records/{record_id}")
         log.info("Deleted record %s", record_id)
 
-    def get_status(self, source_system: str, source_record_id: str) -> dict:
-        """Check ingest status. Returns status dict or empty dict if not found.
+    def get_all_statuses(self, source_system: str) -> dict[str, str]:
+        """Fetch all record statuses for a source system.
 
-        Used as the existence check before ingesting a record — there is no
-        GET .../by-source/... route on the backend (only DELETE), so this
-        mirrors what scraper-cz/scraper-oesta already do for resume support.
+        Returns a dict mapping sourceRecordId -> status.
 
-        Bundesarchiv signatures (e.g. "R 43-II/1326") contain spaces and a
-        slash, so *source_record_id* is percent-encoded before being placed
-        in the URL path — see the report for a caveat about Spring's
-        handling of an encoded slash in a single @PathVariable segment.
+        This is the existence-check primitive for this scraper. There is no
+        GET .../by-source/{system}/{id} route on the backend (only DELETE),
+        and the per-record GET /api/ingest/status/{system}/{id} route
+        cannot be used here: Bundesarchiv signatures contain a literal "/"
+        (e.g. "R 43-II/1326"), and Spring Security's StrictHttpFirewall
+        rejects any request whose path contains an encoded slash (%2F)
+        with a 400 before it ever reaches the controller — confirmed live
+        against the backend. sourceSystem itself ("invenio.bundesarchiv.de")
+        never contains a slash, so this whole-map route is unaffected.
+        Callers should fetch this once per run and look up each
+        source_record_id locally, rather than calling per record.
         """
-        encoded_id = urllib.parse.quote(source_record_id, safe="")
-        try:
-            resp = self._client.get(
-                f"/api/ingest/status/{source_system}/{encoded_id}",
-            )
-            return resp.json()
-        except httpx.HTTPStatusError as exc:
-            if exc.response.status_code == 404:
-                return {}
-            raise
+        resp = self._client.get(f"/api/ingest/status/{source_system}")
+        return resp.json()
 
     def heartbeat(
         self,
