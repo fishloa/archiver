@@ -66,9 +66,13 @@ public class SecurityConfig {
                     // Admin GET endpoints — admin only (must precede general GET permit)
                     .requestMatchers(HttpMethod.GET, "/api/admin/**")
                     .hasRole("ADMIN")
-                    // GET requests are read-only — allow anonymous
-                    .requestMatchers(HttpMethod.GET, "/api/**")
+                    // Auth endpoint — must precede the general GET permit below so it isn't
+                    // shadowed; /api/auth/me must answer for a signed-out caller.
+                    .requestMatchers("/api/auth/**")
                     .permitAll()
+                    // All reads require an allowlisted user
+                    .requestMatchers(HttpMethod.GET, "/api/**")
+                    .hasAnyRole("USER", "ADMIN", "PROCESSOR")
                     // Worker/scraper ingest — bearer token or admin only
                     .requestMatchers(HttpMethod.POST, "/api/ingest/**")
                     .hasAnyRole("PROCESSOR", "ADMIN")
@@ -81,23 +85,9 @@ public class SecurityConfig {
                     .hasAnyRole("PROCESSOR", "ADMIN")
                     .requestMatchers(HttpMethod.PUT, "/api/processor/**")
                     .hasAnyRole("PROCESSOR", "ADMIN")
-                    // Semantic search is a read-only POST
-                    .requestMatchers(HttpMethod.POST, "/api/search/semantic")
-                    .permitAll()
                     // Claude translation — requires login
                     .requestMatchers(HttpMethod.POST, "/api/translate/claude")
                     .hasAnyRole("USER", "ADMIN")
-                    // On-demand worker translation
-                    .requestMatchers(HttpMethod.POST, "/api/translate")
-                    .permitAll()
-                    // Family tree maintenance — idempotent
-                    .requestMatchers(HttpMethod.POST, "/api/family-tree/reload")
-                    .permitAll()
-                    .requestMatchers(HttpMethod.POST, "/api/family-tree/invalidate-matches")
-                    .permitAll()
-                    // Auth endpoint
-                    .requestMatchers("/api/auth/**")
-                    .permitAll()
                     // Self-service profile — requires login
                     .requestMatchers(HttpMethod.PUT, "/api/profile")
                     .hasAnyRole("USER", "ADMIN")
@@ -119,9 +109,11 @@ public class SecurityConfig {
                     .hasAnyRole("USER", "ADMIN")
                     .requestMatchers(HttpMethod.DELETE, "/api/**")
                     .hasAnyRole("USER", "ADMIN")
-                    // Everything else (actuator, swagger, etc.)
+                    // Everything else — actuator health, swagger, static resources
+                    .requestMatchers("/actuator/health/**")
+                    .permitAll()
                     .anyRequest()
-                    .permitAll());
+                    .authenticated());
 
     return http.build();
   }
