@@ -2,6 +2,7 @@ package place.icomb.archiver.config;
 
 import com.nimbusds.jose.jwk.source.JWKSource;
 import com.nimbusds.jose.proc.SecurityContext;
+import java.time.Duration;
 import org.springaicommunity.mcp.security.authorizationserver.config.McpAuthorizationServerConfigurer;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
@@ -22,6 +23,7 @@ import org.springframework.security.oauth2.server.authorization.client.Registere
 import org.springframework.security.oauth2.server.authorization.client.RegisteredClientRepository;
 import org.springframework.security.oauth2.server.authorization.settings.AuthorizationServerSettings;
 import org.springframework.security.oauth2.server.authorization.settings.ClientSettings;
+import org.springframework.security.oauth2.server.authorization.settings.TokenSettings;
 import org.springframework.security.oauth2.server.authorization.token.DelegatingOAuth2TokenGenerator;
 import org.springframework.security.oauth2.server.authorization.token.JwtGenerator;
 import org.springframework.security.oauth2.server.authorization.token.OAuth2RefreshTokenGenerator;
@@ -209,7 +211,7 @@ public class McpAuthorizationServerConfig {
     return new RegisteredClientRepository() {
       @Override
       public void save(RegisteredClient registeredClient) {
-        delegate.save(skipConsentForScopelessClients(registeredClient));
+        delegate.save(useLongLivedTokens(skipConsentForScopelessClients(registeredClient)));
       }
 
       @Override
@@ -239,6 +241,26 @@ public class McpAuthorizationServerConfig {
   // ever renders -- not OAuth scope, which McpResourceServerConfig doesn't check at all -- so
   // skipping a consent screen that has nothing meaningful to show is the correct fix, not a
   // workaround.
+  // Spring's default access token lifetime is 5 minutes (refresh token 60 minutes) --
+  // reasonable for a multi-tenant service where a leaked token's blast radius matters, but
+  // this is a single-operator archive whose actual authorization boundary is identity +
+  // allowlist (McpAuthorizeSessionFilter), not token expiry. In practice, Claude.ai's MCP
+  // client doesn't proactively use its refresh_token on a 401 -- it starts a whole new
+  // DCR + authorize + token cycle, which the session-reuse filter completes without a visible
+  // Google/Apple login, but STILL requires the human to manually re-trigger it (confirmed
+  // live: a 5-minute gap between tool calls forced a manual "reauthorize" click, not a silent
+  // background recovery). Three months trades token lifetime for that not happening during a
+  // normal working session, which is the right tradeoff here since expiry isn't the real
+  // security boundary anyway.
+  private static RegisteredClient useLongLivedTokens(RegisteredClient registeredClient) {
+    TokenSettings settings =
+        TokenSettings.withSettings(registeredClient.getTokenSettings().getSettings())
+            .accessTokenTimeToLive(Duration.ofDays(90))
+            .refreshTokenTimeToLive(Duration.ofDays(90))
+            .build();
+    return RegisteredClient.from(registeredClient).tokenSettings(settings).build();
+  }
+
   private static RegisteredClient skipConsentForScopelessClients(
       RegisteredClient registeredClient) {
     if (!registeredClient.getScopes().isEmpty()) {
