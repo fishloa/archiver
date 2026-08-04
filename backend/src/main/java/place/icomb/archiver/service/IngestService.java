@@ -195,6 +195,69 @@ public class IngestService {
   }
 
   /**
+   * Replaces an existing page's image in place: deletes the old attachment (cascading away the old
+   * page row and everything derived from it -- OCR text, jobs, translations, embeddings) and
+   * inserts a fresh page at the same seq via {@link #addPage}. If no page exists yet at that seq,
+   * this is equivalent to a plain {@code addPage}. The record's own id is never touched.
+   */
+  @Transactional
+  public Page replacePage(Long recordId, int seq, byte[] imageBytes, PageMetadata metadata) {
+    Optional<Page> existing = pageRepository.findByRecordIdAndSeq(recordId, seq);
+    if (existing.isPresent()) {
+      attachmentRepository.deleteById(existing.get().getAttachmentId());
+    }
+    Page page = addPage(recordId, seq, imageBytes, metadata);
+
+    // addPage() assumes it's always adding a new attachment on top of what's there; correct the
+    // count here since a replace nets to the same attachment count, not +1.
+    Record record = recordRepository.findById(recordId).orElseThrow();
+    record.setAttachmentCount(attachmentRepository.findByRecordId(recordId).size());
+    recordRepository.save(record);
+
+    return page;
+  }
+
+  /**
+   * Wipes every existing page (and their derived OCR/translation/embedding data) plus the built PDF
+   * for a record, and resets its status to "ingesting" -- while keeping the record's own id, source
+   * identity, and catalogue metadata untouched. Intended for a full re-scrape of a record whose
+   * scan images need to be regenerated (e.g. after fixing a scraper bug), driven by the caller
+   * re-running addPage/addPdf/completeIngest for every page exactly as it would for a fresh ingest.
+   */
+  @Transactional
+  public Record replaceAllPages(Long recordId) {
+    Record record =
+        recordRepository
+            .findById(recordId)
+            .orElseThrow(() -> new IllegalArgumentException("Record not found: " + recordId));
+
+    // Break circular FK: record -> attachment (pdf), same precaution as deleteRecord().
+    if (record.getPdfAttachmentId() != null) {
+      record.setPdfAttachmentId(null);
+      recordRepository.save(record);
+    }
+
+    // Deleting attachments cascades: attachment -> page -> page_text/job/entity_hit/evidence/
+    // text_chunk. This removes every page and everything derived from it, plus the old PDF.
+    for (Attachment attachment : attachmentRepository.findByRecordId(recordId)) {
+      attachmentRepository.deleteById(attachment.getId());
+    }
+
+    record = recordRepository.findById(recordId).orElseThrow();
+    record.setStatus("ingesting");
+    record.setPageCount(0);
+    record.setAttachmentCount(0);
+    record.setUpdatedAt(Instant.now());
+    record = recordRepository.save(record);
+
+    jdbcTemplate.update(
+        "INSERT INTO pipeline_event (record_id, stage, event, detail, created_at) VALUES (?, 'ingest', 'replace_started', 'all pages wiped for full re-scrape', now())",
+        recordId);
+    recordEventService.recordChanged(recordId, "status");
+    return record;
+  }
+
+  /**
    * Reopens a completed/processed record for page repair. Resets status to ingesting, removes stale
    * PDF attachment, and returns existing page sequence numbers so the caller knows which pages are
    * already present.

@@ -12,6 +12,6 @@ class Config(BaseConfig):
 
     def __init__(self):
         super().__init__()
-        self.model_name = os.environ.get("MODEL_NAME", "qwen2.5vl:7b")
+        self.model_name = os.environ.get("MODEL_NAME", "qwen3-vl:30b-a3b-instruct")
         self.ocr_lang = os.environ.get("OCR_LANG", "de")
         self.ollama_url = os.environ.get("OLLAMA_URL", "http://localhost:11434")

@@ -186,6 +186,17 @@ def download_and_stitch(
         log.warning("No tiles downloaded for %s/%s", folder, uuid)
         return None
 
+    still_missing = expected - tile_results.keys()
+    if still_missing:
+        log.warning(
+            "Giving up on %d/%d tiles for %s/%s -- refusing to stitch an incomplete image",
+            len(still_missing),
+            len(expected),
+            folder,
+            uuid[:8],
+        )
+        return None
+
     # Stitch tiles into full image
     full_img = Image.new("RGB", (w, h), (255, 255, 255))
     for (col, row), data in tile_results.items():

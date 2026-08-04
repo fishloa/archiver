@@ -157,6 +157,39 @@ public class IngestController {
                 page.getSourceUrl()));
   }
 
+  @PutMapping(
+      value = "/records/{recordId}/pages/{seq}",
+      consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+  public ResponseEntity<PageResponse> replacePage(
+      @PathVariable Long recordId,
+      @PathVariable int seq,
+      @RequestPart("image") MultipartFile image,
+      @RequestPart(value = "metadata", required = false) PageMetadata metadata)
+      throws IOException {
+    Page page = ingestService.replacePage(recordId, seq, image.getBytes(), metadata);
+    return ResponseEntity.ok(
+        new PageResponse(
+            page.getId(),
+            page.getRecordId(),
+            page.getSeq(),
+            page.getAttachmentId(),
+            page.getPageLabel(),
+            page.getWidth(),
+            page.getHeight(),
+            page.getSourceUrl()));
+  }
+
+  @PostMapping("/records/{recordId}/replace-pages")
+  public ResponseEntity<IngestRecordResponse> replaceAllPages(@PathVariable Long recordId) {
+    Record record = ingestService.replaceAllPages(recordId);
+    return ResponseEntity.ok(
+        new IngestRecordResponse(
+            record.getId(),
+            record.getSourceSystem(),
+            record.getSourceRecordId(),
+            record.getStatus()));
+  }
+
   @PostMapping(value = "/records/{recordId}/pdf", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
   public ResponseEntity<Map<String, Object>> addPdf(
       @PathVariable Long recordId, @RequestPart("pdf") MultipartFile pdf) throws IOException {
