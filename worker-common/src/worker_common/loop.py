@@ -85,11 +85,21 @@ def run_sse_loop(
     client._client.headers["X-Worker-Kinds"] = ",".join(job_kinds)
 
     while True:
-        jobs_processed += drain_jobs(client, job_kinds, process_fn)
+        try:
+            jobs_processed += drain_jobs(client, job_kinds, process_fn)
+        except KeyboardInterrupt:
+            raise
+        except Exception as e:
+            log.warning("Drain failed: %s — retrying after backoff", e)
+            time.sleep(min(reconnect_delay, 5))
+            reconnect_delay = min(reconnect_delay * 2, poll_interval)
+            continue
 
         try:
             log.info("Connecting to SSE (worker=%s)...", client.worker_id[:8])
-            with client.job_events(read_timeout=float(poll_interval), kinds=list(job_kinds)) as events:
+            with client.job_events(
+                read_timeout=float(poll_interval), kinds=list(job_kinds)
+            ) as events:
                 reconnect_delay = 1
                 log.info("SSE connected, waiting for events (poll every %ds)", poll_interval)
                 for event in events:
