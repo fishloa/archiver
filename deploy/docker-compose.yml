@@ -132,21 +132,6 @@ services:
       - backend
     restart: "no"
 
-  ocr-worker-paddle:
-    image: dockerregistry.icomb.place/archiver/ocr-worker-paddle:latest
-    user: "${CONTAINER_USER:-1012:1012}"
-    runtime: nvidia
-    environment:
-      HOME: /tmp
-      BACKEND_URL: http://backend:8080
-      PROCESSOR_TOKEN: ${PROCESSOR_TOKEN}
-      NVIDIA_VISIBLE_DEVICES: all
-    depends_on:
-      - backend
-    restart: unless-stopped
-    deploy:
-      replicas: 2
-
   pdf-worker:
     image: dockerregistry.icomb.place/archiver/pdf-worker:latest
     user: "${CONTAINER_USER:-1012:1012}"
