@@ -41,9 +41,13 @@ RUN pip install --no-cache-dir --upgrade pip setuptools wheel && \
         "fastapi>=0.115" \
         "uvicorn>=0.32"
 
-# Layer 2: Copy pre-downloaded models (world-readable for non-root execution)
-COPY --from=model-downloader /root/.cache/huggingface/ /root/.cache/huggingface/
-RUN chmod -R a+rX /root/.cache/huggingface/ && chmod a+rx /root
+# Layer 2: Copy pre-downloaded models into a writable cache.
+# The cache must be writable, not just readable: HuggingFace downloads any
+# model that was not baked in at build time, and a read-only cache makes every
+# language pair beyond de-en/cs-en fail permanently with PermissionError.
+ENV HF_HOME=/opt/huggingface
+COPY --from=model-downloader /root/.cache/huggingface/ /opt/huggingface/
+RUN chown -R 1012:1012 /opt/huggingface && chmod -R a+rwX /opt/huggingface
 
 # Create passwd entry for non-root uid so getpass.getuser() works
 # (torch._dynamo calls this on import; without it uid 1012 crashes)

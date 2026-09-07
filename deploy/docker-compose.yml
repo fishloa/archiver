@@ -151,7 +151,7 @@ services:
     environment:
       HOME: /tmp
       LOGNAME: worker
-      HF_HOME: /root/.cache/huggingface
+      HF_HOME: /opt/huggingface
       NVIDIA_VISIBLE_DEVICES: all
       BACKEND_URL: http://backend:8080
       PROCESSOR_TOKEN: ${PROCESSOR_TOKEN}

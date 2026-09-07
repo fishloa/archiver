@@ -22,11 +22,19 @@ class EmbedClient(ProcessorClient):
         return resp.json()
 
     def store_embeddings(self, record_id: int, chunks: list[dict]):
-        """Store text chunks with embeddings in the backend."""
+        """Store text chunks with embeddings in the backend.
+
+        The backend replaces a record's chunks in one atomic delete-then-insert,
+        so this has to be a single request — it cannot be split into batches.
+        A large record (a 289-page thesis runs to ~500 chunks of 1024 floats)
+        is several MB of JSON and hundreds of inserts, which comfortably
+        exceeded the old 60s timeout and left the record stuck in `embedding`
+        even though the server had stored everything.
+        """
         resp = self._client.post(
             "/api/processor/embeddings",
             json={"recordId": record_id, "chunks": chunks},
-            timeout=60.0,
+            timeout=600.0,
         )
         resp.raise_for_status()
         return resp.json()
