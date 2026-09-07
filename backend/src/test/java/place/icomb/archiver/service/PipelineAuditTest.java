@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.test.context.ActiveProfiles;
@@ -28,6 +29,10 @@ class PipelineAuditTest {
           .withCommand("postgres", "-c", "max_connections=50");
 
   @Autowired private JobService jobService;
+
+  @Value("${archiver.ocr.default-engine:ocr_page_qwen3vl}")
+  private String defaultOcrEngine;
+
   @Autowired private JdbcClient jdbc;
 
   @DynamicPropertySource
@@ -367,7 +372,7 @@ class PipelineAuditTest {
     assertThat(getRecordStatus(recordId)).isEqualTo("ocr_pending");
 
     // Should have enqueued 2 OCR jobs
-    assertThat(countJobs(recordId, "ocr_page_paddle", "pending")).isEqualTo(2);
+    assertThat(countJobs(recordId, defaultOcrEngine, "pending")).isEqualTo(2);
 
     // Should have pipeline events: ingest completed + ocr started
     assertThat(countPipelineEvents(recordId, "ingest", "completed")).isEqualTo(1);

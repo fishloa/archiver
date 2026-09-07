@@ -7,6 +7,7 @@ import java.util.Map;
 import java.util.Optional;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -24,17 +25,20 @@ public class JobService {
   private final JdbcTemplate jdbcTemplate;
   private final JobEventService jobEventService;
   private final RecordEventService recordEventService;
+  private final String defaultOcrEngine;
   private PipelineStateMachine stateMachine;
 
   public JobService(
       JobRepository jobRepository,
       JdbcTemplate jdbcTemplate,
       JobEventService jobEventService,
-      RecordEventService recordEventService) {
+      RecordEventService recordEventService,
+      @Value("${archiver.ocr.default-engine:ocr_page_qwen3vl}") String defaultOcrEngine) {
     this.jobRepository = jobRepository;
     this.jdbcTemplate = jdbcTemplate;
     this.jobEventService = jobEventService;
     this.recordEventService = recordEventService;
+    this.defaultOcrEngine = defaultOcrEngine;
   }
 
   /** Injected after construction to break circular dependency (StateMachine → JobService). */
@@ -209,7 +213,7 @@ public class JobService {
             jdbcTemplate.queryForList(
                 "SELECT id FROM page WHERE record_id = ? ORDER BY seq", Long.class, recordId);
         for (Long pageId : pageIds) {
-          enqueueJob("ocr_page_paddle", recordId, pageId, ocrPayload);
+          enqueueJob(defaultOcrEngine, recordId, pageId, ocrPayload);
         }
         jdbcTemplate.update(
             "UPDATE record SET status = 'ocr_pending', updated_at = now() WHERE id = ?", recordId);
@@ -618,7 +622,7 @@ public class JobService {
             jdbcTemplate.queryForList(
                 "SELECT id FROM page WHERE record_id = ? ORDER BY seq", Long.class, recordId);
         for (Long pageId : pageIds) {
-          enqueueJob("ocr_page_paddle", recordId, pageId, ocrPayload);
+          enqueueJob(defaultOcrEngine, recordId, pageId, ocrPayload);
           jobsEnqueued++;
         }
       }
