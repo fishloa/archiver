@@ -176,7 +176,7 @@ public class ClaudeOcrWorker extends GenericWorker {
                 "model",
                 model,
                 "max_tokens",
-                4096,
+                16000,
                 "messages",
                 List.of(
                     Map.of(
@@ -204,7 +204,7 @@ public class ClaudeOcrWorker extends GenericWorker {
             .header("x-api-key", apiKey)
             .header("anthropic-version", "2023-06-01")
             .POST(HttpRequest.BodyPublishers.ofString(requestBody))
-            .timeout(Duration.ofSeconds(120))
+            .timeout(Duration.ofSeconds(300))
             .build();
 
     HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
@@ -215,6 +215,26 @@ public class ClaudeOcrWorker extends GenericWorker {
     }
 
     JsonNode json = objectMapper.readTree(response.body());
-    return json.get("content").get(0).get("text").asText();
+    return extractText(json);
+  }
+
+  /**
+   * Pulls the OCR text out of a Messages API response. Models with adaptive thinking (Opus 5 and
+   * later) emit a {@code thinking} block ahead of the text, so the text is not always block 0.
+   */
+  static String extractText(JsonNode json) {
+    StringBuilder sb = new StringBuilder();
+    for (JsonNode block : json.path("content")) {
+      if ("text".equals(block.path("type").asText())) {
+        if (!sb.isEmpty()) {
+          sb.append('\n');
+        }
+        sb.append(block.path("text").asText());
+      }
+    }
+    if (sb.isEmpty()) {
+      throw new RuntimeException("Claude API response contained no text block: " + json);
+    }
+    return sb.toString();
   }
 }
