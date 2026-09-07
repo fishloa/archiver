@@ -258,7 +258,7 @@ public class JobService {
               AND NOT EXISTS (
                 SELECT 1 FROM job j
                 WHERE j.record_id = r.id
-                  AND j.kind IN ('ocr_page_paddle', 'ocr_page_abbyy', 'ocr_page_qwen3vl')
+                  AND j.kind LIKE 'ocr\\_page\\_%'
                   AND j.status IN ('pending', 'claimed')
               )
             ORDER BY r.id

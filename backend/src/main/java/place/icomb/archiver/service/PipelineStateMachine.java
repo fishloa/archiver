@@ -73,11 +73,10 @@ public class PipelineStateMachine {
                 """
                 SELECT count(*) FROM job
                 WHERE record_id = ?
-                  AND kind IN ('ocr_page_paddle', 'ocr_page_abbyy', 'ocr_page_qwen3vl')
+                  AND kind LIKE 'ocr\\_page\\_%'
                   AND status IN ('pending', 'claimed')
                 """,
-                Long.class,
-                recordId);
+                Long.class, recordId);
         allOcrJobsComplete = pending != null && pending == 0;
       }
       return allOcrJobsComplete;

@@ -194,6 +194,38 @@ class PipelineStateMachineTest {
     assertThat(getRecordStatus(recordId)).isEqualTo("ocr_pending");
   }
 
+  @Test
+  void ocrPendingStays_whenClaudeJobsPending() {
+    Long archiveId = createArchive();
+    Long recordId = createRecord(archiveId, "ocr_pending", 2);
+    Long page1 = createPage(recordId, 1);
+    Long page2 = createPage(recordId, 2);
+
+    createJob(recordId, page1, "ocr_page_claude", "completed");
+    createJob(recordId, page2, "ocr_page_claude", "pending"); // still pending
+
+    boolean advanced = stateMachine.autoAdvance(recordId);
+
+    assertThat(advanced).isFalse();
+    assertThat(getRecordStatus(recordId)).isEqualTo("ocr_pending");
+  }
+
+  @Test
+  void ocrPendingToOcrDone_whenAllClaudeJobsComplete() {
+    Long archiveId = createArchive();
+    Long recordId = createRecord(archiveId, "ocr_pending", 2);
+    Long page1 = createPage(recordId, 1);
+    Long page2 = createPage(recordId, 2);
+
+    createJob(recordId, page1, "ocr_page_claude", "completed");
+    createJob(recordId, page2, "ocr_page_claude", "completed");
+
+    boolean advanced = stateMachine.autoAdvance(recordId);
+
+    assertThat(advanced).isTrue();
+    assertThat(getRecordStatus(recordId)).isEqualTo("pdf_pending");
+  }
+
   // ---------------------------------------------------------------------------
   // OCR_DONE → PDF_PENDING (has pages) / TRANSLATING (no pages) / EMBEDDING
   // ---------------------------------------------------------------------------
