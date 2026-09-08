@@ -43,6 +43,9 @@ public class SemanticSearchController {
   private final JdbcTemplate jdbcTemplate;
   private final String teiUrl;
   private final String teiKey;
+  private final String embedModel;
+  private final int embedDimensions;
+  private final String queryPrefix;
   private final place.icomb.archiver.service.ResilientHttpClient httpClient =
       place.icomb.archiver.service.ResilientHttpClient.builder().build();
   private final ObjectMapper objectMapper = new ObjectMapper();
@@ -50,10 +53,16 @@ public class SemanticSearchController {
   public SemanticSearchController(
       JdbcTemplate jdbcTemplate,
       @Value("${archiver.embed.tei-url:}") String teiUrl,
-      @Value("${archiver.embed.tei-key:}") String teiKey) {
+      @Value("${archiver.embed.tei-key:}") String teiKey,
+      @Value("${archiver.embed.model:Qwen/Qwen3-Embedding-8B}") String embedModel,
+      @Value("${archiver.embed.dimensions:1024}") int embedDimensions,
+      @Value("${archiver.embed.query-prefix:}") String queryPrefix) {
     this.jdbcTemplate = jdbcTemplate;
     this.teiUrl = teiUrl;
     this.teiKey = teiKey;
+    this.embedModel = embedModel;
+    this.embedDimensions = embedDimensions;
+    this.queryPrefix = queryPrefix;
   }
 
   @PostMapping("/search/semantic")
@@ -137,14 +146,14 @@ public class SemanticSearchController {
           """
           WITH vec_candidates AS (
             SELECT tc.record_id, tc.page_id, tc.chunk_index, tc.content,
-                   1 - (tc.embedding <=> ?::vector) AS sem_score
+                   1 - (tc.embedding <=> ?::halfvec) AS sem_score
             FROM text_chunk tc
-            ORDER BY tc.embedding <=> ?::vector
+            ORDER BY tc.embedding <=> ?::halfvec
             LIMIT 500
           ),
           kw_candidates AS (
             SELECT tc.record_id, tc.page_id, tc.chunk_index, tc.content,
-                   1 - (tc.embedding <=> ?::vector) AS sem_score
+                   1 - (tc.embedding <=> ?::halfvec) AS sem_score
             FROM text_chunk tc
             WHERE %s
             LIMIT 500
@@ -220,11 +229,19 @@ public class SemanticSearchController {
   }
 
   private float[] embedText(String text) throws Exception {
-    String jsonBody = objectMapper.writeValueAsString(Map.of("inputs", text));
+    // Qwen3-Embedding needs its instruction prefix on the QUERY side only — embed-worker
+    // sends passages with no prefix. Both sides read archiver.embed.* so they can't drift.
+    String prefixedText = queryPrefix + text;
+    String jsonBody =
+        objectMapper.writeValueAsString(
+            Map.of(
+                "model", embedModel,
+                "input", List.of(prefixedText),
+                "dimensions", embedDimensions));
 
     var requestBuilder =
         HttpRequest.newBuilder()
-            .uri(URI.create(teiUrl + "/embed"))
+            .uri(URI.create(teiUrl + "/embeddings"))
             .header("Content-Type", "application/json")
             .POST(HttpRequest.BodyPublishers.ofString(jsonBody));
 
@@ -239,9 +256,9 @@ public class SemanticSearchController {
       throw new RuntimeException("TEI API error: " + response.statusCode() + " " + response.body());
     }
 
-    // TEI returns float[][] — first element is the embedding for our single input
+    // OpenAI-compatible response: {"data":[{"index":0,"embedding":[...]}]}
     var tree = objectMapper.readTree(response.body());
-    var embeddingNode = tree.get(0);
+    var embeddingNode = tree.get("data").get(0).get("embedding");
     float[] embedding = new float[embeddingNode.size()];
     for (int i = 0; i < embeddingNode.size(); i++) {
       embedding[i] = (float) embeddingNode.get(i).doubleValue();

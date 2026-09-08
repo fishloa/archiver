@@ -1,10 +1,25 @@
-"""Tests for embed worker TEI integration."""
+"""Tests for the embed worker's embedding backend.
+
+Rewritten when the worker moved from TEI's native /embed endpoint to the
+OpenAI-compatible /embeddings one, so that it could request a specific model and
+Matryoshka dimension count. The response shape changed with it: a bare float[][]
+became {"data": [{"index": n, "embedding": [...]}]}, and the order of that list is
+not guaranteed — hence the out-of-order test below.
+"""
 
 import pytest
 import respx
 import httpx
 
 from embed_worker.main import embed_batch, process_one
+
+MODEL = "Qwen/Qwen3-Embedding-8B"
+DIMS = 1024
+
+
+def envelope(vectors, start=0):
+    """Wrap vectors in the OpenAI-compatible embeddings response shape."""
+    return {"data": [{"index": start + i, "embedding": v} for i, v in enumerate(vectors)]}
 
 
 class FakeClient:
@@ -32,14 +47,14 @@ class FakeClient:
 
 @respx.mock
 def test_embed_batch_calls_tei():
-    """embed_batch should POST to TEI /embed and return vectors."""
+    """embed_batch should POST to /embeddings and return vectors."""
     fake_vectors = [[0.1] * 1024, [0.2] * 1024]
 
-    respx.post("http://tei:80/embed").mock(
-        return_value=httpx.Response(200, json=fake_vectors)
+    respx.post("http://tei:80/embeddings").mock(
+        return_value=httpx.Response(200, json=envelope(fake_vectors))
     )
 
-    result = embed_batch("http://tei:80", "test-key", ["hello", "world"])
+    result = embed_batch("http://tei:80", "test-key", ["hello", "world"], MODEL, DIMS)
 
     assert len(result) == 2
     assert len(result[0]) == 1024
@@ -56,11 +71,11 @@ def test_embed_batch_no_key():
     """embed_batch should work without an API key."""
     fake_vectors = [[0.5] * 1024]
 
-    respx.post("http://tei:80/embed").mock(
-        return_value=httpx.Response(200, json=fake_vectors)
+    respx.post("http://tei:80/embeddings").mock(
+        return_value=httpx.Response(200, json=envelope(fake_vectors))
     )
 
-    result = embed_batch("http://tei:80", "", ["test"])
+    result = embed_batch("http://tei:80", "", ["test"], MODEL, DIMS)
 
     assert len(result) == 1
     request = respx.calls[0].request
@@ -72,8 +87,8 @@ def test_process_one_prefers_text_raw():
     """process_one should embed text_raw (original OCR) over text_en."""
     fake_vectors = [[0.1] * 1024, [0.2] * 1024]
 
-    respx.post("http://tei:80/embed").mock(
-        return_value=httpx.Response(200, json=fake_vectors)
+    respx.post("http://tei:80/embeddings").mock(
+        return_value=httpx.Response(200, json=envelope(fake_vectors))
     )
 
     client = FakeClient()
@@ -93,7 +108,7 @@ def test_process_one_prefers_text_raw():
     ]
 
     job = {"id": 42, "recordId": 100}
-    process_one(client, "http://tei:80", "test-key", job)
+    process_one(client, "http://tei:80", "test-key", MODEL, DIMS, job)
 
     assert 42 in client.completed_jobs
     assert len(client.stored) == 1
@@ -112,8 +127,8 @@ def test_process_one_falls_back_to_text_en():
     """process_one should fall back to text_en when text_raw is missing."""
     fake_vectors = [[0.1] * 1024, [0.2] * 1024]
 
-    respx.post("http://tei:80/embed").mock(
-        return_value=httpx.Response(200, json=fake_vectors)
+    respx.post("http://tei:80/embeddings").mock(
+        return_value=httpx.Response(200, json=envelope(fake_vectors))
     )
 
     client = FakeClient()
@@ -133,7 +148,7 @@ def test_process_one_falls_back_to_text_en():
     ]
 
     job = {"id": 43, "recordId": 101}
-    process_one(client, "http://tei:80", "test-key", job)
+    process_one(client, "http://tei:80", "test-key", MODEL, DIMS, job)
 
     assert 43 in client.completed_jobs
     chunks = client.stored[0]["chunks"]
@@ -147,8 +162,8 @@ def test_process_one_skips_empty_pages():
     """process_one should skip pages with no text at all."""
     fake_vectors = [[0.1] * 1024]
 
-    respx.post("http://tei:80/embed").mock(
-        return_value=httpx.Response(200, json=fake_vectors)
+    respx.post("http://tei:80/embeddings").mock(
+        return_value=httpx.Response(200, json=envelope(fake_vectors))
     )
 
     client = FakeClient()
@@ -165,7 +180,7 @@ def test_process_one_skips_empty_pages():
     ]
 
     job = {"id": 44, "recordId": 102}
-    process_one(client, "http://tei:80", "test-key", job)
+    process_one(client, "http://tei:80", "test-key", MODEL, DIMS, job)
 
     # Job still completes (metadata chunk exists)
     assert 44 in client.completed_jobs
@@ -186,14 +201,14 @@ def test_embed_batch_retries_on_422():
         body = request.content
         import json
 
-        inputs = json.loads(body)["inputs"]
+        inputs = json.loads(body)["input"]
         if len(inputs) > 2:
             return httpx.Response(422, json={"error": "too many tokens"})
-        return httpx.Response(200, json=[[0.1] * 1024] * len(inputs))
+        return httpx.Response(200, json=envelope([[0.1] * 1024] * len(inputs)))
 
-    respx.post("http://tei:80/embed").mock(side_effect=side_effect)
+    respx.post("http://tei:80/embeddings").mock(side_effect=side_effect)
 
-    result = embed_batch("http://tei:80", "test-key", ["a", "b", "c", "d"])
+    result = embed_batch("http://tei:80", "test-key", ["a", "b", "c", "d"], MODEL, DIMS)
 
     assert len(result) == 4
     assert call_count >= 3  # first call fails, then splits into 2+ successful calls
@@ -201,11 +216,11 @@ def test_embed_batch_retries_on_422():
 
 @respx.mock
 def test_process_one_1024_dim_vectors():
-    """Verify stored embeddings are 1024-dimensional (BGE-M3)."""
+    """Verify stored embeddings are 1024-dimensional (Qwen3 truncated via `dimensions`)."""
     fake_vectors = [[float(i) / 1024 for i in range(1024)]]
 
-    respx.post("http://tei:80/embed").mock(
-        return_value=httpx.Response(200, json=fake_vectors)
+    respx.post("http://tei:80/embeddings").mock(
+        return_value=httpx.Response(200, json=envelope(fake_vectors))
     )
 
     client = FakeClient()
@@ -219,8 +234,55 @@ def test_process_one_1024_dim_vectors():
     client._pages = []
 
     job = {"id": 45, "recordId": 103}
-    process_one(client, "http://tei:80", "test-key", job)
+    process_one(client, "http://tei:80", "test-key", MODEL, DIMS, job)
 
     chunks = client.stored[0]["chunks"]
     assert len(chunks) == 1
     assert len(chunks[0]["embedding"]) == 1024
+
+
+@respx.mock
+def test_embed_batch_sends_model_and_dimensions():
+    """The request must name the model and ask for truncated vectors.
+
+    Qwen3-Embedding is 4096-dimensional natively but Matryoshka-trained, and
+    pgvector's HNSW index stops at 2000. Asking the server for 1024 avoids both
+    the index limit and shipping four times the bytes.
+    """
+    respx.post("http://tei:80/embeddings").mock(
+        return_value=httpx.Response(200, json=envelope([[0.1] * 1024]))
+    )
+
+    embed_batch("http://tei:80", "k", ["hello"], MODEL, DIMS)
+
+    import json as _json
+
+    sent = _json.loads(respx.calls[0].request.content)
+    assert sent["model"] == MODEL
+    assert sent["dimensions"] == DIMS
+    assert sent["input"] == ["hello"]
+
+
+@respx.mock
+def test_embed_batch_reorders_out_of_order_responses():
+    """Vectors must be matched to inputs by index, not by arrival order.
+
+    Silently trusting the order would attach each embedding to the wrong chunk —
+    a corruption that produces no error and would only surface as bad search.
+    """
+    respx.post("http://tei:80/embeddings").mock(
+        return_value=httpx.Response(
+            200,
+            json={
+                "data": [
+                    {"index": 1, "embedding": [0.2] * 1024},
+                    {"index": 0, "embedding": [0.1] * 1024},
+                ]
+            },
+        )
+    )
+
+    result = embed_batch("http://tei:80", "k", ["first", "second"], MODEL, DIMS)
+
+    assert result[0][0] == pytest.approx(0.1)
+    assert result[1][0] == pytest.approx(0.2)

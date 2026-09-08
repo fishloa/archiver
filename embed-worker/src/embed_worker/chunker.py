@@ -1,5 +1,7 @@
 """Text chunking for embedding."""
 
+from worker_common.markdown import iter_sections
+
 
 def chunk_text(text: str, max_chars: int = 2000, overlap: int = 200) -> list[str]:
     """Split text into overlapping chunks.
@@ -46,3 +48,20 @@ def chunk_text(text: str, max_chars: int = 2000, overlap: int = 200) -> list[str
         start = end - overlap if end < len(text) else end
 
     return chunks
+
+
+def chunk_document(
+    text: str, content_type: str, max_chars: int = 2000, overlap: int = 200
+) -> list[dict]:
+    """Chunk a page, keeping each chunk tied to its section heading.
+
+    The heading path is prefixed to the embedded content so a chunk taken from the
+    middle of a section still carries that section's subject. Plain-text pages have
+    no headings and fall back to the previous behaviour.
+    """
+    out: list[dict] = []
+    for heading, body in iter_sections(text, content_type):
+        for piece in chunk_text(body, max_chars=max_chars, overlap=overlap):
+            content = f"{heading}\n\n{piece}" if heading else piece
+            out.append({"content": content, "heading": heading})
+    return out

@@ -366,6 +366,7 @@ public class ProcessorController {
       Long pageId = chunk.get("pageId") != null ? ((Number) chunk.get("pageId")).longValue() : null;
       int chunkIndex = ((Number) chunk.get("chunkIndex")).intValue();
       String content = (String) chunk.get("content");
+      String heading = chunk.get("heading") != null ? (String) chunk.get("heading") : "";
       @SuppressWarnings("unchecked")
       java.util.List<Number> embeddingList = (java.util.List<Number>) chunk.get("embedding");
 
@@ -378,12 +379,13 @@ public class ProcessorController {
       vecStr.append("]");
 
       jdbcTemplate.update(
-          "INSERT INTO text_chunk (record_id, page_id, chunk_index, content, embedding, created_at)"
-              + " VALUES (?, ?, ?, ?, ?::vector, now())",
+          "INSERT INTO text_chunk (record_id, page_id, chunk_index, content, heading, embedding,"
+              + " created_at) VALUES (?, ?, ?, ?, ?, ?::halfvec, now())",
           recordId,
           pageId,
           chunkIndex,
           content,
+          heading,
           vecStr.toString());
       stored++;
     }

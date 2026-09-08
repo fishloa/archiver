@@ -9,5 +9,7 @@ class Config(BaseConfig):
         super().__init__()
         self.tei_url = os.environ.get("EMBED_TEI_URL", "")
         self.tei_key = os.environ.get("EMBED_TEI_KEY", "")
+        self.model = os.environ.get("EMBED_MODEL", "Qwen/Qwen3-Embedding-8B")
+        self.dimensions = int(os.environ.get("EMBED_DIMENSIONS", "1024"))
         if not self.tei_url:
             raise ValueError("EMBED_TEI_URL environment variable is required")

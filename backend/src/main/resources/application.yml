@@ -54,6 +54,9 @@ archiver:
   embed:
     tei-url: ${EMBED_TEI_URL:}
     tei-key: ${EMBED_TEI_KEY:}
+    model: ${EMBED_MODEL:Qwen/Qwen3-Embedding-8B}
+    dimensions: ${EMBED_DIMENSIONS:1024}
+    query-prefix: "${EMBED_QUERY_PREFIX:Instruct: Given a research question, retrieve the archive passage that answers it\nQuery: }"
   translate-worker:
     url: ${TRANSLATE_WORKER_URL:http://translate-worker:8001}
   anthropic:
