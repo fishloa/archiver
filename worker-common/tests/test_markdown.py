@@ -1,5 +1,7 @@
 """Markdown handling shared by the PDF, translate and embed workers."""
 
+import pathlib
+
 from worker_common.markdown import (
     MARKDOWN,
     PLAIN,
@@ -74,3 +76,75 @@ def test_iter_sections_pairs_each_heading_with_its_body():
 
 def test_iter_sections_on_plain_text_yields_one_untitled_section():
     assert iter_sections("just some text", PLAIN) == [("", "just some text")]
+
+
+# ---------------------------------------------------------------------------
+# Regression fixtures taken verbatim from the archive.
+#
+# Translation used to flatten every page to a single line — 120,258 of the
+# 120,386 translated pages have zero newlines in their English text. The first
+# fix unwrapped hard-wrapped prose, which is right for a report but destroyed
+# forms: a wage card records one field per line, and joining those tears every
+# label away from its value. These fixtures hold both shapes so neither
+# regresses into the other.
+# ---------------------------------------------------------------------------
+
+FIXTURES = pathlib.Path(__file__).parent / "fixtures"
+
+
+def _fixture(name: str) -> str:
+    return (FIXTURES / name).read_text()
+
+
+def _nonblank(text: str) -> int:
+    return len([line for line in text.split("\n") if line.strip()])
+
+
+def _round_trip(text: str, content_type: str) -> str:
+    return render_blocks(parse_blocks(text, content_type))
+
+
+def test_wage_card_keeps_each_field_on_its_own_line():
+    # Record 3468 "TSCHERNIN DIMITRO", Arolsen — a Lohnkarte, one field per line.
+    # Before the fix the whole card became a single line and every label was torn
+    # from its value: "Entry: Exit: Wage card for 1942 No. ... Marital status:".
+    src = _fixture("form_lohnkarte_plain.txt")
+    out = _round_trip(src, PLAIN)
+
+    for field in ("Eintritt: 13.9.40", "Wohnort: Antonow", "Steuerkarte Nr. 1066"):
+        assert field in out.split("\n"), f"{field!r} is no longer on its own line"
+
+    # Some column headers are single words stacked vertically in narrow columns
+    # ("Lohn-/aus-/zahlung"), and rejoining those is correct — so the line count
+    # drops a little. What must not happen is wholesale collapse.
+    assert _nonblank(out) > _nonblank(src) * 0.75
+
+
+def test_wage_card_does_not_treat_a_trailing_dash_as_a_broken_word():
+    # "Der.Antonow Kiew-" is a dash, not a word split across a wrap.
+    out = _round_trip(_fixture("form_lohnkarte_plain.txt"), PLAIN)
+    assert "Der.Antonow Kiew-" in out
+    assert "Kiew27" not in out
+
+
+def test_prisoner_form_survives_one_unusually_long_line():
+    # Record 3410 "CZERNIN HUMPRECHT" — a form whose longest line is 72 characters
+    # while the median is 15. One long line is not evidence of wrapped prose.
+    src = _fixture("form_czernin_humprecht_plain.txt")
+    out = _round_trip(src, PLAIN)
+    assert _nonblank(out) > _nonblank(src) * 0.75
+    assert "Gefangenenbuch" in out.split("\n")
+
+
+def test_hard_wrapped_prose_is_joined_into_paragraphs():
+    # Record 2549 seq 81 — a witness statement wrapped at ~57 characters.
+    src = _fixture("prose_wrapped_plain.txt")
+    out = _round_trip(src, PLAIN)
+    assert _nonblank(out) < _nonblank(src) / 5
+
+
+def test_hard_wrapped_prose_heals_words_split_across_the_wrap():
+    # "Schleimhautblu-\ntungen" must become one word for MarianMT.
+    out = _round_trip(_fixture("prose_wrapped_plain.txt"), PLAIN)
+    assert "Schleimhautblutungen" in out
+    assert "Schleimhautblu-" not in out
