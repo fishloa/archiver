@@ -18,6 +18,7 @@ import place.icomb.archiver.service.MistralBatchOcrWorker;
 import place.icomb.archiver.service.PersonMatchService;
 import place.icomb.archiver.service.PersonMatchWorker;
 import place.icomb.archiver.service.QwenOcrWorker;
+import place.icomb.archiver.service.RecordEventService;
 import place.icomb.archiver.service.StorageService;
 
 /**
@@ -31,6 +32,7 @@ public class WorkerSchedulingConfig implements SchedulingConfigurer {
 
   private final JobService jobService;
   private final JobEventService jobEventService;
+  private final RecordEventService recordEventService;
   private final PageRepository pageRepository;
   private final AttachmentRepository attachmentRepository;
   private final StorageService storageService;
@@ -66,6 +68,7 @@ public class WorkerSchedulingConfig implements SchedulingConfigurer {
   public WorkerSchedulingConfig(
       JobService jobService,
       JobEventService jobEventService,
+      RecordEventService recordEventService,
       PageRepository pageRepository,
       AttachmentRepository attachmentRepository,
       StorageService storageService,
@@ -95,6 +98,7 @@ public class WorkerSchedulingConfig implements SchedulingConfigurer {
       @Value("${archiver.person-match.poll-interval:5000}") long personMatchPollInterval) {
     this.jobService = jobService;
     this.jobEventService = jobEventService;
+    this.recordEventService = recordEventService;
     this.pageRepository = pageRepository;
     this.attachmentRepository = attachmentRepository;
     this.storageService = storageService;
@@ -198,6 +202,7 @@ public class WorkerSchedulingConfig implements SchedulingConfigurer {
               "mistral-batch-0",
               jobService,
               jobEventService,
+              recordEventService,
               pageId -> {
                 var page =
                     pageRepository

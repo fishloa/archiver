@@ -56,6 +56,7 @@ public class MistralBatchOcrWorker {
   private final String workerId;
   private final JobService jobService;
   private final JobEventService jobEventService;
+  private final RecordEventService recordEventService;
   private final PageRepositoryPort pages;
   private final StorageService storageService;
   private final JdbcTemplate jdbc;
@@ -78,6 +79,7 @@ public class MistralBatchOcrWorker {
       String workerId,
       JobService jobService,
       JobEventService jobEventService,
+      RecordEventService recordEventService,
       PageRepositoryPort pages,
       StorageService storageService,
       JdbcTemplate jdbc,
@@ -90,6 +92,7 @@ public class MistralBatchOcrWorker {
     this.workerId = workerId;
     this.jobService = jobService;
     this.jobEventService = jobEventService;
+    this.recordEventService = recordEventService;
     this.pages = pages;
     this.storageService = storageService;
     this.jdbc = jdbc;
@@ -279,6 +282,7 @@ public class MistralBatchOcrWorker {
           providerJobId,
           batchId);
 
+      recordEventService.pipelineChanged(JOB_KIND, "batch_submitted");
       log.info(
           "{} submitted batch {} ({} pages) as provider job {}",
           workerId,
@@ -480,6 +484,9 @@ public class MistralBatchOcrWorker {
             n.path("failed_requests").asInt(0),
             n.path("output_file").asText(null),
             id);
+        // A poll changes only batch counters, never a job row, so the dashboard would not
+        // otherwise learn that anything is happening while the provider works.
+        recordEventService.pipelineChanged(JOB_KIND, "batch_polled");
       } catch (Exception e) {
         // Left 'submitted'; the provider timeout in reconcile() is the backstop.
         log.warn("Polling batch {} failed", id, e);
@@ -555,6 +562,7 @@ public class MistralBatchOcrWorker {
     if (accounted != null && expected != null && accounted >= expected) {
       jdbc.update(
           "UPDATE ocr_batch SET status = 'collected', collected_at = now() WHERE id = ?", batchId);
+      recordEventService.pipelineChanged(JOB_KIND, "batch_collected");
       log.info("Collected batch {} ({} pages accounted for)", batchId, accounted);
     }
   }
