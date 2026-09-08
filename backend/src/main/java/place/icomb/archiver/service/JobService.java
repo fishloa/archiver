@@ -1,6 +1,7 @@
 package place.icomb.archiver.service;
 
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -145,6 +146,34 @@ public class JobService {
    * @return total number of records/jobs fixed
    */
   /**
+   * How long a claimed job of each kind may run before it is presumed abandoned.
+   *
+   * <p>A single global threshold cannot distinguish a dead worker from a slow job. The previous
+   * fixed 10 minutes was shorter than the observed maximum for three kinds — build_searchable_pdf
+   * has taken 863s, translate_page 657s, ocr_page_qwen3vl 622s — so seven jobs were reset while
+   * still running and a second worker re-executed them. That is duplicated work, duplicated API
+   * spend, and before the UNIQUE constraint in V26 it also produced duplicate page_text rows.
+   *
+   * <p>Values are the measured maximum for the kind with generous headroom, not guesses. A kind
+   * absent here uses {@link #DEFAULT_LEASE_SECONDS}; keeping that short means genuinely dead jobs
+   * of ordinary kinds are recovered quickly.
+   *
+   * <p>Batched OCR, when it arrives, belongs here with a lease measured in hours: a job that hands
+   * work to a provider's queue is legitimately claimed for as long as that queue takes.
+   */
+  private static final Map<String, Integer> LEASE_SECONDS_BY_KIND =
+      Map.of(
+          "build_searchable_pdf", 3600,
+          "translate_page", 1800,
+          "translate_record", 1800,
+          "ocr_page_qwen3vl", 1800,
+          "ocr_page_claude", 1800,
+          "ocr_page_mistral", 1800);
+
+  /** Lease for any kind not named above. */
+  private static final int DEFAULT_LEASE_SECONDS = 600;
+
+  /**
    * Returns jobs abandoned in {@code claimed} to the queue.
    *
    * <p>A worker that dies mid-job — or a backend restarted during a deploy — leaves its claim
@@ -156,24 +185,42 @@ public class JobService {
    * to share that method's transaction, so a failure in any later pass rolled this recovery back
    * along with it, leaving the jobs stuck exactly when something had already gone wrong.
    *
-   * <p>The 10 minute threshold is generous for every job kind — the slowest, a full-record PDF
-   * build, runs in well under that — so a job past it has been abandoned rather than merely slow.
-   *
    * @return number of jobs returned to the queue
    */
   @Transactional
   public int recoverStaleClaims() {
-    int staleClaimed =
+    int reset = 0;
+    for (var entry : LEASE_SECONDS_BY_KIND.entrySet()) {
+      reset +=
+          jdbcTemplate.update(
+              """
+              UPDATE job SET status = 'pending', started_at = NULL
+              WHERE status = 'claimed'
+                AND kind = ?
+                AND started_at < now() - make_interval(secs => ?)
+              """,
+              entry.getKey(),
+              entry.getValue());
+    }
+    // Everything else falls back to the short default lease.
+    List<Object> params = new ArrayList<>(LEASE_SECONDS_BY_KIND.keySet());
+    String placeholders = "?,".repeat(params.size());
+    params.add(DEFAULT_LEASE_SECONDS);
+    reset +=
         jdbcTemplate.update(
             """
             UPDATE job SET status = 'pending', started_at = NULL
             WHERE status = 'claimed'
-              AND started_at < now() - interval '10 minutes'
-            """);
-    if (staleClaimed > 0) {
-      log.info("Audit: reset {} stale claimed jobs to pending", staleClaimed);
+              AND kind NOT IN (%s)
+              AND started_at < now() - make_interval(secs => ?)
+            """
+                .formatted(placeholders.substring(0, placeholders.length() - 1)),
+            params.toArray());
+
+    if (reset > 0) {
+      log.info("Audit: reset {} stale claimed jobs to pending", reset);
     }
-    return staleClaimed;
+    return reset;
   }
 
   @Transactional

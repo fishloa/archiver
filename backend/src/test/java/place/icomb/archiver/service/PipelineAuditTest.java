@@ -229,6 +229,60 @@ class PipelineAuditTest {
   }
 
   @Test
+  void slowKindStillRunning_notReclaimed() {
+    // The bug this guards: build_searchable_pdf has taken 863s in production, translate_page
+    // 657s and ocr_page_qwen3vl 622s. Under a single 10-minute threshold each was reset while
+    // still running, and a second worker re-executed it — duplicate work, duplicate API spend,
+    // and (before V26's UNIQUE constraint) duplicate page_text rows.
+    Long archiveId = createArchive();
+    Long recordId = createRecord(archiveId, "pdf_pending", 1);
+    Long pageId = createPage(recordId, 1);
+
+    Long jobId =
+        createJobWithStartedAt(
+            recordId,
+            pageId,
+            "build_searchable_pdf",
+            "claimed",
+            1,
+            "now() - interval '15 minutes'");
+
+    jobService.recoverStaleClaims();
+
+    assertThat(getJobStatus(jobId)).isEqualTo("claimed");
+  }
+
+  @Test
+  void slowKindPastItsOwnLease_isReclaimed() {
+    // A longer lease is not an unlimited one — past it, the job is still presumed abandoned.
+    Long archiveId = createArchive();
+    Long recordId = createRecord(archiveId, "pdf_pending", 1);
+    Long pageId = createPage(recordId, 1);
+
+    Long jobId =
+        createJobWithStartedAt(
+            recordId, pageId, "build_searchable_pdf", "claimed", 1, "now() - interval '2 hours'");
+
+    assertThat(jobService.recoverStaleClaims()).isGreaterThanOrEqualTo(1);
+    assertThat(getJobStatus(jobId)).isEqualTo("pending");
+  }
+
+  @Test
+  void kindWithoutAnExplicitLease_usesTheShortDefault() {
+    // Ordinary kinds keep the short lease, so a genuinely dead job is recovered quickly.
+    Long archiveId = createArchive();
+    Long recordId = createRecord(archiveId, "embedding", 1);
+    createPage(recordId, 1);
+
+    Long jobId =
+        createJobWithStartedAt(
+            recordId, null, "embed_record", "claimed", 1, "now() - interval '15 minutes'");
+
+    assertThat(jobService.recoverStaleClaims()).isGreaterThanOrEqualTo(1);
+    assertThat(getJobStatus(jobId)).isEqualTo("pending");
+  }
+
+  @Test
   void pass1_recentClaimed_notReset() {
     Long archiveId = createArchive();
     Long recordId = createRecord(archiveId, "ocr_pending", 1);
