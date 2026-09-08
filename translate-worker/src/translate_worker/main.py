@@ -123,7 +123,12 @@ def main():
     import uvicorn
 
     cfg = Config()
-    client = ProcessorClient(cfg.backend_url, cfg.processor_token)
+    client = ProcessorClient(
+        cfg.backend_url,
+        cfg.processor_token,
+        model=cfg.translate_model,
+        provider=cfg.translate_base_url,
+    )
 
     log.info("Initializing translator (model=%s)...", cfg.translate_model)
     translator = Translator(cfg.translate_base_url, cfg.translate_api_key, cfg.translate_model)

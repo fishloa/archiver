@@ -162,7 +162,9 @@ def main():
     from .client import EmbedClient
 
     cfg = Config()
-    client = EmbedClient(cfg.backend_url, cfg.processor_token)
+    client = EmbedClient(
+        cfg.backend_url, cfg.processor_token, model=cfg.model, provider=cfg.tei_url
+    )
 
     log.info(
         "Embed worker starting (backend=%s, tei=%s, model=%s, dimensions=%d, poll=%ds)",

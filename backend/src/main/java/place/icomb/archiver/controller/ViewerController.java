@@ -160,6 +160,7 @@ public class ViewerController {
 
     // Connected worker counts per job kind
     Map<String, Integer> workerCounts = jobEventService.getWorkerCounts();
+    Map<String, Map<String, String>> modelsByKind = jobEventService.getModelsByKind();
 
     // Per-stage page progress: how many pages have completed within each active stage
     // OCR: pages with page_text vs total pages for records in ocr_pending
@@ -212,7 +213,8 @@ public class ViewerController {
             pagesByStatus,
             null,
             jobsByKind,
-            workerCounts);
+            workerCounts,
+            modelsByKind);
     scrapingStage.put("pagesDone", scrapingPagesDone);
     scrapingStage.put("pagesTotal", scrapingPagesTotal);
     stages.add(scrapingStage);
@@ -225,7 +227,8 @@ public class ViewerController {
             pagesByStatus,
             null,
             jobsByKind,
-            workerCounts));
+            workerCounts,
+            modelsByKind));
 
     var ocrStage =
         buildStage(
@@ -235,7 +238,8 @@ public class ViewerController {
             pagesByStatus,
             OCR_ENGINE_KINDS,
             jobsByKind,
-            workerCounts);
+            workerCounts,
+            modelsByKind);
     ocrStage.put("pagesDone", ocrPagesDone);
     ocrStage.put("pagesTotal", ocrPagesTotal);
     // Override worker count — each engine is a separate worker pool, so the dashboard needs
@@ -259,6 +263,11 @@ public class ViewerController {
       detail.put("kind", kind);
       detail.put("label", label);
       detail.put("workers", kWorkers);
+      var kModel = modelsByKind.get(kind);
+      if (kModel != null) {
+        detail.put("model", kModel.get("model"));
+        if (kModel.get("provider") != null) detail.put("provider", kModel.get("provider"));
+      }
       detail.put("busy", (int) Math.min(kRunning, kWorkers));
       detail.put("pending", kPending);
       detail.put("failed", kFailed);
@@ -275,7 +284,8 @@ public class ViewerController {
             pagesByStatus,
             new String[] {"build_searchable_pdf"},
             jobsByKind,
-            workerCounts));
+            workerCounts,
+            modelsByKind));
 
     var transStage =
         buildStage(
@@ -285,7 +295,8 @@ public class ViewerController {
             pagesByStatus,
             new String[] {"translate_page", "translate_record"},
             jobsByKind,
-            workerCounts);
+            workerCounts,
+            modelsByKind);
     transStage.put("pagesDone", transPagesDone);
     transStage.put("pagesTotal", transPagesTotal);
     stages.add(transStage);
@@ -298,7 +309,8 @@ public class ViewerController {
             pagesByStatus,
             new String[] {"embed_record"},
             jobsByKind,
-            workerCounts));
+            workerCounts,
+            modelsByKind));
 
     // "Complete" aggregates terminal statuses
     long doneRecords =
@@ -333,9 +345,23 @@ public class ViewerController {
       Map<String, Long> pagesByStatus,
       String[] jobKinds,
       Map<String, Map<String, Long>> jobsByKind,
-      Map<String, Integer> workerCounts) {
+      Map<String, Integer> workerCounts,
+      Map<String, Map<String, String>> modelsByKind) {
     Map<String, Object> stage = new LinkedHashMap<>();
     stage.put("name", name);
+    // The model actually serving this stage, as reported by its live workers. Absent when no
+    // worker is connected or the stage uses no model, so the dashboard shows nothing rather
+    // than a stale or invented name.
+    if (jobKinds != null) {
+      for (String kind : jobKinds) {
+        var m = modelsByKind.get(kind);
+        if (m != null) {
+          stage.put("model", m.get("model"));
+          if (m.get("provider") != null) stage.put("provider", m.get("provider"));
+          break;
+        }
+      }
+    }
     stage.put("records", recordsByStatus.getOrDefault(recordStatus, 0L));
     stage.put("pages", pagesByStatus.getOrDefault(recordStatus, 0L));
     if (jobKinds != null) {

@@ -25,11 +25,24 @@ public abstract class GenericWorker {
 
   protected abstract void processJob(Job job) throws Exception;
 
+  /**
+   * Model this worker is running, surfaced on the pipeline dashboard. Null for workers that use no
+   * model (the person matcher's heuristic pass, for instance).
+   */
+  protected String model() {
+    return null;
+  }
+
+  /** Base URL of the service backing {@link #model()}, or null when there is none. */
+  protected String providerUrl() {
+    return null;
+  }
+
   protected abstract Logger log();
 
   /** Polls for jobs and processes them one at a time until the queue is empty. */
   public void pollAndProcess() {
-    jobEventService.touchWorker(workerId, jobKind);
+    jobEventService.touchWorker(workerId, jobKind, model(), providerUrl());
 
     while (true) {
       Optional<Job> claimed = jobService.claimJob(jobKind);
@@ -48,7 +61,7 @@ public abstract class GenericWorker {
                 job.getId(),
                 job.getRecordId(),
                 elapsed);
-        jobEventService.touchWorker(workerId, jobKind);
+        jobEventService.touchWorker(workerId, jobKind, model(), providerUrl());
       } catch (Exception e) {
         log()
             .error(

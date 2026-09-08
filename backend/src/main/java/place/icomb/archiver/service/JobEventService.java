@@ -26,7 +26,13 @@ public class JobEventService {
   /** Tracks workers by UUID — updated on every API call and SSE connect. */
   private final ConcurrentHashMap<String, WorkerEntry> workers = new ConcurrentHashMap<>();
 
-  private record WorkerEntry(List<String> kinds, Instant lastSeen) {}
+  /**
+   * @param model the model actually loaded by the worker, and {@code provider} the base URL it
+   *     calls. Self-reported rather than read from backend configuration: the Python workers own
+   *     their own model settings, so a copy held here would silently drift from what is really
+   *     running — which is the one thing the dashboard exists to show.
+   */
+  private record WorkerEntry(List<String> kinds, Instant lastSeen, String model, String provider) {}
 
   /** How long a scraper is considered alive after its last heartbeat. */
   private static final long SCRAPER_TTL_SECONDS = 90;
@@ -47,12 +53,41 @@ public class JobEventService {
 
   /** Called on every authenticated processor API request to track the worker. */
   public void touchWorker(String workerId, String kindsHeader) {
+    touchWorker(workerId, kindsHeader, null, null);
+  }
+
+  /** As above, recording the model and provider URL the worker reports it is using. */
+  public void touchWorker(String workerId, String kindsHeader, String model, String provider) {
     if (workerId == null || workerId.isBlank()) return;
     List<String> kinds =
         (kindsHeader != null && !kindsHeader.isBlank())
             ? List.of(kindsHeader.split(","))
             : List.of();
-    workers.put(workerId, new WorkerEntry(kinds, Instant.now()));
+    workers.put(workerId, new WorkerEntry(kinds, Instant.now(), model, provider));
+  }
+
+  /**
+   * Job kind to the model and provider URL currently serving it, for the pipeline dashboard.
+   *
+   * <p>Only live workers contribute, so a stage whose worker has died reports no model rather than
+   * a stale one.
+   */
+  public Map<String, Map<String, String>> getModelsByKind() {
+    Instant cutoff = Instant.now().minusSeconds(WORKER_TTL_SECONDS);
+    Map<String, Map<String, String>> byKind = new LinkedHashMap<>();
+    for (var entry : workers.values()) {
+      if (entry.lastSeen().isBefore(cutoff)) continue;
+      if (entry.model() == null || entry.model().isBlank()) continue;
+      for (String kind : entry.kinds()) {
+        Map<String, String> m = new LinkedHashMap<>();
+        m.put("model", entry.model());
+        if (entry.provider() != null && !entry.provider().isBlank()) {
+          m.put("provider", entry.provider());
+        }
+        byKind.putIfAbsent(kind.trim(), m);
+      }
+    }
+    return byKind;
   }
 
   /**
@@ -147,10 +182,18 @@ public class JobEventService {
     SseEmitter emitter = new SseEmitter(SSE_TIMEOUT);
     emitters.add(emitter);
 
-    // Also track via worker map
+    // Also track via worker map. The model and provider are carried over from the existing
+    // entry rather than reset: workers reconnect their SSE stream every few seconds, and
+    // overwriting with nulls here would erase what they reported on claim almost immediately.
     if (workerId != null && !workerId.isBlank()) {
-      workers.put(
-          workerId, new WorkerEntry(kinds != null ? List.copyOf(kinds) : List.of(), Instant.now()));
+      workers.compute(
+          workerId,
+          (id, existing) ->
+              new WorkerEntry(
+                  kinds != null ? List.copyOf(kinds) : List.of(),
+                  Instant.now(),
+                  existing != null ? existing.model() : null,
+                  existing != null ? existing.provider() : null));
     }
 
     Runnable cleanup = () -> emitters.remove(emitter);

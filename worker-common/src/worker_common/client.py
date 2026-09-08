@@ -17,7 +17,21 @@ class ProcessorClient:
     event streaming. Subclass to add worker-specific API methods.
     """
 
-    def __init__(self, base_url: str, token: str, user_agent: str = "worker/0.1"):
+    def __init__(
+        self,
+        base_url: str,
+        token: str,
+        user_agent: str = "worker/0.1",
+        model: str | None = None,
+        provider: str | None = None,
+    ):
+        """`model` and `provider` are reported to the backend and shown on the pipeline
+        dashboard.
+
+        Self-reported rather than configured on the backend: this worker owns its model
+        settings, so a copy held there would drift from what is really running — which is
+        exactly what the dashboard exists to show.
+        """
         self.base_url = base_url
         self.worker_id = str(uuid.uuid4())
         self._token = token
@@ -26,6 +40,10 @@ class ProcessorClient:
             "User-Agent": user_agent,
             "X-Worker-Id": self.worker_id,
         }
+        if model:
+            self._headers["X-Worker-Model"] = model
+        if provider:
+            self._headers["X-Worker-Provider"] = provider
         self._client = httpx.Client(
             base_url=base_url,
             timeout=120.0,

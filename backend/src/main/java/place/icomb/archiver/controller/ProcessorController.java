@@ -102,9 +102,13 @@ public class ProcessorController {
       @RequestHeader("Authorization") String authHeader,
       @RequestHeader(value = "X-Worker-Id", required = false) String workerId,
       @RequestHeader(value = "X-Worker-Kinds", required = false) String workerKinds,
+      @RequestHeader(value = "X-Worker-Model", required = false) String workerModel,
+      @RequestHeader(value = "X-Worker-Provider", required = false) String workerProvider,
       @Valid @RequestBody JobClaimRequest request) {
     validateToken(authHeader);
-    jobEventService.touchWorker(workerId, workerKinds);
+    // Workers self-report the model and provider they are actually using; the pipeline
+    // dashboard surfaces it so what is displayed is what is running, not what config claims.
+    jobEventService.touchWorker(workerId, workerKinds, workerModel, workerProvider);
     return jobService
         .claimJob(request.kind())
         .map(j -> ResponseEntity.ok(toJobResponse(j)))

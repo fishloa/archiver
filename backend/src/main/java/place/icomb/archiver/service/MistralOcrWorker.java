@@ -92,6 +92,16 @@ public class MistralOcrWorker extends GenericWorker {
   }
 
   @Override
+  protected String model() {
+    return model;
+  }
+
+  @Override
+  protected String providerUrl() {
+    return baseUrl;
+  }
+
+  @Override
   protected void processJob(Job job) throws Exception {
     Page page =
         pageRepository

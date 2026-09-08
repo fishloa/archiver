@@ -76,6 +76,16 @@ public class ClaudeOcrWorker extends GenericWorker {
   }
 
   @Override
+  protected String model() {
+    return model;
+  }
+
+  @Override
+  protected String providerUrl() {
+    return "https://api.anthropic.com";
+  }
+
+  @Override
   protected void processJob(Job job) throws Exception {
     Page page =
         pageRepository

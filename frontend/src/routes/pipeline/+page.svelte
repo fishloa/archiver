@@ -9,13 +9,26 @@
 		BrainCircuit,
 		CircleCheckBig,
 		AlertTriangle,
-		Radio
+		Radio,
+		Cpu
 	} from 'lucide-svelte';
 	import type { PipelineStage, ScraperEntry } from '$lib/server/api';
 	import { language, t } from '$lib/i18n';
 
 	let { data } = $props();
 	let connected = $state(false);
+
+	/**
+	 * Hostname of a provider URL, with the full URL kept in the title attribute.
+	 * Stage cards are narrow and the useful part is which service is being called, not the path.
+	 */
+	function providerHost(url: string): string {
+		try {
+			return new URL(url).host;
+		} catch {
+			return url;
+		}
+	}
 
 	onMount(() => {
 		let debounceTimer: ReturnType<typeof setTimeout> | null = null;
@@ -176,6 +189,18 @@
 						</div>
 					</div>
 
+					<!-- Model actually serving this stage, as reported by its live workers -->
+					{#if stage.model}
+						<div class="model-row">
+							<Cpu size={11} class="model-icon" />
+							<span class="model-name">{stage.model}</span>
+							{#if stage.provider}
+								<span class="model-sep">&middot;</span>
+								<span class="model-provider" title={stage.provider}>{providerHost(stage.provider)}</span>
+							{/if}
+						</div>
+					{/if}
+
 					<!-- Progress bar: prefer page-based, fall back to job-based -->
 					{#if stage.pagesTotal && stage.pagesTotal > 0}
 						{@const pct = Math.round((stage.pagesDone ?? 0) / stage.pagesTotal * 100)}
@@ -232,6 +257,15 @@
 													</span>
 												{/if}
 											</div>
+											{#if wd.model}
+												<div class="model-row model-row-nested">
+													<span class="model-name">{wd.model}</span>
+													{#if wd.provider}
+														<span class="model-sep">&middot;</span>
+														<span class="model-provider" title={wd.provider}>{providerHost(wd.provider)}</span>
+													{/if}
+												</div>
+											{/if}
 											<!-- Worker dots for this kind -->
 											<div class="worker-dots">
 												{#each Array(wd.workers) as _, w}
@@ -669,5 +703,40 @@
 	.instance-label {
 		font-size: 10px;
 		color: var(--vui-text-muted);
+	}
+	/* Model / provider line — which model is actually serving a stage. */
+	.model-row {
+		display: flex;
+		align-items: center;
+		gap: 0.3rem;
+		margin: 0.15rem 0 0.5rem;
+		font-size: 0.68rem;
+		line-height: 1.3;
+		min-width: 0;
+	}
+	.model-row-nested {
+		margin: 0.1rem 0 0.25rem 1.05rem;
+	}
+	.model-row :global(.model-icon) {
+		flex: none;
+		opacity: 0.55;
+	}
+	.model-name {
+		font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+		color: var(--vui-text-secondary, currentColor);
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+	}
+	.model-sep {
+		opacity: 0.4;
+		flex: none;
+	}
+	.model-provider {
+		color: var(--vui-text-muted, currentColor);
+		opacity: 0.75;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
 	}
 </style>

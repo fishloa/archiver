@@ -139,6 +139,10 @@ export interface WorkerDetail {
   busy: number;
   pending: number;
   failed: number;
+  /** Model this engine is running, reported by its live workers. */
+  model?: string;
+  /** Base URL of the service backing `model`. */
+  provider?: string;
 }
 
 export interface PipelineStage {
@@ -153,6 +157,10 @@ export interface PipelineStage {
   pagesDone?: number;
   pagesTotal?: number;
   workerDetails?: WorkerDetail[];
+  /** Model serving this stage, reported by its live workers. Absent when none is connected. */
+  model?: string;
+  /** Base URL of the service backing `model`. */
+  provider?: string;
 }
 
 export interface ScraperInfo {
