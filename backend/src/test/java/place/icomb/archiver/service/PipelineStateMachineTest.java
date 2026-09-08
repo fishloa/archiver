@@ -166,9 +166,12 @@ class PipelineStateMachineTest {
     Long page1 = createPage(recordId, 1);
     Long page2 = createPage(recordId, 2);
 
-    // Both OCR jobs completed
+    // Both OCR jobs completed — and a completed OCR job means the page has text. Saying so
+    // matters: the guard now requires the transcription itself, not just an empty job queue.
     createJob(recordId, page1, "ocr_page_mistral", "completed");
     createJob(recordId, page2, "ocr_page_mistral", "completed");
+    createPageText(page1);
+    createPageText(page2);
 
     boolean advanced = stateMachine.autoAdvance(recordId);
 
@@ -176,6 +179,44 @@ class PipelineStateMachineTest {
     assertThat(advanced).isTrue();
     assertThat(getRecordStatus(recordId)).isEqualTo("pdf_pending");
     assertThat(countJobs(recordId, "build_searchable_pdf", "pending")).isEqualTo(1);
+  }
+
+  @Test
+  void ocrPendingStays_whenAPageWasNeverTranscribed() {
+    // The defect that silently lost 58,386 pages: the guard counted only pending and claimed
+    // jobs, which is vacuously satisfied when a page never had a job created at all. Records
+    // then advanced through PDF, translation and embedding to `complete` with pages missing,
+    // and nothing reported a problem.
+    Long archiveId = createArchive();
+    Long recordId = createRecord(archiveId, "ocr_pending", 2);
+    Long page1 = createPage(recordId, 1);
+    createPage(recordId, 2); // never enqueued, never transcribed
+
+    createJob(recordId, page1, "ocr_page_mistral", "completed");
+    createPageText(page1);
+
+    boolean advanced = stateMachine.autoAdvance(recordId);
+
+    assertThat(advanced).isFalse();
+    assertThat(getRecordStatus(recordId)).isEqualTo("ocr_pending");
+  }
+
+  @Test
+  void ocrPendingAdvances_whenAPageFailedOcrPermanently() {
+    // A page that genuinely cannot be read must not strand its record forever.
+    Long archiveId = createArchive();
+    Long recordId = createRecord(archiveId, "ocr_pending", 2);
+    Long page1 = createPage(recordId, 1);
+    Long page2 = createPage(recordId, 2);
+
+    createJob(recordId, page1, "ocr_page_mistral", "completed");
+    createPageText(page1);
+    createJob(recordId, page2, "ocr_page_mistral", "failed");
+
+    boolean advanced = stateMachine.autoAdvance(recordId);
+
+    assertThat(advanced).isTrue();
+    assertThat(getRecordStatus(recordId)).isEqualTo("pdf_pending");
   }
 
   @Test
@@ -219,6 +260,8 @@ class PipelineStateMachineTest {
 
     createJob(recordId, page1, "ocr_page_claude", "completed");
     createJob(recordId, page2, "ocr_page_claude", "completed");
+    createPageText(page1);
+    createPageText(page2);
 
     boolean advanced = stateMachine.autoAdvance(recordId);
 

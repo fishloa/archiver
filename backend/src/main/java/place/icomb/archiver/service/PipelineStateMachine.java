@@ -68,7 +68,18 @@ public class PipelineStateMachine {
 
     boolean allOcrJobsComplete() {
       if (allOcrJobsComplete == null) {
-        Long pending =
+        // Two conditions, because "no OCR jobs queued" is not the same as "every page has
+        // text" — and the difference cost this archive 58,386 pages.
+        //
+        // This guard used to count only pending and claimed jobs. That is vacuously true when
+        // no jobs were ever created, so a record whose enqueue was interrupted advanced
+        // straight through PDF, translation and embedding to `complete` with most of its pages
+        // never transcribed. 1,569 records reached `complete` that way, 320 of them with no
+        // text whatsoever, and nothing anywhere reported a problem.
+        //
+        // A page that has genuinely failed OCR is allowed through, or one unreadable page
+        // would strand its record forever.
+        Long outstanding =
             jdbc.queryForObject(
                 """
                 SELECT count(*) FROM job
@@ -77,7 +88,21 @@ public class PipelineStateMachine {
                   AND status IN ('pending', 'claimed')
                 """,
                 Long.class, recordId);
-        allOcrJobsComplete = pending != null && pending == 0;
+        Long untranscribed =
+            jdbc.queryForObject(
+                """
+                SELECT count(*) FROM page p
+                WHERE p.record_id = ?
+                  AND NOT EXISTS (SELECT 1 FROM page_text pt WHERE pt.page_id = p.id)
+                  AND NOT EXISTS (
+                      SELECT 1 FROM job j
+                      WHERE j.page_id = p.id
+                        AND j.kind LIKE 'ocr\\_page\\_%'
+                        AND j.status = 'failed')
+                """,
+                Long.class, recordId);
+        allOcrJobsComplete =
+            outstanding != null && outstanding == 0 && untranscribed != null && untranscribed == 0;
       }
       return allOcrJobsComplete;
     }

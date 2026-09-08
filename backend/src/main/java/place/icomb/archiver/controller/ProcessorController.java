@@ -184,6 +184,12 @@ public class ProcessorController {
         .findById(pageId)
         .orElseThrow(() -> new IllegalArgumentException("Page not found: " + pageId));
 
+    // Replace rather than append. page_text is UNIQUE on page_id since V26, so a blind INSERT
+    // fails outright on any resubmission — a retried worker, or a page OCR'd twice. The V26
+    // trigger copies the outgoing row to page_ocr_history first, so the record that a previous
+    // engine transcribed this page survives even though its text does not.
+    jdbcTemplate.update("DELETE FROM page_text WHERE page_id = ?", pageId);
+
     jdbcTemplate.update(
         "INSERT INTO page_text (page_id, engine, confidence, text_raw, hocr, content_type,"
             + " created_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
