@@ -215,6 +215,21 @@ Worker env vars: `BACKEND_URL`, `PROCESSOR_TOKEN`. GPU workers also need `HOME=/
 - **Registry**: `dockerregistry.icomb.place` (Nexus)
 - **Hosting**: Portainer stack #183 on zelkova (endpoint 2)
 - **Redeploy**: `curl -X POST https://docker.icomb.place/api/stacks/webhooks/b7e3a1d2-5f4c-4e8a-9b1d-3c6f8a2e4d71`
+
+### Waiting for a build
+
+Pushing triggers a build via webhook — **never** run `jk run start` after a push, it
+creates a duplicate. To wait for the build that the push started, block on it rather than
+polling `jk run ls` in a loop:
+
+```bash
+jk run ls archiver | head -2                 # find the running build number
+jk run view archiver <build> --wait          # blocks until it finishes, prints the result
+jk log archiver <build> | tail -50           # on failure
+```
+
+Only redeploy once that reports SUCCESS: the webhook pulls `:latest`, so firing it against
+a build still in progress deploys the previous image.
 - Changes to `worker-common/` trigger rebuilds of all workers
 
 ### Docker builds
