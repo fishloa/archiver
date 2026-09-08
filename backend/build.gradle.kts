@@ -114,6 +114,16 @@ tasks.named("check") {
 tasks.withType<Test> {
     useJUnitPlatform()
     jvmArgs("--enable-preview")
+    // Gradle's default output truncates causes to one line each, which hides the class
+    // name in a ClassNotFoundException — the only detail that actually identifies the
+    // problem. Print failures in full so CI logs are diagnosable without a re-run.
+    testLogging {
+        events("failed")
+        exceptionFormat = org.gradle.api.tasks.testing.logging.TestExceptionFormat.FULL
+        showStackTraces = true
+        showCauses = true
+        showExceptions = true
+    }
 }
 
 tasks.withType<JavaCompile> {
