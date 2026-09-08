@@ -1,6 +1,11 @@
 plugins {
     java
-    id("org.springframework.boot") version "4.1.1"
+    // Held at 4.1.0 deliberately. 4.1.1 pulls spring-security 7.1.0 -> 7.1.1, and the
+    // pre-1.0 org.springaicommunity mcp-* starters are compiled against the 7.1.0 API:
+    // every MCP and security context then fails to load with ClassNotFoundException
+    // during bean construction (builds 284 and 286). Revisit when those starters
+    // publish a release built against spring-security 7.1.1.
+    id("org.springframework.boot") version "4.1.0"
     id("io.spring.dependency-management") version "1.1.7"
     id("com.diffplug.spotless") version "7.2.1"
     jacoco
@@ -44,10 +49,7 @@ dependencies {
     implementation("org.apache.pdfbox:pdfbox:3.0.8")
 
     // MCP (Model Context Protocol) server via Spring AI
-    // Pinned deliberately. spring-ai 2.0.1 with mcp-* 0.1.14 fails every MCP and
-    // security context in build 284 with ClassNotFoundException during bean
-    // construction — the community mcp starters are pre-1.0 and track spring-ai
-    // closely, so the three move together or not at all.
+    // Held with the Boot pin above — these track spring-security closely.
     implementation(platform("org.springframework.ai:spring-ai-bom:2.0.0"))
     implementation("org.springframework.ai:spring-ai-starter-mcp-server-webmvc")
 
