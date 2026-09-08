@@ -322,8 +322,9 @@ export async function searchFamilyTree(
   return res.json();
 }
 
+/** ISO 639-1 codes present in the archive. Names are resolved in the browser. */
 export async function fetchTranslateCapabilities(email?: string): Promise<{
-  languages: { code: string; name: string }[];
+  languages: string[];
 }> {
   try {
     const res = await fetch(`${backendUrl()}/api/translate/capabilities`, {

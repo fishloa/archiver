@@ -45,46 +45,48 @@ public class TranslationController {
           "hu",
           "Hungarian");
 
+  private final org.springframework.jdbc.core.JdbcTemplate jdbcTemplate;
+
   public TranslationController(
       @Value("${archiver.translate-worker.url:http://translate-worker:8001}") String workerUrl,
-      @Value("${archiver.anthropic.api-key:}") String anthropicApiKey) {
+      @Value("${archiver.anthropic.api-key:}") String anthropicApiKey,
+      org.springframework.jdbc.core.JdbcTemplate jdbcTemplate) {
     this.workerUrl = workerUrl;
     this.anthropicApiKey = anthropicApiKey;
+    this.jdbcTemplate = jdbcTemplate;
   }
 
   public record TranslateRequest(String text, String sourceLang, String targetLang) {}
 
   public record TranslateResponse(String translatedText, String sourceLang, String targetLang) {}
 
-  public record Language(String code, String name) {}
-
   /**
-   * Languages the translation UI may offer, any of which can be source or target.
+   * Languages the translation UI offers.
    *
-   * <p>Replaced a list of language pairs: those described MarianMT's downloaded models, and the LLM
-   * that succeeded it translates any combination on demand.
+   * <p>Read from the archive's own content rather than a list held in code: the LLM translates any
+   * pair on demand, so the only question worth answering is which languages are actually present,
+   * and the records already know. A hand-maintained list would drift the moment a scraper brought
+   * in something new — and the previous one, MarianMT's downloaded language pairs, became empty
+   * when that engine was removed and silently emptied both dropdowns.
+   *
+   * <p>Codes only. The UI names them through the browser's own locale data, so the names are
+   * localised to the reader without a translation table living here.
    */
-  public record Capabilities(java.util.List<Language> languages) {}
-
   @GetMapping("/capabilities")
-  @Operation(summary = "Get supported translation languages")
-  public ResponseEntity<?> capabilities() {
-    try {
-      HttpRequest request =
-          HttpRequest.newBuilder().uri(URI.create(workerUrl + "/capabilities")).GET().build();
-
-      HttpResponse<String> response =
-          httpClient.send(request, HttpResponse.BodyHandlers.ofString());
-
-      if (response.statusCode() != 200) {
-        return ResponseEntity.status(response.statusCode()).body(response.body());
-      }
-
-      return ResponseEntity.ok().header("Content-Type", "application/json").body(response.body());
-    } catch (Exception e) {
-      log.error("Failed to fetch translation capabilities", e);
-      return ResponseEntity.status(503).body("{\"error\":\"Translation service unavailable\"}");
-    }
+  @Operation(summary = "Languages present in the archive, offered for translation")
+  public ResponseEntity<Map<String, Object>> capabilities() {
+    java.util.List<String> languages =
+        jdbcTemplate.queryForList(
+            """
+            SELECT DISTINCT lang FROM (
+                SELECT lang FROM record WHERE lang IS NOT NULL
+                UNION
+                SELECT metadata_lang FROM record WHERE metadata_lang IS NOT NULL
+            ) l
+            ORDER BY lang
+            """,
+            String.class);
+    return ResponseEntity.ok(Map.of("languages", languages));
   }
 
   @PostMapping

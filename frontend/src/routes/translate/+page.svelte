@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { Languages } from 'lucide-svelte';
-	import { t } from '$lib/i18n';
+	import { language, t } from '$lib/i18n';
 
 	let { data } = $props();
 
@@ -10,22 +10,44 @@
 	let error = $state('');
 
 	/**
-	 * Every language may be either source or target: the LLM translates any combination on
-	 * demand. This replaced a list of MarianMT language pairs, which described that engine's
-	 * downloaded models and became empty when it was removed — silently emptying both dropdowns.
+	 * Languages come from the archive itself — the codes actually present on its records —
+	 * and are named by the browser's own locale data, so the list needs no maintenance here
+	 * and the names appear in the reader's language.
+	 *
+	 * This replaced a list of MarianMT language pairs. Those described that engine's
+	 * downloaded models, and when it was removed the list went empty, silently leaving both
+	 * dropdowns with no options at all.
 	 */
-	let languages = $derived(data.languages ?? []);
+	let displayNames = $derived(
+		typeof Intl !== 'undefined' && 'DisplayNames' in Intl
+			? new Intl.DisplayNames([$language ?? 'en'], { type: 'language' })
+			: null
+	);
+
+	function nameFor(code: string): string {
+		try {
+			return displayNames?.of(code) ?? code;
+		} catch {
+			return code;
+		}
+	}
+
+	// The reader's own language is always offered as a target, even if the archive holds
+	// nothing in it — translating into a language you cannot read is not useful.
+	let languages = $derived(
+		[...new Set([...(data.languages ?? []), $language ?? 'en'])].sort((a, b) =>
+			nameFor(a).localeCompare(nameFor(b))
+		)
+	);
+
 	let sourceLang = $state('de');
 	let targetLang = $state(data.defaultTargetLang ?? 'en');
 
-	// Source and target must differ, or translation is a no-op. If the user picks the same
-	// language on both sides, move the other one to the first language that is not it.
+	// Source and target must differ, or translation is a no-op.
 	$effect(() => {
 		if (languages.length > 1 && sourceLang === targetLang) {
-			const alternative = languages.find(
-				(l: { code: string }) => l.code !== sourceLang
-			);
-			if (alternative) targetLang = alternative.code;
+			const alternative = languages.find((c: string) => c !== sourceLang);
+			if (alternative) targetLang = alternative;
 		}
 	});
 
@@ -73,14 +95,14 @@
 		<label for="source-lang">{$t('translate.from')}</label>
 		<select id="source-lang" bind:value={sourceLang}>
 			{#each languages as lang}
-				<option value={lang.code}>{lang.name}</option>
+				<option value={lang}>{nameFor(lang)}</option>
 			{/each}
 		</select>
 		<span class="arrow">→</span>
 		<label for="target-lang">{$t('translate.to')}</label>
 		<select id="target-lang" bind:value={targetLang}>
 			{#each languages as lang}
-				<option value={lang.code}>{lang.name}</option>
+				<option value={lang}>{nameFor(lang)}</option>
 			{/each}
 		</select>
 	</div>
