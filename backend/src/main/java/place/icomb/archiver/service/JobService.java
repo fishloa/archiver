@@ -144,23 +144,44 @@ public class JobService {
    *
    * @return total number of records/jobs fixed
    */
+  /**
+   * Returns jobs abandoned in {@code claimed} to the queue.
+   *
+   * <p>A worker that dies mid-job — or a backend restarted during a deploy — leaves its claim
+   * behind forever: {@code claim} only ever selects {@code pending} rows, so nothing reclaims it
+   * and the job's record stalls permanently. This is the single most important recovery step, and
+   * the one most likely to be needed after a crash.
+   *
+   * <p>Deliberately its own transaction rather than a pass inside {@link #auditPipeline()}: it used
+   * to share that method's transaction, so a failure in any later pass rolled this recovery back
+   * along with it, leaving the jobs stuck exactly when something had already gone wrong.
+   *
+   * <p>The 10 minute threshold is generous for every job kind — the slowest, a full-record PDF
+   * build, runs in well under that — so a job past it has been abandoned rather than merely slow.
+   *
+   * @return number of jobs returned to the queue
+   */
   @Transactional
-  public int auditPipeline() {
-    int total = 0;
-
-    // --- Pass 1: Reset stale claimed jobs (claimed > 10 min ago) back to pending ---
-    //     Workers that restart lose their claimed jobs; 10 min is generous for any job type.
+  public int recoverStaleClaims() {
     int staleClaimed =
         jdbcTemplate.update(
             """
-            UPDATE job SET status = 'pending', started_at = NULL, attempts = attempts
+            UPDATE job SET status = 'pending', started_at = NULL
             WHERE status = 'claimed'
               AND started_at < now() - interval '10 minutes'
             """);
     if (staleClaimed > 0) {
       log.info("Audit: reset {} stale claimed jobs to pending", staleClaimed);
     }
-    total += staleClaimed;
+    return staleClaimed;
+  }
+
+  @Transactional
+  public int auditPipeline() {
+    int total = 0;
+
+    // Pass 1 (stale claim recovery) now runs in its own transaction — see recoverStaleClaims.
+    int staleClaimed = 0;
 
     // --- Pass 2: Retry failed jobs with < 3 attempts (skip poison jobs) ---
     int failedRetried =

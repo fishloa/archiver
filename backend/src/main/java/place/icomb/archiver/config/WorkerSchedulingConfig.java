@@ -127,7 +127,14 @@ public class WorkerSchedulingConfig implements SchedulingConfigurer {
             + (personMatchEnabled ? 1 : 0);
     if (totalWorkers == 0) return;
 
-    registrar.setScheduler(Executors.newScheduledThreadPool(totalWorkers));
+    // Headroom above the worker count. This pool also serves every other @Scheduled bean in
+    // the application, so sizing it to exactly totalWorkers left no thread for them: whenever
+    // all workers were busy, PipelineAuditScheduler could not run — meaning the mechanism that
+    // recovers stuck jobs starved precisely when jobs were most likely to get stuck. Observed
+    // in production as the audit running every 5 minutes while idle, then going silent for an
+    // hour under load while claimed jobs sat orphaned. The audit additionally runs on its own
+    // scheduler (see PipelineAuditScheduler) so it cannot be starved even if this fills up.
+    registrar.setScheduler(Executors.newScheduledThreadPool(totalWorkers + 2));
 
     if (qwenEnabled) {
       for (int i = 0; i < qwenConcurrency; i++) {

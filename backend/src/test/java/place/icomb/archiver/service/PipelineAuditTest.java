@@ -198,7 +198,8 @@ class PipelineAuditTest {
   }
 
   // ---------------------------------------------------------------------------
-  // Pass 1 — Stale claimed jobs
+  // Stale claimed jobs — recovered by recoverStaleClaims(), which runs in its own transaction
+  // so that a failure in any auditPipeline() pass cannot roll back the recovery.
   // ---------------------------------------------------------------------------
 
   @Test
@@ -212,7 +213,7 @@ class PipelineAuditTest {
         createJobWithStartedAt(
             recordId, pageId, "ocr_page_mistral", "claimed", 1, "now() - interval '2 hours'");
 
-    int fixed = jobService.auditPipeline();
+    int fixed = jobService.recoverStaleClaims();
 
     assertThat(fixed).isGreaterThanOrEqualTo(1);
     assertThat(getJobStatus(jobId)).isEqualTo("pending");
@@ -238,7 +239,7 @@ class PipelineAuditTest {
         createJobWithStartedAt(
             recordId, pageId, "ocr_page_mistral", "claimed", 1, "now() - interval '5 minutes'");
 
-    jobService.auditPipeline();
+    jobService.recoverStaleClaims();
 
     assertThat(getJobStatus(jobId)).isEqualTo("claimed");
   }
@@ -257,7 +258,7 @@ class PipelineAuditTest {
         createJobWithStartedAt(
             recordId, pageId2, "ocr_page_mistral", "claimed", 2, "now() - interval '3 hours'");
 
-    int fixed = jobService.auditPipeline();
+    int fixed = jobService.recoverStaleClaims();
 
     assertThat(fixed).isGreaterThanOrEqualTo(2);
     assertThat(getJobStatus(jobId1)).isEqualTo("pending");
@@ -776,8 +777,9 @@ class PipelineAuditTest {
     Long record4 = createRecord(archiveId, "ocr_done", 1);
     createPage(record4, 1);
 
-    // Run audit
-    int fixed = jobService.auditPipeline();
+    // Run the audit exactly as PipelineAuditScheduler and the admin endpoint do: recovery
+    // first, in its own transaction, then the remaining passes.
+    int fixed = jobService.recoverStaleClaims() + jobService.auditPipeline();
 
     assertThat(fixed).isGreaterThanOrEqualTo(3);
 

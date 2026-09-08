@@ -709,7 +709,7 @@ public class ViewerController {
 
   @PostMapping("/admin/audit")
   public ResponseEntity<Map<String, Object>> runAudit() {
-    int fixed = jobService.auditPipeline();
+    int fixed = jobService.recoverStaleClaims() + jobService.auditPipeline();
     return ResponseEntity.ok(Map.of("fixed", fixed));
   }
 
