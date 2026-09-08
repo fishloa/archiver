@@ -1,4 +1,5 @@
 <script lang="ts">
+	import MarkdownText from '$lib/components/MarkdownText.svelte';
 	import { ArrowLeft, ArrowRight, ChevronDown, Bookmark, BookmarkCheck, Download, X, Users, Baby, Skull } from 'lucide-svelte';
 	import { isKept, toggleKept, keptCount, keptPagesParam, clearKept } from '$lib/kept-pages.svelte';
 	import { language, t } from '$lib/i18n';
@@ -10,6 +11,10 @@
 	let next = $derived(data.next);
 	let totalPages = $derived(data.totalPages);
 	let pageText = $derived(data.pageText);
+
+	// Only the OCR text carries a content type; the translation preserves it, so both
+	// sides of the panel render the same way.
+	let isMarkdown = $derived(pageText?.contentType === 'text/markdown');
 	let personMatches = $derived(data.personMatches ?? []);
 
 	let lang = $derived($language);
@@ -178,7 +183,13 @@
 		{#if mainText}
 			<div class="vui-card flex-1">
 				<h2 class="text-[length:var(--vui-text-sm)] font-semibold text-accent mb-3">{mainLabel}</h2>
-				<pre class="p-4 rounded-md bg-bg-deep border border-border text-[length:var(--vui-text-sm)] text-text overflow-x-auto font-mono whitespace-pre-wrap leading-relaxed max-h-[80vh] overflow-y-auto">{mainText}</pre>
+				{#if isMarkdown}
+					<div class="p-4 rounded-md bg-bg-deep border border-border text-text overflow-x-auto max-h-[80vh] overflow-y-auto">
+						<MarkdownText text={mainText} />
+					</div>
+				{:else}
+					<pre class="p-4 rounded-md bg-bg-deep border border-border text-[length:var(--vui-text-sm)] text-text overflow-x-auto font-mono whitespace-pre-wrap leading-relaxed max-h-[80vh] overflow-y-auto">{mainText}</pre>
+				{/if}
 			</div>
 		{/if}
 	</div>
@@ -209,7 +220,13 @@
 			{/if}
 		</button>
 		{#if originalOpen}
-			<pre class="mt-3 p-4 rounded-md bg-bg-deep border border-border text-[length:var(--vui-text-sm)] text-text overflow-x-auto font-mono whitespace-pre-wrap leading-relaxed">{altText}</pre>
+			{#if isMarkdown}
+				<div class="mt-3 p-4 rounded-md bg-bg-deep border border-border text-text overflow-x-auto">
+					<MarkdownText text={altText} />
+				</div>
+			{:else}
+				<pre class="mt-3 p-4 rounded-md bg-bg-deep border border-border text-[length:var(--vui-text-sm)] text-text overflow-x-auto font-mono whitespace-pre-wrap leading-relaxed">{altText}</pre>
+			{/if}
 		{/if}
 	</div>
 {/if}

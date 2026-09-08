@@ -4,7 +4,6 @@ Claims ocr_page_qwen3vl jobs from the backend, runs Qwen VLM via
 Ollama on the local Mac, and posts the results back.
 """
 
-import json
 import logging
 
 from worker_common import run_sse_loop, wait_for_backend

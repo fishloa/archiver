@@ -1,6 +1,6 @@
 FROM quay.io/oauth2-proxy/oauth2-proxy:latest AS proxy
 
-FROM python:3.12-alpine
+FROM python:3.14-alpine
 
 ENV PIP_INDEX_URL=https://nexus.icomb.place/repository/pypi-proxy/simple/ \
     PIP_TRUSTED_HOST=nexus.icomb.place

@@ -1,4 +1,4 @@
-FROM python:3.10-slim
+FROM python:3.14-slim
 
 ENV PIP_INDEX_URL=https://nexus.icomb.place/repository/pypi-proxy/simple/ \
     PIP_TRUSTED_HOST=nexus.icomb.place

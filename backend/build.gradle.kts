@@ -1,8 +1,8 @@
 plugins {
     java
-    id("org.springframework.boot") version "4.1.0"
+    id("org.springframework.boot") version "4.1.1"
     id("io.spring.dependency-management") version "1.1.7"
-    id("com.diffplug.spotless") version "7.0.2"
+    id("com.diffplug.spotless") version "7.2.1"
     jacoco
 }
 
@@ -38,28 +38,28 @@ dependencies {
     annotationProcessor("org.mapstruct:mapstruct-processor:1.6.3")
 
     // OpenAPI / SpringDoc
-    implementation("org.springdoc:springdoc-openapi-starter-webmvc-ui:2.8.4")
+    implementation("org.springdoc:springdoc-openapi-starter-webmvc-ui:2.9.1")
 
     // PDF generation (page export)
-    implementation("org.apache.pdfbox:pdfbox:3.0.4")
+    implementation("org.apache.pdfbox:pdfbox:3.0.8")
 
     // MCP (Model Context Protocol) server via Spring AI
-    implementation(platform("org.springframework.ai:spring-ai-bom:2.0.0"))
+    implementation(platform("org.springframework.ai:spring-ai-bom:2.0.1"))
     implementation("org.springframework.ai:spring-ai-starter-mcp-server-webmvc")
 
     // MCP OAuth — per-user auth for /api/mcp/**, replacing the shared MCP_TOKEN
-    implementation("org.springaicommunity:mcp-authorization-server-spring-boot:0.1.13")
-    implementation("org.springaicommunity:mcp-server-security-spring-boot:0.1.13")
+    implementation("org.springaicommunity:mcp-authorization-server-spring-boot:0.1.14")
+    implementation("org.springaicommunity:mcp-server-security-spring-boot:0.1.14")
     implementation("org.springframework.boot:spring-boot-starter-oauth2-resource-server")
 
     // Test
     testImplementation("org.springframework.boot:spring-boot-starter-test")
     testImplementation("org.springframework.security:spring-security-test")
     testImplementation("org.springframework.boot:spring-boot-testcontainers")
-    testImplementation("org.testcontainers:junit-jupiter:1.21.1")
-    testImplementation("org.testcontainers:postgresql:1.21.1")
-    testImplementation("io.rest-assured:rest-assured:5.5.1")
-    testImplementation("org.wiremock:wiremock-standalone:3.13.0")
+    testImplementation("org.testcontainers:junit-jupiter:1.21.4")
+    testImplementation("org.testcontainers:postgresql:1.21.4")
+    testImplementation("io.rest-assured:rest-assured:5.5.7")
+    testImplementation("org.wiremock:wiremock-standalone:3.13.2")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 }
 
@@ -68,7 +68,7 @@ dependencies {
 // ---------------------------------------------------------------------------
 spotless {
     java {
-        googleJavaFormat("1.34.1")
+        googleJavaFormat("1.36.1")
         removeUnusedImports()
         trimTrailingWhitespace()
         endWithNewline()
@@ -80,7 +80,7 @@ spotless {
 // JaCoCo — 80 % minimum line coverage
 // ---------------------------------------------------------------------------
 jacoco {
-    toolVersion = "0.8.13"
+    toolVersion = "0.8.15"
 }
 
 tasks.jacocoTestReport {

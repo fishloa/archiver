@@ -6,7 +6,7 @@ build-backend = "hatchling.build"
 name = "scraper-arolsen"
 version = "0.1.0"
 description = "Scraper for collections.arolsen-archives.org (Arolsen Archives / International Tracing Service)"
-requires-python = ">=3.13"
+requires-python = ">=3.14"
 dependencies = [
     "worker-common",
     "httpx>=0.27",

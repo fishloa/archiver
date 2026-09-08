@@ -101,6 +101,8 @@ export interface PageTextResponse {
   confidence: number;
   engine: string;
   textEn: string;
+  /** IANA media type of `text` — 'text/markdown' from Mistral OCR, else 'text/plain'. */
+  contentType: string;
 }
 
 export async function fetchPageText(email: string | undefined, pageId: number): Promise<PageTextResponse> {
