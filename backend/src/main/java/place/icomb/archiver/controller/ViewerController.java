@@ -274,6 +274,28 @@ public class ViewerController {
       ocrWorkerDetails.add(detail);
     }
     ocrStage.put("workerDetails", ocrWorkerDetails);
+
+    // Batch progress. Without this the OCR stage is unreadable during a batched run: pages sit
+    // 'claimed' while the provider works, and `busy` caps that at the worker count, so hundreds
+    // of pages in flight render as "1/1 busy" against a slowly-falling pending count with no
+    // indication whether batches are moving, queued, or stuck.
+    Map<String, Object> batches =
+        jdbcTemplate.queryForMap(
+            """
+            SELECT
+              count(*) FILTER (WHERE status = 'submitted')                      AS in_flight,
+              COALESCE(sum(page_count) FILTER (WHERE status = 'submitted'), 0)  AS pages_in_flight,
+              count(*) FILTER (WHERE status = 'submitting')                     AS submitting,
+              count(*) FILTER (WHERE status = 'failed'
+                               AND created_at > now() - interval '24 hours')    AS failed_recently,
+              count(*) FILTER (WHERE status = 'collected'
+                               AND collected_at > now() - interval '1 hour')    AS collected_last_hour,
+              EXTRACT(EPOCH FROM (now() - min(submitted_at)
+                       FILTER (WHERE status = 'submitted')))::int               AS oldest_in_flight_seconds,
+              EXTRACT(EPOCH FROM (now() - max(last_polled_at)))::int            AS last_polled_seconds
+            FROM ocr_batch
+            """);
+    ocrStage.put("batches", batches);
     stages.add(ocrStage);
 
     stages.add(

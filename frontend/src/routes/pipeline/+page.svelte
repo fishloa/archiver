@@ -10,7 +10,8 @@
 		CircleCheckBig,
 		AlertTriangle,
 		Radio,
-		Cpu
+		Cpu,
+		Layers
 	} from 'lucide-svelte';
 	import type { PipelineStage, ScraperEntry } from '$lib/server/api';
 	import { language, t } from '$lib/i18n';
@@ -22,6 +23,13 @@
 	 * Hostname of a provider URL, with the full URL kept in the title attribute.
 	 * Stage cards are narrow and the useful part is which service is being called, not the path.
 	 */
+	/** Compact age for batch timings — seconds are only interesting for the first minute. */
+	function fmtAge(seconds: number): string {
+		if (seconds < 60) return `${seconds}s`;
+		if (seconds < 3600) return `${Math.round(seconds / 60)}m`;
+		return `${Math.round(seconds / 360) / 10}h`;
+	}
+
 	function providerHost(url: string): string {
 		try {
 			return new URL(url).host;
@@ -226,6 +234,33 @@
 								/ {fmt(jobsTotal)} jobs
 								<span class="progress-pct" style="color: {cfg.color}">{pct}%</span>
 							</span>
+						</div>
+					{/if}
+
+					<!-- Provider batch progress. Pages sit claimed while the provider works, so
+					     without this the stage reads as one busy worker and a falling queue. -->
+					{#if stage.batches && (stage.batches.in_flight > 0 || stage.batches.submitting > 0 || stage.batches.collected_last_hour > 0)}
+						<div class="batch-row">
+							<Layers size={11} class="batch-icon" />
+							<span class="batch-main">
+								{stage.batches.in_flight}
+								{stage.batches.in_flight === 1 ? 'batch' : 'batches'} in flight
+								{#if stage.batches.pages_in_flight > 0}
+									&middot; {fmt(stage.batches.pages_in_flight)} pages at provider
+								{/if}
+							</span>
+							{#if stage.batches.oldest_in_flight_seconds != null}
+								<span class="batch-note">oldest {fmtAge(stage.batches.oldest_in_flight_seconds)}</span>
+							{/if}
+							{#if stage.batches.collected_last_hour > 0}
+								<span class="batch-note">{stage.batches.collected_last_hour} collected/hr</span>
+							{/if}
+							{#if stage.batches.failed_recently > 0}
+								<span class="failed-label">
+									<AlertTriangle size={10} class="inline -mt-0.5" />
+									{stage.batches.failed_recently} failed
+								</span>
+							{/if}
 						</div>
 					{/if}
 
@@ -739,4 +774,26 @@
 		text-overflow: ellipsis;
 		white-space: nowrap;
 	}
-</style>
+
+	/* Provider batch progress line on the OCR stage. */
+	.batch-row {
+		display: flex;
+		align-items: center;
+		flex-wrap: wrap;
+		gap: 0.4rem;
+		margin: 0 0 0.55rem;
+		font-size: 0.7rem;
+		line-height: 1.3;
+	}
+	.batch-row :global(.batch-icon) {
+		flex: none;
+		opacity: 0.6;
+	}
+	.batch-main {
+		font-weight: 500;
+	}
+	.batch-note {
+		color: var(--vui-text-muted, currentColor);
+		opacity: 0.75;
+	}
+</style>\n

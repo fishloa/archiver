@@ -157,6 +157,16 @@ export interface PipelineStage {
   pagesDone?: number;
   pagesTotal?: number;
   workerDetails?: WorkerDetail[];
+  /** Provider batch progress, present on the OCR stage when batched OCR is in use. */
+  batches?: {
+    in_flight: number;
+    pages_in_flight: number;
+    submitting: number;
+    failed_recently: number;
+    collected_last_hour: number;
+    oldest_in_flight_seconds: number | null;
+    last_polled_seconds: number | null;
+  };
   /** Model serving this stage, reported by its live workers. Absent when none is connected. */
   model?: string;
   /** Base URL of the service backing `model`. */
