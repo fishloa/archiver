@@ -6,8 +6,10 @@ from worker_common import ProcessorClient as _Base
 class ProcessorClient(_Base):
     """Adds PDF-specific endpoints to the base client."""
 
-    def __init__(self, base_url: str, token: str):
-        super().__init__(base_url, token, user_agent="pdf-worker/0.1")
+    def __init__(self, base_url: str, token: str, **kwargs):
+        # **kwargs so options added to the base client reach it without every subclass
+        # needing to be updated in lockstep.
+        super().__init__(base_url, token, user_agent="pdf-worker/0.1", **kwargs)
 
     def get_record_pages(self, record_id: int) -> list[dict]:
         """Fetch pages with OCR text for a record."""

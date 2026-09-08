@@ -6,8 +6,10 @@ from worker_common import ProcessorClient
 class EmbedClient(ProcessorClient):
     """Extends ProcessorClient with embedding-specific endpoints."""
 
-    def __init__(self, base_url: str, token: str):
-        super().__init__(base_url, token, user_agent="embed-worker/0.1")
+    def __init__(self, base_url: str, token: str, **kwargs):
+        # **kwargs so options added to the base client (model, provider) reach it without
+        # every subclass needing to be updated in lockstep.
+        super().__init__(base_url, token, user_agent="embed-worker/0.1", **kwargs)
 
     def get_record_pages(self, record_id: int) -> list[dict]:
         """Fetch all pages with OCR text for a record."""
