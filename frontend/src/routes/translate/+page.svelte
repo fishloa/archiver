@@ -9,28 +9,23 @@
 	let loading = $state(false);
 	let error = $state('');
 
-	const langNames: Record<string, string> = {
-		de: 'Deutsch',
-		cs: 'Čeština',
-		en: 'English',
-		fr: 'Français',
-		pl: 'Polski',
-		hu: 'Magyar'
-	};
-
-	let pairs = $derived(data.pairs ?? []);
-	let sourceLangs = $derived([...new Set(pairs.map((p: any) => p.source))]);
-	let sourceLang = $state(pairs[0]?.source ?? 'de');
-
-	let targetLangsForSource = $derived(
-		pairs.filter((p: any) => p.source === sourceLang).map((p: any) => p.target)
-	);
+	/**
+	 * Every language may be either source or target: the LLM translates any combination on
+	 * demand. This replaced a list of MarianMT language pairs, which described that engine's
+	 * downloaded models and became empty when it was removed — silently emptying both dropdowns.
+	 */
+	let languages = $derived(data.languages ?? []);
+	let sourceLang = $state('de');
 	let targetLang = $state(data.defaultTargetLang ?? 'en');
 
-	// If selected target isn't available for current source, pick first available
+	// Source and target must differ, or translation is a no-op. If the user picks the same
+	// language on both sides, move the other one to the first language that is not it.
 	$effect(() => {
-		if (targetLangsForSource.length > 0 && !targetLangsForSource.includes(targetLang)) {
-			targetLang = targetLangsForSource[0];
+		if (languages.length > 1 && sourceLang === targetLang) {
+			const alternative = languages.find(
+				(l: { code: string }) => l.code !== sourceLang
+			);
+			if (alternative) targetLang = alternative.code;
 		}
 	});
 
@@ -77,15 +72,15 @@
 	<div class="lang-selector">
 		<label for="source-lang">{$t('translate.from')}</label>
 		<select id="source-lang" bind:value={sourceLang}>
-			{#each sourceLangs as lang}
-				<option value={lang}>{langNames[lang] ?? lang}</option>
+			{#each languages as lang}
+				<option value={lang.code}>{lang.name}</option>
 			{/each}
 		</select>
 		<span class="arrow">→</span>
 		<label for="target-lang">{$t('translate.to')}</label>
 		<select id="target-lang" bind:value={targetLang}>
-			{#each targetLangsForSource as lang}
-				<option value={lang}>{langNames[lang] ?? lang}</option>
+			{#each languages as lang}
+				<option value={lang.code}>{lang.name}</option>
 			{/each}
 		</select>
 	</div>

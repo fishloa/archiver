@@ -144,14 +144,36 @@ class Translator:
     def close(self) -> None:
         self._client.close()
 
-    def available_pairs(self) -> list[tuple[str, str]]:
-        """Kept for API compatibility with the on-demand /capabilities route.
+    #: Languages offered by the on-demand translation UI.
+    #:
+    #: The LLM translates between any of these on demand, so this is a menu rather than a
+    #: capability list — it replaced the MarianMT era's fixed set of downloaded model pairs.
+    #: Scoped to the languages this archive actually contains: Habsburg and Protectorate
+    #: administration (German, Czech, Slovak, Hungarian, Polish), the surrounding region, the
+    #: Latin of parish registers, and the languages of Holocaust documentation.
+    SUPPORTED_LANGUAGES: list[dict[str, str]] = [
+        {"code": "de", "name": "Deutsch"},
+        {"code": "cs", "name": "Čeština"},
+        {"code": "en", "name": "English"},
+        {"code": "sk", "name": "Slovenčina"},
+        {"code": "pl", "name": "Polski"},
+        {"code": "hu", "name": "Magyar"},
+        {"code": "fr", "name": "Français"},
+        {"code": "it", "name": "Italiano"},
+        {"code": "nl", "name": "Nederlands"},
+        {"code": "ru", "name": "Русский"},
+        {"code": "uk", "name": "Українська"},
+        {"code": "ro", "name": "Română"},
+        {"code": "sl", "name": "Slovenščina"},
+        {"code": "hr", "name": "Hrvatski"},
+        {"code": "la", "name": "Latina"},
+        {"code": "yi", "name": "ייִדיש"},
+        {"code": "he", "name": "עברית"},
+    ]
 
-        The LLM handles any language pair on demand rather than a fixed set
-        of downloaded models, so there is no meaningful "available pairs"
-        list to report.
-        """
-        return []
+    def supported_languages(self) -> list[dict[str, str]]:
+        """Languages offered by the translation UI. Any of them may be source or target."""
+        return list(self.SUPPORTED_LANGUAGES)
 
     def _call_llm(self, prompt: str) -> str:
         response = self._client.post(

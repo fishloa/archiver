@@ -31,10 +31,16 @@ class TranslateResponse(BaseModel):
 
 @app.get("/capabilities")
 def capabilities():
+    """Languages the UI may offer, any of which can be source or target.
+
+    Reports languages rather than pairs: the LLM translates any combination on demand, so
+    the MarianMT-era list of downloaded model pairs no longer describes anything. It was
+    left returning an empty list when MarianMT was removed, which silently emptied both
+    dropdowns on the translate page.
+    """
     if _translator is None:
-        return {"pairs": []}
-    pairs = [{"source": s, "target": t} for s, t in _translator.available_pairs()]
-    return {"pairs": pairs}
+        return {"languages": []}
+    return {"languages": _translator.supported_languages()}
 
 
 @app.post("/translate")

@@ -323,16 +323,16 @@ export async function searchFamilyTree(
 }
 
 export async function fetchTranslateCapabilities(email?: string): Promise<{
-  pairs: { source: string; target: string }[];
+  languages: { code: string; name: string }[];
 }> {
   try {
     const res = await fetch(`${backendUrl()}/api/translate/capabilities`, {
       headers: authHeaders(email),
     });
-    if (!res.ok) return { pairs: [] };
+    if (!res.ok) return { languages: [] };
     return res.json();
   } catch {
-    return { pairs: [] };
+    return { languages: [] };
   }
 }
 

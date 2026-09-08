@@ -11,7 +11,7 @@ export const load: PageServerLoad = async ({ locals, cookies }) => {
 	const capabilities = await fetchTranslateCapabilities(locals.userEmail);
 
 	return {
-		pairs: capabilities.pairs,
+		languages: capabilities.languages,
 		defaultTargetLang: userLang
 	};
 };

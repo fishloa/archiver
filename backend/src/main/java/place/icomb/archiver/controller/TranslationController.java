@@ -56,12 +56,18 @@ public class TranslationController {
 
   public record TranslateResponse(String translatedText, String sourceLang, String targetLang) {}
 
-  public record LangPair(String source, String target) {}
+  public record Language(String code, String name) {}
 
-  public record Capabilities(java.util.List<LangPair> pairs) {}
+  /**
+   * Languages the translation UI may offer, any of which can be source or target.
+   *
+   * <p>Replaced a list of language pairs: those described MarianMT's downloaded models, and the LLM
+   * that succeeded it translates any combination on demand.
+   */
+  public record Capabilities(java.util.List<Language> languages) {}
 
   @GetMapping("/capabilities")
-  @Operation(summary = "Get supported language pairs")
+  @Operation(summary = "Get supported translation languages")
   public ResponseEntity<?> capabilities() {
     try {
       HttpRequest request =
