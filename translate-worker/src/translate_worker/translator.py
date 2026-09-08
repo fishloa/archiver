@@ -1,169 +1,171 @@
-"""MarianMT translation using Helsinki-NLP models."""
+"""LLM-based translation via an OpenAI-compatible chat completions endpoint.
+
+Replaces the previous MarianMT (Helsinki-NLP) implementation. One HTTP request
+per page/field — a page is roughly 2000 characters, far inside any modern
+context window, so no chunking is needed. Markdown structure (headings,
+tables, list items, paragraph breaks) survives because the model is told to
+preserve it, not because the text is split into blocks and reassembled.
+"""
 
 import logging
 import re
 import time
-from collections import OrderedDict
 
-import torch
-from langdetect import detect, LangDetectException
-from transformers import MarianMTModel, MarianTokenizer
-from worker_common.markdown import parse_blocks, render_blocks
+import httpx
 
 log = logging.getLogger(__name__)
 
-# Model naming convention: Helsinki-NLP/opus-mt-{src}-{tgt}
-MODEL_PREFIX = "Helsinki-NLP/opus-mt-"
+# ISO 639-1 -> the language name used in the prompt. Extend as new source
+# languages show up in the archive; an unlisted code falls back to omitting
+# the language name entirely rather than guessing.
+_LANGUAGE_NAMES = {
+    "de": "German",
+    "cs": "Czech",
+    "sk": "Slovak",
+    "pl": "Polish",
+    "hu": "Hungarian",
+    "fr": "French",
+    "it": "Italian",
+    "ru": "Russian",
+}
 
-# MarianMT has a max token limit of 512; chunk text conservatively at ~400 chars
-MAX_CHUNK_CHARS = 400
+_MARKDOWN_RULE = (
+    "- The input is Markdown. Return Markdown with the identical structure: same "
+    "headings at the same levels, same tables, same list items, same paragraph "
+    "breaks."
+)
 
-# How many MarianMT models may stay resident on the GPU at once. Two replicas
-# share a 12GB A2000 with the OCR workers, so this has to stay small.
-MAX_RESIDENT_MODELS = 3
+_PLAIN_TEXT_RULE = (
+    "- The input is plain text. Preserve the plain-text line layout exactly as "
+    "given. Do not introduce Markdown formatting (no headings, no bullet lists, "
+    "no bold/italic markers)."
+)
+
+_PROMPT_TEMPLATE = """Translate the following{lang_clause} archival document into English.
+
+It is a 1942 administrative report and may contain OCR errors — translate what is
+there, do not correct or embellish it.
+
+Rules:
+{structure_rule}
+- Keep every name, date and number exactly as written.
+- Translate faithfully. Do not summarise, soften, censor or omit anything.
+- Output ONLY the translation. No preamble, no commentary, no code fences.
+
+DOCUMENT:
+
+{text}"""
+
+# A code fence wrapping the *entire* response, e.g. because the model treated
+# the markdown instruction as "put it in a code block".
+_CODE_FENCE_RE = re.compile(r"^```[a-zA-Z]*\n(.*)\n```$", re.DOTALL)
+
+# Cues seen in benchmarked chat preambles ("Here is the faithful
+# translation:", "Certainly, here's the translation of the document:").
+# Matched against the first line only, case-insensitively.
+_PREAMBLE_MARKERS = (
+    "here is",
+    "here's",
+    "certainly",
+    "sure,",
+    "translation of",
+    "translated text",
+    "translated version",
+    "below is",
+)
+
+
+def _language_clause(source_lang: str | None) -> str:
+    """Return e.g. ' German' for use in 'Translate the following{clause} ...'.
+
+    Empty string when the source language is unknown, so the sentence still
+    reads naturally without guessing at a language.
+    """
+    if not source_lang:
+        return ""
+    name = _LANGUAGE_NAMES.get(source_lang.lower())
+    return f" {name}" if name else ""
+
+
+def _build_prompt(text: str, source_lang: str | None, content_type: str) -> str:
+    structure_rule = _MARKDOWN_RULE if content_type == "text/markdown" else _PLAIN_TEXT_RULE
+    return _PROMPT_TEMPLATE.format(
+        lang_clause=_language_clause(source_lang),
+        structure_rule=structure_rule,
+        text=text,
+    )
+
+
+def _strip_preamble(text: str) -> str:
+    """Drop a leading chat preamble line, e.g. 'Here is the translation:'."""
+    newline = text.find("\n")
+    first_line = text if newline == -1 else text[:newline]
+    stripped_first = first_line.strip()
+    lowered = stripped_first.lower()
+
+    looks_like_structure = stripped_first.startswith(("#", "-", "*", "|", "```", ">"))
+    looks_like_preamble = stripped_first and not looks_like_structure and (
+        lowered.endswith(":") or any(marker in lowered for marker in _PREAMBLE_MARKERS)
+    )
+
+    if not looks_like_preamble:
+        return text
+
+    remainder = "" if newline == -1 else text[newline + 1 :]
+    return remainder.lstrip("\n")
+
+
+def _strip_code_fence(text: str) -> str:
+    """Drop a code fence wrapping the whole response."""
+    stripped = text.strip()
+    match = _CODE_FENCE_RE.match(stripped)
+    return match.group(1) if match else text
+
+
+def _clean_response(raw: str) -> str:
+    text = raw.strip()
+    text = _strip_preamble(text).strip()
+    text = _strip_code_fence(text).strip()
+    return text
 
 
 class Translator:
-    """Translates German and Czech text to English using MarianMT."""
+    """Translates text to English via an OpenAI-compatible chat endpoint."""
 
-    def __init__(self):
-        # Least-recently-used first, so popitem(last=False) evicts the coldest.
-        self._models: OrderedDict[str, MarianMTModel] = OrderedDict()
-        self._tokenizers: dict[str, MarianTokenizer] = {}
-        self._device = "cuda" if torch.cuda.is_available() else "cpu"
-        log.info(
-            "Translator initialized (device=%s, max_resident_models=%d)",
-            self._device,
-            MAX_RESIDENT_MODELS,
+    def __init__(self, base_url: str, api_key: str, model: str):
+        self._model = model
+        self._client = httpx.Client(
+            base_url=base_url.rstrip("/"),
+            headers={"Authorization": f"Bearer {api_key}"},
+            timeout=120.0,
         )
+        log.info("Translator initialized (base_url=%s, model=%s)", base_url, model)
 
-    def _evict_if_needed(self) -> None:
-        """Drop the least recently used models so VRAM stays bounded.
-
-        Each MarianMT model is roughly 300MB of VRAM. The cache used to be
-        effectively capped at two (de-en and cs-en were the only models that
-        could ever load, because the HuggingFace cache was read-only), so an
-        unbounded dict was harmless. It is not harmless now that any language
-        pair can be downloaded on demand: sixteen resident models filled the
-        A2000 and translation started failing with CUDA OOM.
-        """
-        while len(self._models) > MAX_RESIDENT_MODELS:
-            evicted, model = self._models.popitem(last=False)
-            del model
-            self._tokenizers.pop(evicted, None)
-            log.info("Evicted model %s to free VRAM", evicted)
-            if self._device == "cuda":
-                torch.cuda.empty_cache()
-
-    def _load_model(self, model_name: str) -> tuple[MarianTokenizer, MarianMTModel]:
-        """Lazily load and cache a model + tokenizer."""
-        if model_name in self._models:
-            self._models.move_to_end(model_name)
-        else:
-            log.info("Loading model %s...", model_name)
-            t0 = time.monotonic()
-            tokenizer = MarianTokenizer.from_pretrained(model_name)
-            model = MarianMTModel.from_pretrained(model_name).to(self._device)
-            model.eval()
-            elapsed = time.monotonic() - t0
-            log.info("Model %s loaded in %.1fs", model_name, elapsed)
-            self._tokenizers[model_name] = tokenizer
-            self._models[model_name] = model
-            self._evict_if_needed()
-        return self._tokenizers[model_name], self._models[model_name]
+    def close(self) -> None:
+        self._client.close()
 
     def available_pairs(self) -> list[tuple[str, str]]:
-        """Return (src, tgt) pairs for all locally cached opus-mt models."""
-        import os
+        """Kept for API compatibility with the on-demand /capabilities route.
 
-        hf_home = os.environ.get("HF_HOME", os.path.expanduser("~/.cache/huggingface"))
-        hub_dir = os.path.join(hf_home, "hub")
-        pairs = []
-        if not os.path.isdir(hub_dir):
-            return pairs
-        for name in os.listdir(hub_dir):
-            if name.startswith("models--Helsinki-NLP--opus-mt-"):
-                suffix = name.replace("models--Helsinki-NLP--opus-mt-", "")
-                parts = suffix.split("-")
-                if len(parts) == 2:
-                    pairs.append((parts[0], parts[1]))
-        return sorted(pairs)
+        The LLM handles any language pair on demand rather than a fixed set
+        of downloaded models, so there is no meaningful "available pairs"
+        list to report.
+        """
+        return []
 
-    def detect_language(self, text: str) -> str:
-        """Detect source language from text."""
-        try:
-            lang = detect(text)
-            if lang in ("sk",):
-                return "cs"
-            return lang
-        except LangDetectException:
-            return "de"
-
-    def _get_model_name(self, source_lang: str, target_lang: str) -> str:
-        """Return the model name for a source→target pair."""
-        return f"{MODEL_PREFIX}{source_lang}-{target_lang}"
-
-    def _split_chunks(self, text: str) -> list[str]:
-        """Split text into chunks of ~MAX_CHUNK_CHARS at sentence/paragraph boundaries."""
-        if len(text) <= MAX_CHUNK_CHARS:
-            return [text]
-
-        chunks = []
-        current = ""
-
-        # Split on paragraph boundaries first, then sentences
-        paragraphs = re.split(r"(\n\s*\n)", text)
-
-        for part in paragraphs:
-            # If adding this paragraph would exceed the limit, try splitting by sentences
-            if len(current) + len(part) > MAX_CHUNK_CHARS and current:
-                if len(current.strip()) > 0:
-                    chunks.append(current.strip())
-                current = ""
-
-            if len(part) <= MAX_CHUNK_CHARS:
-                current += part
-            else:
-                # Split long paragraph by sentences
-                sentences = re.split(r"(?<=[.!?])\s+", part)
-                for sentence in sentences:
-                    if len(current) + len(sentence) > MAX_CHUNK_CHARS and current:
-                        if len(current.strip()) > 0:
-                            chunks.append(current.strip())
-                        current = ""
-                    current += sentence + " "
-
-        if current.strip():
-            chunks.append(current.strip())
-
-        # Safety: if any chunk is still too long, hard-split it
-        final_chunks = []
-        for chunk in chunks:
-            if len(chunk) > MAX_CHUNK_CHARS * 2:
-                # Hard split at word boundaries
-                words = chunk.split()
-                sub = ""
-                for word in words:
-                    if len(sub) + len(word) + 1 > MAX_CHUNK_CHARS and sub:
-                        final_chunks.append(sub.strip())
-                        sub = ""
-                    sub += word + " "
-                if sub.strip():
-                    final_chunks.append(sub.strip())
-            else:
-                final_chunks.append(chunk)
-
-        return final_chunks if final_chunks else [text]
-
-    def _translate_chunk(self, text: str, tokenizer: MarianTokenizer, model: MarianMTModel) -> str:
-        """Translate a single chunk of text."""
-        inputs = tokenizer(text, return_tensors="pt", padding=True, truncation=True, max_length=512)
-        inputs = {k: v.to(self._device) for k, v in inputs.items()}
-
-        with torch.no_grad():
-            translated = model.generate(**inputs, no_repeat_ngram_size=3)
-
-        return tokenizer.batch_decode(translated, skip_special_tokens=True)[0]
+    def _call_llm(self, prompt: str) -> str:
+        response = self._client.post(
+            "/chat/completions",
+            json={
+                "model": self._model,
+                "max_tokens": 3000,
+                "temperature": 0.1,
+                "messages": [{"role": "user", "content": prompt}],
+            },
+        )
+        response.raise_for_status()
+        data = response.json()
+        return data["choices"][0]["message"]["content"]
 
     def translate(
         self,
@@ -172,15 +174,17 @@ class Translator:
         target_lang: str = "en",
         content_type: str = "text/plain",
     ) -> str:
-        """Translate text between any supported language pair.
+        """Translate text to `target_lang` (default English).
 
         Args:
             text: The source text to translate.
-            source_lang: ISO 639-1 code. Detected automatically if None.
+            source_lang: ISO 639-1 code, used only to name the source
+                language in the prompt. Unknown/absent languages are still
+                translated; the prompt just omits the language name.
             target_lang: ISO 639-1 code for the target language (default: 'en').
-            content_type: Media type of `text` ("text/markdown" or "text/plain").
-                Determines how the text is split into blocks so structure
-                (headings, list items, paragraph breaks) survives translation.
+            content_type: Media type of `text` ("text/markdown" or
+                "text/plain"). Determines whether the prompt asks the model
+                to preserve Markdown structure or plain-text line layout.
 
         Returns:
             Translated text, or the original if source == target.
@@ -188,36 +192,22 @@ class Translator:
         if not text or not text.strip():
             return ""
 
-        t0 = time.monotonic()
-
-        if source_lang is None:
-            source_lang = self.detect_language(text)
-
         if source_lang == target_lang:
             log.info("Source == target (%s, %d chars), skipping", source_lang, len(text))
             return text
 
-        model_name = self._get_model_name(source_lang, target_lang)
-        tokenizer, model = self._load_model(model_name)
-
-        blocks = parse_blocks(text, content_type)
-        for block in blocks:
-            if block.kind == "table_divider" or not block.text.strip():
-                continue
-            # Long blocks still need chunking: MarianMT truncates at 512 tokens.
-            pieces = self._split_chunks(block.text)
-            block.text = " ".join(
-                self._translate_chunk(p, tokenizer, model) for p in pieces if p.strip()
-            )
-        result = render_blocks(blocks)
-
+        t0 = time.monotonic()
+        prompt = _build_prompt(text, source_lang, content_type)
+        raw = self._call_llm(prompt)
+        result = _clean_response(raw)
         elapsed = time.monotonic() - t0
+
         log.info(
-            "Translated %d chars (%d blocks, lang=%s, model=%s) in %.1fs",
+            "Translated %d chars -> %d chars (lang=%s, model=%s) in %.1fs",
             len(text),
-            len(blocks),
-            source_lang,
-            model_name.split("/")[-1],
+            len(result),
+            source_lang or "auto",
+            self._model,
             elapsed,
         )
 

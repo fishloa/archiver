@@ -1102,6 +1102,99 @@ git commit -m "feat: heading-aware chunks, Qwen3 embeddings, halfvec storage"
 
 ---
 
+## Task 7: Replace MarianMT with an LLM translator
+
+MarianMT goes entirely. No fallback is retained — the decision is forwards only.
+
+### Why (measured on 12 real Mistral-OCR markdown pages)
+
+| model | digits kept | names kept | headings | preamble | $/page |
+|---|---|---|---|---|---|
+| **google/gemma-4-31B-it** | **1.000** | **1.000** | 1.000 | 0 | $0.000216 |
+| deepseek-ai/DeepSeek-V3.2 | 0.828 | 1.000 | 1.000 | 0 | $0.000320 |
+| meta-llama/Llama-4-Scout | 0.806 | 1.000 | 1.000 | 0 | $0.000161 |
+| **MarianMT (incumbent)** | 0.750 | 1.000 | n/a | n/a | GPU |
+| mistralai/Mistral-Small-3.2 | 0.528 | 0.944 | 0.917 | 2 | $0.000110 |
+
+`digits kept` compares digit sequences with thousands separators normalised, because
+German "35.000" correctly becomes English "35,000" — scoring those as a loss made
+every model look far worse than it is.
+
+Quality difference on the passage that matters, `jener Schicht Intellektueller
+Führungskräfte angehören`:
+
+- MarianMT: "belonged to a number of other **classes of intellectual leaders**" — wrong
+- gemma-4: "belong to **that stratum of intellectual leaders**" — right
+
+Markdown survives natively: `# Der Reichsprotektor` becomes `# The Reich Protector`,
+same level, same line count, no preamble, no code fences.
+
+Whole archive at gemma-4 rates: roughly **$26** for 120,386 pages.
+
+### What this deletes
+
+- torch, transformers, sentencepiece and the CUDA base layer from the image
+- `runtime: nvidia`, `NVIDIA_VISIBLE_DEVICES`, `HF_HOME` and the model cache
+- the LRU model-cache eviction added when the writable HF cache let sixteen models
+  become resident and exhaust the A2000
+- langdetect and the whole missing-language-pair failure class — nineteen jobs are
+  currently poisoned asking for `opus-mt-sl-en`, `-sw-en`, `-no-en`, `-ro-en`, `-pt-en`,
+  none of which Helsinki ever published
+- roughly 5GB of VRAM on the shared A2000
+
+`worker_common.markdown` stays — pdf-worker still needs `to_plain_text` and embed-worker
+still needs `iter_sections`. Only the translator's use of `parse_blocks`/`render_blocks`
+goes, because an LLM preserves structure without being told how.
+
+**Files:**
+- Modify: `translate-worker/src/translate_worker/translator.py` (rewrite)
+- Modify: `translate-worker/src/translate_worker/config.py`
+- Modify: `translate-worker/src/translate_worker/main.py`
+- Modify: `translate-worker/Dockerfile`
+- Modify: `translate-worker/pyproject.toml`
+- Modify: `deploy/docker-compose.yml`
+- Test: `translate-worker/tests/test_llm_translator.py`
+
+**Interfaces:**
+- Produces: `Translator.translate(text, source_lang=None, target_lang="en",
+  content_type="text/plain") -> str` — signature unchanged, so `main.py` barely moves.
+
+### Traps
+
+**The output must be the translation and nothing else.** Two of the five models tested
+prefixed a chat preamble ("Here is the faithful translation…"). That would be stored
+verbatim in `text_en`. Strip a leading preamble line and any wrapping code fence, and
+assert their absence in tests.
+
+**Do not let the model correct the source.** These are OCR transcriptions of damaged
+documents; an LLM will happily tidy them. The prompt says translate what is there.
+
+**Keep it faithful.** The material is Nazi administrative record. A model that softens
+or declines produces a useless archive. Verified in the benchmark: names, figures and
+the substance all came through intact.
+
+- [ ] **Step 1: Write the failing test** — see the plan's sibling tasks for the shape;
+  cover: markdown heading survives as a heading, no preamble in output, no code fence,
+  numbers preserved, and that a plain-text page is not turned into markdown.
+
+- [ ] **Step 2: Rewrite `translator.py`** against an OpenAI-compatible chat endpoint,
+  configured by `TRANSLATE_BASE_URL`, `TRANSLATE_API_KEY`, `TRANSLATE_MODEL`
+  (default `google/gemma-4-31B-it`). One request per page; a page is ~2000 characters,
+  far inside context, so no chunking is needed.
+
+- [ ] **Step 3: Strip the image down** — remove torch/transformers/sentencepiece from
+  `pyproject.toml` and the CUDA layers from the `Dockerfile`; the worker now needs only
+  httpx and worker-common.
+
+- [ ] **Step 4: Drop the GPU wiring** from `deploy/docker-compose.yml` — `runtime: nvidia`,
+  `NVIDIA_VISIBLE_DEVICES`, `HF_HOME`, `HOME`, `LOGNAME` — and add the new config.
+
+- [ ] **Step 5: Verify** — `pytest translate-worker/tests/ -q`, `ruff check translate-worker/`.
+
+- [ ] **Step 6: Commit.**
+
+---
+
 ## Task 6: Deploy, then hand back
 
 **The re-OCR pipeline is never run by the implementer.** No resetting records to

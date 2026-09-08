@@ -1,8 +1,8 @@
 """Translate worker main loop.
 
 Claims translate_page and translate_record jobs from the backend,
-translates text from German/Czech to English using Helsinki-NLP
-MarianMT models, and posts the results back.
+translates text to English via an OpenAI-compatible LLM chat endpoint,
+and posts the results back.
 
 Subscribes to the backend's SSE job events stream for real-time
 notifications. Falls back to polling on SSE disconnect.
@@ -125,8 +125,8 @@ def main():
     cfg = Config()
     client = ProcessorClient(cfg.backend_url, cfg.processor_token)
 
-    log.info("Loading translation models...")
-    translator = Translator()
+    log.info("Initializing translator (model=%s)...", cfg.translate_model)
+    translator = Translator(cfg.translate_base_url, cfg.translate_api_key, cfg.translate_model)
 
     # Start FastAPI server in daemon thread for on-demand translation
     set_translator(translator)
@@ -158,6 +158,7 @@ def main():
         pass
     finally:
         client.close()
+        translator.close()
 
 
 if __name__ == "__main__":

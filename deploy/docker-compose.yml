@@ -156,14 +156,12 @@ services:
   translate-worker:
     image: dockerregistry.icomb.place/archiver/translate-worker:latest
     user: "${CONTAINER_USER:-1012:1012}"
-    runtime: nvidia
     environment:
-      HOME: /tmp
-      LOGNAME: worker
-      HF_HOME: /opt/huggingface
-      NVIDIA_VISIBLE_DEVICES: all
       BACKEND_URL: http://backend:8080
       PROCESSOR_TOKEN: ${PROCESSOR_TOKEN}
+      TRANSLATE_BASE_URL: ${TRANSLATE_BASE_URL:-https://api.deepinfra.com/v1/openai}
+      TRANSLATE_API_KEY: ${TRANSLATE_API_KEY:-}
+      TRANSLATE_MODEL: ${TRANSLATE_MODEL:-google/gemma-4-31B-it}
     depends_on:
       - backend
     restart: unless-stopped
