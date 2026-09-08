@@ -19,6 +19,8 @@ scrapers ──→            web (nginx :8099, OAuth2)
 ```
 
 All workers communicate **only** via the backend HTTP API (`/api/processor/*`).
+No service in the stack uses the GPU any more — OCR, translation and embedding are all
+hosted APIs. The archiver stack holds ~0 MiB of the zelkova A2000.
 They send/receive binaries and metadata over HTTP — no direct filesystem or DB access.
 Only the backend touches PostgreSQL and archiver_store.
 
@@ -34,13 +36,6 @@ Only the backend touches PostgreSQL and archiver_store.
 | embed-worker | Python | Heading-aware chunking, embeds via Qwen3-Embedding-8B (1024-dim, halfvec) |
 | entity-worker | Python | Named entity extraction (dormant — commented out in compose) |
 | ocr-worker-qwen3vl | Python + Ollama | Qwen3-VL OCR via Ollama (not containerized, runs on Mac Studio) |
-
-**OCR engines.** Internal backend workers, selected by `OCR_DEFAULT_ENGINE`:
-`ocr_page_mistral` (Mistral OCR API — current default, returns markdown),
-`ocr_page_claude` (Claude vision — reference/fallback, disabled in deploy),
-`ocr_page_qwen3vl` (Ollama on the Mac Studio). PaddleOCR was retired in September 2026:
-it ran no jobs after 2 August and the backend registered no worker for it. Its 66,796
-pages of stored text remain in `page_text` until re-OCR'd.
 | web | nginx | Internal reverse proxy: OAuth2 routing, SSE buffering, backend/frontend dispatch |
 | scraper-cz | Python | Czech National Archives (Zoomify tiles → PDF) |
 | scraper-ebadatelna | Python | Czech Archive of Security Forces (auth required) |
@@ -49,6 +44,14 @@ pages of stored text remain in `page_text` until re-OCR'd.
 | scraper-matricula | Python | Matricula Online church records |
 | scraper-arolsen | Python | Arolsen Archives (German Holocaust documentation) |
 | scraper-ddb | Python | Deutsche Digitale Bibliothek (German Digital Library) |
+
+**OCR engines.** Internal backend workers, selected by `OCR_DEFAULT_ENGINE`:
+`ocr_page_mistral` (Mistral OCR API — current default, returns markdown),
+`ocr_page_claude` (Claude vision) and `ocr_page_qwen3vl` (Ollama on the Mac Studio) are
+both **disabled in the deploy** — they remain in the image and are re-enabled with one env
+var each. Mistral is the only OCR engine running. PaddleOCR was retired in September 2026:
+it ran no jobs after 2 August and the backend registered no worker for it. Its 66,796
+pages of stored text remain in `page_text` until re-OCR'd.
 
 ### Document Pipeline
 
@@ -62,9 +65,49 @@ Pipeline transitions are managed by `PipelineStateMachine` — a formal state ma
 When all OCR jobs complete for a record, the state machine auto-enqueues:
 - `build_searchable_pdf` (1 per record)
 - `translate_record` (metadata translation, uses `record.metadata_lang`)
-- `translate_page` (per page, auto-detects language from text)
-- `embed_record` (chunks English text, generates embeddings)
+- `translate_page` (per page; the LLM handles any source language, no detection step)
+- `embed_record` (heading-aware chunks of the ORIGINAL text — not the translation —
+  embedded cross-lingually so English queries retrieve German and Czech pages)
 - `match_persons` (heuristic + LLM person matching against family tree)
+
+### Text Content Types
+
+`page_text.content_type` records the media type of `text_raw` — `text/markdown` from
+Mistral OCR, `text/plain` from everything else. **Consumers must read it, never sniff
+it.** A typescript's centred page number `- 5 -` is byte-identical to a markdown bullet,
+so the formats cannot be told apart by inspection, and guessing turns page numbers into
+bullets across the archive.
+
+`text_raw` is stored exactly as the engine produced it — nothing is escaped or
+normalised on write. This is an archive backing a citizenship application; the stored
+transcription must be what the OCR engine actually said.
+
+All markdown handling lives in `worker_common.markdown`, shared by every Python worker:
+
+- `to_plain_text(text, content_type)` — strips markup for the PDF's invisible text layer
+- `parse_blocks` / `render_blocks` — separate a block's marker from its translatable text
+- `iter_sections(text, content_type)` — `(heading path, body)` pairs for embedding context
+
+`parse_blocks` distinguishes hard-wrapped prose (rejoin into sentences) from forms
+(one field per line, never join) by line-width regularity. A wage card whose lines are
+joined loses every label/value pairing.
+
+### Embedding
+
+Queries arrive in English; pages are German or Czech. Every retrieval is cross-lingual.
+
+- Model `Qwen/Qwen3-Embedding-8B` at `dimensions: 1024`, requested server-side
+- Matryoshka-trained, so truncating 4096 → 1024 measured **no** quality loss and stays
+  under pgvector's 2,000-dimension HNSW ceiling
+- Stored as `halfvec(1024)` — measured identical to fp32, half the bytes
+- Chunks carry `heading`, prefixed to the embedded content so a mid-section chunk still
+  carries its section's subject
+
+**The trap:** two components embed text. `embed-worker` embeds passages with **no**
+prefix; `SemanticSearchController.embedText()` embeds queries **with** Qwen3's
+instruction prefix. Both read `archiver.embed.*`. If they drift apart retrieval degrades
+silently — no error is raised anywhere. Only a search with a known-correct answer
+catches it.
 
 ### Language Handling
 
@@ -123,7 +166,7 @@ Config: `backend/src/test/resources/application-test.yml`.
 - Spring Data JDBC (not JPA) — entities use `@Table`, no `@Entity`
 - MapStruct for DTO mapping
 - `BeanPropertyRowMapper` maps snake_case columns to camelCase Java fields
-- Flyway migrations in `backend/src/main/resources/db/migration/V*.sql` (currently V1–V16)
+- Flyway migrations in `backend/src/main/resources/db/migration/V*.sql` (currently V1–V24). **Never edit an applied migration** — add a new one.
 - SpringDoc OpenAPI at `/swagger-ui.html`
 - `--enable-preview` Java flag enabled for compilation and tests
 - Spotless with Google Java Format for code formatting
