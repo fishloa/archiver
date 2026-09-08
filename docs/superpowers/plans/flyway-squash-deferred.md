@@ -77,3 +77,39 @@ Step 6 exists solely to prevent this, and is the step to slow down on.
 Steps 1–3 alone — commit `schema.sql` as a snapshot and diff it in CI. That delivers the
 readable single-file schema and, more importantly, automatic drift detection, without
 touching production at all.
+
+
+## What actually happened, 2026-09-08
+
+The plan's step 6 said to re-baseline "either `flyway baseline -baselineVersion=1`, or replace
+the `flyway_schema_history` contents with a single row for V1 marked successful". **The second
+form, written as a BASELINE row, takes production down.**
+
+A row with `type='BASELINE'` carries a NULL checksum. The standalone Flyway CLI honours that and
+skips migrations at or below the baseline version — verified before the change, which is why it
+looked safe. Spring Boot's Flyway integration instead validates the local `V1__baseline.sql`
+against that row, finds NULL where it expects a checksum, and refuses to start:
+
+    Validate failed: Migrations have failed validation
+    Migration checksum mismatch for migration version 1
+    -> Resolved locally    : -813003985
+
+The backend crash-looped four times until the row was rewritten as an ordinary applied migration
+whose checksum matches the file:
+
+```sql
+UPDATE flyway_schema_history
+   SET type = 'SQL', script = 'V1__baseline.sql', description = 'baseline',
+       checksum = <the "Resolved locally" value from the error>
+ WHERE version = '1';
+```
+
+**Do it this way from the start.** Take the checksum from a database that has applied the
+baseline normally — a Testcontainers run does this on every build — rather than from a
+production error message.
+
+The pre-squash history is retained in production as `flyway_schema_history_pre_squash` (26 rows).
+Drop it once the squash has proven itself over a few deploys.
+
+Verified afterwards: production's schema is byte-identical to the pre-squash dump (571
+normalised lines, zero differences), row counts unchanged, HNSW index present, site serving 200.
