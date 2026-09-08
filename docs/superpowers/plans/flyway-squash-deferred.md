@@ -1,6 +1,12 @@
 # Flyway squash — deferred, out-of-hours work
 
-**Status:** agreed in principle 2026-09-08, deliberately deferred. Not urgent.
+**Status:** COMPLETED 2026-09-08.
+
+The drift check (step 3) found exactly one difference across 569 schema lines:
+`idx_text_chunk_embedding`, the HNSW vector index, created by hand against production and
+never written as a migration — so CI and every fresh environment had no vector index at all
+and silently fell back to sequential scans. It is captured in the baseline. Everything else
+matched, over 26 migrations and 7 months.
 
 **Goal:** collapse V1–V24 into a single baseline migration representing the current schema,
 so a fresh environment builds in one step and the schema is readable in one file.

@@ -166,7 +166,7 @@ Config: `backend/src/test/resources/application-test.yml`.
 - Spring Data JDBC (not JPA) — entities use `@Table`, no `@Entity`
 - MapStruct for DTO mapping
 - `BeanPropertyRowMapper` maps snake_case columns to camelCase Java fields
-- Flyway migrations in `backend/src/main/resources/db/migration/V*.sql` (currently V1–V24). **Never edit an applied migration** — add a new one.
+- Flyway migrations in `backend/src/main/resources/db/migration/V*.sql`. V1..V26 were squashed into `V1__baseline.sql` on 2026-09-08, generated from production's verified schema; the originals remain in git history. Existing databases are baselined at V1 rather than running it. **Never edit an applied migration** — add a new one.
 - SpringDoc OpenAPI at `/swagger-ui.html`
 - `--enable-preview` Java flag enabled for compilation and tests
 - Spotless with Google Java Format for code formatting
