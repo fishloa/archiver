@@ -158,8 +158,9 @@ public class JobService {
    * absent here uses {@link #DEFAULT_LEASE_SECONDS}; keeping that short means genuinely dead jobs
    * of ordinary kinds are recovered quickly.
    *
-   * <p>Batched OCR, when it arrives, belongs here with a lease measured in hours: a job that hands
-   * work to a provider's queue is legitimately claimed for as long as that queue takes.
+   * <p>Batched OCR is not here and must not be: a job handed to a provider's batch queue is
+   * legitimately claimed for as long as that queue takes, so it is excluded by batch_id below
+   * rather than given an ever-longer lease.
    */
   private static final Map<String, Integer> LEASE_SECONDS_BY_KIND =
       Map.of(
@@ -167,8 +168,7 @@ public class JobService {
           "translate_page", 1800,
           "translate_record", 1800,
           "ocr_page_qwen3vl", 1800,
-          "ocr_page_claude", 1800,
-          "ocr_page_mistral", 1800);
+          "ocr_page_claude", 1800);
 
   /** Lease for any kind not named above. */
   private static final int DEFAULT_LEASE_SECONDS = 600;
@@ -180,6 +180,11 @@ public class JobService {
    * behind forever: {@code claim} only ever selects {@code pending} rows, so nothing reclaims it
    * and the job's record stalls permanently. This is the single most important recovery step, and
    * the one most likely to be needed after a crash.
+   *
+   * <p>Jobs with a batch_id are excluded entirely. They are claimed by an OCR batch sitting at the
+   * provider, and releasing one would resubmit pages that are already being billed — the single
+   * largest double-billing hazard in the batch design. Those are owned by the batch worker's own
+   * recovery, which reconciles against the provider rather than against a clock.
    *
    * <p>Deliberately its own transaction rather than a pass inside {@link #auditPipeline()}: it used
    * to share that method's transaction, so a failure in any later pass rolled this recovery back
@@ -196,6 +201,7 @@ public class JobService {
               """
               UPDATE job SET status = 'pending', started_at = NULL
               WHERE status = 'claimed'
+                AND batch_id IS NULL
                 AND kind = ?
                 AND started_at < now() - make_interval(secs => ?)
               """,
@@ -211,6 +217,7 @@ public class JobService {
             """
             UPDATE job SET status = 'pending', started_at = NULL
             WHERE status = 'claimed'
+              AND batch_id IS NULL
               AND kind NOT IN (%s)
               AND started_at < now() - make_interval(secs => ?)
             """

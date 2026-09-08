@@ -1,7 +1,6 @@
 package place.icomb.archiver.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
@@ -15,7 +14,7 @@ class MistralOcrWorkerResponseTest {
   private final ObjectMapper mapper = new ObjectMapper();
 
   private String extract(String json) throws Exception {
-    return MistralOcrWorker.extractText(mapper.readTree(json));
+    return MistralBatchOcrWorker.extractText(mapper.readTree(json));
   }
 
   @Test
@@ -49,16 +48,15 @@ class MistralOcrWorkerResponseTest {
   }
 
   @Test
-  void failsWhenResponseCarriesNoPageMarkdown() {
-    assertThatThrownBy(() -> extract("{\"pages\":[]}"))
-        .isInstanceOf(RuntimeException.class)
-        .hasMessageContaining("no page markdown");
+  void returnsEmptyWhenResponseCarriesNoPages() throws Exception {
+    assertThat(extract("{\"pages\":[]}")).isEmpty();
   }
 
   @Test
-  void failsRatherThanReturningEmptyWhenEveryPageIsBlank() {
-    assertThatThrownBy(() -> extract("{\"pages\":[{\"index\":0,\"markdown\":\"\"}]}"))
-        .isInstanceOf(RuntimeException.class)
-        .hasMessageContaining("no page markdown");
+  void returnsEmptyWhenEveryPageIsBlank() throws Exception {
+    // A blank verso is a correct OCR result, not an error. Throwing here failed the job, the
+    // audit retried it twice more, and it landed terminally failed — three billed calls for a
+    // blank page that archival scans are full of.
+    assertThat(extract("{\"pages\":[{\"index\":0,\"markdown\":\"\"}]}")).isEmpty();
   }
 }

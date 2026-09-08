@@ -14,7 +14,7 @@ import place.icomb.archiver.repository.PageTextRepository;
 import place.icomb.archiver.service.ClaudeOcrWorker;
 import place.icomb.archiver.service.JobEventService;
 import place.icomb.archiver.service.JobService;
-import place.icomb.archiver.service.MistralOcrWorker;
+import place.icomb.archiver.service.MistralBatchOcrWorker;
 import place.icomb.archiver.service.PersonMatchService;
 import place.icomb.archiver.service.PersonMatchWorker;
 import place.icomb.archiver.service.QwenOcrWorker;
@@ -55,8 +55,10 @@ public class WorkerSchedulingConfig implements SchedulingConfigurer {
   private final String mistralApiKey;
   private final String mistralModel;
   private final String mistralBaseUrl;
-  private final int mistralConcurrency;
-  private final long mistralPollInterval;
+  private final long mistralTickInterval;
+  private final int mistralMaxBatchPages;
+  private final long mistralMaxBatchBytes;
+  private final int mistralPagesPerMinute;
 
   private final boolean personMatchEnabled;
   private final long personMatchPollInterval;
@@ -85,8 +87,10 @@ public class WorkerSchedulingConfig implements SchedulingConfigurer {
       @Value("${archiver.ocr.mistral.api-key:}") String mistralApiKey,
       @Value("${archiver.ocr.mistral.model:mistral-ocr-latest}") String mistralModel,
       @Value("${archiver.ocr.mistral.base-url:https://api.mistral.ai}") String mistralBaseUrl,
-      @Value("${archiver.ocr.mistral.concurrency:1}") int mistralConcurrency,
-      @Value("${archiver.ocr.mistral.poll-interval:2000}") long mistralPollInterval,
+      @Value("${archiver.ocr.mistral.tick-interval:15000}") long mistralTickInterval,
+      @Value("${archiver.ocr.mistral.max-batch-pages:1000}") int mistralMaxBatchPages,
+      @Value("${archiver.ocr.mistral.max-batch-bytes:209715200}") long mistralMaxBatchBytes,
+      @Value("${archiver.ocr.mistral.pages-per-minute:1250}") int mistralPagesPerMinute,
       @Value("${archiver.person-match.enabled:true}") boolean personMatchEnabled,
       @Value("${archiver.person-match.poll-interval:5000}") long personMatchPollInterval) {
     this.jobService = jobService;
@@ -112,8 +116,10 @@ public class WorkerSchedulingConfig implements SchedulingConfigurer {
     this.mistralApiKey = mistralApiKey;
     this.mistralModel = mistralModel;
     this.mistralBaseUrl = mistralBaseUrl;
-    this.mistralConcurrency = mistralConcurrency;
-    this.mistralPollInterval = mistralPollInterval;
+    this.mistralTickInterval = mistralTickInterval;
+    this.mistralMaxBatchPages = mistralMaxBatchPages;
+    this.mistralMaxBatchBytes = mistralMaxBatchBytes;
+    this.mistralPagesPerMinute = mistralPagesPerMinute;
     this.personMatchEnabled = personMatchEnabled;
     this.personMatchPollInterval = personMatchPollInterval;
   }
@@ -123,7 +129,7 @@ public class WorkerSchedulingConfig implements SchedulingConfigurer {
     int totalWorkers =
         (qwenEnabled ? qwenConcurrency : 0)
             + (claudeOcrEnabled ? claudeConcurrency : 0)
-            + (mistralOcrEnabled ? mistralConcurrency : 0)
+            + (mistralOcrEnabled ? 1 : 0)
             + (personMatchEnabled ? 1 : 0);
     if (totalWorkers == 0) return;
 
@@ -183,28 +189,46 @@ public class WorkerSchedulingConfig implements SchedulingConfigurer {
     }
 
     if (mistralOcrEnabled) {
-      for (int i = 0; i < mistralConcurrency; i++) {
-        var worker =
-            new MistralOcrWorker(
-                "mistral-ocr-" + i,
-                jobService,
-                jobEventService,
-                pageRepository,
-                attachmentRepository,
-                storageService,
-                pageTextRepository,
-                jdbcTemplate,
-                mistralApiKey,
-                mistralModel,
-                mistralBaseUrl);
-        registrar.addFixedDelayTask(worker::pollAndProcess, Duration.ofMillis(mistralPollInterval));
-      }
+      // Exactly one instance. The phases inside a tick run in sequence and all in-flight state
+      // lives in ocr_batch, so a second instance would buy nothing and would need locking.
+      // Throughput comes from batch size, not from thread count — which is the whole point of
+      // moving off the interactive endpoint.
+      var worker =
+          new MistralBatchOcrWorker(
+              "mistral-batch-0",
+              jobService,
+              jobEventService,
+              pageId -> {
+                var page =
+                    pageRepository
+                        .findById(pageId)
+                        .orElseThrow(() -> new IllegalStateException("Page not found: " + pageId));
+                var attachment =
+                    attachmentRepository
+                        .findById(page.getAttachmentId())
+                        .orElseThrow(
+                            () ->
+                                new IllegalStateException(
+                                    "Attachment not found: " + page.getAttachmentId()));
+                return storageService.getPath(attachment);
+              },
+              storageService,
+              jdbcTemplate,
+              mistralApiKey,
+              mistralModel,
+              mistralBaseUrl,
+              mistralMaxBatchPages,
+              mistralMaxBatchBytes,
+              mistralPagesPerMinute);
+      registrar.addFixedDelayTask(worker::tick, Duration.ofMillis(mistralTickInterval));
       log.info(
-          "Registered {} Mistral OCR worker(s) (model={}, base-url={}, poll={}ms)",
-          mistralConcurrency,
+          "Registered Mistral batch OCR worker (model={}, base-url={}, tick={}ms,"
+              + " max-batch={} bytes, {} pages/min)",
           mistralModel,
           mistralBaseUrl,
-          mistralPollInterval);
+          mistralTickInterval,
+          mistralMaxBatchBytes,
+          mistralPagesPerMinute);
     }
 
     if (personMatchEnabled) {

@@ -80,8 +80,16 @@ archiver:
       api-key: ${MISTRAL_API_KEY:}
       model: ${MISTRAL_OCR_MODEL:mistral-ocr-latest}
       base-url: ${MISTRAL_BASE_URL:https://api.mistral.ai}
-      poll-interval: ${MISTRAL_OCR_POLL_INTERVAL:2000}
-      concurrency: ${MISTRAL_OCR_CONCURRENCY:1}
+      # Batch OCR: one worker, sized by bytes rather than by thread count.
+      # How often the single worker runs its reconcile/collect/poll/submit pass.
+      tick-interval: ${MISTRAL_OCR_TICK_INTERVAL:15000}
+      # Upper bound on rows the size-aware claim considers; the byte budget decides the batch.
+      max-batch-pages: ${MISTRAL_OCR_MAX_BATCH_PAGES:1000}
+      # 200MB, under the provider's 250MB upload ceiling. Images are sent as scanned — billing
+      # is per page, so downscaling would trade transcription quality for nothing.
+      max-batch-bytes: ${MISTRAL_OCR_MAX_BATCH_BYTES:209715200}
+      # Provider allowance; enforced from a 60-second window over ocr_batch.submitted_at.
+      pages-per-minute: ${MISTRAL_OCR_PAGES_PER_MINUTE:1250}
     claude:
       enabled: ${CLAUDE_OCR_ENABLED:false}
       api-key: ${ANTHROPIC_API_KEY:}
