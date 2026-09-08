@@ -80,9 +80,14 @@ a Nexus registry, and fires a Portainer webhook. Stack 183 on zelkova.
 
 Two things worth knowing before trusting a green build:
 
-- **Change detection is per-directory.** A build that only touches `backend/` will not
-  rebuild the workers. A green build immediately after a red one can leave half the
-  system on old images — check what actually got rebuilt, not just the status.
+- **Change detection compares only the last commit** (`git diff HEAD~1 HEAD -- <dir>`),
+  not the pushed range. Push three commits and only the final one's directories are
+  rebuilt; everything in the earlier commits is silently skipped. A green build is not
+  evidence that your change shipped — read the `backend=… pdf=… translate=…` line in the
+  log, or use `BUILD_ALL=true`. This has bitten twice in one day.
+- **A green build after a red one is the dangerous case.** The red build pushes no
+  images, and the green one only rebuilds its own commit's directories, so the system
+  ends up split across old and new images with nothing reporting a problem.
 - **Removing a service from the compose file does not stop it.** Portainer needs
   `Prune: true`, otherwise the containers keep running. PaddleOCR ran for five weeks
   after being deleted from the compose file this way.
