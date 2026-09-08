@@ -14,6 +14,7 @@ import tempfile
 
 from PIL import Image
 from worker_common import run_sse_loop, wait_for_backend
+from worker_common.markdown import to_plain_text
 
 log = logging.getLogger(__name__)
 
@@ -28,7 +29,9 @@ def _page_iterator(client, pages_meta):
     for pm in pages_meta:
         page_id = pm["page_id"]
         seq = pm.get("seq", 0)
-        text = pm.get("text_raw", "") or ""
+        text = to_plain_text(
+            pm.get("text_raw", "") or "", pm.get("content_type") or "text/plain"
+        )
 
         log.info("  Downloading image for page %d (seq=%d)", page_id, seq)
         image_bytes = client.download_page_image(page_id)

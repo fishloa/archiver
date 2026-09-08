@@ -44,13 +44,14 @@ def process_translate_page(client, translator, job: dict) -> None:
 
     page_data = client.get_page_text(page_id)
     text = page_data.get("text") or ""
+    content_type = page_data.get("contentType") or "text/plain"
 
     if not text.strip():
         log.info("  Page %d has no text, skipping translation", page_id)
         client.complete_job(job_id)
         return
 
-    translated = translator.translate(text, source_lang=source_lang)
+    translated = translator.translate(text, source_lang=source_lang, content_type=content_type)
 
     client.submit_page_translation(page_id, translated)
     client.complete_job(job_id)

@@ -8,6 +8,7 @@ from collections import OrderedDict
 import torch
 from langdetect import detect, LangDetectException
 from transformers import MarianMTModel, MarianTokenizer
+from worker_common.markdown import parse_blocks, render_blocks
 
 log = logging.getLogger(__name__)
 
@@ -165,7 +166,11 @@ class Translator:
         return tokenizer.batch_decode(translated, skip_special_tokens=True)[0]
 
     def translate(
-        self, text: str, source_lang: str | None = None, target_lang: str = "en"
+        self,
+        text: str,
+        source_lang: str | None = None,
+        target_lang: str = "en",
+        content_type: str = "text/plain",
     ) -> str:
         """Translate text between any supported language pair.
 
@@ -173,6 +178,9 @@ class Translator:
             text: The source text to translate.
             source_lang: ISO 639-1 code. Detected automatically if None.
             target_lang: ISO 639-1 code for the target language (default: 'en').
+            content_type: Media type of `text` ("text/markdown" or "text/plain").
+                Determines how the text is split into blocks so structure
+                (headings, list items, paragraph breaks) survives translation.
 
         Returns:
             Translated text, or the original if source == target.
@@ -192,23 +200,22 @@ class Translator:
         model_name = self._get_model_name(source_lang, target_lang)
         tokenizer, model = self._load_model(model_name)
 
-        chunks = self._split_chunks(text)
-        translated_chunks = []
-
-        for i, chunk in enumerate(chunks):
-            if not chunk.strip():
-                translated_chunks.append(chunk)
+        blocks = parse_blocks(text, content_type)
+        for block in blocks:
+            if block.kind == "table_divider" or not block.text.strip():
                 continue
-            translated = self._translate_chunk(chunk, tokenizer, model)
-            translated_chunks.append(translated)
-
-        result = " ".join(translated_chunks)
+            # Long blocks still need chunking: MarianMT truncates at 512 tokens.
+            pieces = self._split_chunks(block.text)
+            block.text = " ".join(
+                self._translate_chunk(p, tokenizer, model) for p in pieces if p.strip()
+            )
+        result = render_blocks(blocks)
 
         elapsed = time.monotonic() - t0
         log.info(
-            "Translated %d chars (%d chunks, lang=%s, model=%s) in %.1fs",
+            "Translated %d chars (%d blocks, lang=%s, model=%s) in %.1fs",
             len(text),
-            len(chunks),
+            len(blocks),
             source_lang,
             model_name.split("/")[-1],
             elapsed,
