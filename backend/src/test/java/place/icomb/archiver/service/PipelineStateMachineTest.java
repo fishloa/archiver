@@ -167,8 +167,8 @@ class PipelineStateMachineTest {
     Long page2 = createPage(recordId, 2);
 
     // Both OCR jobs completed
-    createJob(recordId, page1, "ocr_page_paddle", "completed");
-    createJob(recordId, page2, "ocr_page_paddle", "completed");
+    createJob(recordId, page1, "ocr_page_mistral", "completed");
+    createJob(recordId, page2, "ocr_page_mistral", "completed");
 
     boolean advanced = stateMachine.autoAdvance(recordId);
 
@@ -185,8 +185,8 @@ class PipelineStateMachineTest {
     Long page1 = createPage(recordId, 1);
     Long page2 = createPage(recordId, 2);
 
-    createJob(recordId, page1, "ocr_page_paddle", "completed");
-    createJob(recordId, page2, "ocr_page_paddle", "pending"); // still pending
+    createJob(recordId, page1, "ocr_page_mistral", "completed");
+    createJob(recordId, page2, "ocr_page_mistral", "pending"); // still pending
 
     boolean advanced = stateMachine.autoAdvance(recordId);
 

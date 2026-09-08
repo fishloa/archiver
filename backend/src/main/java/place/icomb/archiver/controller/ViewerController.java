@@ -37,6 +37,15 @@ import place.icomb.archiver.service.StorageService;
 @RequestMapping("/api")
 public class ViewerController {
 
+  /**
+   * OCR engines the dashboard reports on. PaddleOCR was retired — it ran no jobs after 2 August
+   * 2026 and the backend registers no worker for it — and Claude and Mistral had been added without
+   * this list being updated, so the dashboard under-reported the pipeline.
+   */
+  private static final String[] OCR_ENGINE_KINDS = {
+    "ocr_page_mistral", "ocr_page_claude", "ocr_page_qwen3vl"
+  };
+
   private final PageRepository pageRepository;
   private final AttachmentRepository attachmentRepository;
   private final RecordRepository recordRepository;
@@ -224,25 +233,25 @@ public class ViewerController {
             "ocr_pending",
             recordsByStatus,
             pagesByStatus,
-            new String[] {"ocr_page_paddle", "ocr_page_qwen3vl"},
+            OCR_ENGINE_KINDS,
             jobsByKind,
             workerCounts);
     ocrStage.put("pagesDone", ocrPagesDone);
     ocrStage.put("pagesTotal", ocrPagesTotal);
-    // Override worker count — paddle and qwen are different workers, need unique count not max
-    ocrStage.put(
-        "workersConnected",
-        jobEventService.countUniqueWorkers("ocr_page_paddle", "ocr_page_qwen3vl"));
+    // Override worker count — each engine is a separate worker pool, so the dashboard needs
+    // the unique total rather than the max of any one kind.
+    ocrStage.put("workersConnected", jobEventService.countUniqueWorkers(OCR_ENGINE_KINDS));
     // Per-kind worker breakdown so frontend can show labeled entries
     List<Map<String, Object>> ocrWorkerDetails = new ArrayList<>();
-    for (String kind : new String[] {"ocr_page_paddle", "ocr_page_qwen3vl"}) {
+    for (String kind : OCR_ENGINE_KINDS) {
       int kWorkers = workerCounts.getOrDefault(kind, 0);
       long kRunning = jobsByKind.getOrDefault(kind, Map.of()).getOrDefault("claimed", 0L);
       long kPending = jobsByKind.getOrDefault(kind, Map.of()).getOrDefault("pending", 0L);
       long kFailed = jobsByKind.getOrDefault(kind, Map.of()).getOrDefault("failed", 0L);
       String label =
           switch (kind) {
-            case "ocr_page_paddle" -> "PaddleOCR";
+            case "ocr_page_mistral" -> "Mistral OCR";
+            case "ocr_page_claude" -> "Claude Vision";
             case "ocr_page_qwen3vl" -> "Qwen VL";
             default -> kind;
           };

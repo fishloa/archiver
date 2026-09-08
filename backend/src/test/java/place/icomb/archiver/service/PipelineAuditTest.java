@@ -210,7 +210,7 @@ class PipelineAuditTest {
     // Insert a job that was claimed over 1 hour ago
     Long jobId =
         createJobWithStartedAt(
-            recordId, pageId, "ocr_page_paddle", "claimed", 1, "now() - interval '2 hours'");
+            recordId, pageId, "ocr_page_mistral", "claimed", 1, "now() - interval '2 hours'");
 
     int fixed = jobService.auditPipeline();
 
@@ -236,7 +236,7 @@ class PipelineAuditTest {
     // A job claimed only 5 minutes ago — should NOT be reset
     Long jobId =
         createJobWithStartedAt(
-            recordId, pageId, "ocr_page_paddle", "claimed", 1, "now() - interval '5 minutes'");
+            recordId, pageId, "ocr_page_mistral", "claimed", 1, "now() - interval '5 minutes'");
 
     jobService.auditPipeline();
 
@@ -252,10 +252,10 @@ class PipelineAuditTest {
 
     Long jobId1 =
         createJobWithStartedAt(
-            recordId, pageId1, "ocr_page_paddle", "claimed", 1, "now() - interval '90 minutes'");
+            recordId, pageId1, "ocr_page_mistral", "claimed", 1, "now() - interval '90 minutes'");
     Long jobId2 =
         createJobWithStartedAt(
-            recordId, pageId2, "ocr_page_paddle", "claimed", 2, "now() - interval '3 hours'");
+            recordId, pageId2, "ocr_page_mistral", "claimed", 2, "now() - interval '3 hours'");
 
     int fixed = jobService.auditPipeline();
 
@@ -276,7 +276,7 @@ class PipelineAuditTest {
 
     Long jobId =
         createJobWithError(
-            recordId, pageId, "ocr_page_paddle", "failed", 2, "Timeout during OCR processing");
+            recordId, pageId, "ocr_page_mistral", "failed", 2, "Timeout during OCR processing");
 
     int fixed = jobService.auditPipeline();
 
@@ -302,7 +302,7 @@ class PipelineAuditTest {
     // Jobs with 3+ attempts are poison pills — leave them permanently failed
     Long jobId =
         createJobWithError(
-            recordId, pageId, "ocr_page_paddle", "failed", 3, "Persistent OCR failure");
+            recordId, pageId, "ocr_page_mistral", "failed", 3, "Persistent OCR failure");
 
     jobService.auditPipeline();
 
@@ -316,7 +316,7 @@ class PipelineAuditTest {
     Long pageId = createPage(recordId, 1);
 
     Long jobId =
-        createJobWithError(recordId, pageId, "ocr_page_paddle", "failed", 0, "Initial failure");
+        createJobWithError(recordId, pageId, "ocr_page_mistral", "failed", 0, "Initial failure");
 
     int fixed = jobService.auditPipeline();
 
@@ -404,7 +404,7 @@ class PipelineAuditTest {
 
     // Still ingesting — pages are incomplete
     assertThat(getRecordStatus(recordId)).isEqualTo("ingesting");
-    assertThat(countJobs(recordId, "ocr_page_paddle", "pending")).isEqualTo(0);
+    assertThat(countJobs(recordId, "ocr_page_mistral", "pending")).isEqualTo(0);
   }
 
   @Test
@@ -431,7 +431,7 @@ class PipelineAuditTest {
     jobService.auditPipeline();
 
     assertThat(getRecordStatus(recordId)).isEqualTo("ingesting");
-    assertThat(countJobs(recordId, "ocr_page_paddle", "pending")).isEqualTo(0);
+    assertThat(countJobs(recordId, "ocr_page_mistral", "pending")).isEqualTo(0);
   }
 
   @Test
@@ -764,13 +764,13 @@ class PipelineAuditTest {
     Long page1 = createPage(record1, 1);
     Long staleJob =
         createJobWithStartedAt(
-            record1, page1, "ocr_page_paddle", "claimed", 1, "now() - interval '2 hours'");
+            record1, page1, "ocr_page_mistral", "claimed", 1, "now() - interval '2 hours'");
 
     // Pass 2: failed job with low attempts
     Long record2 = createRecord(archiveId, "ocr_pending", 1);
     Long page2 = createPage(record2, 1);
     Long failedJob =
-        createJobWithError(record2, page2, "ocr_page_paddle", "failed", 1, "Transient error");
+        createJobWithError(record2, page2, "ocr_page_mistral", "failed", 1, "Transient error");
 
     // Pass 4: ocr_done with no PDF job
     Long record4 = createRecord(archiveId, "ocr_done", 1);

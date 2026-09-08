@@ -9,7 +9,7 @@ package place.icomb.archiver.service;
  */
 public final class OcrContentType {
 
-  /** Flat text with no markup. Produced by paddle, Qwen, Claude and the PDFBox text extractor. */
+  /** Flat text with no markup. Produced by Qwen, Claude and the PDFBox text extractor. */
   public static final String PLAIN = "text/plain";
 
   /** Markdown with headings, tables and lists. Produced by Mistral's OCR model. */

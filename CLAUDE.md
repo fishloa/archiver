@@ -11,7 +11,7 @@ Digital archive management system — scrapes, OCRs, translates, embeds, and ind
                               ↓
 scrapers ──→            web (nginx :8099, OAuth2)
                        ↙              ↘
-          frontend (SvelteKit)    backend (Spring Boot) ←── ocr-worker-paddle
+          frontend (SvelteKit)    backend (Spring Boot)
                                        ↕↑               ←── pdf-worker
                                     PostgreSQL           ←── translate-worker
                                        ↕↑               ←── embed-worker
@@ -26,15 +26,21 @@ Only the backend touches PostgreSQL and archiver_store.
 
 | Service | Stack | Description |
 |---------|-------|-------------|
-| backend | Java 25 / Spring Boot 4.0 | REST API, job orchestration, SSE events |
+| backend | Java 25 / Spring Boot 4.1 | REST API, job orchestration, SSE events |
 | frontend | SvelteKit + Tailwind v4 | UI with Verdant design system (`--vui-*` CSS vars) |
 | worker-common | Python shared lib | Base `ProcessorClient`, SSE loop, job lifecycle helpers |
-| ocr-worker-paddle | Python + PaddleOCR v3 | GPU-based OCR (nvidia runtime, 2 replicas) |
 | pdf-worker | Python + reportlab | Builds searchable PDFs with invisible text overlay |
-| translate-worker | Python + MarianMT | de→en and cs→en translation (nvidia runtime, 2 replicas) |
-| embed-worker | Python + TEI | Chunks text, embeds via BGE-M3 (1024-dim, multilingual) |
+| translate-worker | Python | LLM translation via OpenAI-compatible API (gemma-4-31B), markdown-preserving |
+| embed-worker | Python | Heading-aware chunking, embeds via Qwen3-Embedding-8B (1024-dim, halfvec) |
 | entity-worker | Python | Named entity extraction (dormant — commented out in compose) |
-| ocr-worker-qwen3vl | Python + Ollama | Qwen2.5-VL OCR via Ollama (not containerized, runs on Mac Studio) |
+| ocr-worker-qwen3vl | Python + Ollama | Qwen3-VL OCR via Ollama (not containerized, runs on Mac Studio) |
+
+**OCR engines.** Internal backend workers, selected by `OCR_DEFAULT_ENGINE`:
+`ocr_page_mistral` (Mistral OCR API — current default, returns markdown),
+`ocr_page_claude` (Claude vision — reference/fallback, disabled in deploy),
+`ocr_page_qwen3vl` (Ollama on the Mac Studio). PaddleOCR was retired in September 2026:
+it ran no jobs after 2 August and the backend registered no worker for it. Its 66,796
+pages of stored text remain in `page_text` until re-OCR'd.
 | web | nginx | Internal reverse proxy: OAuth2 routing, SSE buffering, backend/frontend dispatch |
 | scraper-cz | Python | Czech National Archives (Zoomify tiles → PDF) |
 | scraper-ebadatelna | Python | Czech Archive of Security Forces (auth required) |
@@ -77,7 +83,6 @@ make dev-backend          # cd backend && ./gradlew bootRun
 make dev-frontend         # cd frontend && npm run dev
 make test-backend         # cd backend && ./gradlew test
 make test-scraper         # cd scraper-cz && pytest -v
-make test-ocr             # cd ocr-worker-paddle && pytest -v
 make test-pdf             # cd pdf-worker && pytest -v
 make test-entity          # cd entity-worker && pytest -v
 make test-frontend        # cd frontend && npm test
@@ -97,7 +102,7 @@ cd backend && ./gradlew test --tests '*IngestControllerTest'
 cd backend && ./gradlew spotlessApply
 
 # Python workers — single test file
-cd ocr-worker-paddle && pytest tests/test_something.py -v
+cd pdf-worker && pytest tests/test_something.py -v
 
 # Python — format + lint fix
 ruff check --fix scraper-cz/ && ruff format scraper-cz/
@@ -177,16 +182,16 @@ cd <service> && docker build -t dockerregistry.icomb.place/archiver/<service>:la
 
 Workers that depend on `worker-common` use a Dockerfile context from repo root:
 ```bash
-docker build -f ocr-worker-paddle/Dockerfile -t dockerregistry.icomb.place/archiver/ocr-worker-paddle:latest .
+docker build -f embed-worker/Dockerfile -t dockerregistry.icomb.place/archiver/embed-worker:latest .
 ```
 
 ## Conventions
 
 - **ONLY the backend talks to PostgreSQL and archiver_store.** Workers, scrapers, and frontend communicate exclusively via the backend HTTP API.
 - ISO 639-1 language codes everywhere (2-char: de, cs, en)
-- Job kinds: `ocr_page_paddle`, `ocr_page_qwen3vl`, `build_searchable_pdf`, `translate_page`, `translate_record`, `embed_record`, `match_persons`, `extract_entities`
+- Job kinds: `ocr_page_mistral`, `ocr_page_claude`, `ocr_page_qwen3vl`, `build_searchable_pdf`, `translate_page`, `translate_record`, `embed_record`, `match_persons`, `extract_entities`
 - Record statuses: `ingesting`, `ingested`, `ocr_pending`, `ocr_in_progress`, `ocr_done`, `pdf_pending`, `pdf_done`, `translating`, `embedding`, `matching`, `entities_pending`, `entities_done`, `complete`, `error`
-- Python linting: `ruff` (line-length 100, target py310)
+- Python linting: `ruff` (line-length 100, target py314)
 - Java formatting: `spotlessApply` (Google Java Format)
 
 ## Machine-Readable API (`/api/v1/`)

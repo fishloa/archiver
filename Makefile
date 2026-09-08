@@ -29,10 +29,8 @@ lint-barch:
 
 # OCR Worker
 test-ocr:
-	cd ocr-worker-paddle && pytest -v
 
 lint-ocr:
-	ruff check ocr-worker-paddle/ && ruff format --check ocr-worker-paddle/
 
 # PDF Worker
 test-pdf:

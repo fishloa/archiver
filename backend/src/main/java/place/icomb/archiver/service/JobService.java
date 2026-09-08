@@ -761,7 +761,6 @@ public class JobService {
   /** Returns the Postgres NOTIFY channel name for a given job kind. */
   private static String channelForKind(String kind) {
     return switch (kind) {
-      case "ocr_page_paddle", "ocr_page_abbyy" -> "ocr_jobs";
       case "build_searchable_pdf" -> "pdf_jobs";
       case "extract_entities" -> "entity_jobs";
       case "generate_thumbs" -> "ocr_jobs";

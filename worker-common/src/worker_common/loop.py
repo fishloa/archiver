@@ -36,7 +36,7 @@ def drain_jobs(
 
     Args:
         client: ProcessorClient (or subclass) with claim_job/fail_job.
-        job_kinds: Job kind strings to claim (e.g. ["ocr_page_paddle"]).
+        job_kinds: Job kind strings to claim (e.g. ["ocr_page_mistral"]).
         process_fn: Callback taking a single job dict. Should call
             client.complete_job() on success.
     """
