@@ -44,12 +44,16 @@ dependencies {
     implementation("org.apache.pdfbox:pdfbox:3.0.8")
 
     // MCP (Model Context Protocol) server via Spring AI
-    implementation(platform("org.springframework.ai:spring-ai-bom:2.0.1"))
+    // Pinned deliberately. spring-ai 2.0.1 with mcp-* 0.1.14 fails every MCP and
+    // security context in build 284 with ClassNotFoundException during bean
+    // construction — the community mcp starters are pre-1.0 and track spring-ai
+    // closely, so the three move together or not at all.
+    implementation(platform("org.springframework.ai:spring-ai-bom:2.0.0"))
     implementation("org.springframework.ai:spring-ai-starter-mcp-server-webmvc")
 
     // MCP OAuth — per-user auth for /api/mcp/**, replacing the shared MCP_TOKEN
-    implementation("org.springaicommunity:mcp-authorization-server-spring-boot:0.1.14")
-    implementation("org.springaicommunity:mcp-server-security-spring-boot:0.1.14")
+    implementation("org.springaicommunity:mcp-authorization-server-spring-boot:0.1.13")
+    implementation("org.springaicommunity:mcp-server-security-spring-boot:0.1.13")
     implementation("org.springframework.boot:spring-boot-starter-oauth2-resource-server")
 
     // Test

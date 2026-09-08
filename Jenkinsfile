@@ -79,7 +79,7 @@ pipeline {
                     steps {
                         sh '''
                             tar cf - worker-common scraper-cz | docker run --rm -i \
-                                python:3.13-slim \
+                                python:3.14-slim \
                                 sh -c "mkdir -p /repo && cd /repo && tar xf - && pip install -e worker-common && pip install -e 'scraper-cz[test]' && pytest scraper-cz/tests -v"
                         '''
                     }
@@ -89,7 +89,7 @@ pipeline {
                     steps {
                         sh '''
                             tar cf - worker-common scraper-barch | docker run --rm -i \
-                                python:3.13-slim \
+                                python:3.14-slim \
                                 sh -c "mkdir -p /repo && cd /repo && tar xf - && pip install -e worker-common && pip install -e 'scraper-barch[test]' && pytest scraper-barch/tests -v"
                         '''
                     }
