@@ -38,13 +38,7 @@ dependencies {
     annotationProcessor("org.mapstruct:mapstruct-processor:1.6.3")
 
     // OpenAPI / SpringDoc
-    // Held at 2.8.4. springdoc 2.9.1 references
-    // org.springframework.boot.autoconfigure.web.servlet.WebMvcProperties, which Boot 4
-    // moved to org.springframework.boot.webmvc.autoconfigure — verified by scanning the
-    // runtime classpath: 2.9.1 is the only one of 194 jars referencing the old path.
-    // Every Spring context then dies with ClassNotFoundException. springdoc 3.x is the
-    // Boot 4 line and is the real upgrade path.
-    implementation("org.springdoc:springdoc-openapi-starter-webmvc-ui:2.8.4")
+    implementation("org.springdoc:springdoc-openapi-starter-webmvc-ui:3.1.1")
 
     // PDF generation (page export)
     implementation("org.apache.pdfbox:pdfbox:3.0.8")
@@ -128,4 +122,16 @@ tasks.withType<Test> {
 
 tasks.withType<JavaCompile> {
     options.compilerArgs.addAll(listOf("--enable-preview"))
+}
+
+// Diagnostic helper: print the test runtime classpath so jars can be scanned for
+// references to Boot 3 classes that Boot 4 relocated. springdoc 2.9.1 shipped such a
+// reference and cost three CI builds to find, because the failure only appears at
+// bean construction and Gradle truncates the class name out of the trace.
+tasks.register("printRuntimeCp") {
+    doLast {
+        sourceSets["test"].runtimeClasspath
+            .filter { it.name.endsWith(".jar") }
+            .forEach { println(it.absolutePath) }
+    }
 }
