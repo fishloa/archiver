@@ -99,17 +99,19 @@ class SemanticSearchTest {
   }
 
   @Test
-  void semanticSearchCallsTeiNotOpenAI() throws Exception {
+  void semanticSearchEmbedsQueryWithConfiguredModelAndPrefix() throws Exception {
     // Build a 1024-dim fake embedding
     List<Double> fakeEmbedding = new ArrayList<>();
     for (int i = 0; i < 1024; i++) {
       fakeEmbedding.add(i == 0 ? 1.0 : 0.0);
     }
-    String embeddingJson = mapper.writeValueAsString(List.of(fakeEmbedding));
+    String embeddingJson =
+        mapper.writeValueAsString(
+            Map.of("data", List.of(Map.of("index", 0, "embedding", fakeEmbedding))));
 
     // Stub TEI /embed endpoint
     teiServer.stubFor(
-        post(urlEqualTo("/embed"))
+        post(urlEqualTo("/embeddings"))
             .willReturn(
                 aResponse()
                     .withStatus(200)
@@ -132,11 +134,18 @@ class SemanticSearchTest {
 
     assertThat(response.statusCode()).isEqualTo(200);
 
-    // Verify TEI was called
+    // The query must go out with the configured model, the requested dimension count and
+    // the instruction prefix. Qwen3-Embedding wants that prefix on queries only, while
+    // embed-worker sends passages bare — if the two ever disagree, retrieval quality drops
+    // with no error raised anywhere, so it is asserted rather than assumed.
     teiServer.verify(
-        postRequestedFor(urlEqualTo("/embed"))
+        postRequestedFor(urlEqualTo("/embeddings"))
             .withHeader("Authorization", equalTo("Bearer test-tei-key"))
-            .withHeader("Content-Type", containing("application/json")));
+            .withHeader("Content-Type", containing("application/json"))
+            .withRequestBody(matchingJsonPath("$.model"))
+            .withRequestBody(matchingJsonPath("$.dimensions"))
+            .withRequestBody(containing("Instruct:"))
+            .withRequestBody(containing("confiscation of property")));
 
     // Verify response contains results (empty since no text_chunks stored)
     @SuppressWarnings("unchecked")
@@ -155,10 +164,12 @@ class SemanticSearchTest {
     for (int i = 0; i < 1024; i++) {
       fakeEmbedding.add(0.01);
     }
-    String embeddingJson = mapper.writeValueAsString(List.of(fakeEmbedding));
+    String embeddingJson =
+        mapper.writeValueAsString(
+            Map.of("data", List.of(Map.of("index", 0, "embedding", fakeEmbedding))));
 
     teiServer.stubFor(
-        post(urlEqualTo("/embed"))
+        post(urlEqualTo("/embeddings"))
             .willReturn(
                 aResponse()
                     .withStatus(200)

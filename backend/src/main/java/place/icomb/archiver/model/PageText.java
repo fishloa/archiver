@@ -14,8 +14,15 @@ public class PageText {
   private Float confidence;
   private String textRaw;
 
-  /** IANA media type of {@link #textRaw}, e.g. {@code text/plain} or {@code text/markdown}. */
-  private String contentType;
+  /**
+   * IANA media type of {@link #textRaw}, e.g. {@code text/plain} or {@code text/markdown}.
+   *
+   * <p>Defaulted rather than left null because Spring Data JDBC writes every mapped column
+   * explicitly, so a null here becomes an explicit NULL in the INSERT and violates the NOT NULL
+   * constraint — the column DEFAULT never gets a chance to apply. Engines that produce anything
+   * other than plain text set this themselves.
+   */
+  private String contentType = "text/plain";
 
   @ReadOnlyProperty private String textNorm;
   private String hocr;
