@@ -52,6 +52,18 @@ public class ViewerController {
   private final StorageService storageService;
   private final PageTextRepository pageTextRepository;
   private final JdbcTemplate jdbcTemplate;
+
+  /**
+   * Provider price per OCR page, used only to report what a run has cost.
+   *
+   * <p>Configured rather than hardcoded: the rate is a commercial fact that changes without notice,
+   * and a stale constant would quietly misreport spend. There is no usage or billing endpoint on
+   * the provider's API, so this figure and the batch page counts are the only programmatic view of
+   * cost there is.
+   */
+  @org.springframework.beans.factory.annotation.Value("${archiver.ocr.price-per-page:0.004}")
+  private double ocrPricePerPage;
+
   private final JobService jobService;
   private final PdfExportService pdfExportService;
   private final place.icomb.archiver.service.JobEventService jobEventService;
@@ -292,9 +304,22 @@ public class ViewerController {
                                AND collected_at > now() - interval '1 hour')    AS collected_last_hour,
               EXTRACT(EPOCH FROM (now() - min(submitted_at)
                        FILTER (WHERE status = 'submitted')))::int               AS oldest_in_flight_seconds,
-              EXTRACT(EPOCH FROM (now() - max(last_polled_at)))::int            AS last_polled_seconds
+              EXTRACT(EPOCH FROM (now() - max(last_polled_at)))::int            AS last_polled_seconds,
+              -- Billable pages. The provider charges per page attempted, so failures count.
+              -- There is no usage or billing endpoint on the API — every candidate route 404s —
+              -- so this is the only programmatic view of what a run is costing.
+              COALESCE(sum(COALESCE(succeeded, 0) + COALESCE(failed, 0)), 0)     AS pages_billed_total,
+              COALESCE(sum(COALESCE(succeeded, 0) + COALESCE(failed, 0))
+                       FILTER (WHERE created_at > now() - interval '24 hours'), 0)
+                                                                                AS pages_billed_24h
             FROM ocr_batch
             """);
+    // Priced from configuration rather than hardcoded: the rate is a commercial fact that
+    // changes without notice, and a stale constant here would quietly misreport a run's cost.
+    long billedTotal = ((Number) batches.getOrDefault("pages_billed_total", 0L)).longValue();
+    long billed24h = ((Number) batches.getOrDefault("pages_billed_24h", 0L)).longValue();
+    batches.put("cost_total", Math.round(billedTotal * ocrPricePerPage * 10000.0) / 10000.0);
+    batches.put("cost_24h", Math.round(billed24h * ocrPricePerPage * 10000.0) / 10000.0);
     ocrStage.put("batches", batches);
     stages.add(ocrStage);
 

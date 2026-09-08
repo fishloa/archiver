@@ -239,7 +239,7 @@
 
 					<!-- Provider batch progress. Pages sit claimed while the provider works, so
 					     without this the stage reads as one busy worker and a falling queue. -->
-					{#if stage.batches && (stage.batches.in_flight > 0 || stage.batches.submitting > 0 || stage.batches.collected_last_hour > 0)}
+					{#if stage.batches && (stage.batches.in_flight > 0 || stage.batches.submitting > 0 || stage.batches.collected_last_hour > 0 || stage.batches.pages_billed_24h > 0)}
 						<div class="batch-row">
 							<Layers size={11} class="batch-icon" />
 							<span class="batch-main">
@@ -254,6 +254,11 @@
 							{/if}
 							{#if stage.batches.collected_last_hour > 0}
 								<span class="batch-note">{stage.batches.collected_last_hour} collected/hr</span>
+							{/if}
+							{#if stage.batches.pages_billed_24h > 0}
+								<span class="batch-note">
+									{fmt(stage.batches.pages_billed_24h)} pages billed / 24h &middot; ${stage.batches.cost_24h.toFixed(2)}
+								</span>
 							{/if}
 							{#if stage.batches.failed_recently > 0}
 								<span class="failed-label">

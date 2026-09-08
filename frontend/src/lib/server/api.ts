@@ -166,6 +166,10 @@ export interface PipelineStage {
     collected_last_hour: number;
     oldest_in_flight_seconds: number | null;
     last_polled_seconds: number | null;
+    pages_billed_total: number;
+    pages_billed_24h: number;
+    cost_total: number;
+    cost_24h: number;
   };
   /** Model serving this stage, reported by its live workers. Absent when none is connected. */
   model?: string;
