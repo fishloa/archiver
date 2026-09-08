@@ -379,8 +379,8 @@ public class ViewerController {
 
   @GetMapping("/pages/{pageId}/text")
   public ResponseEntity<Map<String, Object>> getPageText(@PathVariable Long pageId) {
-    List<PageText> texts = pageTextRepository.findByPageId(pageId);
-    if (texts.isEmpty()) {
+    var current = pageTextRepository.findCurrentByPageId(pageId);
+    if (current.isEmpty()) {
       return ResponseEntity.ok(
           Map.of(
               "pageId",
@@ -394,13 +394,10 @@ public class ViewerController {
               "contentType",
               OcrContentType.PLAIN));
     }
-    // Return the highest-confidence result
-    PageText best =
-        texts.stream()
-            .max(
-                Comparator.comparing(
-                    PageText::getConfidence, Comparator.nullsFirst(Comparator.naturalOrder())))
-            .orElse(texts.get(0));
+    // The page's single current transcription. Do not reintroduce confidence ranking here:
+    // confidence is not comparable across engines, and ranking by it is what caused paddle's
+    // 0.878 CTC score to beat the vision models' NULL on 65,221 pages.
+    PageText best = current.get();
     Map<String, Object> result = new java.util.LinkedHashMap<>();
     result.put("pageId", pageId);
     result.put("text", best.getTextRaw() != null ? best.getTextRaw() : "");

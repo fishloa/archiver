@@ -406,6 +406,11 @@ public class IngestService {
         String text = stripper.getText(doc).strip();
 
         if (!text.isEmpty()) {
+          // Replace rather than append. page_text is UNIQUE on page_id, and the V26 trigger
+          // copies the outgoing transcription to page_ocr_history, so the record that a
+          // previous engine ran this page survives even though its text does not.
+          pageTextRepository.deleteByPageId(page.getId());
+
           PageText pt = new PageText();
           pt.setPageId(page.getId());
           pt.setEngine("pdfbox");

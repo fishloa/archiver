@@ -120,15 +120,12 @@ public class ApiController {
         pm.put("imageUrl", baseUrl + "/files/" + p.getAttachmentId());
       }
 
-      // OCR text (best confidence)
-      List<PageText> texts = pageTextRepository.findByPageId(p.getId());
-      if (!texts.isEmpty()) {
-        PageText best =
-            texts.stream()
-                .max(
-                    Comparator.comparing(
-                        PageText::getConfidence, Comparator.nullsFirst(Comparator.naturalOrder())))
-                .orElse(texts.get(0));
+      // The page's single current transcription (page_text is UNIQUE on page_id since V26).
+      // Previously this ranked by confidence, which is not comparable across engines and so
+      // served paddle's output over the better vision-model text on every contested page.
+      var current = pageTextRepository.findCurrentByPageId(p.getId());
+      if (current.isPresent()) {
+        PageText best = current.get();
         pm.put("text", best.getTextRaw() != null ? best.getTextRaw() : "");
         pm.put("textEn", best.getTextEn() != null ? best.getTextEn() : "");
         pm.put("ocrConfidence", best.getConfidence() != null ? best.getConfidence() : 0.0f);

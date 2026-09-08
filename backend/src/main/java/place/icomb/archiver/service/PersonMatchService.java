@@ -476,15 +476,14 @@ public class PersonMatchService {
   }
 
   private String getBestText(Long pageId) {
-    List<PageText> texts = pageTextRepo.findByPageId(pageId);
-    if (texts.isEmpty()) return null;
-    // Prefer English translation, fall back to raw text
-    for (PageText pt : texts) {
-      if (pt.getTextEn() != null && !pt.getTextEn().isBlank()) return pt.getTextEn();
-    }
-    for (PageText pt : texts) {
-      if (pt.getTextRaw() != null && !pt.getTextRaw().isBlank()) return pt.getTextRaw();
-    }
+    // One current transcription per page since V26; the loops this replaced existed only to
+    // pick among several engines' rows.
+    PageText pt = pageTextRepo.findCurrentByPageId(pageId).orElse(null);
+    if (pt == null) return null;
+    // Prefer the English translation — person names match better against it — and fall back
+    // to the original transcription when the page has not been translated yet.
+    if (pt.getTextEn() != null && !pt.getTextEn().isBlank()) return pt.getTextEn();
+    if (pt.getTextRaw() != null && !pt.getTextRaw().isBlank()) return pt.getTextRaw();
     return null;
   }
 
