@@ -40,6 +40,11 @@ archiver:
     root: ${ARCHIVER_STORAGE_ROOT:/tmp/archiver-storage}
   processor:
     token: ${ARCHIVER_PROCESSOR_TOKEN:dev-processor-token}
+  admin:
+    # Static bearer token granting ROLE_ADMIN, for driving the archive from scripts and the
+    # command line. Admin endpoints require USER or ADMIN, and those roles normally arrive via
+    # OAuth2 login, which cannot be scripted. Unset means no token grants admin.
+    token: ${ARCHIVER_ADMIN_TOKEN:}
   mcp:
     token: ${MCP_TOKEN:}
     oauth:

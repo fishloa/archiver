@@ -20,16 +20,19 @@ public class SecurityConfig {
 
   private final AppUserRepository appUserRepository;
   private final String processorToken;
+  private final String adminToken;
   private final TrustedPeerResolver trustedPeerResolver;
 
   public SecurityConfig(
       AppUserRepository appUserRepository,
       @Value("${archiver.processor.token}") String processorToken,
+      @Value("${archiver.admin.token:}") String adminToken,
       @Value("${archiver.auth.trusted-cidrs:}") String trustedCidrs,
       @Value("${archiver.auth.trusted-proxy-hosts:}") String trustedProxyHosts,
       @Value("${archiver.auth.trusted-peer-cache-seconds:30}") long trustedPeerCacheSeconds) {
     this.appUserRepository = appUserRepository;
     this.processorToken = processorToken;
+    this.adminToken = adminToken;
     this.trustedPeerResolver =
         new TrustedPeerResolver(
             splitCsv(trustedCidrs),
@@ -57,7 +60,8 @@ public class SecurityConfig {
             new ProxyAuthFilter(appUserRepository, trustedPeerResolver),
             UsernamePasswordAuthenticationFilter.class)
         .addFilterBefore(
-            new ProcessorTokenFilter(processorToken), UsernamePasswordAuthenticationFilter.class)
+            new ProcessorTokenFilter(processorToken, adminToken),
+            UsernamePasswordAuthenticationFilter.class)
         .authorizeHttpRequests(
             auth ->
                 auth

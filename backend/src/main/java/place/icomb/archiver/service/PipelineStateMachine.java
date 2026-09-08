@@ -84,15 +84,22 @@ public class PipelineStateMachine {
 
     boolean pdfJobComplete() {
       if (pdfJobComplete == null) {
-        Long completed =
+        // Requires the artifact, not merely a job row saying one was once built. Counting
+        // completed jobs alone made this guard true forever: a record reset to ocr_pending
+        // still carries the build_searchable_pdf job from its previous cycle, so the state
+        // machine jumped straight to PDF_DONE and then failed looking up an attachment the
+        // reset had deleted — taking the whole autoAdvance chain down with it. Both reset
+        // paths delete the searchable_pdf attachment, so its presence tracks the current
+        // cycle exactly.
+        Long built =
             jdbc.queryForObject(
                 """
-                SELECT count(*) FROM job
-                WHERE record_id = ? AND kind = 'build_searchable_pdf' AND status = 'completed'
+                SELECT count(*) FROM attachment
+                WHERE record_id = ? AND role = 'searchable_pdf'
                 """,
                 Long.class,
                 recordId);
-        pdfJobComplete = completed != null && completed > 0;
+        pdfJobComplete = built != null && built > 0;
       }
       return pdfJobComplete;
     }
@@ -500,11 +507,19 @@ public class PipelineStateMachine {
   }
 
   private void setPdfAttachmentId(RecordContext ctx) {
+    // queryForList rather than queryForObject: the latter THROWS on zero rows rather than
+    // returning null, which made the null check below unreachable and turned a missing
+    // attachment into an EmptyResultDataAccessException that rolled back the entire
+    // transition chain.
     Long pdfAttId =
-        jdbcTemplate.queryForObject(
-            "SELECT id FROM attachment WHERE record_id = ? AND role = 'searchable_pdf' ORDER BY id DESC LIMIT 1",
-            Long.class,
-            ctx.recordId);
+        jdbcTemplate
+            .queryForList(
+                "SELECT id FROM attachment WHERE record_id = ? AND role = 'searchable_pdf' ORDER BY id DESC LIMIT 1",
+                Long.class,
+                ctx.recordId)
+            .stream()
+            .findFirst()
+            .orElse(null);
     if (pdfAttId != null) {
       jdbcTemplate.update(
           "UPDATE record SET pdf_attachment_id = ? WHERE id = ?", pdfAttId, ctx.recordId);
