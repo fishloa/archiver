@@ -54,6 +54,7 @@ public class MistralOcrWorker extends GenericWorker {
   private final AttachmentRepository attachmentRepository;
   private final StorageService storageService;
   private final PageTextRepository pageTextRepository;
+  private final org.springframework.jdbc.core.JdbcTemplate jdbcTemplate;
   private final ObjectMapper objectMapper = new ObjectMapper();
   private final java.net.http.HttpClient httpClient;
   private final String apiKey;
@@ -68,6 +69,7 @@ public class MistralOcrWorker extends GenericWorker {
       AttachmentRepository attachmentRepository,
       StorageService storageService,
       PageTextRepository pageTextRepository,
+      org.springframework.jdbc.core.JdbcTemplate jdbcTemplate,
       String apiKey,
       String model,
       String baseUrl) {
@@ -76,6 +78,7 @@ public class MistralOcrWorker extends GenericWorker {
     this.attachmentRepository = attachmentRepository;
     this.storageService = storageService;
     this.pageTextRepository = pageTextRepository;
+    this.jdbcTemplate = jdbcTemplate;
     this.apiKey = apiKey;
     this.model = model;
     this.baseUrl = baseUrl.endsWith("/") ? baseUrl.substring(0, baseUrl.length() - 1) : baseUrl;
@@ -105,7 +108,8 @@ public class MistralOcrWorker extends GenericWorker {
     byte[] imageBytes = downsizeIfNeeded(imagePath);
     String base64Image = Base64.getEncoder().encodeToString(imageBytes);
 
-    String ocrText = callOcrApi(base64Image);
+    String rawResponse = callOcrApi(base64Image);
+    String ocrText = extractText(objectMapper.readTree(rawResponse));
 
     PageText pt = new PageText();
     pt.setPageId(page.getId());
@@ -113,7 +117,13 @@ public class MistralOcrWorker extends GenericWorker {
     pt.setContentType(OcrContentType.MARKDOWN);
     pt.setTextRaw(ocrText);
     pt.setCreatedAt(Instant.now());
-    pageTextRepository.save(pt);
+    pt = pageTextRepository.save(pt);
+
+    // Written separately rather than mapped onto the entity: Spring Data JDBC needs a
+    // registered converter for jsonb, and this is the only column that needs one.
+    // Keeping it out of PageText avoids imposing that on every read path.
+    jdbcTemplate.update(
+        "UPDATE page_text SET raw_response = ?::jsonb WHERE id = ?", rawResponse, pt.getId());
 
     log.info(
         "Mistral OCR: page={} record={} chars={}",
@@ -144,6 +154,7 @@ public class MistralOcrWorker extends GenericWorker {
     return baos.toByteArray();
   }
 
+  /** Returns the verbatim JSON response body. */
   private String callOcrApi(String base64Image) throws Exception {
     String requestBody =
         objectMapper.writeValueAsString(
@@ -174,7 +185,9 @@ public class MistralOcrWorker extends GenericWorker {
       int status = response.statusCode();
 
       if (status == 200) {
-        return extractText(objectMapper.readTree(response.body()));
+        // Return the whole body — the caller extracts the text and stores the rest,
+        // which carries the block bounding boxes the PDF layer needs.
+        return response.body();
       }
 
       last =

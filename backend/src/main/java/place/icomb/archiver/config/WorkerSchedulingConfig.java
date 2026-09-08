@@ -36,6 +36,7 @@ public class WorkerSchedulingConfig implements SchedulingConfigurer {
   private final StorageService storageService;
   private final PageTextRepository pageTextRepository;
   private final PersonMatchService personMatchService;
+  private final org.springframework.jdbc.core.JdbcTemplate jdbcTemplate;
 
   private final boolean qwenEnabled;
   private final String qwenBaseUrl;
@@ -68,6 +69,7 @@ public class WorkerSchedulingConfig implements SchedulingConfigurer {
       StorageService storageService,
       PageTextRepository pageTextRepository,
       PersonMatchService personMatchService,
+      org.springframework.jdbc.core.JdbcTemplate jdbcTemplate,
       @Value("${archiver.ocr.qwen.enabled:false}") boolean qwenEnabled,
       @Value("${archiver.ocr.qwen.base-url:}") String qwenBaseUrl,
       @Value("${archiver.ocr.qwen.api-key:}") String qwenApiKey,
@@ -94,6 +96,7 @@ public class WorkerSchedulingConfig implements SchedulingConfigurer {
     this.storageService = storageService;
     this.pageTextRepository = pageTextRepository;
     this.personMatchService = personMatchService;
+    this.jdbcTemplate = jdbcTemplate;
     this.qwenEnabled = qwenEnabled;
     this.qwenBaseUrl = qwenBaseUrl;
     this.qwenApiKey = qwenApiKey;
@@ -183,6 +186,7 @@ public class WorkerSchedulingConfig implements SchedulingConfigurer {
                 attachmentRepository,
                 storageService,
                 pageTextRepository,
+                jdbcTemplate,
                 mistralApiKey,
                 mistralModel,
                 mistralBaseUrl);
