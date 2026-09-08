@@ -39,6 +39,7 @@ import place.icomb.archiver.repository.JobRepository;
 import place.icomb.archiver.repository.PageRepository;
 import place.icomb.archiver.service.JobEventService;
 import place.icomb.archiver.service.JobService;
+import place.icomb.archiver.service.OcrContentType;
 import place.icomb.archiver.service.RecordEventService;
 import place.icomb.archiver.service.StorageService;
 
@@ -180,13 +181,14 @@ public class ProcessorController {
         .orElseThrow(() -> new IllegalArgumentException("Page not found: " + pageId));
 
     jdbcTemplate.update(
-        "INSERT INTO page_text (page_id, engine, confidence, text_raw, hocr, created_at)"
-            + " VALUES (?, ?, ?, ?, ?, ?)",
+        "INSERT INTO page_text (page_id, engine, confidence, text_raw, hocr, content_type,"
+            + " created_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
         pageId,
         request.engine(),
         request.confidence(),
         request.textRaw(),
         request.hocr(),
+        request.contentType() != null ? request.contentType() : OcrContentType.PLAIN,
         Timestamp.from(Instant.now()));
 
     return ResponseEntity.status(HttpStatus.CREATED).body(Map.of("pageId", pageId, "status", "ok"));
@@ -294,10 +296,10 @@ public class ProcessorController {
         jdbcTemplate.queryForList(
             """
             SELECT p.id AS page_id, p.seq, p.attachment_id, p.width, p.height,
-                   pt.text_raw, pt.text_en, pt.confidence
+                   pt.text_raw, pt.text_en, pt.confidence, pt.content_type
             FROM page p
             LEFT JOIN LATERAL (
-                SELECT pt2.text_raw, pt2.text_en, pt2.confidence
+                SELECT pt2.text_raw, pt2.text_en, pt2.confidence, pt2.content_type
                 FROM page_text pt2
                 WHERE pt2.page_id = p.id
                 ORDER BY pt2.confidence DESC NULLS LAST

@@ -110,6 +110,7 @@ public class MistralOcrWorker extends GenericWorker {
     PageText pt = new PageText();
     pt.setPageId(page.getId());
     pt.setEngine("mistral-ocr");
+    pt.setContentType(OcrContentType.MARKDOWN);
     pt.setTextRaw(ocrText);
     pt.setCreatedAt(Instant.now());
     pageTextRepository.save(pt);

@@ -16,13 +16,24 @@ class ProcessorClient(_Base):
         return resp.content
 
     def submit_ocr_result(
-        self, page_id: int, engine: str, confidence: float, text_raw: str
+        self,
+        page_id: int,
+        engine: str,
+        confidence: float,
+        text_raw: str,
+        content_type: str = "text/plain",
     ):
-        """POST OCR results for a page."""
+        """POST OCR results for a page.
+
+        content_type is the IANA media type of text_raw. This worker's model returns
+        flat text; the backend defaults to text/plain if the field is omitted, so older
+        worker builds keep working.
+        """
         body = {
             "engine": engine,
             "confidence": confidence,
             "textRaw": text_raw,
+            "contentType": content_type,
         }
         resp = self._client.post(f"/api/processor/ocr/{page_id}", json=body)
         resp.raise_for_status()

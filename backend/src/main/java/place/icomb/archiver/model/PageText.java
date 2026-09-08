@@ -13,6 +13,10 @@ public class PageText {
   private String engine;
   private Float confidence;
   private String textRaw;
+
+  /** IANA media type of {@link #textRaw}, e.g. {@code text/plain} or {@code text/markdown}. */
+  private String contentType;
+
   @ReadOnlyProperty private String textNorm;
   private String hocr;
   private String textEn;
@@ -58,6 +62,14 @@ public class PageText {
 
   public void setTextRaw(String textRaw) {
     this.textRaw = textRaw;
+  }
+
+  public String getContentType() {
+    return contentType;
+  }
+
+  public void setContentType(String contentType) {
+    this.contentType = contentType;
   }
 
   public String getTextNorm() {

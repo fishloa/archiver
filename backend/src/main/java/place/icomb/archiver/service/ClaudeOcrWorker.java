@@ -105,6 +105,7 @@ public class ClaudeOcrWorker extends GenericWorker {
     PageText pt = new PageText();
     pt.setPageId(page.getId());
     pt.setEngine("claude");
+    pt.setContentType(OcrContentType.PLAIN);
     pt.setTextRaw(ocrText);
     pt.setCreatedAt(Instant.now());
     pageTextRepository.save(pt);

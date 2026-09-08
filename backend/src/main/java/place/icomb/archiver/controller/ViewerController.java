@@ -29,6 +29,7 @@ import place.icomb.archiver.repository.PageRepository;
 import place.icomb.archiver.repository.PageTextRepository;
 import place.icomb.archiver.repository.RecordRepository;
 import place.icomb.archiver.service.JobService;
+import place.icomb.archiver.service.OcrContentType;
 import place.icomb.archiver.service.PdfExportService;
 import place.icomb.archiver.service.StorageService;
 
@@ -372,7 +373,17 @@ public class ViewerController {
     List<PageText> texts = pageTextRepository.findByPageId(pageId);
     if (texts.isEmpty()) {
       return ResponseEntity.ok(
-          Map.of("pageId", pageId, "text", "", "confidence", 0.0, "engine", ""));
+          Map.of(
+              "pageId",
+              pageId,
+              "text",
+              "",
+              "confidence",
+              0.0,
+              "engine",
+              "",
+              "contentType",
+              OcrContentType.PLAIN));
     }
     // Return the highest-confidence result
     PageText best =
@@ -386,6 +397,9 @@ public class ViewerController {
     result.put("text", best.getTextRaw() != null ? best.getTextRaw() : "");
     result.put("confidence", best.getConfidence() != null ? best.getConfidence() : 0.0f);
     result.put("engine", best.getEngine() != null ? best.getEngine() : "");
+    result.put(
+        "contentType",
+        best.getContentType() != null ? best.getContentType() : OcrContentType.PLAIN);
     result.put("textEn", best.getTextEn() != null ? best.getTextEn() : "");
     return ResponseEntity.ok(result);
   }

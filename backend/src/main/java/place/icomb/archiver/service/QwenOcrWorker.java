@@ -110,6 +110,7 @@ public class QwenOcrWorker extends GenericWorker {
     PageText pt = new PageText();
     pt.setPageId(page.getId());
     pt.setEngine("qwen3vl");
+    pt.setContentType(OcrContentType.PLAIN);
     pt.setTextRaw(ocrText);
     pt.setCreatedAt(Instant.now());
     pageTextRepository.save(pt);
