@@ -68,8 +68,8 @@ pipeline {
                         dir('frontend') {
                             sh '''
                                 tar cf - . | docker run --rm -i \
-                                    node:22-alpine \
-                                    sh -c "mkdir -p /app && cd /app && tar xf - && npm ci && npm run check"
+                                    oven/bun:1-alpine \
+                                    sh -c "mkdir -p /app && cd /app && tar xf - && bun install --frozen-lockfile && bun run check"
                             '''
                         }
                     }

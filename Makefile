@@ -48,10 +48,10 @@ lint-entity:
 
 # Frontend
 dev-frontend:
-	cd frontend && npm run dev
+	cd frontend && bun run dev
 
 test-frontend:
-	cd frontend && npm test
+	cd frontend && bun test
 
 lint-frontend:
 	cd frontend && npx eslint . && npx prettier --check .

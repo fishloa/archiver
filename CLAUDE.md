@@ -123,12 +123,12 @@ catches it.
 
 ```bash
 make dev-backend          # cd backend && ./gradlew bootRun
-make dev-frontend         # cd frontend && npm run dev
+make dev-frontend         # cd frontend && bun run dev
 make test-backend         # cd backend && ./gradlew test
 make test-scraper         # cd scraper-cz && pytest -v
 make test-pdf             # cd pdf-worker && pytest -v
 make test-entity          # cd entity-worker && pytest -v
-make test-frontend        # cd frontend && npm test
+make test-frontend        # cd frontend && bun test
 make test                 # all of the above
 make lint                 # all linters (spotless, ruff, eslint+prettier)
 make test-smoke           # web/test-endpoints.sh (quick endpoint smoke test)
@@ -151,7 +151,7 @@ cd pdf-worker && pytest tests/test_something.py -v
 ruff check --fix scraper-cz/ && ruff format scraper-cz/
 
 # Frontend — type check
-cd frontend && npm run check
+cd frontend && bun run check
 ```
 
 ### Backend tests
