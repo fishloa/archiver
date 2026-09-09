@@ -32,12 +32,23 @@
 	}
 
 	/**
-	 * A gated stage is idle on purpose. Without this it looks identical to a broken one, which
-	 * is exactly the confusion the gate feature is meant to avoid.
+	 * Which of a stage's job kinds an operator has held.
+	 *
+	 * A stage can run several kinds — Translation covers page translation, the on-demand upgrade
+	 * and record metadata — so holding one must not make the whole stage read as stopped. It did:
+	 * holding translate_record showed "HELD" while page translation was busy, which is exactly
+	 * the confusion gates are meant to remove.
 	 */
-	function isHeld(stage: { kinds?: string[] }): boolean {
+	function heldKinds(stage: { kinds?: string[] }): string[] {
 		const paused = data.stats?.pausedKinds ?? [];
-		return (stage.kinds ?? []).some((k: string) => paused.includes(k));
+		return (stage.kinds ?? []).filter((k: string) => paused.includes(k));
+	}
+
+	function heldLabel(stage: { kinds?: string[] }): string {
+		const held = heldKinds(stage);
+		const total = (stage.kinds ?? []).length;
+		if (held.length === 0) return '';
+		return held.length === total ? 'held' : `${held.join(', ')} held`;
 	}
 
 	function providerHost(url: string): string {
@@ -65,14 +76,35 @@
 
 	const MAX_WORKER_SLOTS = 12;
 
-	const stageConfig = $derived([
-		{ icon: Inbox, color: '#a78bfa', dimBg: 'rgba(167,139,250,0.08)', borderColor: 'rgba(167,139,250,0.35)', desc: $t('pipeline.desc.inbox') },
-		{ icon: ScanText, color: '#f59e0b', dimBg: 'rgba(245,158,11,0.08)', borderColor: 'rgba(245,158,11,0.35)', desc: $t('pipeline.desc.ocr') },
-		{ icon: FileText, color: '#f472b6', dimBg: 'rgba(244,114,182,0.08)', borderColor: 'rgba(244,114,182,0.35)', desc: $t('pipeline.desc.pdf') },
-		{ icon: Languages, color: '#38bdf8', dimBg: 'rgba(56,189,248,0.08)', borderColor: 'rgba(56,189,248,0.35)', desc: $t('pipeline.desc.translation') },
-		{ icon: BrainCircuit, color: '#c084fc', dimBg: 'rgba(192,132,252,0.08)', borderColor: 'rgba(192,132,252,0.35)', desc: $t('pipeline.desc.embedding') },
-		{ icon: CircleCheckBig, color: '#34d399', dimBg: 'rgba(52,211,153,0.08)', borderColor: 'rgba(52,211,153,0.35)', desc: $t('pipeline.desc.completed') }
-	]);
+	/**
+	 * Presentation per stage, keyed by the stage's NAME.
+	 *
+	 * Previously this was an array indexed by position, so reordering the stages on the backend
+	 * silently paired every card with the wrong icon, colour and description — Embedding was
+	 * described as translation and vice versa. Keying by name means the two can never drift.
+	 */
+	const stageConfig: Record<string, {
+		icon: typeof Inbox;
+		color: string;
+		dimBg: string;
+		borderColor: string;
+		desc: string;
+	}> = $derived({
+		Ingested:      { icon: Inbox,          color: '#a78bfa', dimBg: 'rgba(167,139,250,0.08)', borderColor: 'rgba(167,139,250,0.35)', desc: $t('pipeline.desc.inbox') },
+		OCR:           { icon: ScanText,       color: '#f59e0b', dimBg: 'rgba(245,158,11,0.08)',  borderColor: 'rgba(245,158,11,0.35)',  desc: $t('pipeline.desc.ocr') },
+		'PDF Build':   { icon: FileText,       color: '#f472b6', dimBg: 'rgba(244,114,182,0.08)', borderColor: 'rgba(244,114,182,0.35)', desc: $t('pipeline.desc.pdf') },
+		Translation:   { icon: Languages,      color: '#38bdf8', dimBg: 'rgba(56,189,248,0.08)',  borderColor: 'rgba(56,189,248,0.35)',  desc: $t('pipeline.desc.translation') },
+		Embedding:     { icon: BrainCircuit,   color: '#c084fc', dimBg: 'rgba(192,132,252,0.08)', borderColor: 'rgba(192,132,252,0.35)', desc: $t('pipeline.desc.embedding') },
+		Complete:      { icon: CircleCheckBig, color: '#34d399', dimBg: 'rgba(52,211,153,0.08)',  borderColor: 'rgba(52,211,153,0.35)',  desc: $t('pipeline.desc.completed') }
+	});
+
+	const fallbackConfig = {
+		icon: CircleCheckBig,
+		color: '#94a3b8',
+		dimBg: 'rgba(148,163,184,0.08)',
+		borderColor: 'rgba(148,163,184,0.35)',
+		desc: ''
+	};
 
 	/** Backend stages[0] is "Scraping" — skip it, Sources card replaces it */
 	const displayStages = $derived(data.stats.stages.slice(1));
@@ -162,7 +194,7 @@
 		</div>
 	</div>
 	{#each displayStages as stage, i}
-		{@const cfg = stageConfig[i]}
+		{@const cfg = stageConfig[stage.name] ?? fallbackConfig}
 		{@const hasJobs = stage.jobsPending !== undefined}
 		{@const isLast = i === displayStages.length - 1}
 		{@const running = stage.jobsRunning ?? 0}
@@ -197,9 +229,14 @@
 						<div>
 							<div class="card-title" style="color: {cfg.color}">
 								{stage.name}
-								{#if isHeld(stage)}
-									<span class="held-badge" title="Held by an operator gate — work is queuing, not lost">
-										<PauseCircle size={11} strokeWidth={2.2} /> held
+								{#if heldKinds(stage).length > 0}
+									{@const partial = heldKinds(stage).length < (stage.kinds ?? []).length}
+									<span
+										class="held-badge"
+										class:held-partial={partial}
+										title="Held by an operator gate — work is queuing, not lost"
+									>
+										<PauseCircle size={11} strokeWidth={2.2} /> {heldLabel(stage)}
 									</span>
 								{/if}
 							</div>
@@ -819,6 +856,15 @@
 		opacity: 0.75;
 	}
 	/* A stage held by an operator gate — idle on purpose, not broken. */
+	.held-badge.held-partial {
+		/* Only some of the stage's kinds are held; the rest are still running. */
+		background: color-mix(in srgb, var(--vui-warning, #d97706) 15%, transparent);
+		color: var(--vui-warning, #d97706);
+		text-transform: none;
+		letter-spacing: 0;
+		font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+		font-size: 0.56rem;
+	}
 	.held-badge {
 		display: inline-flex;
 		align-items: center;
