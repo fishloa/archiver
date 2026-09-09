@@ -219,6 +219,33 @@ class PdfExportServiceTest {
   }
 
   @Test
+  void theInvisibleLayerHoldsPlainTextNotMarkdown() throws Exception {
+    // This layer is what a reader's search box matches against, so markdown in it makes
+    // "![img-0.jpeg](img-0.jpeg)" and heading hashes part of the scan's searchable text.
+    jdbc.update(
+        """
+        UPDATE page_text SET raw_response = ?::jsonb
+        WHERE page_id = (SELECT id FROM page WHERE record_id = ? AND seq = 1)
+        """,
+        """
+        {"pages":[{"dimensions":{"width":1200,"height":1600},
+          "blocks":[{"content":"# Enteignung\\n![img-0.jpeg](img-0.jpeg)\\n**Kinsky** und Czernin",
+                     "top_left_x":100,"top_left_y":120,
+                     "bottom_right_x":900,"bottom_right_y":300}],
+          "images":[]}]}
+        """,
+        recordId);
+
+    byte[] pdf = pdfExportService.buildPdf(recordId, List.of(1), PdfExportService.Variant.ORIGINAL);
+    String text = textOf(pdf);
+    assertThat(text).contains("Enteignung");
+    assertThat(text).contains("Kinsky");
+    assertThat(text).doesNotContain("img-0.jpeg");
+    assertThat(text).doesNotContain("**");
+    assertThat(text).doesNotContain("# ");
+  }
+
+  @Test
   void translatedExportsDrawTheFiguresTheEngineFound() throws Exception {
     // 21,996 pages reference a cut-out figure — signatures, stamps, seals. On a countersigned
     // order the signature block is the evidence.

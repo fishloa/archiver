@@ -275,7 +275,10 @@ public class PdfExportService {
       float lineH = Math.max(4f, blockH / Math.max(1, blockLines.length));
 
       for (int i = 0; i < blockLines.length; i++) {
-        String text = renderer.forDrawing(blockLines[i]);
+        // Plain text, not markdown: this layer is what a reader's search box matches against,
+        // and an unstripped line puts "![img-0.jpeg](img-0.jpeg)" and heading hashes into the
+        // searchable text of the scan.
+        String text = renderer.forDrawing(toPlainText(blockLines[i]));
         if (text.isBlank()) continue;
         float size = Math.max(3f, Math.min(lineH * 0.85f, 14f));
         // PDF space starts at the bottom of the page, the scan's at the top.
@@ -289,6 +292,11 @@ public class PdfExportService {
       }
     }
     cs.setRenderingMode(org.apache.pdfbox.pdmodel.graphics.state.RenderingMode.FILL);
+  }
+
+  /** Strips markdown so the invisible layer holds what the page actually says. */
+  private static String toPlainText(String line) {
+    return MarkdownPdfRenderer.stripInline(line.replaceFirst("^#{1,6}\\s+", ""));
   }
 
   private record Block(
