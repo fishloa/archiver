@@ -9,4 +9,7 @@ import place.icomb.archiver.model.Attachment;
 public interface AttachmentRepository extends CrudRepository<Attachment, Long> {
 
   List<Attachment> findByRecordId(Long recordId);
+
+  java.util.Optional<Attachment> findFirstByRecordIdAndRoleOrderByIdDesc(
+      Long recordId, String role);
 }

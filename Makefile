@@ -33,12 +33,6 @@ test-ocr:
 lint-ocr:
 
 # PDF Worker
-test-pdf:
-	cd pdf-worker && pytest -v
-
-lint-pdf:
-	ruff check pdf-worker/ && ruff format --check pdf-worker/
-
 # Entity Worker
 test-entity:
 	cd entity-worker && pytest -v
@@ -65,5 +59,5 @@ validate-deploy:
 	web/validate-deploy.sh
 
 # All
-test: test-backend test-scraper test-ocr test-pdf test-entity test-frontend
-lint: lint-backend lint-scraper lint-ocr lint-pdf lint-entity lint-frontend
+test: test-backend test-scraper test-ocr test-entity test-frontend
+lint: lint-backend lint-scraper lint-ocr lint-entity lint-frontend

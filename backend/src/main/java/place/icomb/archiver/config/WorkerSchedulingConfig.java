@@ -46,6 +46,7 @@ public class WorkerSchedulingConfig implements SchedulingConfigurer {
   private final ProviderBatchRepository providerBatchRepository;
   private final PageTranslationRepository pageTranslationRepository;
   private final PersonMatchService personMatchService;
+  private final place.icomb.archiver.service.PdfExportService pdfExportService;
   private final org.springframework.jdbc.core.JdbcTemplate jdbcTemplate;
 
   private final boolean qwenEnabled;
@@ -77,6 +78,9 @@ public class WorkerSchedulingConfig implements SchedulingConfigurer {
   private final boolean personMatchEnabled;
   private final long personMatchPollInterval;
 
+  private final int pdfConcurrency;
+  private final long pdfPollInterval;
+
   public WorkerSchedulingConfig(
       JobService jobService,
       JobEventService jobEventService,
@@ -88,6 +92,7 @@ public class WorkerSchedulingConfig implements SchedulingConfigurer {
       ProviderBatchRepository providerBatchRepository,
       PageTranslationRepository pageTranslationRepository,
       PersonMatchService personMatchService,
+      place.icomb.archiver.service.PdfExportService pdfExportService,
       org.springframework.jdbc.core.JdbcTemplate jdbcTemplate,
       @Value("${archiver.ocr.qwen.enabled:false}") boolean qwenEnabled,
       @Value("${archiver.ocr.qwen.base-url:}") String qwenBaseUrl,
@@ -113,7 +118,9 @@ public class WorkerSchedulingConfig implements SchedulingConfigurer {
       @Value("${archiver.translate.batch.size:2000}") int translateBatchSize,
       @Value("${archiver.translate.batch.pages-per-minute:5000}") int translatePerMinute,
       @Value("${archiver.person-match.enabled:true}") boolean personMatchEnabled,
-      @Value("${archiver.person-match.poll-interval:5000}") long personMatchPollInterval) {
+      @Value("${archiver.person-match.poll-interval:5000}") long personMatchPollInterval,
+      @Value("${archiver.pdf.concurrency:3}") int pdfConcurrency,
+      @Value("${archiver.pdf.poll-interval:5000}") long pdfPollInterval) {
     this.jobService = jobService;
     this.jobEventService = jobEventService;
     this.recordEventService = recordEventService;
@@ -150,6 +157,9 @@ public class WorkerSchedulingConfig implements SchedulingConfigurer {
     this.translatePerMinute = translatePerMinute;
     this.personMatchEnabled = personMatchEnabled;
     this.personMatchPollInterval = personMatchPollInterval;
+    this.pdfExportService = pdfExportService;
+    this.pdfConcurrency = pdfConcurrency;
+    this.pdfPollInterval = pdfPollInterval;
   }
 
   @Override
@@ -159,7 +169,8 @@ public class WorkerSchedulingConfig implements SchedulingConfigurer {
             + (claudeOcrEnabled ? claudeConcurrency : 0)
             + (mistralOcrEnabled ? 1 : 0)
             + (translateBatchEnabled ? 2 : 0)
-            + (personMatchEnabled ? 1 : 0);
+            + (personMatchEnabled ? 1 : 0)
+            + pdfConcurrency;
     if (totalWorkers == 0) return;
 
     // Headroom above the worker count. This pool also serves every other @Scheduled bean in
@@ -310,6 +321,26 @@ public class WorkerSchedulingConfig implements SchedulingConfigurer {
           TranslationModels.BULK_MODEL,
           TranslationModels.UPGRADE_MODEL,
           translateBatchSize);
+    }
+
+    // Searchable PDFs are built in-process rather than by a separate service: the invisible
+    // text layer needs the OCR block coordinates and an embedded Unicode font, both of which
+    // already exist here for the on-the-fly exports. A small pool because the work is IO-bound
+    // on reading scans and each job holds a whole record's images in turn.
+    for (int i = 0; i < pdfConcurrency; i++) {
+      var worker =
+          new place.icomb.archiver.service.SearchablePdfWorker(
+              "searchable-pdf-" + i,
+              jobService,
+              jobEventService,
+              pdfExportService,
+              storageService,
+              attachmentRepository);
+      registrar.addFixedDelayTask(worker::pollAndProcess, Duration.ofMillis(pdfPollInterval));
+    }
+    if (pdfConcurrency > 0) {
+      log.info(
+          "Registered {} searchable PDF worker(s) (poll={}ms)", pdfConcurrency, pdfPollInterval);
     }
 
     if (personMatchEnabled) {

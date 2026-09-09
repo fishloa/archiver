@@ -1,11 +1,20 @@
 package place.icomb.archiver.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
+import java.awt.Color;
+import java.awt.image.BufferedImage;
 import java.io.ByteArrayOutputStream;
+import java.util.Map;
+import javax.imageio.ImageIO;
 import org.apache.pdfbox.Loader;
 import org.apache.pdfbox.pdmodel.PDDocument;
+import org.apache.pdfbox.pdmodel.graphics.image.PDImageXObject;
 import org.apache.pdfbox.text.PDFTextStripper;
+import org.apache.pdfbox.text.TextPosition;
 import org.junit.jupiter.api.Test;
 
 /**
@@ -17,7 +26,7 @@ class MarkdownPdfRendererTest {
   private String renderAndExtract(String markdown) throws Exception {
     byte[] bytes;
     try (PDDocument doc = new PDDocument()) {
-      new MarkdownPdfRenderer(doc).renderPage(doc, markdown, "Page 1");
+      new MarkdownPdfRenderer(doc).renderPage(doc, markdown, "Page 1", null);
       ByteArrayOutputStream out = new ByteArrayOutputStream();
       doc.save(out);
       bytes = out.toByteArray();
@@ -55,9 +64,142 @@ class MarkdownPdfRendererTest {
             """);
     assertThat(text).contains("Geheime Staatspolizei");
     assertThat(text).contains("first item");
-    // Table pipes are kept: on a form or register the columns are the information.
     assertThat(text).contains("Czernin");
     assertThat(text).contains("1943");
+  }
+
+  @Test
+  void tablesAreDrawnAsColumnsNotPipedText() throws Exception {
+    // Drawn as text with the pipes left in, a wage card's rows wrapped into a wall of
+    // punctuation and every label/value pairing — the whole content of a form — was lost.
+    String text =
+        renderAndExtract(
+            """
+            | Beruf | Lohn | Bemerkung |
+            | --- | --- | --- |
+            | Landarbeiter | 24,50 | wöchentlich ausgezahlt |
+            """);
+    assertThat(text).contains("Landarbeiter");
+    assertThat(text).contains("24,50");
+    assertThat(text).contains("wöchentlich");
+    assertThat(text).doesNotContain("|");
+    assertThat(text).doesNotContain("---");
+  }
+
+  @Test
+  void headingsAreLargerThanBodyText() throws Exception {
+    // Bold alone at body size did not read as a title in a half-page column.
+    var sizes = new java.util.HashMap<String, Float>();
+    try (PDDocument doc = new PDDocument()) {
+      new MarkdownPdfRenderer(doc)
+          .renderPage(doc, "# Lagebericht\n\nordinary prose follows here", "Page 1", null);
+      ByteArrayOutputStream out = new ByteArrayOutputStream();
+      doc.save(out);
+      try (PDDocument read = Loader.loadPDF(out.toByteArray())) {
+        new PDFTextStripper() {
+          @Override
+          protected void writeString(String text, java.util.List<TextPosition> positions) {
+            for (TextPosition p : positions) {
+              sizes.merge(text.strip(), p.getFontSizeInPt(), Math::max);
+            }
+          }
+        }.getText(read);
+      }
+    }
+    float heading =
+        sizes.entrySet().stream()
+            .filter(e -> e.getKey().contains("Lagebericht"))
+            .map(Map.Entry::getValue)
+            .findFirst()
+            .orElseThrow();
+    float body =
+        sizes.entrySet().stream()
+            .filter(e -> e.getKey().contains("ordinary prose"))
+            .map(Map.Entry::getValue)
+            .findFirst()
+            .orElseThrow();
+    assertThat(heading).isGreaterThan(body);
+  }
+
+  @Test
+  void boldRunsAreDrawnInTheBoldFace() throws Exception {
+    // Fonts are collected per character, not per extracted line: the stripper hands back a
+    // whole line at once, so taking the first position's font would report the regular face
+    // for a line that mixes the two and the assertion would pass for the wrong reason.
+    var chars = new StringBuilder();
+    var fonts = new java.util.ArrayList<String>();
+    try (PDDocument doc = new PDDocument()) {
+      new MarkdownPdfRenderer(doc)
+          .renderPage(doc, "plain words **emphasised words** plain again", "Page 1", null);
+      ByteArrayOutputStream out = new ByteArrayOutputStream();
+      doc.save(out);
+      try (PDDocument read = Loader.loadPDF(out.toByteArray())) {
+        new PDFTextStripper() {
+          @Override
+          protected void writeString(String text, java.util.List<TextPosition> positions) {
+            for (TextPosition p : positions) {
+              chars.append(p.getUnicode());
+              for (int i = 0; i < p.getUnicode().length(); i++) {
+                fonts.add(p.getFont().getName());
+              }
+            }
+          }
+        }.getText(read);
+      }
+    }
+
+    String rendered = chars.toString();
+    int bolded = rendered.indexOf("emphasised");
+    int plain = rendered.indexOf("plain");
+    assertThat(bolded).isGreaterThan(-1);
+    assertThat(fonts.get(bolded)).containsIgnoringCase("Bold");
+    assertThat(fonts.get(plain)).doesNotContainIgnoringCase("Bold");
+  }
+
+  @Test
+  void ocrFiguresAreDrawnIntoThePage() throws Exception {
+    // 21,996 pages reference a figure the engine cut out — signatures, stamps, seals. On a
+    // countersigned order the signature block is the evidence, so an export that silently
+    // drops it loses the part that matters most.
+    BufferedImage signature = new BufferedImage(240, 80, BufferedImage.TYPE_INT_RGB);
+    var g = signature.createGraphics();
+    g.setColor(Color.WHITE);
+    g.fillRect(0, 0, 240, 80);
+    g.dispose();
+    var jpeg = new ByteArrayOutputStream();
+    ImageIO.write(signature, "jpg", jpeg);
+
+    OcrImageService images = mock(OcrImageService.class);
+    when(images.cropAll(any()))
+        .thenReturn(Map.of("img-0.jpeg", new OcrImageService.Crop(jpeg.toByteArray(), 240, 80)));
+
+    try (PDDocument doc = new PDDocument()) {
+      MarkdownPdfRenderer renderer = new MarkdownPdfRenderer(doc);
+      renderer.setOcrImageService(images);
+      renderer.renderPage(doc, "Signed:\n\n![img-0.jpeg](img-0.jpeg)\n", "Page 1", 42L);
+
+      var resources = doc.getPage(0).getResources();
+      long drawn =
+          java.util.stream.StreamSupport.stream(resources.getXObjectNames().spliterator(), false)
+              .filter(
+                  name -> {
+                    try {
+                      return resources.getXObject(name) instanceof PDImageXObject;
+                    } catch (Exception e) {
+                      return false;
+                    }
+                  })
+              .count();
+      assertThat(drawn).isEqualTo(1);
+    }
+  }
+
+  @Test
+  void aFigureWithNoCropDoesNotBreakThePage() throws Exception {
+    String text = renderAndExtract("before\n\n![img-9.jpeg](img-9.jpeg)\n\nafter");
+    assertThat(text).contains("before");
+    assertThat(text).contains("after");
+    assertThat(text).doesNotContain("img-9.jpeg");
   }
 
   @Test
@@ -73,7 +215,7 @@ class MarkdownPdfRendererTest {
     // One PDF page per source page, or the export stops lining up with the original and the
     // two cannot be read side by side.
     try (PDDocument doc = new PDDocument()) {
-      int used = new MarkdownPdfRenderer(doc).renderPage(doc, "", "Page 7 [no text]");
+      int used = new MarkdownPdfRenderer(doc).renderPage(doc, "", "Page 7 [no text]", null);
       assertThat(used).isEqualTo(1);
       assertThat(doc.getNumberOfPages()).isEqualTo(1);
     }
@@ -83,7 +225,7 @@ class MarkdownPdfRendererTest {
   void longPageOverflowsOntoFurtherPages() throws Exception {
     String longText = ("A reasonably long line of translated archival prose. ").repeat(300);
     try (PDDocument doc = new PDDocument()) {
-      int used = new MarkdownPdfRenderer(doc).renderPage(doc, longText, "Page 1");
+      int used = new MarkdownPdfRenderer(doc).renderPage(doc, longText, "Page 1", null);
       assertThat(used).isGreaterThan(1);
     }
   }

@@ -15,7 +15,7 @@ of Bohemia and Moravia, with Czech and bilingual material throughout.
 scrapers ──→            web (nginx :8099, OAuth2)
                        ↙              ↘
           frontend (SvelteKit)    backend (Spring Boot)
-                                       ↕↑               ←── pdf-worker
+                                       ↕↑
                                     PostgreSQL           ←── translate-worker
                                        ↕↑               ←── embed-worker
                                  archiver_store
@@ -110,7 +110,7 @@ Two things worth knowing before trusting a green build:
 | `backend/` | Spring Boot API, pipeline state machine, internal OCR workers |
 | `frontend/` | SvelteKit UI |
 | `worker-common/` | shared Python library — HTTP client, SSE loop, markdown handling |
-| `pdf-worker/`, `translate-worker/`, `embed-worker/` | pipeline workers |
+| `translate-worker/`, `embed-worker/` | pipeline workers |
 | `scraper-*/` | one per source archive |
 | `deploy/` | docker-compose for the Portainer stack |
 | `docs/superpowers/plans/` | implementation plans |

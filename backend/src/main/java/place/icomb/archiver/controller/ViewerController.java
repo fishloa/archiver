@@ -57,6 +57,7 @@ public class ViewerController {
   private final AttachmentRepository attachmentRepository;
   private final RecordRepository recordRepository;
   private final StorageService storageService;
+  private final place.icomb.archiver.service.OcrImageService ocrImageService;
   private final PageTextRepository pageTextRepository;
   private final JdbcTemplate jdbcTemplate;
   private final PipelineGateService gateService;
@@ -88,6 +89,7 @@ public class ViewerController {
       PdfExportService pdfExportService,
       place.icomb.archiver.service.JobEventService jobEventService,
       PipelineGateService gateService,
+      place.icomb.archiver.service.OcrImageService ocrImageService,
       PageTranslationRepository pageTranslationRepository) {
     this.pageRepository = pageRepository;
     this.attachmentRepository = attachmentRepository;
@@ -100,6 +102,7 @@ public class ViewerController {
     this.jobService = jobService;
     this.pdfExportService = pdfExportService;
     this.jobEventService = jobEventService;
+    this.ocrImageService = ocrImageService;
   }
 
   /** Known scrapers: id, display name, sourceSystem value they report in heartbeats. */
@@ -490,86 +493,16 @@ public class ViewerController {
   @GetMapping("/pages/{pageId}/ocr-image/{imageId}")
   public ResponseEntity<Resource> ocrImage(
       @PathVariable Long pageId, @PathVariable String imageId) {
-    try {
-      var rows =
-          jdbcTemplate.queryForList(
-              """
-              SELECT p.attachment_id, pt.raw_response::text AS raw_response
-              FROM page p JOIN page_text pt ON pt.page_id = p.id
-              WHERE p.id = ?
-              """,
-              pageId);
-      if (rows.isEmpty() || rows.get(0).get("attachment_id") == null) {
-        return ResponseEntity.notFound().build();
-      }
-      String rawResponse = (String) rows.get(0).get("raw_response");
-      if (rawResponse == null) {
-        return ResponseEntity.notFound().build();
-      }
-
-      var root = new com.fasterxml.jackson.databind.ObjectMapper().readTree(rawResponse);
-      var page = root.path("pages").path(0);
-      double pw = page.path("dimensions").path("width").asDouble(0);
-      double ph = page.path("dimensions").path("height").asDouble(0);
-      if (pw <= 0 || ph <= 0) {
-        return ResponseEntity.notFound().build();
-      }
-
-      com.fasterxml.jackson.databind.JsonNode match = null;
-      for (var img : page.path("images")) {
-        if (imageId.equals(img.path("id").asText())) {
-          match = img;
-          break;
-        }
-      }
-      if (match == null) {
-        return ResponseEntity.notFound().build();
-      }
-
-      Attachment attachment =
-          attachmentRepository
-              .findById(((Number) rows.get(0).get("attachment_id")).longValue())
-              .orElse(null);
-      if (attachment == null) {
-        return ResponseEntity.notFound().build();
-      }
-
-      java.awt.image.BufferedImage full =
-          javax.imageio.ImageIO.read(storageService.getPath(attachment).toFile());
-      if (full == null) {
-        return ResponseEntity.notFound().build();
-      }
-
-      // Block coordinates live in the engine's own page space; scale onto the real scan.
-      double sx = full.getWidth() / pw;
-      double sy = full.getHeight() / ph;
-      int x = (int) Math.max(0, Math.floor(match.path("top_left_x").asDouble() * sx));
-      int y = (int) Math.max(0, Math.floor(match.path("top_left_y").asDouble() * sy));
-      int w =
-          (int)
-              Math.ceil(
-                  (match.path("bottom_right_x").asDouble() - match.path("top_left_x").asDouble())
-                      * sx);
-      int h =
-          (int)
-              Math.ceil(
-                  (match.path("bottom_right_y").asDouble() - match.path("top_left_y").asDouble())
-                      * sy);
-      w = Math.max(1, Math.min(w, full.getWidth() - x));
-      h = Math.max(1, Math.min(h, full.getHeight() - y));
-
-      java.awt.image.BufferedImage crop = full.getSubimage(x, y, w, h);
-      var out = new java.io.ByteArrayOutputStream();
-      javax.imageio.ImageIO.write(crop, "jpg", out);
-
-      return ResponseEntity.ok()
-          .contentType(MediaType.IMAGE_JPEG)
-          .cacheControl(org.springframework.http.CacheControl.maxAge(java.time.Duration.ofDays(30)))
-          .body(new ByteArrayResource(out.toByteArray()));
-    } catch (Exception e) {
-      log.warn("Could not crop OCR image {} for page {}", imageId, pageId, e);
-      return ResponseEntity.notFound().build();
-    }
+    return ocrImageService
+        .crop(pageId, imageId)
+        .map(
+            crop ->
+                ResponseEntity.ok()
+                    .contentType(MediaType.IMAGE_JPEG)
+                    .cacheControl(
+                        org.springframework.http.CacheControl.maxAge(java.time.Duration.ofDays(30)))
+                    .body((Resource) new ByteArrayResource(crop.jpeg())))
+        .orElseGet(() -> ResponseEntity.notFound().build());
   }
 
   @GetMapping("/pages/{pageId}/text")

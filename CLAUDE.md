@@ -12,7 +12,7 @@ Digital archive management system — scrapes, OCRs, translates, embeds, and ind
 scrapers ──→            web (nginx :8099, OAuth2)
                        ↙              ↘
           frontend (SvelteKit)    backend (Spring Boot)
-                                       ↕↑               ←── pdf-worker
+                                       ↕↑
                                     PostgreSQL           ←── translate-worker
                                        ↕↑               ←── embed-worker
                                  archiver_store
@@ -31,7 +31,6 @@ Only the backend touches PostgreSQL and archiver_store.
 | backend | Java 25 / Spring Boot 4.1 | REST API, job orchestration, SSE events |
 | frontend | SvelteKit + Tailwind v4 | UI with Verdant design system (`--vui-*` CSS vars) |
 | worker-common | Python shared lib | Base `ProcessorClient`, SSE loop, job lifecycle helpers |
-| pdf-worker | Python + reportlab | Builds searchable PDFs with invisible text overlay |
 | translate-worker | Python | LLM translation via OpenAI-compatible API (gemma-4-31B), markdown-preserving |
 | embed-worker | Python | Heading-aware chunking, embeds via Qwen3-Embedding-8B (1024-dim, halfvec) |
 | entity-worker | Python | Named entity extraction (dormant — commented out in compose) |
@@ -126,7 +125,6 @@ make dev-backend          # cd backend && ./gradlew bootRun
 make dev-frontend         # cd frontend && bun run dev
 make test-backend         # cd backend && ./gradlew test
 make test-scraper         # cd scraper-cz && pytest -v
-make test-pdf             # cd pdf-worker && pytest -v
 make test-entity          # cd entity-worker && pytest -v
 make test-frontend        # cd frontend && bun test
 make test                 # all of the above
@@ -145,7 +143,7 @@ cd backend && ./gradlew test --tests '*IngestControllerTest'
 cd backend && ./gradlew spotlessApply
 
 # Python workers — single test file
-cd pdf-worker && pytest tests/test_something.py -v
+cd embed-worker && pytest tests/test_something.py -v
 
 # Python — format + lint fix
 ruff check --fix scraper-cz/ && ruff format scraper-cz/
@@ -189,7 +187,10 @@ Config: `backend/src/test/resources/application-test.yml`.
 - `service/PersonMatchWorker.java` — internal scheduled worker for `match_persons` jobs
 - `service/IngestService.java` — record creation, OCR job enqueuing
 - `service/StorageService.java` — file storage abstraction over archiver_store
-- `service/PdfExportService.java` — PDF generation from page images
+- `service/PdfExportService.java` — all three PDF exports (original scans, English translation, side-by-side), and the stored searchable PDF
+- `service/MarkdownPdfRenderer.java` — markdown → PDF: headings, tables, bold runs, OCR figures
+- `service/SearchablePdfWorker.java` — internal worker for `build_searchable_pdf` (replaced the Python pdf-worker)
+- `service/OcrImageService.java` — crops the figures Mistral found (signatures, stamps) out of the scan
 
 ## Frontend Details
 

@@ -31,17 +31,27 @@ public class PdfExportService {
   private final PageRepository pageRepository;
   private final AttachmentRepository attachmentRepository;
   private final StorageService storageService;
+  private final OcrImageService ocrImageService;
   private final org.springframework.jdbc.core.JdbcTemplate jdbcTemplate;
 
   public PdfExportService(
       PageRepository pageRepository,
       AttachmentRepository attachmentRepository,
       StorageService storageService,
+      OcrImageService ocrImageService,
       org.springframework.jdbc.core.JdbcTemplate jdbcTemplate) {
     this.pageRepository = pageRepository;
     this.attachmentRepository = attachmentRepository;
     this.storageService = storageService;
+    this.ocrImageService = ocrImageService;
     this.jdbcTemplate = jdbcTemplate;
+  }
+
+  /** A renderer wired to this record's scans, so figures can be cut out and drawn inline. */
+  private MarkdownPdfRenderer newRenderer(PDDocument doc) throws IOException {
+    MarkdownPdfRenderer renderer = newRenderer(doc);
+    renderer.setOcrImageService(ocrImageService);
+    return renderer;
   }
 
   /** What an export contains. */
@@ -123,7 +133,7 @@ public class PdfExportService {
     final float footerHeight = 22f;
 
     try (PDDocument doc = new PDDocument()) {
-      MarkdownPdfRenderer renderer = new MarkdownPdfRenderer(doc);
+      MarkdownPdfRenderer renderer = newRenderer(doc);
       PDRectangle landscape =
           new PDRectangle(PDRectangle.A4.getHeight(), PDRectangle.A4.getWidth());
 
@@ -152,7 +162,9 @@ public class PdfExportService {
         float contentTop = landscape.getHeight() - margin;
         float contentBottom = margin + footerHeight;
 
-        List<MarkdownPdfRenderer.Line> lines = renderer.layoutTo(rightText, halfWidth);
+        Long pageId = row.get("page_id") == null ? null : ((Number) row.get("page_id")).longValue();
+        List<MarkdownPdfRenderer.El> lines =
+            renderer.layoutTo(rightText, halfWidth, contentTop - contentBottom, pageId);
         int lineIndex = 0;
         int pageOfPage = 0;
 
@@ -179,7 +191,7 @@ public class PdfExportService {
 
             // Right: the translation.
             lineIndex =
-                renderer.drawLines(
+                renderer.drawElements(
                     cs, lines, lineIndex, margin + halfWidth + gutter, contentTop, contentBottom);
 
             // Footer: where this page lives in the archive.
@@ -319,12 +331,12 @@ public class PdfExportService {
 
   private byte[] buildEnglishPdf(Long recordId, List<Integer> seqNumbers) throws IOException {
     try (PDDocument doc = new PDDocument()) {
-      MarkdownPdfRenderer renderer = new MarkdownPdfRenderer(doc);
+      MarkdownPdfRenderer renderer = newRenderer(doc);
       for (int seq : seqNumbers) {
         List<java.util.Map<String, Object>> rows =
             jdbcTemplate.queryForList(
                 """
-                SELECT pt.text_en, pt.text_raw
+                SELECT p.id AS page_id, pt.text_en, pt.text_raw
                 FROM page p JOIN page_text pt ON pt.page_id = p.id
                 WHERE p.record_id = ? AND p.seq = ?
                 """,
@@ -333,7 +345,9 @@ public class PdfExportService {
 
         String text = "";
         String note = "";
+        Long pageId = null;
         if (!rows.isEmpty()) {
+          pageId = ((Number) rows.get(0).get("page_id")).longValue();
           String en = (String) rows.get(0).get("text_en");
           if (en != null && !en.isBlank()) {
             text = en;
@@ -348,7 +362,7 @@ public class PdfExportService {
         } else {
           note = "  [no text]";
         }
-        renderer.renderPage(doc, text, "Page " + seq + note);
+        renderer.renderPage(doc, text, "Page " + seq + note, pageId);
       }
 
       if (doc.getNumberOfPages() == 0) {
@@ -369,7 +383,49 @@ public class PdfExportService {
    */
   private byte[] buildOriginalPdf(Long recordId, List<Integer> seqNumbers) throws IOException {
     try (PDDocument doc = new PDDocument()) {
-      MarkdownPdfRenderer renderer = new MarkdownPdfRenderer(doc);
+      renderOriginal(doc, recordId, seqNumbers);
+      if (doc.getNumberOfPages() == 0) {
+        throw new IOException("No valid pages found for the given selection");
+      }
+      ByteArrayOutputStream out = new ByteArrayOutputStream();
+      doc.save(out);
+      return out.toByteArray();
+    }
+  }
+
+  /**
+   * Builds the stored searchable PDF for a whole record, straight to a file.
+   *
+   * <p>Records here run to 942 pages of full-resolution scans, so the document is backed by a
+   * temporary file rather than the heap and saved without ever being held as one array. This is the
+   * path the searchable-PDF worker uses; the byte-array variants serve interactive exports, which
+   * are page selections.
+   *
+   * @return number of PDF pages written
+   */
+  public int buildRecordPdfToFile(Long recordId, Path target) throws IOException {
+    List<Integer> seqNumbers =
+        jdbcTemplate.queryForList(
+            "SELECT seq FROM page WHERE record_id = ? ORDER BY seq", Integer.class, recordId);
+    if (seqNumbers.isEmpty()) {
+      throw new IOException("Record " + recordId + " has no pages");
+    }
+    try (PDDocument doc =
+        new PDDocument(org.apache.pdfbox.io.IOUtils.createTempFileOnlyStreamCache())) {
+      renderOriginal(doc, recordId, seqNumbers);
+      if (doc.getNumberOfPages() == 0) {
+        throw new IOException("Record " + recordId + " produced no pages");
+      }
+      doc.save(target.toFile());
+      return doc.getNumberOfPages();
+    }
+  }
+
+  /** Draws the scans with their invisible text layers into an open document. */
+  private void renderOriginal(PDDocument doc, Long recordId, List<Integer> seqNumbers)
+      throws IOException {
+    {
+      MarkdownPdfRenderer renderer = newRenderer(doc);
 
       for (int seq : seqNumbers) {
         Page page = pageRepository.findByRecordIdAndSeq(recordId, seq).orElse(null);
@@ -400,13 +456,6 @@ public class PdfExportService {
           drawInvisibleTextLayer(cs, renderer, rawResponse, 0, 0, imgWidth, imgHeight);
         }
       }
-
-      if (doc.getNumberOfPages() == 0) {
-        throw new IOException("No valid pages found for the given selection");
-      }
-      ByteArrayOutputStream out = new ByteArrayOutputStream();
-      doc.save(out);
-      return out.toByteArray();
     }
   }
 }

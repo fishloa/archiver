@@ -144,18 +144,6 @@ services:
       - backend
     restart: "no"
 
-  pdf-worker:
-    image: dockerregistry.icomb.place/archiver/pdf-worker:latest
-    user: "${CONTAINER_USER:-1012:1012}"
-    environment:
-      BACKEND_URL: http://backend:8080
-      PROCESSOR_TOKEN: ${PROCESSOR_TOKEN}
-    depends_on:
-      - backend
-    restart: unless-stopped
-    deploy:
-      replicas: 2
-
   translate-worker:
     image: dockerregistry.icomb.place/archiver/translate-worker:latest
     user: "${CONTAINER_USER:-1012:1012}"

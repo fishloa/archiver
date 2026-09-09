@@ -37,10 +37,9 @@ pipeline {
                     env.BUILD_SCRAPER_AROLSEN = params.BUILD_ALL || changed('scraper-arolsen') || workerCommonChanged
                     env.BUILD_SCRAPER_DDB = params.BUILD_ALL || changed('scraper-ddb') || workerCommonChanged
                     env.BUILD_SCRAPER_BARCH = params.BUILD_ALL || changed('scraper-barch') || workerCommonChanged
-                    env.BUILD_PDF = params.BUILD_ALL || changed('pdf-worker') || workerCommonChanged
-                    env.BUILD_TRANSLATE = params.BUILD_ALL || changed('translate-worker') || workerCommonChanged
+                                        env.BUILD_TRANSLATE = params.BUILD_ALL || changed('translate-worker') || workerCommonChanged
                     env.BUILD_EMBED = params.BUILD_ALL || changed('embed-worker') || workerCommonChanged
-                    echo "backend=${env.BUILD_BACKEND} frontend=${env.BUILD_FRONTEND} web=${env.BUILD_WEB} oauth2-proxy-apple=${env.BUILD_OAUTH2_PROXY_APPLE} scraper-cz=${env.BUILD_SCRAPER} ebadatelna=${env.BUILD_SCRAPER_EBADATELNA} findbuch=${env.BUILD_SCRAPER_FINDBUCH} oesta=${env.BUILD_SCRAPER_OESTA} matricula=${env.BUILD_SCRAPER_MATRICULA} arolsen=${env.BUILD_SCRAPER_AROLSEN} ddb=${env.BUILD_SCRAPER_DDB} barch=${env.BUILD_SCRAPER_BARCH} pdf=${env.BUILD_PDF} translate=${env.BUILD_TRANSLATE} embed=${env.BUILD_EMBED}"
+                    echo "backend=${env.BUILD_BACKEND} frontend=${env.BUILD_FRONTEND} web=${env.BUILD_WEB} oauth2-proxy-apple=${env.BUILD_OAUTH2_PROXY_APPLE} scraper-cz=${env.BUILD_SCRAPER} ebadatelna=${env.BUILD_SCRAPER_EBADATELNA} findbuch=${env.BUILD_SCRAPER_FINDBUCH} oesta=${env.BUILD_SCRAPER_OESTA} matricula=${env.BUILD_SCRAPER_MATRICULA} arolsen=${env.BUILD_SCRAPER_AROLSEN} ddb=${env.BUILD_SCRAPER_DDB} barch=${env.BUILD_SCRAPER_BARCH} translate=${env.BUILD_TRANSLATE} embed=${env.BUILD_EMBED}"
                 }
             }
         }
@@ -156,17 +155,6 @@ pipeline {
                         script {
                             dockerPush(registry, "${prefix}/scraper-cz:latest")
                             dockerPush(registry, "${prefix}/scraper-cz:\${GIT_COMMIT}")
-                        }
-                    }
-                }
-
-                stage('pdf-worker') {
-                    when { expression { env.BUILD_PDF == 'true' } }
-                    steps {
-                        sh "docker build -f pdf-worker/Dockerfile -t ${prefix}/pdf-worker:latest -t ${prefix}/pdf-worker:\${GIT_COMMIT} ."
-                        script {
-                            dockerPush(registry, "${prefix}/pdf-worker:latest")
-                            dockerPush(registry, "${prefix}/pdf-worker:\${GIT_COMMIT}")
                         }
                     }
                 }
