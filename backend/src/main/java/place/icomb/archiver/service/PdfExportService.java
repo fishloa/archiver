@@ -23,14 +23,25 @@ public class PdfExportService {
   private final PageRepository pageRepository;
   private final AttachmentRepository attachmentRepository;
   private final StorageService storageService;
+  private final org.springframework.jdbc.core.JdbcTemplate jdbcTemplate;
 
   public PdfExportService(
       PageRepository pageRepository,
       AttachmentRepository attachmentRepository,
-      StorageService storageService) {
+      StorageService storageService,
+      org.springframework.jdbc.core.JdbcTemplate jdbcTemplate) {
     this.pageRepository = pageRepository;
     this.attachmentRepository = attachmentRepository;
     this.storageService = storageService;
+    this.jdbcTemplate = jdbcTemplate;
+  }
+
+  /** What an export contains. */
+  public enum Variant {
+    /** The scanned images, exactly as held. */
+    ORIGINAL,
+    /** The English translation, rendered from the markdown the OCR produced. */
+    ENGLISH
   }
 
   /**
@@ -67,6 +78,68 @@ public class PdfExportService {
    * array.
    */
   public byte[] buildPdf(Long recordId, List<Integer> seqNumbers) throws IOException {
+    return buildPdf(recordId, seqNumbers, Variant.ORIGINAL);
+  }
+
+  /**
+   * Builds an export of the selected pages.
+   *
+   * <p>ENGLISH renders one PDF page per source page, so the export lines up with the original page
+   * for page — a page with no text still produces a page rather than shifting everything after it,
+   * which would make the two impossible to read side by side.
+   */
+  public byte[] buildPdf(Long recordId, List<Integer> seqNumbers, Variant variant)
+      throws IOException {
+    if (variant == Variant.ENGLISH) {
+      return buildEnglishPdf(recordId, seqNumbers);
+    }
+    return buildOriginalPdf(recordId, seqNumbers);
+  }
+
+  private byte[] buildEnglishPdf(Long recordId, List<Integer> seqNumbers) throws IOException {
+    try (PDDocument doc = new PDDocument()) {
+      MarkdownPdfRenderer renderer = new MarkdownPdfRenderer(doc);
+      for (int seq : seqNumbers) {
+        List<java.util.Map<String, Object>> rows =
+            jdbcTemplate.queryForList(
+                """
+                SELECT pt.text_en, pt.text_raw
+                FROM page p JOIN page_text pt ON pt.page_id = p.id
+                WHERE p.record_id = ? AND p.seq = ?
+                """,
+                recordId,
+                seq);
+
+        String text = "";
+        String note = "";
+        if (!rows.isEmpty()) {
+          String en = (String) rows.get(0).get("text_en");
+          if (en != null && !en.isBlank()) {
+            text = en;
+          } else {
+            // Untranslated pages fall back to the original transcription rather than appearing
+            // blank, so the export never silently omits a page's content.
+            String raw = (String) rows.get(0).get("text_raw");
+            text = raw == null ? "" : raw;
+            note =
+                raw == null || raw.isBlank() ? "  [no text]" : "  [not translated - original text]";
+          }
+        } else {
+          note = "  [no text]";
+        }
+        renderer.renderPage(doc, text, "Page " + seq + note);
+      }
+
+      if (doc.getNumberOfPages() == 0) {
+        throw new IOException("No valid pages found for the given selection");
+      }
+      ByteArrayOutputStream out = new ByteArrayOutputStream();
+      doc.save(out);
+      return out.toByteArray();
+    }
+  }
+
+  private byte[] buildOriginalPdf(Long recordId, List<Integer> seqNumbers) throws IOException {
     try (PDDocument doc = new PDDocument()) {
       for (int seq : seqNumbers) {
         Page page = pageRepository.findByRecordIdAndSeq(recordId, seq).orElse(null);

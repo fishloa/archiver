@@ -28,6 +28,8 @@
 	let rawOpen = $state(false);
 	let timelineOpen = $state(false);
 	let exportPages = $state('');
+	/** Which rendering an export produces: the scans, or the English translation. */
+	let exportVariant = $state<'original' | 'english'>('original');
 	let adminDropdownOpen = $state(false);
 	let confirmAction = $state<string | null>(null);
 	let isAdmin = $derived(data.user?.role === 'admin');
@@ -172,7 +174,7 @@
 		{#if kCount > 0}
 			<div class="flex items-center gap-2">
 				<a
-					href="/api/records/{record.id}/export-pdf?pages={encodeURIComponent(kParam)}"
+					href="/api/records/{record.id}/export-pdf?pages={encodeURIComponent(kParam)}&variant={exportVariant}"
 					class="vui-btn vui-btn-sm !bg-emerald-600 !border-emerald-600 !text-white"
 					target="_blank"
 				>
@@ -189,6 +191,14 @@
 		{/if}
 		{#if pages.length > 0}
 			<div class="flex items-center gap-2 ml-auto">
+				<select
+					bind:value={exportVariant}
+					class="px-2 py-1.5 rounded-md border border-border bg-bg-deep text-text text-[length:var(--vui-text-sm)] focus:outline-none focus:ring-1 focus:ring-accent"
+					title="Original scans, or the English translation rendered from the transcription"
+				>
+					<option value="original">Original scans</option>
+					<option value="english">English translation</option>
+				</select>
 				<input
 					type="text"
 					bind:value={exportPages}
@@ -196,7 +206,7 @@
 					class="px-2.5 py-1.5 rounded-md border border-border bg-bg-deep text-text text-[length:var(--vui-text-sm)] placeholder:text-text-sub focus:outline-none focus:ring-1 focus:ring-accent w-40"
 				/>
 				<a
-					href={exportPages.trim() ? `/api/records/${record.id}/export-pdf?pages=${encodeURIComponent(exportPages.trim())}` : undefined}
+					href={exportPages.trim() ? `/api/records/${record.id}/export-pdf?pages=${encodeURIComponent(exportPages.trim())}&variant=${exportVariant}` : undefined}
 					class="vui-btn vui-btn-ghost vui-btn-sm {exportPages.trim() ? '' : 'opacity-40 pointer-events-none'}"
 					target="_blank"
 				>

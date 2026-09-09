@@ -755,7 +755,9 @@ public class ViewerController {
 
   @GetMapping("/records/{recordId}/export-pdf")
   public ResponseEntity<Resource> exportPdf(
-      @PathVariable Long recordId, @RequestParam String pages) {
+      @PathVariable Long recordId,
+      @RequestParam String pages,
+      @RequestParam(defaultValue = "original") String variant) {
     Record record = recordRepository.findById(recordId).orElse(null);
     if (record == null) {
       return ResponseEntity.notFound().build();
@@ -773,9 +775,17 @@ public class ViewerController {
     }
 
     try {
-      byte[] pdfBytes = pdfExportService.buildPdf(recordId, seqNumbers);
+      PdfExportService.Variant v =
+          "english".equalsIgnoreCase(variant)
+              ? PdfExportService.Variant.ENGLISH
+              : PdfExportService.Variant.ORIGINAL;
+      byte[] pdfBytes = pdfExportService.buildPdf(recordId, seqNumbers, v);
       ByteArrayResource resource = new ByteArrayResource(pdfBytes);
-      String filename = "record-" + recordId + "-pages.pdf";
+      String filename =
+          "record-"
+              + recordId
+              + (v == PdfExportService.Variant.ENGLISH ? "-english" : "-pages")
+              + ".pdf";
       return ResponseEntity.ok()
           .contentType(MediaType.APPLICATION_PDF)
           .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + filename + "\"")
