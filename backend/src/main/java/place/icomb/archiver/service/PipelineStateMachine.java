@@ -292,7 +292,16 @@ public class PipelineStateMachine {
         PDF_PENDING, PDF_DONE, RecordContext::pdfJobComplete, ctx -> setPdfAttachmentId(ctx));
 
     // PDF_DONE → TRANSLATING: still has pending translation jobs
-    addTransition(PDF_DONE, TRANSLATING, RecordContext::hasTranslationJobs, ctx -> {});
+    // Embedding starts here, not after translation. Chunks are built from the ORIGINAL text,
+    // so embedding never needed the translation — yet it used to wait for it, which left
+    // semantic search dead for the whole length of a translation run. Translation is by far
+    // the slowest stage (~45 pages/min against OCR's ~500), so that ordering could hold the
+    // entire archive out of the index for a day or more for no reason at all.
+    addTransition(
+        PDF_DONE,
+        TRANSLATING,
+        RecordContext::hasTranslationJobs,
+        ctx -> enqueueEmbedJob(ctx.recordId));
 
     // PDF_DONE → EMBEDDING: no pending translation jobs
     addTransition(
@@ -309,10 +318,9 @@ public class PipelineStateMachine {
         TRANSLATING,
         EMBEDDING,
         RecordContext::allTranslationJobsComplete,
-        ctx -> {
-          logPipelineEvent(ctx.recordId, "translation", "completed", null);
-          enqueueEmbedJob(ctx.recordId);
-        });
+        // The embed job was enqueued on entry to TRANSLATING and has very likely finished by
+        // now; enqueueing again here would embed the record twice.
+        ctx -> logPipelineEvent(ctx.recordId, "translation", "completed", null));
 
     // EMBEDDING → MATCHING: embed job complete
     addTransition(

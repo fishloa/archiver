@@ -35,6 +35,27 @@ public interface PageTextRepository extends CrudRepository<PageText, Long> {
   @Query("DELETE FROM page_text WHERE page_id = :pageId")
   void deleteByPageId(@Param("pageId") Long pageId);
 
+  /**
+   * Stores an OCR result, replacing whatever the page had before.
+   *
+   * <p>The provider's full response is kept alongside the text: it carries per-block bounding boxes
+   * and dimensions that the searchable PDF needs to place its invisible text layer where the words
+   * actually are. CAST rather than the {@code ::jsonb} shorthand, which collides with
+   * named-parameter parsing.
+   */
+  @Modifying
+  @Query(
+      """
+      INSERT INTO page_text (page_id, engine, text_raw, content_type, created_at, raw_response)
+      VALUES (:pageId, :engine, :textRaw, :contentType, now(), CAST(:rawResponse AS jsonb))
+      """)
+  void insertOcrResult(
+      @Param("pageId") Long pageId,
+      @Param("engine") String engine,
+      @Param("textRaw") String textRaw,
+      @Param("contentType") String contentType,
+      @Param("rawResponse") String rawResponse);
+
   @Query(
       """
       SELECT pt.* FROM page_text pt

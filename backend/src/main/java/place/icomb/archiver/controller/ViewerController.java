@@ -31,6 +31,7 @@ import place.icomb.archiver.repository.RecordRepository;
 import place.icomb.archiver.service.JobService;
 import place.icomb.archiver.service.OcrContentType;
 import place.icomb.archiver.service.PdfExportService;
+import place.icomb.archiver.service.PipelineGateService;
 import place.icomb.archiver.service.StorageService;
 
 @RestController
@@ -52,6 +53,7 @@ public class ViewerController {
   private final StorageService storageService;
   private final PageTextRepository pageTextRepository;
   private final JdbcTemplate jdbcTemplate;
+  private final PipelineGateService gateService;
 
   /**
    * Provider price per OCR page, used only to report what a run has cost.
@@ -77,12 +79,14 @@ public class ViewerController {
       JdbcTemplate jdbcTemplate,
       JobService jobService,
       PdfExportService pdfExportService,
-      place.icomb.archiver.service.JobEventService jobEventService) {
+      place.icomb.archiver.service.JobEventService jobEventService,
+      PipelineGateService gateService) {
     this.pageRepository = pageRepository;
     this.attachmentRepository = attachmentRepository;
     this.recordRepository = recordRepository;
     this.storageService = storageService;
     this.pageTextRepository = pageTextRepository;
+    this.gateService = gateService;
     this.jdbcTemplate = jdbcTemplate;
     this.jobService = jobService;
     this.pdfExportService = pdfExportService;
@@ -379,6 +383,8 @@ public class ViewerController {
     stages.add(completeStage);
 
     Map<String, Object> result = new LinkedHashMap<>();
+    // Paused kinds, so a gated stage renders as deliberately held rather than mysteriously idle.
+    result.put("pausedKinds", gateService.pausedKinds());
     result.put("stages", stages);
     result.put("totals", Map.of("records", totalRecords, "pages", totalPages));
     result.put("scrapers", jobEventService.getActiveScrapers());
@@ -784,6 +790,34 @@ public class ViewerController {
   public ResponseEntity<Map<String, Object>> runAudit() {
     int fixed = jobService.recoverStaleClaims() + jobService.auditPipeline();
     return ResponseEntity.ok(Map.of("fixed", fixed));
+  }
+
+  /**
+   * Pipeline gates: pause a stage without losing its queue.
+   *
+   * <p>A paused kind is not claimed by any worker, so its jobs accumulate as {@code pending} and
+   * are released untouched when the gate reopens. Scaling workers to zero would strand in-flight
+   * claims and cancelling jobs would lose the queue; this does neither.
+   */
+  @GetMapping("/admin/gates")
+  public ResponseEntity<Map<String, Object>> listGates() {
+    return ResponseEntity.ok(
+        Map.of("gates", gateService.list(), "pausedKinds", gateService.pausedKinds()));
+  }
+
+  @PostMapping("/admin/gates/{kind}")
+  public ResponseEntity<Map<String, Object>> setGate(
+      @PathVariable String kind, @RequestBody Map<String, Object> body) {
+    Object paused = body.get("paused");
+    if (!(paused instanceof Boolean)) {
+      return ResponseEntity.badRequest().body(Map.of("error", "paused must be true or false"));
+    }
+    String reason = body.get("reason") instanceof String r ? r : null;
+    var auth =
+        org.springframework.security.core.context.SecurityContextHolder.getContext()
+            .getAuthentication();
+    String who = auth != null ? auth.getName() : "unknown";
+    return ResponseEntity.ok(gateService.set(kind, (Boolean) paused, reason, who));
   }
 
   @SuppressWarnings("unchecked")

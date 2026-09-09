@@ -26,6 +26,7 @@ public class JobService {
   private final JdbcTemplate jdbcTemplate;
   private final JobEventService jobEventService;
   private final RecordEventService recordEventService;
+  private final PipelineGateService gateService;
   private final String defaultOcrEngine;
   private PipelineStateMachine stateMachine;
 
@@ -34,11 +35,13 @@ public class JobService {
       JdbcTemplate jdbcTemplate,
       JobEventService jobEventService,
       RecordEventService recordEventService,
+      PipelineGateService gateService,
       @Value("${archiver.ocr.default-engine:ocr_page_qwen3vl}") String defaultOcrEngine) {
     this.jobRepository = jobRepository;
     this.jdbcTemplate = jdbcTemplate;
     this.jobEventService = jobEventService;
     this.recordEventService = recordEventService;
+    this.gateService = gateService;
     this.defaultOcrEngine = defaultOcrEngine;
   }
 
@@ -73,7 +76,66 @@ public class JobService {
    */
   @Transactional
   public Optional<Job> claimJob(String kind) {
+    // A paused kind is not claimed at all, so its jobs queue up rather than being cancelled.
+    // This is how a stage is stopped without losing work — see PipelineGateService.
+    if (gateService.isPaused(kind)) {
+      return Optional.empty();
+    }
     return jobRepository.findAndClaimNextJob(kind);
+  }
+
+  /**
+   * Claims a batch of pending jobs, sized to a byte budget.
+   *
+   * <p>Deliberately alongside {@link #claimJob}: both routes into work must pass the same gate.
+   * When the batch worker held its own claim SQL it bypassed this check entirely, so pausing a kind
+   * stopped every worker except the one doing the most expensive work.
+   *
+   * @return the claimed jobs, empty when the kind is paused or nothing is pending
+   */
+  @Transactional
+  public List<Job> claimBatch(String kind, int maxRows, long maxBytes, Long batchId) {
+    if (gateService.isPaused(kind)) {
+      return List.of();
+    }
+    return jobRepository.claimBatch(kind, maxRows, maxBytes, batchId);
+  }
+
+  /** Returns a batch's still-claimed jobs to the queue. */
+  @Transactional
+  public int releaseBatch(Long batchId, boolean restoreAttempt) {
+    return jobRepository.releaseBatch(batchId, restoreAttempt);
+  }
+
+  public List<Job> findClaimedInBatch(Long batchId) {
+    return jobRepository.findClaimedInBatch(batchId);
+  }
+
+  public int countSettledInBatch(Long batchId) {
+    return jobRepository.countSettledInBatch(batchId);
+  }
+
+  /** Returns one job to the queue, optionally undoing its claim's attempt increment. */
+  @Transactional
+  public void releaseJob(Long jobId, boolean restoreAttempt) {
+    jdbcTemplate.update(
+        """
+        UPDATE job SET status = 'pending', batch_id = NULL, started_at = NULL,
+                       attempts = CASE WHEN ? THEN GREATEST(attempts - 1, 0) ELSE attempts END
+        WHERE id = ? AND status = 'claimed'
+        """,
+        restoreAttempt,
+        jobId);
+  }
+
+  /** The page a job is for, or null if it has none. */
+  public Long pageIdOf(Long jobId) {
+    return jobRepository.findById(jobId).map(Job::getPageId).orElse(null);
+  }
+
+  /** Guards a result write against a re-read of the same provider output. */
+  public boolean isStillClaimedBy(Long jobId, Long batchId) {
+    return jobRepository.isStillClaimedBy(jobId, batchId) > 0;
   }
 
   /** Marks a job as completed with an optional result payload. */

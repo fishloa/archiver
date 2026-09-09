@@ -383,8 +383,27 @@ class PipelineStateMachineTest {
 
     assertThat(advanced).isTrue();
     assertThat(getRecordStatus(recordId)).isEqualTo("embedding");
-    assertThat(countJobs(recordId, "embed_record", "pending")).isEqualTo(1);
+    // The embed job is enqueued on ENTRY to translating, not here — embedding is built from the
+    // original text and never needed the translation. Enqueueing again would embed twice.
+    assertThat(countJobs(recordId, "embed_record", "pending")).isEqualTo(0);
     assertThat(countPipelineEvents(recordId, "translation", "completed")).isEqualTo(1);
+  }
+
+  @Test
+  void embeddingIsEnqueuedOnEnteringTranslating_notAfterIt() {
+    // Chunks are built from the original text, so embedding never depended on translation.
+    // It used to wait for it anyway, which left semantic search dead for the length of a
+    // translation run — 27 hours at the measured rate, for no reason.
+    Long archiveId = createArchive();
+    Long recordId = createRecord(archiveId, "pdf_done", 1);
+    Long page1 = createPage(recordId, 1);
+    createPageText(page1);
+    createJob(recordId, page1, "translate_page", "pending");
+
+    stateMachine.autoAdvance(recordId);
+
+    assertThat(getRecordStatus(recordId)).isEqualTo("translating");
+    assertThat(countJobs(recordId, "embed_record", "pending")).isEqualTo(1);
   }
 
   @Test

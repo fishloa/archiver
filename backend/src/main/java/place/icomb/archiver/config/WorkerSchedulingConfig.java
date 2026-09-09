@@ -9,6 +9,7 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.scheduling.annotation.SchedulingConfigurer;
 import org.springframework.scheduling.config.ScheduledTaskRegistrar;
 import place.icomb.archiver.repository.AttachmentRepository;
+import place.icomb.archiver.repository.OcrBatchRepository;
 import place.icomb.archiver.repository.PageRepository;
 import place.icomb.archiver.repository.PageTextRepository;
 import place.icomb.archiver.service.ClaudeOcrWorker;
@@ -37,6 +38,7 @@ public class WorkerSchedulingConfig implements SchedulingConfigurer {
   private final AttachmentRepository attachmentRepository;
   private final StorageService storageService;
   private final PageTextRepository pageTextRepository;
+  private final OcrBatchRepository ocrBatchRepository;
   private final PersonMatchService personMatchService;
   private final org.springframework.jdbc.core.JdbcTemplate jdbcTemplate;
 
@@ -73,6 +75,7 @@ public class WorkerSchedulingConfig implements SchedulingConfigurer {
       AttachmentRepository attachmentRepository,
       StorageService storageService,
       PageTextRepository pageTextRepository,
+      OcrBatchRepository ocrBatchRepository,
       PersonMatchService personMatchService,
       org.springframework.jdbc.core.JdbcTemplate jdbcTemplate,
       @Value("${archiver.ocr.qwen.enabled:false}") boolean qwenEnabled,
@@ -103,6 +106,7 @@ public class WorkerSchedulingConfig implements SchedulingConfigurer {
     this.attachmentRepository = attachmentRepository;
     this.storageService = storageService;
     this.pageTextRepository = pageTextRepository;
+    this.ocrBatchRepository = ocrBatchRepository;
     this.personMatchService = personMatchService;
     this.jdbcTemplate = jdbcTemplate;
     this.qwenEnabled = qwenEnabled;
@@ -218,7 +222,8 @@ public class WorkerSchedulingConfig implements SchedulingConfigurer {
                 return storageService.getPath(attachment);
               },
               storageService,
-              jdbcTemplate,
+              ocrBatchRepository,
+              pageTextRepository,
               mistralApiKey,
               mistralModel,
               mistralBaseUrl,

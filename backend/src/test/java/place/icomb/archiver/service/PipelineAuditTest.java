@@ -29,6 +29,7 @@ class PipelineAuditTest {
           .withCommand("postgres", "-c", "max_connections=50");
 
   @Autowired private JobService jobService;
+  @Autowired private PipelineGateService gateService;
 
   @Value("${archiver.ocr.default-engine:ocr_page_qwen3vl}")
   private String defaultOcrEngine;
@@ -195,6 +196,63 @@ class PipelineAuditTest {
         .param("event", event)
         .query(Long.class)
         .single();
+  }
+
+  // ---------------------------------------------------------------------------
+  // Pipeline gates — pause a stage without losing its queue
+  // ---------------------------------------------------------------------------
+
+  @Test
+  void pausedKind_isNotClaimed_andItsWorkQueuesUp() {
+    Long archiveId = createArchive();
+    Long recordId = createRecord(archiveId, "ocr_pending", 1);
+    Long pageId = createPage(recordId, 1);
+    Long jobId = createJob(recordId, pageId, "ocr_page_mistral", "pending", 0);
+
+    gateService.set("ocr_page_mistral", true, "bad model", "test");
+
+    assertThat(jobService.claimJob("ocr_page_mistral")).isEmpty();
+    // The point of a gate: work is held, not cancelled.
+    assertThat(getJobStatus(jobId)).isEqualTo("pending");
+  }
+
+  @Test
+  void openingTheGate_releasesTheBacklog() {
+    Long archiveId = createArchive();
+    Long recordId = createRecord(archiveId, "ocr_pending", 1);
+    Long pageId = createPage(recordId, 1);
+    createJob(recordId, pageId, "ocr_page_mistral", "pending", 0);
+
+    gateService.set("ocr_page_mistral", true, "paused", "test");
+    assertThat(jobService.claimJob("ocr_page_mistral")).isEmpty();
+
+    gateService.set("ocr_page_mistral", false, null, "test");
+    assertThat(jobService.claimJob("ocr_page_mistral")).isPresent();
+  }
+
+  @Test
+  void aGateAffectsOnlyItsOwnKind() {
+    Long archiveId = createArchive();
+    Long recordId = createRecord(archiveId, "translating", 1);
+    Long pageId = createPage(recordId, 1);
+    createJob(recordId, pageId, "translate_page", "pending", 0);
+
+    gateService.set("ocr_page_mistral", true, "unrelated", "test");
+
+    assertThat(jobService.claimJob("translate_page")).isPresent();
+  }
+
+  @Test
+  void batchClaimRespectsTheSameGate() {
+    // The batch worker used to hold its own claim SQL and bypassed the gate entirely, so
+    // pausing a kind stopped every worker except the one doing the most expensive work.
+    Long archiveId = createArchive();
+    Long recordId = createRecord(archiveId, "ocr_pending", 1);
+    createPage(recordId, 1);
+
+    gateService.set("ocr_page_mistral", true, "paused", "test");
+
+    assertThat(jobService.claimBatch("ocr_page_mistral", 100, 1_000_000L, null)).isEmpty();
   }
 
   // ---------------------------------------------------------------------------

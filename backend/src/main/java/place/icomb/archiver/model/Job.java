@@ -19,6 +19,15 @@ public class Job {
   private Instant startedAt;
   private Instant finishedAt;
 
+  /**
+   * Batch this job was submitted in, or null when it is not at a provider.
+   *
+   * <p>Stale-claim recovery ignores jobs with a batch: one sitting in a provider's queue is
+   * legitimately claimed for as long as that queue takes, and releasing it would resubmit pages
+   * already being billed.
+   */
+  private Long batchId;
+
   public Job() {}
 
   public Long getId() {
@@ -99,6 +108,14 @@ public class Job {
 
   public void setStartedAt(Instant startedAt) {
     this.startedAt = startedAt;
+  }
+
+  public Long getBatchId() {
+    return batchId;
+  }
+
+  public void setBatchId(Long batchId) {
+    this.batchId = batchId;
   }
 
   public Instant getFinishedAt() {
