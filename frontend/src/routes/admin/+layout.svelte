@@ -2,7 +2,7 @@
 	import { page } from '$app/state';
 	import { invalidateAll } from '$app/navigation';
 	import { t } from '$lib/i18n';
-	import { ShieldCheck, RefreshCw, Users, Activity, Clock } from 'lucide-svelte';
+	import { ShieldCheck, RefreshCw, Users, Activity, Clock, SlidersHorizontal } from 'lucide-svelte';
 	import type { Snippet } from 'svelte';
 
 	let { children }: { children: Snippet } = $props();
@@ -10,7 +10,8 @@
 	const tabs = [
 		{ href: '/admin/users', labelKey: 'admin.tab.users' as const, icon: Users },
 		{ href: '/admin/audit', labelKey: 'admin.tab.audit' as const, icon: Activity },
-		{ href: '/admin/events', labelKey: 'admin.tab.events' as const, icon: Clock }
+		{ href: '/admin/events', labelKey: 'admin.tab.events' as const, icon: Clock },
+		{ href: '/admin/gates', labelKey: 'admin.tab.gates' as const, icon: SlidersHorizontal }
 	];
 
 	function isActive(href: string): boolean {

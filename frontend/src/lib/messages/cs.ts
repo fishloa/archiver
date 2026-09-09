@@ -145,6 +145,7 @@ export const cs: Record<MessageKey, string> = {
 	'admin.tab.users': 'Uživatelé',
 	'admin.tab.audit': 'Audit',
 	'admin.tab.events': 'Události',
+	'admin.tab.gates': 'Brány',
 	'admin.users': 'Uživatelé',
 	'admin.addUser': 'Přidat uživatele',
 	'admin.displayName': 'Zobrazované jméno',

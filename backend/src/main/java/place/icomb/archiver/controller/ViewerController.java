@@ -402,6 +402,9 @@ public class ViewerController {
       Map<String, Map<String, String>> modelsByKind) {
     Map<String, Object> stage = new LinkedHashMap<>();
     stage.put("name", name);
+    // The kinds this stage runs, so the dashboard can tell when a stage is deliberately held
+    // by a gate rather than mysteriously idle.
+    stage.put("kinds", jobKinds == null ? List.of() : List.of(jobKinds));
     // The model actually serving this stage, as reported by its live workers. Absent when no
     // worker is connected or the stage uses no model, so the dashboard shows nothing rather
     // than a stale or invented name.

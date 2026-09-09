@@ -147,6 +147,8 @@ export interface WorkerDetail {
 
 export interface PipelineStage {
   name: string;
+  /** Job kinds this stage runs; used to tell whether a gate is holding it. */
+  kinds?: string[];
   records: number;
   pages: number;
   jobsPending?: number;
@@ -188,6 +190,8 @@ export interface ScraperInfo {
 
 export interface PipelineStats {
   stages: PipelineStage[];
+  /** Job kinds currently held by an operator gate. */
+  pausedKinds?: string[];
   totals: { records: number; pages: number };
   scrapers?: ScraperInfo[];
 }
@@ -260,6 +264,40 @@ export async function fetchRecordTimeline(
 export async function fetchAdminStats(email?: string): Promise<Record<string, unknown>> {
   const res = await fetch(`${backendUrl()}/api/admin/stats`, {
     headers: authHeaders(email),
+  });
+  if (!res.ok) throw new Error(`Backend error: ${res.status}`);
+  return res.json();
+}
+
+export interface PipelineGate {
+  kind: string;
+  paused: boolean;
+  reason: string | null;
+  updated_at: string;
+  updated_by: string | null;
+}
+
+/** Gates hold a stage's work rather than cancelling it — see PipelineGateService. */
+export async function fetchGates(
+  email?: string,
+): Promise<{ gates: PipelineGate[]; pausedKinds: string[] }> {
+  const res = await fetch(`${backendUrl()}/api/admin/gates`, {
+    headers: authHeaders(email),
+  });
+  if (!res.ok) throw new Error(`Backend error: ${res.status}`);
+  return res.json();
+}
+
+export async function setGate(
+  email: string | undefined,
+  kind: string,
+  paused: boolean,
+  reason?: string,
+): Promise<Record<string, unknown>> {
+  const res = await fetch(`${backendUrl()}/api/admin/gates/${encodeURIComponent(kind)}`, {
+    method: "POST",
+    headers: { ...authHeaders(email), "Content-Type": "application/json" },
+    body: JSON.stringify({ paused, reason: reason ?? null }),
   });
   if (!res.ok) throw new Error(`Backend error: ${res.status}`);
   return res.json();

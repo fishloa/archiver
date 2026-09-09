@@ -11,7 +11,8 @@
 		AlertTriangle,
 		Radio,
 		Cpu,
-		Layers
+		Layers,
+		PauseCircle
 	} from 'lucide-svelte';
 	import type { PipelineStage, ScraperEntry } from '$lib/server/api';
 	import { language, t } from '$lib/i18n';
@@ -28,6 +29,15 @@
 		if (seconds < 60) return `${seconds}s`;
 		if (seconds < 3600) return `${Math.round(seconds / 60)}m`;
 		return `${Math.round(seconds / 360) / 10}h`;
+	}
+
+	/**
+	 * A gated stage is idle on purpose. Without this it looks identical to a broken one, which
+	 * is exactly the confusion the gate feature is meant to avoid.
+	 */
+	function isHeld(stage: { kinds?: string[] }): boolean {
+		const paused = data.stats?.pausedKinds ?? [];
+		return (stage.kinds ?? []).some((k: string) => paused.includes(k));
 	}
 
 	function providerHost(url: string): string {
@@ -185,7 +195,14 @@
 							<StageIcon size={16} color={cfg.color} strokeWidth={2} />
 						</div>
 						<div>
-							<div class="card-title" style="color: {cfg.color}">{stage.name}</div>
+							<div class="card-title" style="color: {cfg.color}">
+								{stage.name}
+								{#if isHeld(stage)}
+									<span class="held-badge" title="Held by an operator gate — work is queuing, not lost">
+										<PauseCircle size={11} strokeWidth={2.2} /> held
+									</span>
+								{/if}
+							</div>
 							<div class="card-desc">{cfg.desc}</div>
 						</div>
 						<div class="card-counts">
@@ -801,4 +818,20 @@
 		color: var(--vui-text-muted, currentColor);
 		opacity: 0.75;
 	}
-</style>\n
+	/* A stage held by an operator gate — idle on purpose, not broken. */
+	.held-badge {
+		display: inline-flex;
+		align-items: center;
+		gap: 3px;
+		margin-left: 6px;
+		font-size: 0.6rem;
+		font-weight: 600;
+		text-transform: uppercase;
+		letter-spacing: 0.04em;
+		padding: 1px 6px;
+		border-radius: 999px;
+		background: color-mix(in srgb, var(--vui-danger, #b45309) 15%, transparent);
+		color: var(--vui-danger, #b45309);
+		vertical-align: middle;
+	}
+</style>

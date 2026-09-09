@@ -143,6 +143,7 @@ export const en = {
 	'admin.tab.users': 'Users',
 	'admin.tab.audit': 'Audit',
 	'admin.tab.events': 'Events',
+	'admin.tab.gates': 'Gates',
 	'admin.users': 'Users',
 	'admin.addUser': 'Add User',
 	'admin.displayName': 'Display name',
