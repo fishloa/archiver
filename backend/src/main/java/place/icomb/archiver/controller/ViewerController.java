@@ -297,40 +297,8 @@ public class ViewerController {
     }
     ocrStage.put("workerDetails", ocrWorkerDetails);
 
-    // Batch progress. Without this the OCR stage is unreadable during a batched run: pages sit
-    // 'claimed' while the provider works, and `busy` caps that at the worker count, so hundreds
-    // of pages in flight render as "1/1 busy" against a slowly-falling pending count with no
-    // indication whether batches are moving, queued, or stuck.
-    Map<String, Object> batches =
-        jdbcTemplate.queryForMap(
-            """
-            SELECT
-              count(*) FILTER (WHERE status = 'submitted')                      AS in_flight,
-              COALESCE(sum(page_count) FILTER (WHERE status = 'submitted'), 0)  AS pages_in_flight,
-              count(*) FILTER (WHERE status = 'submitting')                     AS submitting,
-              count(*) FILTER (WHERE status = 'failed'
-                               AND created_at > now() - interval '24 hours')    AS failed_recently,
-              count(*) FILTER (WHERE status = 'collected'
-                               AND collected_at > now() - interval '1 hour')    AS collected_last_hour,
-              EXTRACT(EPOCH FROM (now() - min(submitted_at)
-                       FILTER (WHERE status = 'submitted')))::int               AS oldest_in_flight_seconds,
-              EXTRACT(EPOCH FROM (now() - max(last_polled_at)))::int            AS last_polled_seconds,
-              -- Billable pages. The provider charges per page attempted, so failures count.
-              -- There is no usage or billing endpoint on the API — every candidate route 404s —
-              -- so this is the only programmatic view of what a run is costing.
-              COALESCE(sum(COALESCE(succeeded, 0) + COALESCE(failed, 0)), 0)     AS pages_billed_total,
-              COALESCE(sum(COALESCE(succeeded, 0) + COALESCE(failed, 0))
-                       FILTER (WHERE created_at > now() - interval '24 hours'), 0)
-                                                                                AS pages_billed_24h
-            FROM provider_batch WHERE job_kind = 'ocr_page_mistral'
-            """);
-    // Priced from configuration rather than hardcoded: the rate is a commercial fact that
-    // changes without notice, and a stale constant here would quietly misreport a run's cost.
-    long billedTotal = ((Number) batches.getOrDefault("pages_billed_total", 0L)).longValue();
-    long billed24h = ((Number) batches.getOrDefault("pages_billed_24h", 0L)).longValue();
-    batches.put("cost_total", Math.round(billedTotal * ocrPricePerPage * 10000.0) / 10000.0);
-    batches.put("cost_24h", Math.round(billed24h * ocrPricePerPage * 10000.0) / 10000.0);
-    ocrStage.put("batches", batches);
+    ocrStage.put("batches", batchStats("ocr_page_mistral"));
+    ocrStage.put("batched", true);
     stages.add(ocrStage);
 
     stages.add(
@@ -371,6 +339,9 @@ public class ViewerController {
             modelsByKind);
     transStage.put("pagesDone", transPagesDone);
     transStage.put("pagesTotal", transPagesTotal);
+    transStage.put("batches", batchStats("translate_page"));
+    // A batched stage runs one orchestrator, so a worker count says nothing useful about it.
+    transStage.put("batched", true);
     stages.add(transStage);
 
     // "Complete" aggregates terminal statuses
@@ -399,6 +370,42 @@ public class ViewerController {
     result.put("totals", Map.of("records", totalRecords, "pages", totalPages));
     result.put("scrapers", jobEventService.getActiveScrapers());
     return ResponseEntity.ok(result);
+  }
+
+  /**
+   * Provider batch progress for a job kind.
+   *
+   * <p>Any batched stage needs this, not just OCR. Without it a batched stage is unreadable: work
+   * sits claimed while the provider runs it, and the worker count — one orchestrator — says nothing
+   * about throughput, so hundreds of pages in flight look like a single idle worker.
+   */
+  private Map<String, Object> batchStats(String jobKind) {
+    Map<String, Object> batches =
+        jdbcTemplate.queryForMap(
+            """
+            SELECT
+              count(*) FILTER (WHERE status = 'submitted')                      AS in_flight,
+              COALESCE(sum(page_count) FILTER (WHERE status = 'submitted'), 0)  AS pages_in_flight,
+              count(*) FILTER (WHERE status = 'submitting')                     AS submitting,
+              count(*) FILTER (WHERE status = 'failed'
+                               AND created_at > now() - interval '24 hours')    AS failed_recently,
+              count(*) FILTER (WHERE status = 'collected'
+                               AND collected_at > now() - interval '1 hour')    AS collected_last_hour,
+              EXTRACT(EPOCH FROM (now() - min(submitted_at)
+                       FILTER (WHERE status = 'submitted')))::int               AS oldest_in_flight_seconds,
+              EXTRACT(EPOCH FROM (now() - max(last_polled_at)))::int            AS last_polled_seconds,
+              COALESCE(sum(COALESCE(succeeded, 0) + COALESCE(failed, 0)), 0)    AS pages_billed_total,
+              COALESCE(sum(COALESCE(succeeded, 0) + COALESCE(failed, 0))
+                       FILTER (WHERE created_at > now() - interval '24 hours'), 0)
+                                                                                AS pages_billed_24h
+            FROM provider_batch WHERE job_kind = ?
+            """,
+            jobKind);
+    long billedTotal = ((Number) batches.getOrDefault("pages_billed_total", 0L)).longValue();
+    long billed24h = ((Number) batches.getOrDefault("pages_billed_24h", 0L)).longValue();
+    batches.put("cost_total", Math.round(billedTotal * ocrPricePerPage * 10000.0) / 10000.0);
+    batches.put("cost_24h", Math.round(billed24h * ocrPricePerPage * 10000.0) / 10000.0);
+    return batches;
   }
 
   private Map<String, Object> buildStage(

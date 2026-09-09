@@ -149,6 +149,8 @@ export interface PipelineStage {
   name: string;
   /** Job kinds this stage runs; used to tell whether a gate is holding it. */
   kinds?: string[];
+  /** True when the stage submits work to a provider in batches rather than per job. */
+  batched?: boolean;
   records: number;
   pages: number;
   jobsPending?: number;

@@ -323,6 +323,13 @@
 						</div>
 					{/if}
 
+					{#if stage.batched}
+						<div class="batched-note">
+							Submitted to the provider in batches — throughput comes from batch size, not
+							from the number of workers.
+						</div>
+					{/if}
+
 					<!-- Workers row -->
 					{#if hasJobs}
 						<div class="workers-row">
@@ -879,5 +886,13 @@
 		background: color-mix(in srgb, var(--vui-danger, #b45309) 15%, transparent);
 		color: var(--vui-danger, #b45309);
 		vertical-align: middle;
+	}
+	.batched-note {
+		font-size: 0.66rem;
+		color: var(--vui-text-muted, currentColor);
+		opacity: 0.7;
+		line-height: 1.4;
+		margin: 0 0 0.5rem;
+		max-width: 60ch;
 	}
 </style>
