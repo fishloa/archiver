@@ -49,7 +49,7 @@ public class PdfExportService {
 
   /** A renderer wired to this record's scans, so figures can be cut out and drawn inline. */
   private MarkdownPdfRenderer newRenderer(PDDocument doc) throws IOException {
-    MarkdownPdfRenderer renderer = newRenderer(doc);
+    MarkdownPdfRenderer renderer = new MarkdownPdfRenderer(doc);
     renderer.setOcrImageService(ocrImageService);
     return renderer;
   }
