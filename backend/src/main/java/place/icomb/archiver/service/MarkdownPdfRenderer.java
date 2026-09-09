@@ -45,6 +45,14 @@ public class MarkdownPdfRenderer {
   private static final Pattern IMAGE = Pattern.compile("!\\[[^\\]]*\\]\\(([^)]*)\\)");
   private static final Pattern TABLE_DIVIDER = Pattern.compile("^\\|[\\s:|-]+\\|$");
 
+  /**
+   * A typescript's centred page number, which is byte-identical to a markdown bullet.
+   *
+   * <p>"- 5 -" is how nearly every page in this archive numbers itself, and rendering it as a
+   * bullet put a bullet at the top of thousands of pages.
+   */
+  private static final Pattern PAGE_NUMBER = Pattern.compile("^[-–—]\\s*\\d{1,4}\\s*[-–—]$");
+
   private final PDDocument doc;
   private final PDFont regular;
   private final PDFont bold;
@@ -204,7 +212,7 @@ public class MarkdownPdfRenderer {
             drawSpans(
                 cs,
                 List.of(new Span(line, row.header(), BODY_SIZE - 0.5f)),
-                cell.x() + CELL_PAD,
+                x + cell.x() + CELL_PAD,
                 cy);
             cy -= (LEADING - BODY_SIZE) * 0.5f;
           }
@@ -288,6 +296,10 @@ public class MarkdownPdfRenderer {
 
       String bulletBody = null;
       float indent = 0;
+      if (PAGE_NUMBER.matcher(t).matches()) {
+        out.add(new TextEl(parseSpans(t, BODY_SIZE), 0, LEADING));
+        continue;
+      }
       if (t.startsWith("- ") || t.startsWith("* ")) {
         bulletBody = "• " + t.substring(2);
         indent = 10f;

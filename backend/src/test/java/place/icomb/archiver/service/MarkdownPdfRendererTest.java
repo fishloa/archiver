@@ -87,6 +87,69 @@ class MarkdownPdfRendererTest {
   }
 
   @Test
+  void tableCellsStartInsideTheTextMargin() throws Exception {
+    // The row draw omitted the box's x origin, so the first column landed at the page edge —
+    // outside the margin and out of line with every other element on the page.
+    var xs = new java.util.HashMap<String, Float>();
+    try (PDDocument doc = new PDDocument()) {
+      new MarkdownPdfRenderer(doc)
+          .renderPage(
+              doc,
+              """
+              Ordinary prose for comparison.
+
+              | Unit | Litres |
+              | --- | --- |
+              | Wachbataillon | 925 |
+              """,
+              "Page 1",
+              null);
+      ByteArrayOutputStream out = new ByteArrayOutputStream();
+      doc.save(out);
+      try (PDDocument read = Loader.loadPDF(out.toByteArray())) {
+        new PDFTextStripper() {
+          @Override
+          protected void writeString(String text, java.util.List<TextPosition> positions) {
+            if (!positions.isEmpty()) {
+              xs.putIfAbsent(text.strip(), positions.get(0).getXDirAdj());
+            }
+          }
+        }.getText(read);
+      }
+    }
+    float prose =
+        xs.entrySet().stream()
+            .filter(e -> e.getKey().startsWith("Ordinary"))
+            .map(Map.Entry::getValue)
+            .findFirst()
+            .orElseThrow();
+    float firstCell =
+        xs.entrySet().stream()
+            .filter(e -> e.getKey().startsWith("Wachbataillon"))
+            .map(Map.Entry::getValue)
+            .findFirst()
+            .orElseThrow();
+    // Inside the margin, and within a cell's padding of where the prose starts.
+    assertThat(firstCell).isGreaterThanOrEqualTo(prose);
+    assertThat(firstCell).isLessThan(prose + 12f);
+  }
+
+  @Test
+  void aCentredPageNumberIsNotABullet() throws Exception {
+    // "- 5 -" is how nearly every typescript in this archive numbers itself, and it is
+    // byte-identical to a markdown bullet.
+    String text = renderAndExtract("- 5 -\n\n66\n\nsought to strengthen the Czech element.");
+    assertThat(text).contains("- 5 -");
+    assertThat(text).doesNotContain("\u2022");
+  }
+
+  @Test
+  void anActualBulletStillGetsOne() throws Exception {
+    String text = renderAndExtract("- first item\n- second item");
+    assertThat(text).contains("\u2022");
+  }
+
+  @Test
   void headingsAreLargerThanBodyText() throws Exception {
     // Bold alone at body size did not read as a title in a half-page column.
     var sizes = new java.util.HashMap<String, Float>();
