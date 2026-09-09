@@ -29,7 +29,7 @@
 	let timelineOpen = $state(false);
 	let exportPages = $state('');
 	/** Which rendering an export produces: the scans, or the English translation. */
-	let exportVariant = $state<'original' | 'english'>('original');
+	let exportVariant = $state<'original' | 'english' | 'side-by-side'>('original');
 	let adminDropdownOpen = $state(false);
 	let confirmAction = $state<string | null>(null);
 	let isAdmin = $derived(data.user?.role === 'admin');
@@ -194,10 +194,11 @@
 				<select
 					bind:value={exportVariant}
 					class="px-2 py-1.5 rounded-md border border-border bg-bg-deep text-text text-[length:var(--vui-text-sm)] focus:outline-none focus:ring-1 focus:ring-accent"
-					title="Original scans, or the English translation rendered from the transcription"
+					title="Original scans with a searchable text layer, the English translation as text, or both facing each other"
 				>
 					<option value="original">Original scans</option>
 					<option value="english">English translation</option>
+					<option value="side-by-side">Side by side</option>
 				</select>
 				<input
 					type="text"

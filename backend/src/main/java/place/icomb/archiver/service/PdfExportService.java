@@ -20,6 +20,14 @@ import place.icomb.archiver.repository.PageRepository;
 @Service
 public class PdfExportService {
 
+  private static final org.slf4j.Logger log =
+      org.slf4j.LoggerFactory.getLogger(PdfExportService.class);
+
+  /** Base URL used in the side-by-side footer, so an extract can be traced back to the archive. */
+  @org.springframework.beans.factory.annotation.Value(
+      "${archiver.public-url:https://archive.czernin.eu}")
+  private String publicUrl;
+
   private final PageRepository pageRepository;
   private final AttachmentRepository attachmentRepository;
   private final StorageService storageService;
@@ -41,7 +49,9 @@ public class PdfExportService {
     /** The scanned images, exactly as held. */
     ORIGINAL,
     /** The English translation, rendered from the markdown the OCR produced. */
-    ENGLISH
+    ENGLISH,
+    /** Scan and translation facing each other on one landscape page. */
+    SIDE_BY_SIDE
   }
 
   /**
@@ -90,10 +100,221 @@ public class PdfExportService {
    */
   public byte[] buildPdf(Long recordId, List<Integer> seqNumbers, Variant variant)
       throws IOException {
-    if (variant == Variant.ENGLISH) {
-      return buildEnglishPdf(recordId, seqNumbers);
+    return switch (variant) {
+      case ENGLISH -> buildEnglishPdf(recordId, seqNumbers);
+      case SIDE_BY_SIDE -> buildSideBySidePdf(recordId, seqNumbers);
+      case ORIGINAL -> buildOriginalPdf(recordId, seqNumbers);
+    };
+  }
+
+  /**
+   * Scan and translation facing each other, one landscape page per source page.
+   *
+   * <p>The scan carries an invisible text layer positioned from the OCR engine's own block
+   * coordinates, so selecting or searching text in the image half lands on the right words — rather
+   * than the evenly-spread approximation that puts every line at the left margin.
+   *
+   * <p>A footer links back to the page in the archive, so a printed or forwarded extract can be
+   * traced to its source.
+   */
+  private byte[] buildSideBySidePdf(Long recordId, List<Integer> seqNumbers) throws IOException {
+    final float margin = 28f;
+    final float gutter = 16f;
+    final float footerHeight = 22f;
+
+    try (PDDocument doc = new PDDocument()) {
+      MarkdownPdfRenderer renderer = new MarkdownPdfRenderer(doc);
+      PDRectangle landscape =
+          new PDRectangle(PDRectangle.A4.getHeight(), PDRectangle.A4.getWidth());
+
+      for (int seq : seqNumbers) {
+        List<java.util.Map<String, Object>> rows =
+            jdbcTemplate.queryForList(
+                """
+                SELECT p.id AS page_id, p.attachment_id, pt.text_en, pt.text_raw,
+                       pt.raw_response::text AS raw_response
+                FROM page p LEFT JOIN page_text pt ON pt.page_id = p.id
+                WHERE p.record_id = ? AND p.seq = ?
+                """,
+                recordId,
+                seq);
+        if (rows.isEmpty()) {
+          continue;
+        }
+        java.util.Map<String, Object> row = rows.get(0);
+
+        String english = (String) row.get("text_en");
+        String raw = (String) row.get("text_raw");
+        String rightText =
+            english != null && !english.isBlank() ? english : (raw == null ? "" : raw);
+
+        float halfWidth = (landscape.getWidth() - 2 * margin - gutter) / 2f;
+        float contentTop = landscape.getHeight() - margin;
+        float contentBottom = margin + footerHeight;
+
+        List<MarkdownPdfRenderer.Line> lines = renderer.layoutTo(rightText, halfWidth);
+        int lineIndex = 0;
+        int pageOfPage = 0;
+
+        do {
+          PDPage page = new PDPage(landscape);
+          doc.addPage(page);
+          pageOfPage++;
+          try (PDPageContentStream cs = new PDPageContentStream(doc, page)) {
+            // Left: the scan, on the first page for this source page only — a long translation
+            // continues beside blank space rather than repeating the image.
+            if (pageOfPage == 1 && row.get("attachment_id") != null) {
+              drawScanWithInvisibleText(
+                  doc,
+                  cs,
+                  renderer,
+                  ((Number) row.get("attachment_id")).longValue(),
+                  (String) row.get("raw_response"),
+                  raw,
+                  margin,
+                  contentBottom,
+                  halfWidth,
+                  contentTop - contentBottom);
+            }
+
+            // Right: the translation.
+            lineIndex =
+                renderer.drawLines(
+                    cs, lines, lineIndex, margin + halfWidth + gutter, contentTop, contentBottom);
+
+            // Footer: where this page lives in the archive.
+            String url = publicUrl + "/records/" + recordId + "/pages/" + seq;
+            cs.beginText();
+            cs.setFont(renderer.regularFont(), 7f);
+            cs.newLineAtOffset(margin, margin);
+            cs.showText(renderer.forDrawing(url + (pageOfPage > 1 ? "   (cont.)" : "")));
+            cs.endText();
+          }
+        } while (lineIndex < lines.size());
+      }
+
+      if (doc.getNumberOfPages() == 0) {
+        throw new IOException("No valid pages found for the given selection");
+      }
+      ByteArrayOutputStream out = new ByteArrayOutputStream();
+      doc.save(out);
+      return out.toByteArray();
     }
-    return buildOriginalPdf(recordId, seqNumbers);
+  }
+
+  /** Draws the scan scaled into a box, with an invisible text layer over it. */
+  private void drawScanWithInvisibleText(
+      PDDocument doc,
+      PDPageContentStream cs,
+      MarkdownPdfRenderer renderer,
+      long attachmentId,
+      String rawResponseJson,
+      String plainText,
+      float boxX,
+      float boxY,
+      float boxW,
+      float boxH)
+      throws IOException {
+    Attachment attachment = attachmentRepository.findById(attachmentId).orElse(null);
+    if (attachment == null) {
+      return;
+    }
+    PDImageXObject image =
+        PDImageXObject.createFromFileByContent(storageService.getPath(attachment).toFile(), doc);
+
+    float scale = Math.min(boxW / image.getWidth(), boxH / image.getHeight());
+    float drawW = image.getWidth() * scale;
+    float drawH = image.getHeight() * scale;
+    float drawX = boxX + (boxW - drawW) / 2f;
+    float drawY = boxY + (boxH - drawH) / 2f;
+    cs.drawImage(image, drawX, drawY, drawW, drawH);
+
+    drawInvisibleTextLayer(cs, renderer, rawResponseJson, drawX, drawY, drawW, drawH);
+  }
+
+  /**
+   * Draws the OCR text invisibly over a drawn image.
+   *
+   * <p>Positioned from the engine's block boxes and scaled onto wherever the image landed, so a
+   * selection in the PDF matches the words under it.
+   */
+  private void drawInvisibleTextLayer(
+      PDPageContentStream cs,
+      MarkdownPdfRenderer renderer,
+      String rawResponseJson,
+      float drawX,
+      float drawY,
+      float drawW,
+      float drawH)
+      throws IOException {
+    List<Block> blocks = parseBlocks(rawResponseJson);
+    if (blocks.isEmpty()) {
+      return;
+    }
+
+    cs.setRenderingMode(org.apache.pdfbox.pdmodel.graphics.state.RenderingMode.NEITHER);
+    for (Block b : blocks) {
+      if (b.content() == null || b.content().isBlank()) continue;
+
+      float sx = drawW / b.pageWidth();
+      float sy = drawH / b.pageHeight();
+      String[] blockLines = b.content().split("\\n");
+      float blockH = (b.bottom() - b.top()) * sy;
+      float lineH = Math.max(4f, blockH / Math.max(1, blockLines.length));
+
+      for (int i = 0; i < blockLines.length; i++) {
+        String text = renderer.forDrawing(blockLines[i]);
+        if (text.isBlank()) continue;
+        float size = Math.max(3f, Math.min(lineH * 0.85f, 14f));
+        // PDF space starts at the bottom of the page, the scan's at the top.
+        float y = drawY + drawH - (b.top() * sy) - (i + 1) * lineH;
+        float x = drawX + b.left() * sx;
+        cs.beginText();
+        cs.setFont(renderer.regularFont(), size);
+        cs.newLineAtOffset(x, y);
+        cs.showText(text);
+        cs.endText();
+      }
+    }
+    cs.setRenderingMode(org.apache.pdfbox.pdmodel.graphics.state.RenderingMode.FILL);
+  }
+
+  private record Block(
+      String content,
+      float left,
+      float top,
+      float right,
+      float bottom,
+      float pageWidth,
+      float pageHeight) {}
+
+  /** Reads block boxes from the OCR response, tolerating anything unexpected. */
+  private List<Block> parseBlocks(String rawResponseJson) {
+    List<Block> out = new java.util.ArrayList<>();
+    if (rawResponseJson == null || rawResponseJson.isBlank()) return out;
+    try {
+      com.fasterxml.jackson.databind.JsonNode root =
+          new com.fasterxml.jackson.databind.ObjectMapper().readTree(rawResponseJson);
+      com.fasterxml.jackson.databind.JsonNode page = root.path("pages").path(0);
+      float pw = (float) page.path("dimensions").path("width").asDouble(0);
+      float ph = (float) page.path("dimensions").path("height").asDouble(0);
+      if (pw <= 0 || ph <= 0) return out;
+      for (com.fasterxml.jackson.databind.JsonNode b : page.path("blocks")) {
+        out.add(
+            new Block(
+                b.path("content").asText(""),
+                (float) b.path("top_left_x").asDouble(0),
+                (float) b.path("top_left_y").asDouble(0),
+                (float) b.path("bottom_right_x").asDouble(0),
+                (float) b.path("bottom_right_y").asDouble(0),
+                pw,
+                ph));
+      }
+    } catch (Exception e) {
+      // An unreadable response costs the invisible layer, not the export.
+      log.warn("Could not read OCR blocks for the invisible text layer", e);
+    }
+    return out;
   }
 
   private byte[] buildEnglishPdf(Long recordId, List<Integer> seqNumbers) throws IOException {
@@ -139,14 +360,22 @@ public class PdfExportService {
     }
   }
 
+  /**
+   * The scans, with an invisible text layer over each.
+   *
+   * <p>The text is positioned from the OCR engine's own block coordinates, so selecting or
+   * searching in the exported scan lands on the right words. Without it the export is a bag of
+   * pictures: visually complete and completely unsearchable.
+   */
   private byte[] buildOriginalPdf(Long recordId, List<Integer> seqNumbers) throws IOException {
     try (PDDocument doc = new PDDocument()) {
+      MarkdownPdfRenderer renderer = new MarkdownPdfRenderer(doc);
+
       for (int seq : seqNumbers) {
         Page page = pageRepository.findByRecordIdAndSeq(recordId, seq).orElse(null);
         if (page == null || page.getAttachmentId() == null) {
-          continue; // skip missing pages
+          continue;
         }
-
         Attachment attachment = attachmentRepository.findById(page.getAttachmentId()).orElse(null);
         if (attachment == null) {
           continue;
@@ -155,22 +384,26 @@ public class PdfExportService {
         Path imagePath = storageService.getPath(attachment);
         PDImageXObject image = PDImageXObject.createFromFileByContent(imagePath.toFile(), doc);
 
-        // Size the PDF page to match the image dimensions (in points, 72 dpi)
         float imgWidth = image.getWidth();
         float imgHeight = image.getHeight();
-        PDRectangle pageSize = new PDRectangle(imgWidth, imgHeight);
-        PDPage pdfPage = new PDPage(pageSize);
+        PDPage pdfPage = new PDPage(new PDRectangle(imgWidth, imgHeight));
         doc.addPage(pdfPage);
+
+        List<java.util.Map<String, Object>> rows =
+            jdbcTemplate.queryForList(
+                "SELECT raw_response::text AS raw_response FROM page_text WHERE page_id = ?",
+                page.getId());
+        String rawResponse = rows.isEmpty() ? null : (String) rows.get(0).get("raw_response");
 
         try (PDPageContentStream cs = new PDPageContentStream(doc, pdfPage)) {
           cs.drawImage(image, 0, 0, imgWidth, imgHeight);
+          drawInvisibleTextLayer(cs, renderer, rawResponse, 0, 0, imgWidth, imgHeight);
         }
       }
 
       if (doc.getNumberOfPages() == 0) {
         throw new IOException("No valid pages found for the given selection");
       }
-
       ByteArrayOutputStream out = new ByteArrayOutputStream();
       doc.save(out);
       return out.toByteArray();

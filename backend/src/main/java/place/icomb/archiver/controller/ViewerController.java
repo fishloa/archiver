@@ -776,16 +776,20 @@ public class ViewerController {
 
     try {
       PdfExportService.Variant v =
-          "english".equalsIgnoreCase(variant)
-              ? PdfExportService.Variant.ENGLISH
-              : PdfExportService.Variant.ORIGINAL;
+          switch (variant == null ? "original" : variant.toLowerCase()) {
+            case "english" -> PdfExportService.Variant.ENGLISH;
+            case "side-by-side", "sidebyside" -> PdfExportService.Variant.SIDE_BY_SIDE;
+            default -> PdfExportService.Variant.ORIGINAL;
+          };
       byte[] pdfBytes = pdfExportService.buildPdf(recordId, seqNumbers, v);
       ByteArrayResource resource = new ByteArrayResource(pdfBytes);
-      String filename =
-          "record-"
-              + recordId
-              + (v == PdfExportService.Variant.ENGLISH ? "-english" : "-pages")
-              + ".pdf";
+      String suffix =
+          switch (v) {
+            case ENGLISH -> "-english";
+            case SIDE_BY_SIDE -> "-side-by-side";
+            case ORIGINAL -> "-pages";
+          };
+      String filename = "record-" + recordId + suffix + ".pdf";
       return ResponseEntity.ok()
           .contentType(MediaType.APPLICATION_PDF)
           .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + filename + "\"")

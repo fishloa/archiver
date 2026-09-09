@@ -46,7 +46,7 @@ public class MarkdownPdfRenderer {
    *     the export stays aligned with the original
    */
   public int renderPage(PDDocument doc, String markdown, String header) throws IOException {
-    List<Line> lines = layout(markdown == null ? "" : markdown);
+    List<Line> lines = layout(markdown == null ? "" : markdown, PAGE_SIZE.getWidth() - 2 * MARGIN);
     int pagesUsed = 0;
     int i = 0;
 
@@ -81,11 +81,54 @@ public class MarkdownPdfRenderer {
     return pagesUsed;
   }
 
-  private record Line(String text, float size, boolean bold, float indent, float leading) {}
+  /** A laid-out line, ready to draw. */
+  public record Line(String text, float size, boolean bold, float indent, float leading) {}
 
-  private List<Line> layout(String markdown) throws IOException {
+  /** Lays markdown out to a given width, for callers drawing into their own box. */
+  public List<Line> layoutTo(String markdown, float width) throws IOException {
+    return layout(markdown == null ? "" : markdown, width);
+  }
+
+  /**
+   * Draws laid-out lines into a box, stopping when it runs out of room.
+   *
+   * @return index of the first line that did not fit, so a caller can continue on another page
+   */
+  public int drawLines(
+      PDPageContentStream cs, List<Line> lines, int from, float x, float yTop, float yBottom)
+      throws IOException {
+    float y = yTop;
+    int i = from;
+    while (i < lines.size() && y > yBottom) {
+      Line line = lines.get(i);
+      if (!line.text().isEmpty()) {
+        cs.beginText();
+        cs.setFont(line.bold() ? bold : regular, line.size());
+        cs.newLineAtOffset(x + line.indent(), y);
+        cs.showText(sanitise(line.text()));
+        cs.endText();
+      }
+      y -= line.leading();
+      i++;
+    }
+    return i;
+  }
+
+  public PDFont regularFont() {
+    return regular;
+  }
+
+  /** Width of a string at a size, for fitting invisible text to a scanned block. */
+  public float widthOf(String s, float size) throws IOException {
+    return stringWidth(regular, size, s);
+  }
+
+  public String forDrawing(String s) {
+    return sanitise(s);
+  }
+
+  private List<Line> layout(String markdown, float width) throws IOException {
     List<Line> out = new ArrayList<>();
-    float width = PAGE_SIZE.getWidth() - 2 * MARGIN;
 
     for (String raw : markdown.split("\n", -1)) {
       String line = raw.stripTrailing();
