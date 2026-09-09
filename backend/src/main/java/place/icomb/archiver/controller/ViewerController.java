@@ -316,7 +316,7 @@ public class ViewerController {
               COALESCE(sum(COALESCE(succeeded, 0) + COALESCE(failed, 0))
                        FILTER (WHERE created_at > now() - interval '24 hours'), 0)
                                                                                 AS pages_billed_24h
-            FROM ocr_batch
+            FROM provider_batch WHERE job_kind = 'ocr_page_mistral'
             """);
     // Priced from configuration rather than hardcoded: the rate is a commercial fact that
     // changes without notice, and a stale constant here would quietly misreport a run's cost.
