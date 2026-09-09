@@ -70,6 +70,27 @@ public interface JobRepository extends CrudRepository<Job, Long> {
       @Param("batchId") Long batchId);
 
   /**
+   * Claims a fixed number of pending jobs for a batch.
+   *
+   * <p>For stages whose request payload is text rather than an image, where a byte budget would be
+   * pointless — a page of markdown is a few kilobytes, so the count is what matters.
+   */
+  @Query(
+      """
+      UPDATE job SET status = 'claimed', attempts = attempts + 1, started_at = now(),
+                     batch_id = :batchId
+      WHERE id IN (
+          SELECT id FROM job
+          WHERE kind = :kind AND status = 'pending' AND batch_id IS NULL
+          ORDER BY id
+          LIMIT :maxRows)
+        AND status = 'pending'
+      RETURNING *
+      """)
+  List<Job> claimBatchByCount(
+      @Param("kind") String kind, @Param("maxRows") int maxRows, @Param("batchId") Long batchId);
+
+  /**
    * Returns a batch's jobs to the queue.
    *
    * <p>{@code restoreAttempt} undoes the claim's attempt increment, for the case where the provider

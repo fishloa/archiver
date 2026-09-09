@@ -101,6 +101,15 @@ public class JobService {
     return jobRepository.claimBatch(kind, maxRows, maxBytes, batchId);
   }
 
+  /** As {@link #claimBatch}, for stages sized by count rather than by payload bytes. */
+  @Transactional
+  public List<Job> claimBatchByCount(String kind, int maxRows, Long batchId) {
+    if (gateService.isPaused(kind)) {
+      return List.of();
+    }
+    return jobRepository.claimBatchByCount(kind, maxRows, batchId);
+  }
+
   /** Returns a batch's still-claimed jobs to the queue. */
   @Transactional
   public int releaseBatch(Long batchId, boolean restoreAttempt) {
@@ -126,6 +135,10 @@ public class JobService {
         """,
         restoreAttempt,
         jobId);
+  }
+
+  public Optional<Job> findById(Long jobId) {
+    return jobRepository.findById(jobId);
   }
 
   /** The page a job is for, or null if it has none. */

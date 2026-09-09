@@ -5,13 +5,13 @@ import org.springframework.data.annotation.Id;
 import org.springframework.data.relational.core.mapping.Table;
 
 /**
- * One submission to an OCR provider's batch API.
+ * One submission to a provider's batch API.
  *
  * <p>Holds all in-flight state, so a backend restart resumes from the table rather than from
  * memory. {@code status} moves submitting → submitted → collected, or → failed.
  */
-@Table("ocr_batch")
-public class OcrBatch {
+@Table("provider_batch")
+public class ProviderBatch {
 
   /** Claimed locally, provider not yet confirmed. A crash here is reconcilable. */
   public static final String SUBMITTING = "submitting";

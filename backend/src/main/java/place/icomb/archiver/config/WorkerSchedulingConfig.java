@@ -9,18 +9,21 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.scheduling.annotation.SchedulingConfigurer;
 import org.springframework.scheduling.config.ScheduledTaskRegistrar;
 import place.icomb.archiver.repository.AttachmentRepository;
-import place.icomb.archiver.repository.OcrBatchRepository;
 import place.icomb.archiver.repository.PageRepository;
 import place.icomb.archiver.repository.PageTextRepository;
+import place.icomb.archiver.repository.ProviderBatchRepository;
+import place.icomb.archiver.service.BatchOrchestrator;
 import place.icomb.archiver.service.ClaudeOcrWorker;
 import place.icomb.archiver.service.JobEventService;
 import place.icomb.archiver.service.JobService;
-import place.icomb.archiver.service.MistralBatchOcrWorker;
+import place.icomb.archiver.service.MistralBatchClient;
+import place.icomb.archiver.service.OcrBatchStage;
 import place.icomb.archiver.service.PersonMatchService;
 import place.icomb.archiver.service.PersonMatchWorker;
 import place.icomb.archiver.service.QwenOcrWorker;
 import place.icomb.archiver.service.RecordEventService;
 import place.icomb.archiver.service.StorageService;
+import place.icomb.archiver.service.TranslateBatchStage;
 
 /**
  * Dynamically registers N scheduled tasks per internal worker type based on configuration. Each
@@ -38,7 +41,7 @@ public class WorkerSchedulingConfig implements SchedulingConfigurer {
   private final AttachmentRepository attachmentRepository;
   private final StorageService storageService;
   private final PageTextRepository pageTextRepository;
-  private final OcrBatchRepository ocrBatchRepository;
+  private final ProviderBatchRepository providerBatchRepository;
   private final PersonMatchService personMatchService;
   private final org.springframework.jdbc.core.JdbcTemplate jdbcTemplate;
 
@@ -63,6 +66,10 @@ public class WorkerSchedulingConfig implements SchedulingConfigurer {
   private final int mistralMaxBatchPages;
   private final long mistralMaxBatchBytes;
   private final int mistralPagesPerMinute;
+  private final boolean translateBatchEnabled;
+  private final String translateBatchModel;
+  private final int translateBatchSize;
+  private final int translatePerMinute;
 
   private final boolean personMatchEnabled;
   private final long personMatchPollInterval;
@@ -75,7 +82,7 @@ public class WorkerSchedulingConfig implements SchedulingConfigurer {
       AttachmentRepository attachmentRepository,
       StorageService storageService,
       PageTextRepository pageTextRepository,
-      OcrBatchRepository ocrBatchRepository,
+      ProviderBatchRepository providerBatchRepository,
       PersonMatchService personMatchService,
       org.springframework.jdbc.core.JdbcTemplate jdbcTemplate,
       @Value("${archiver.ocr.qwen.enabled:false}") boolean qwenEnabled,
@@ -97,6 +104,10 @@ public class WorkerSchedulingConfig implements SchedulingConfigurer {
       @Value("${archiver.ocr.mistral.max-batch-pages:1000}") int mistralMaxBatchPages,
       @Value("${archiver.ocr.mistral.max-batch-bytes:209715200}") long mistralMaxBatchBytes,
       @Value("${archiver.ocr.mistral.pages-per-minute:1250}") int mistralPagesPerMinute,
+      @Value("${archiver.translate.batch.enabled:false}") boolean translateBatchEnabled,
+      @Value("${archiver.translate.batch.model:mistral-small-latest}") String translateBatchModel,
+      @Value("${archiver.translate.batch.size:2000}") int translateBatchSize,
+      @Value("${archiver.translate.batch.pages-per-minute:5000}") int translatePerMinute,
       @Value("${archiver.person-match.enabled:true}") boolean personMatchEnabled,
       @Value("${archiver.person-match.poll-interval:5000}") long personMatchPollInterval) {
     this.jobService = jobService;
@@ -106,7 +117,7 @@ public class WorkerSchedulingConfig implements SchedulingConfigurer {
     this.attachmentRepository = attachmentRepository;
     this.storageService = storageService;
     this.pageTextRepository = pageTextRepository;
-    this.ocrBatchRepository = ocrBatchRepository;
+    this.providerBatchRepository = providerBatchRepository;
     this.personMatchService = personMatchService;
     this.jdbcTemplate = jdbcTemplate;
     this.qwenEnabled = qwenEnabled;
@@ -128,6 +139,10 @@ public class WorkerSchedulingConfig implements SchedulingConfigurer {
     this.mistralMaxBatchPages = mistralMaxBatchPages;
     this.mistralMaxBatchBytes = mistralMaxBatchBytes;
     this.mistralPagesPerMinute = mistralPagesPerMinute;
+    this.translateBatchEnabled = translateBatchEnabled;
+    this.translateBatchModel = translateBatchModel;
+    this.translateBatchSize = translateBatchSize;
+    this.translatePerMinute = translatePerMinute;
     this.personMatchEnabled = personMatchEnabled;
     this.personMatchPollInterval = personMatchPollInterval;
   }
@@ -138,6 +153,7 @@ public class WorkerSchedulingConfig implements SchedulingConfigurer {
         (qwenEnabled ? qwenConcurrency : 0)
             + (claudeOcrEnabled ? claudeConcurrency : 0)
             + (mistralOcrEnabled ? 1 : 0)
+            + (translateBatchEnabled ? 1 : 0)
             + (personMatchEnabled ? 1 : 0);
     if (totalWorkers == 0) return;
 
@@ -197,16 +213,13 @@ public class WorkerSchedulingConfig implements SchedulingConfigurer {
     }
 
     if (mistralOcrEnabled) {
-      // Exactly one instance. The phases inside a tick run in sequence and all in-flight state
-      // lives in ocr_batch, so a second instance would buy nothing and would need locking.
-      // Throughput comes from batch size, not from thread count — which is the whole point of
-      // moving off the interactive endpoint.
-      var worker =
-          new MistralBatchOcrWorker(
-              "mistral-batch-0",
-              jobService,
-              jobEventService,
-              recordEventService,
+      var client = new MistralBatchClient(mistralApiKey, mistralBaseUrl);
+
+      // OCR. One orchestrator instance per stage: the phases run in sequence, so nothing needs
+      // locking, and throughput comes from batch size rather than thread count.
+      var ocrStage =
+          new OcrBatchStage(
+              mistralModel,
               pageId -> {
                 var page =
                     pageRepository
@@ -221,24 +234,50 @@ public class WorkerSchedulingConfig implements SchedulingConfigurer {
                                     "Attachment not found: " + page.getAttachmentId()));
                 return storageService.getPath(attachment);
               },
-              storageService,
-              ocrBatchRepository,
               pageTextRepository,
-              mistralApiKey,
-              mistralModel,
-              mistralBaseUrl,
+              jobService);
+      var ocr =
+          new BatchOrchestrator(
+              "mistral-batch-ocr",
+              ocrStage,
+              client,
+              jobService,
+              jobEventService,
+              recordEventService,
+              providerBatchRepository,
               mistralMaxBatchPages,
               mistralMaxBatchBytes,
               mistralPagesPerMinute);
-      registrar.addFixedDelayTask(worker::tick, Duration.ofMillis(mistralTickInterval));
+      registrar.addFixedDelayTask(ocr::tick, Duration.ofMillis(mistralTickInterval));
+
       log.info(
-          "Registered Mistral batch OCR worker (model={}, base-url={}, tick={}ms,"
-              + " max-batch={} bytes, {} pages/min)",
+          "Registered Mistral batch OCR (model={}, tick={}ms, max-batch={} bytes, {} pages/min)",
           mistralModel,
-          mistralBaseUrl,
           mistralTickInterval,
           mistralMaxBatchBytes,
           mistralPagesPerMinute);
+    }
+
+    if (translateBatchEnabled) {
+      var translateStage = new TranslateBatchStage(translateBatchModel, jdbcTemplate);
+      var translate =
+          new BatchOrchestrator(
+              "mistral-batch-translate",
+              translateStage,
+              new MistralBatchClient(mistralApiKey, mistralBaseUrl),
+              jobService,
+              jobEventService,
+              recordEventService,
+              providerBatchRepository,
+              translateBatchSize,
+              mistralMaxBatchBytes,
+              translatePerMinute);
+      registrar.addFixedDelayTask(translate::tick, Duration.ofMillis(mistralTickInterval));
+      log.info(
+          "Registered Mistral batch translation (model={}, batch={} pages, {} pages/min)",
+          translateBatchModel,
+          translateBatchSize,
+          translatePerMinute);
     }
 
     if (personMatchEnabled) {

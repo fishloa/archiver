@@ -14,7 +14,7 @@ class MistralOcrWorkerResponseTest {
   private final ObjectMapper mapper = new ObjectMapper();
 
   private String extract(String json) throws Exception {
-    return MistralBatchOcrWorker.extractText(mapper.readTree(json));
+    return OcrBatchStage.extractText(mapper.readTree(json));
   }
 
   @Test

@@ -90,6 +90,16 @@ archiver:
       max-batch-bytes: ${MISTRAL_OCR_MAX_BATCH_BYTES:209715200}
       # Provider allowance; enforced from a 60-second window over ocr_batch.submitted_at.
       pages-per-minute: ${MISTRAL_OCR_PAGES_PER_MINUTE:1250}
+  translate:
+    batch:
+      # Batched translation through the same provider batch API as OCR. The interactive path
+      # took ~27s per page against a provider that queued concurrent requests rather than
+      # parallelising them, making the archive a two-day job; the same model answers in under
+      # two seconds uncontended, and batching removes the per-request overhead entirely.
+      enabled: ${TRANSLATE_BATCH_ENABLED:false}
+      model: ${TRANSLATE_BATCH_MODEL:mistral-small-latest}
+      size: ${TRANSLATE_BATCH_SIZE:2000}
+      pages-per-minute: ${TRANSLATE_BATCH_PAGES_PER_MINUTE:5000}
     claude:
       enabled: ${CLAUDE_OCR_ENABLED:false}
       api-key: ${ANTHROPIC_API_KEY:}
