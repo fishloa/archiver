@@ -509,7 +509,16 @@ public class ViewerController {
     // Which model produced the translation on show, and what else exists for this page. Without
     // it a reader cannot tell a careful translation from a fast one, which is the whole reason
     // every model's output is kept rather than overwritten.
-    result.put("translations", pageTranslationRepository.findByPageId(pageId));
+    result.put(
+        "translations",
+        pageTranslationRepository.findByPageId(pageId).stream()
+            .map(
+                t ->
+                    Map.of(
+                        "model", t.getModel(),
+                        "createdAt", String.valueOf(t.getCreatedAt()),
+                        "chars", t.getTextEn() == null ? 0 : t.getTextEn().length()))
+            .toList());
     result.put("upgradeModel", TranslationModels.upgradeModel());
     return ResponseEntity.ok(result);
   }

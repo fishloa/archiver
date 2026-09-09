@@ -172,6 +172,36 @@ class TranslationUpgradeTest {
   }
 
   @Test
+  void pageTextStillLoadsOnceAPageHasTranslations() throws Exception {
+    // The page viewer went blank in production: page text lists a page's translations, and the
+    // repository returned a column projection that Spring Data JDBC maps as a single column.
+    // It only failed once a page actually had a translation, so an untranslated archive looked
+    // fine and every translated page 500'd.
+    long recordId = seedRecordWithPages(1);
+    markUpgraded(recordId);
+    Long pageId =
+        jdbc.sql("SELECT id FROM page WHERE record_id = :r")
+            .param("r", recordId)
+            .query(Long.class)
+            .single();
+
+    HttpResponse<String> r =
+        http.send(
+            HttpRequest.newBuilder()
+                .uri(URI.create("http://localhost:" + port + "/api/pages/" + pageId + "/text"))
+                .header("Authorization", "Bearer " + ADMIN_TOKEN)
+                .GET()
+                .build(),
+            HttpResponse.BodyHandlers.ofString());
+
+    assertThat(r.statusCode()).as("page text -> %s", r.body()).isEqualTo(200);
+    @SuppressWarnings("unchecked")
+    Map<String, Object> body = mapper.readValue(r.body(), Map.class);
+    assertThat(body).containsKeys("text", "translations", "upgradeModel");
+    assertThat((java.util.List<?>) body.get("translations")).hasSize(1);
+  }
+
+  @Test
   void statusReportsWhetherAnUpgradeIsAvailable() throws Exception {
     long recordId = seedRecordWithPages(2);
 

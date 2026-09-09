@@ -1,7 +1,6 @@
 package place.icomb.archiver.repository;
 
 import java.util.List;
-import java.util.Map;
 import org.springframework.data.jdbc.repository.query.Modifying;
 import org.springframework.data.jdbc.repository.query.Query;
 import org.springframework.data.repository.Repository;
@@ -32,12 +31,15 @@ public interface PageTranslationRepository extends Repository<PageTranslation, L
   @Query("SELECT model FROM page_translation WHERE page_id = :pageId")
   List<String> modelsFor(@Param("pageId") Long pageId);
 
-  @Query(
-      """
-      SELECT model, text_en, created_at FROM page_translation
-      WHERE page_id = :pageId ORDER BY model
-      """)
-  List<Map<String, Object>> findByPageId(@Param("pageId") Long pageId);
+  /**
+   * Every translation held for a page.
+   *
+   * <p>Returns the entity rather than a column projection: Spring Data JDBC maps a {@code
+   * List<Map<String,Object>>} as a single-column result and fails with "expected 1, actual 3" the
+   * moment a page actually has a translation.
+   */
+  @Query("SELECT * FROM page_translation WHERE page_id = :pageId ORDER BY model")
+  List<PageTranslation> findByPageId(@Param("pageId") Long pageId);
 
   /** Pages of a record that no model has translated at the given quality yet. */
   @Query(
