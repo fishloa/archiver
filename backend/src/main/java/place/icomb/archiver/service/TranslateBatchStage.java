@@ -105,11 +105,42 @@ public class TranslateBatchStage implements BatchStage {
     return body.substring(0, lastFence).strip();
   }
 
+  /**
+   * Removes a preamble the model wrote about the translation.
+   *
+   * <p>Told to return only the translation, the model still opened 4,043 pages with a "###
+   * Translation" heading and 1,363 by announcing itself — "Here is the translation preserving all
+   * original formatting, proper names, place names and dates:". Neither is on the document. A stray
+   * sentence was survivable while everything rendered as flat prose; once headings are set large
+   * and ruled, each of those pages opens with a title the Reichsprotektor never wrote.
+   *
+   * <p>A spoken preamble must end in a colon, which is what separates the model introducing a
+   * translation from a page whose first sentence is about one. Up to two are removed: some
+   * responses repeated the heading.
+   */
+  static String stripPreamble(String text) {
+    if (text == null) return "";
+    String t = text.strip();
+    for (int pass = 0; pass < 2; pass++) {
+      int newline = t.indexOf('\n');
+      String first = (newline < 0 ? t : t.substring(0, newline)).strip();
+      boolean preamble =
+          first.matches("(?i)^#{1,6}\\s*(english\\s+)?translations?\\s*[.:]?$")
+              || first.matches("(?i)^\\*{0,2}(english\\s+)?translations?\\*{0,2}\\s*[.:]$")
+              || first.matches(
+                  "(?i)^(here is|here's|below is)\\s+the\\s+(english\\s+)?translation\\b[^\\n]{0,200}:$");
+      if (!preamble) break;
+      t = newline < 0 ? "" : t.substring(newline + 1).strip();
+    }
+    return t;
+  }
+
   @Override
   public void applyResult(Job job, JsonNode body) {
     String translated =
-        unwrapCodeFence(
-            body.path("choices").path(0).path("message").path("content").asText("").strip());
+        stripPreamble(
+            unwrapCodeFence(
+                body.path("choices").path(0).path("message").path("content").asText("").strip()));
 
     // Every model's output is kept. text_en is only a cache of whichever is preferred, so a
     // cheap translation is never destroyed by a better one — and an upgrade already done can
