@@ -17,12 +17,38 @@
 	 */
 	interface Props {
 		text: string;
+		/**
+		 * Page this text belongs to. When given, the image references the OCR engine leaves in
+		 * the markdown — signatures, stamps and seals on 27,448 pages — are resolved to crops of
+		 * the original scan. Without it they render as broken images.
+		 */
+		pageId?: number;
 	}
-	let { text }: Props = $props();
+	let { text, pageId }: Props = $props();
+
+	/**
+	 * Rewrites the engine's bare image references to the endpoint that crops them from the scan.
+	 * The engine emits ![img-0.jpeg](img-0.jpeg) with no usable location; the coordinates live in
+	 * the stored OCR response, so the backend does the cropping.
+	 */
+	function resolveOcrImages(md: string): string {
+		if (!pageId) {
+			// Nothing can resolve them, so drop the reference rather than show a broken image.
+			return md.replace(/!\[([^\]]*)\]\((img-[^)]+)\)/g, '');
+		}
+		return md.replace(
+			/!\[([^\]]*)\]\((img-[^)]+)\)/g,
+			(_m, alt, id) => `![${alt}](/api/pages/${pageId}/ocr-image/${encodeURIComponent(id)})`
+		);
+	}
 
 	let html = $derived(
 		DOMPurify.sanitize(
-			marked.parse(text ?? '', { async: false, gfm: true, breaks: false }) as string
+			marked.parse(resolveOcrImages(text ?? ''), {
+				async: false,
+				gfm: true,
+				breaks: false
+			}) as string
 		)
 	);
 </script>
@@ -104,5 +130,15 @@
 		border: 0;
 		border-top: 1px solid var(--vui-border, currentColor);
 		margin: 1em 0;
+	}
+	/* Signatures, stamps and seals cropped from the scan — small, so they read as insets. */
+	.markdown-text :global(img) {
+		max-width: min(100%, 320px);
+		max-height: 160px;
+		border: 1px solid var(--vui-border, currentColor);
+		border-radius: 4px;
+		background: #fff;
+		padding: 2px;
+		margin: 0.35em 0;
 	}
 </style>

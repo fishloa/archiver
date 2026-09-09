@@ -41,6 +41,9 @@ import place.icomb.archiver.service.TranslationModels;
 @RequestMapping("/api")
 public class ViewerController {
 
+  private static final org.slf4j.Logger log =
+      org.slf4j.LoggerFactory.getLogger(ViewerController.class);
+
   /**
    * OCR engines the dashboard reports on. PaddleOCR was retired — it ran no jobs after 2 August
    * 2026 and the backend registers no worker for it — and Claude and Mistral had been added without
@@ -474,6 +477,99 @@ public class ViewerController {
                         p.getHeight(),
                         p.getSourceUrl())))
         .orElse(ResponseEntity.notFound().build());
+  }
+
+  /**
+   * A region the OCR engine identified as an image — on these documents, a signature, stamp or seal
+   * — cropped from the original scan.
+   *
+   * <p>The engine can return these as base64, but that was not requested: it would have inflated
+   * every stored response and cost a second pass over the archive. The coordinates were stored, so
+   * the crop is done here from the scan we already hold. 27,448 pages reference at least one.
+   */
+  @GetMapping("/pages/{pageId}/ocr-image/{imageId}")
+  public ResponseEntity<Resource> ocrImage(
+      @PathVariable Long pageId, @PathVariable String imageId) {
+    try {
+      var rows =
+          jdbcTemplate.queryForList(
+              """
+              SELECT p.attachment_id, pt.raw_response::text AS raw_response
+              FROM page p JOIN page_text pt ON pt.page_id = p.id
+              WHERE p.id = ?
+              """,
+              pageId);
+      if (rows.isEmpty() || rows.get(0).get("attachment_id") == null) {
+        return ResponseEntity.notFound().build();
+      }
+      String rawResponse = (String) rows.get(0).get("raw_response");
+      if (rawResponse == null) {
+        return ResponseEntity.notFound().build();
+      }
+
+      var root = new com.fasterxml.jackson.databind.ObjectMapper().readTree(rawResponse);
+      var page = root.path("pages").path(0);
+      double pw = page.path("dimensions").path("width").asDouble(0);
+      double ph = page.path("dimensions").path("height").asDouble(0);
+      if (pw <= 0 || ph <= 0) {
+        return ResponseEntity.notFound().build();
+      }
+
+      com.fasterxml.jackson.databind.JsonNode match = null;
+      for (var img : page.path("images")) {
+        if (imageId.equals(img.path("id").asText())) {
+          match = img;
+          break;
+        }
+      }
+      if (match == null) {
+        return ResponseEntity.notFound().build();
+      }
+
+      Attachment attachment =
+          attachmentRepository
+              .findById(((Number) rows.get(0).get("attachment_id")).longValue())
+              .orElse(null);
+      if (attachment == null) {
+        return ResponseEntity.notFound().build();
+      }
+
+      java.awt.image.BufferedImage full =
+          javax.imageio.ImageIO.read(storageService.getPath(attachment).toFile());
+      if (full == null) {
+        return ResponseEntity.notFound().build();
+      }
+
+      // Block coordinates live in the engine's own page space; scale onto the real scan.
+      double sx = full.getWidth() / pw;
+      double sy = full.getHeight() / ph;
+      int x = (int) Math.max(0, Math.floor(match.path("top_left_x").asDouble() * sx));
+      int y = (int) Math.max(0, Math.floor(match.path("top_left_y").asDouble() * sy));
+      int w =
+          (int)
+              Math.ceil(
+                  (match.path("bottom_right_x").asDouble() - match.path("top_left_x").asDouble())
+                      * sx);
+      int h =
+          (int)
+              Math.ceil(
+                  (match.path("bottom_right_y").asDouble() - match.path("top_left_y").asDouble())
+                      * sy);
+      w = Math.max(1, Math.min(w, full.getWidth() - x));
+      h = Math.max(1, Math.min(h, full.getHeight() - y));
+
+      java.awt.image.BufferedImage crop = full.getSubimage(x, y, w, h);
+      var out = new java.io.ByteArrayOutputStream();
+      javax.imageio.ImageIO.write(crop, "jpg", out);
+
+      return ResponseEntity.ok()
+          .contentType(MediaType.IMAGE_JPEG)
+          .cacheControl(org.springframework.http.CacheControl.maxAge(java.time.Duration.ofDays(30)))
+          .body(new ByteArrayResource(out.toByteArray()));
+    } catch (Exception e) {
+      log.warn("Could not crop OCR image {} for page {}", imageId, pageId, e);
+      return ResponseEntity.notFound().build();
+    }
   }
 
   @GetMapping("/pages/{pageId}/text")

@@ -185,7 +185,7 @@
 				<h2 class="text-[length:var(--vui-text-sm)] font-semibold text-accent mb-3">{mainLabel}</h2>
 				{#if isMarkdown}
 					<div class="p-4 rounded-md bg-bg-deep border border-border text-text overflow-x-auto max-h-[80vh] overflow-y-auto">
-						<MarkdownText text={mainText} />
+						<MarkdownText text={mainText} pageId={page?.id} />
 					</div>
 				{:else}
 					<pre class="p-4 rounded-md bg-bg-deep border border-border text-[length:var(--vui-text-sm)] text-text overflow-x-auto font-mono whitespace-pre-wrap leading-relaxed max-h-[80vh] overflow-y-auto">{mainText}</pre>
@@ -222,7 +222,7 @@
 		{#if originalOpen}
 			{#if isMarkdown}
 				<div class="mt-3 p-4 rounded-md bg-bg-deep border border-border text-text overflow-x-auto">
-					<MarkdownText text={altText} />
+					<MarkdownText text={altText} pageId={page?.id} />
 				</div>
 			{:else}
 				<pre class="mt-3 p-4 rounded-md bg-bg-deep border border-border text-[length:var(--vui-text-sm)] text-text overflow-x-auto font-mono whitespace-pre-wrap leading-relaxed">{altText}</pre>

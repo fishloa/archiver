@@ -77,10 +77,39 @@ public class TranslateBatchStage implements BatchStage {
         List.of(Map.of("role", "user", "content", INSTRUCTION + text)));
   }
 
+  /**
+   * Removes a code fence wrapping the whole translation.
+   *
+   * <p>The model is told to output only the translation and mostly does, but wrapped 13% of this
+   * archive in ```markdown regardless. Stored that way the page renders as a literal block of pipes
+   * and hashes instead of a table — the reader sees the markup rather than the document.
+   *
+   * <p>Only an enclosing fence is removed. A fence in the middle of a page is content.
+   */
+  static String unwrapCodeFence(String text) {
+    if (text == null) return "";
+    String t = text.strip();
+    if (!t.startsWith("```")) return t;
+
+    int firstNewline = t.indexOf('\n');
+    if (firstNewline < 0) return t;
+    // The opening fence may carry a language tag, e.g. ```markdown
+    String opener = t.substring(3, firstNewline).strip();
+    if (!opener.isEmpty() && !opener.matches("[A-Za-z0-9_+-]+")) return t;
+
+    String body = t.substring(firstNewline + 1);
+    int lastFence = body.lastIndexOf("```");
+    if (lastFence < 0) return body.strip();
+    // Anything after the closing fence would be content outside it; leave such text alone.
+    if (!body.substring(lastFence + 3).isBlank()) return t;
+    return body.substring(0, lastFence).strip();
+  }
+
   @Override
   public void applyResult(Job job, JsonNode body) {
     String translated =
-        body.path("choices").path(0).path("message").path("content").asText("").strip();
+        unwrapCodeFence(
+            body.path("choices").path(0).path("message").path("content").asText("").strip());
 
     // Every model's output is kept. text_en is only a cache of whichever is preferred, so a
     // cheap translation is never destroyed by a better one — and an upgrade already done can
