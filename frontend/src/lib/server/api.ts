@@ -303,6 +303,49 @@ export async function setGate(
   return res.json();
 }
 
+export interface TranslationStatus {
+  upgradeModel: string;
+  pagesUpgraded: number;
+  pagesUpgradable: number;
+  inFlight: number;
+  canUpgrade: boolean;
+}
+
+/** Whether a better translation is available for this record, and how much of it. */
+export async function fetchTranslationStatus(
+  email: string | undefined,
+  recordId: number,
+): Promise<TranslationStatus | null> {
+  try {
+    const res = await fetch(`${backendUrl()}/api/records/${recordId}/translation-status`, {
+      headers: authHeaders(email),
+    });
+    if (!res.ok) return null;
+    return res.json();
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Queues a better translation for the pages that lack one.
+ *
+ * The backend refuses pages already translated by that model, so this cannot be double-billed
+ * by an impatient click.
+ */
+export async function upgradeTranslation(
+  email: string | undefined,
+  recordId: number,
+): Promise<{ queued: number; alreadyUpgraded: number; message?: string }> {
+  const res = await fetch(`${backendUrl()}/api/records/${recordId}/translate-upgrade`, {
+    method: "POST",
+    headers: { ...authHeaders(email), "Content-Type": "application/json" },
+    body: "{}",
+  });
+  if (!res.ok) throw new Error(`Backend error: ${res.status}`);
+  return res.json();
+}
+
 export async function runAudit(email?: string): Promise<{ fixed: number }> {
   const res = await fetch(`${backendUrl()}/api/admin/audit`, {
     method: "POST",

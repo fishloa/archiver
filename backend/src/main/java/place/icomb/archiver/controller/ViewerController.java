@@ -27,12 +27,14 @@ import place.icomb.archiver.model.Record;
 import place.icomb.archiver.repository.AttachmentRepository;
 import place.icomb.archiver.repository.PageRepository;
 import place.icomb.archiver.repository.PageTextRepository;
+import place.icomb.archiver.repository.PageTranslationRepository;
 import place.icomb.archiver.repository.RecordRepository;
 import place.icomb.archiver.service.JobService;
 import place.icomb.archiver.service.OcrContentType;
 import place.icomb.archiver.service.PdfExportService;
 import place.icomb.archiver.service.PipelineGateService;
 import place.icomb.archiver.service.StorageService;
+import place.icomb.archiver.service.TranslationModels;
 
 @RestController
 @RequestMapping("/api")
@@ -54,6 +56,7 @@ public class ViewerController {
   private final PageTextRepository pageTextRepository;
   private final JdbcTemplate jdbcTemplate;
   private final PipelineGateService gateService;
+  private final PageTranslationRepository pageTranslationRepository;
 
   /**
    * Provider price per OCR page, used only to report what a run has cost.
@@ -80,13 +83,15 @@ public class ViewerController {
       JobService jobService,
       PdfExportService pdfExportService,
       place.icomb.archiver.service.JobEventService jobEventService,
-      PipelineGateService gateService) {
+      PipelineGateService gateService,
+      PageTranslationRepository pageTranslationRepository) {
     this.pageRepository = pageRepository;
     this.attachmentRepository = attachmentRepository;
     this.recordRepository = recordRepository;
     this.storageService = storageService;
     this.pageTextRepository = pageTextRepository;
     this.gateService = gateService;
+    this.pageTranslationRepository = pageTranslationRepository;
     this.jdbcTemplate = jdbcTemplate;
     this.jobService = jobService;
     this.pdfExportService = pdfExportService;
@@ -338,20 +343,10 @@ public class ViewerController {
             workerCounts,
             modelsByKind));
 
-    var transStage =
-        buildStage(
-            "Translation",
-            "translating",
-            recordsByStatus,
-            pagesByStatus,
-            new String[] {"translate_page", "translate_record"},
-            jobsByKind,
-            workerCounts,
-            modelsByKind);
-    transStage.put("pagesDone", transPagesDone);
-    transStage.put("pagesTotal", transPagesTotal);
-    stages.add(transStage);
-
+    // Embedding before translation: it no longer waits for it. Chunks are built from the
+    // ORIGINAL text, so search comes back as soon as embedding finishes, while translation —
+    // by far the slowest stage — runs behind it. Showing them the other way round implied a
+    // dependency that no longer exists.
     stages.add(
         buildStage(
             "Embedding",
@@ -362,6 +357,20 @@ public class ViewerController {
             jobsByKind,
             workerCounts,
             modelsByKind));
+
+    var transStage =
+        buildStage(
+            "Translation",
+            "translating",
+            recordsByStatus,
+            pagesByStatus,
+            new String[] {"translate_page", "translate_page_upgrade", "translate_record"},
+            jobsByKind,
+            workerCounts,
+            modelsByKind);
+    transStage.put("pagesDone", transPagesDone);
+    transStage.put("pagesTotal", transPagesTotal);
+    stages.add(transStage);
 
     // "Complete" aggregates terminal statuses
     long doneRecords =
@@ -489,6 +498,11 @@ public class ViewerController {
         "contentType",
         best.getContentType() != null ? best.getContentType() : OcrContentType.PLAIN);
     result.put("textEn", best.getTextEn() != null ? best.getTextEn() : "");
+    // Which model produced the translation on show, and what else exists for this page. Without
+    // it a reader cannot tell a careful translation from a fast one, which is the whole reason
+    // every model's output is kept rather than overwritten.
+    result.put("translations", pageTranslationRepository.findByPageId(pageId));
+    result.put("upgradeModel", TranslationModels.upgradeModel());
     return ResponseEntity.ok(result);
   }
 
@@ -793,6 +807,88 @@ public class ViewerController {
   public ResponseEntity<Map<String, Object>> runAudit() {
     int fixed = jobService.recoverStaleClaims() + jobService.auditPipeline();
     return ResponseEntity.ok(Map.of("fixed", fixed));
+  }
+
+  /**
+   * Requests a better translation for a record, using a stronger model.
+   *
+   * <p>Only pages that model has not already translated are queued. Measured over 20 archive pages
+   * the bulk model dropped a document date and two file references on one of them, which is exactly
+   * the material a citation depends on — so an upgrade is worth offering, but paying for the same
+   * page twice is not. The existing rows in page_translation make "already done" answerable rather
+   * than guessed.
+   */
+  @PostMapping("/records/{recordId}/translate-upgrade")
+  public ResponseEntity<Map<String, Object>> upgradeTranslation(@PathVariable Long recordId) {
+    String model = TranslationModels.upgradeModel();
+    List<Long> missing = pageTranslationRepository.pagesMissingModel(recordId, model);
+    Integer alreadyBoxed = pageTranslationRepository.countWithModel(recordId, model);
+    int already = alreadyBoxed == null ? 0 : alreadyBoxed;
+
+    // Anything already queued should not be queued again by an impatient second click.
+    Integer inFlight =
+        jdbcTemplate.queryForObject(
+            """
+            SELECT count(*) FROM job
+            WHERE record_id = ? AND kind = 'translate_page_upgrade'
+              AND status IN ('pending','claimed')
+            """,
+            Integer.class,
+            recordId);
+    if (inFlight != null && inFlight > 0) {
+      return ResponseEntity.ok(
+          Map.of(
+              "queued",
+              0,
+              "alreadyUpgraded",
+              already,
+              "inFlight",
+              inFlight,
+              "message",
+              "An upgrade is already running for this record"));
+    }
+
+    if (missing.isEmpty()) {
+      return ResponseEntity.ok(
+          Map.of(
+              "queued",
+              0,
+              "alreadyUpgraded",
+              already,
+              "message",
+              "Every page already has the better translation"));
+    }
+
+    for (Long pageId : missing) {
+      jobService.enqueueJob("translate_page_upgrade", recordId, pageId, null);
+    }
+    return ResponseEntity.ok(
+        Map.of("queued", missing.size(), "alreadyUpgraded", already, "model", model));
+  }
+
+  /** What a record's translation looks like: which model, and whether an upgrade is available. */
+  @GetMapping("/records/{recordId}/translation-status")
+  public ResponseEntity<Map<String, Object>> translationStatus(@PathVariable Long recordId) {
+    String model = TranslationModels.upgradeModel();
+    Integer alreadyBoxed = pageTranslationRepository.countWithModel(recordId, model);
+    int already = alreadyBoxed == null ? 0 : alreadyBoxed;
+    int missing = pageTranslationRepository.pagesMissingModel(recordId, model).size();
+    Integer inFlight =
+        jdbcTemplate.queryForObject(
+            """
+            SELECT count(*) FROM job
+            WHERE record_id = ? AND kind = 'translate_page_upgrade'
+              AND status IN ('pending','claimed')
+            """,
+            Integer.class,
+            recordId);
+    return ResponseEntity.ok(
+        Map.of(
+            "upgradeModel", model,
+            "pagesUpgraded", already,
+            "pagesUpgradable", missing,
+            "inFlight", inFlight == null ? 0 : inFlight,
+            "canUpgrade", missing > 0 && (inFlight == null || inFlight == 0)));
   }
 
   /**

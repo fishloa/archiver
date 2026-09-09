@@ -6,8 +6,10 @@
 		ArrowLeft, Download, FileDown, ChevronDown, Clock,
 		CircleCheckBig, AlertTriangle, Play, ExternalLink,
 		FileText, Hash, Calendar, Archive, Bookmark, Layers,
-		BookmarkCheck, X, Users, RotateCcw, ShieldAlert, Baby, Skull
-	} from 'lucide-svelte';
+		BookmarkCheck, X, Users, RotateCcw, ShieldAlert, Baby, Skull,
+		Languages,
+		Sparkles,
+		Loader} from 'lucide-svelte';
 	import type { PipelineEvent, JobStat } from '$lib/server/api';
 	import { isKept, keptCount, keptPagesParam, clearKept } from '$lib/kept-pages.svelte';
 	import { enhance } from '$app/forms';
@@ -29,6 +31,8 @@
 	let adminDropdownOpen = $state(false);
 	let confirmAction = $state<string | null>(null);
 	let isAdmin = $derived(data.user?.role === 'admin');
+	let translationStatus = $derived(data.translationStatus);
+	let upgrading = $state(false);
 
 	let kCount = $derived(keptCount(record.id));
 	let kParam = $derived(keptPagesParam(record.id));
@@ -198,6 +202,60 @@
 				>
 					<FileDown size={13} strokeWidth={2} /> {$t('record.export')}
 				</a>
+			</div>
+		{/if}
+	</div>
+{/if}
+
+<!-- Translation quality: offer a better model, but only where it has not already run -->
+{#if translationStatus}
+	<div class="mb-6 py-3 px-4 rounded-lg bg-surface border border-border vui-animate-fade-in">
+		<div class="flex items-center gap-3 flex-wrap">
+			<Languages size={14} strokeWidth={2} class="text-text-sub" />
+			<span class="text-[length:var(--vui-text-xs)] font-semibold text-text-sub uppercase tracking-wider">
+				Translation quality
+			</span>
+
+			{#if translationStatus.inFlight > 0}
+				<span class="tq-note">
+					Improving {translationStatus.inFlight.toLocaleString()} page{translationStatus.inFlight === 1 ? '' : 's'}…
+				</span>
+			{:else if translationStatus.pagesUpgradable === 0}
+				<span class="tq-note tq-done">
+					<CircleCheckBig size={12} strokeWidth={2} />
+					Already improved using {translationStatus.upgradeModel}
+				</span>
+			{:else}
+				<span class="tq-note">
+					{translationStatus.pagesUpgradable.toLocaleString()} page{translationStatus.pagesUpgradable === 1 ? '' : 's'}
+					can be re-translated with a stronger model
+					{#if translationStatus.pagesUpgraded > 0}
+						&middot; {translationStatus.pagesUpgraded.toLocaleString()} already done
+					{/if}
+				</span>
+			{/if}
+
+			{#if translationStatus.canUpgrade}
+				<form method="POST" action="?/upgradeTranslation" use:enhance={() => {
+					upgrading = true;
+					return async ({ update }) => { await update(); upgrading = false; };
+				}} class="ml-auto">
+					<button class="vui-btn vui-btn-sm vui-btn-primary" type="submit" disabled={upgrading}>
+						{#if upgrading}
+							<Loader size={13} strokeWidth={2} class="animate-spin" /> Queueing…
+						{:else}
+							<Sparkles size={13} strokeWidth={2} /> Improve translation
+						{/if}
+					</button>
+				</form>
+			{/if}
+		</div>
+
+		{#if translationStatus.canUpgrade}
+			<div class="tq-hint">
+				The bulk translation favours speed and cost. On a sample of twenty pages the stronger
+				model kept every date and reference number, where the bulk one dropped a document date
+				and two file references. Pages already improved are never re-sent.
 			</div>
 		{/if}
 	</div>
@@ -511,4 +569,24 @@
 			</div>
 		{/if}
 	</div>
-</div>
+</div>\n\n<style>
+	/* Translation quality panel */
+	.tq-note {
+		display: inline-flex;
+		align-items: center;
+		gap: 5px;
+		font-size: var(--vui-text-sm);
+		color: var(--vui-text-sub);
+	}
+	.tq-done {
+		color: var(--vui-success, #10b981);
+	}
+	.tq-hint {
+		margin-top: 8px;
+		font-size: var(--vui-text-xs);
+		color: var(--vui-text-sub);
+		opacity: 0.85;
+		max-width: 68ch;
+		line-height: 1.5;
+	}
+</style>\n

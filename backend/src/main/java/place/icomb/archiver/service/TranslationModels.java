@@ -1,0 +1,42 @@
+package place.icomb.archiver.service;
+
+import java.util.List;
+
+/**
+ * Which translation is preferred when a page has more than one.
+ *
+ * <p>Explicit precedence, not an inferred score. The OCR engines were ranked by confidence, which
+ * is not comparable across engines, and the archive consequently served its worst transcription for
+ * 65,221 pages. A list is dull but it cannot be wrong by accident.
+ *
+ * <p>Order is best first, measured over 20 archive pages: mistral-medium lost no dates or reference
+ * numbers, mistral-small dropped a document date and two file references on one page in twenty, and
+ * the legacy translations were produced from OCR text that has since been replaced.
+ */
+public final class TranslationModels {
+
+  public static final String UPGRADE_MODEL = "mistral-medium-latest";
+  public static final String BULK_MODEL = "mistral-small-latest";
+  public static final String LEGACY = "legacy";
+
+  private static final List<String> BEST_FIRST = List.of(UPGRADE_MODEL, BULK_MODEL, LEGACY);
+
+  private TranslationModels() {}
+
+  /** Lower is better. Unknown models rank last but are still usable. */
+  public static int rank(String model) {
+    int i = BEST_FIRST.indexOf(model);
+    return i < 0 ? BEST_FIRST.size() : i;
+  }
+
+  /** True when {@code candidate} should replace {@code current} as the page's shown translation. */
+  public static boolean outranks(String candidate, String current) {
+    if (current == null) return true;
+    return rank(candidate) < rank(current);
+  }
+
+  /** The model an upgrade would use. */
+  public static String upgradeModel() {
+    return UPGRADE_MODEL;
+  }
+}

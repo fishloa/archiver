@@ -11,6 +11,7 @@ import org.springframework.scheduling.config.ScheduledTaskRegistrar;
 import place.icomb.archiver.repository.AttachmentRepository;
 import place.icomb.archiver.repository.PageRepository;
 import place.icomb.archiver.repository.PageTextRepository;
+import place.icomb.archiver.repository.PageTranslationRepository;
 import place.icomb.archiver.repository.ProviderBatchRepository;
 import place.icomb.archiver.service.BatchOrchestrator;
 import place.icomb.archiver.service.ClaudeOcrWorker;
@@ -24,6 +25,7 @@ import place.icomb.archiver.service.QwenOcrWorker;
 import place.icomb.archiver.service.RecordEventService;
 import place.icomb.archiver.service.StorageService;
 import place.icomb.archiver.service.TranslateBatchStage;
+import place.icomb.archiver.service.TranslationModels;
 
 /**
  * Dynamically registers N scheduled tasks per internal worker type based on configuration. Each
@@ -42,6 +44,7 @@ public class WorkerSchedulingConfig implements SchedulingConfigurer {
   private final StorageService storageService;
   private final PageTextRepository pageTextRepository;
   private final ProviderBatchRepository providerBatchRepository;
+  private final PageTranslationRepository pageTranslationRepository;
   private final PersonMatchService personMatchService;
   private final org.springframework.jdbc.core.JdbcTemplate jdbcTemplate;
 
@@ -83,6 +86,7 @@ public class WorkerSchedulingConfig implements SchedulingConfigurer {
       StorageService storageService,
       PageTextRepository pageTextRepository,
       ProviderBatchRepository providerBatchRepository,
+      PageTranslationRepository pageTranslationRepository,
       PersonMatchService personMatchService,
       org.springframework.jdbc.core.JdbcTemplate jdbcTemplate,
       @Value("${archiver.ocr.qwen.enabled:false}") boolean qwenEnabled,
@@ -118,6 +122,7 @@ public class WorkerSchedulingConfig implements SchedulingConfigurer {
     this.storageService = storageService;
     this.pageTextRepository = pageTextRepository;
     this.providerBatchRepository = providerBatchRepository;
+    this.pageTranslationRepository = pageTranslationRepository;
     this.personMatchService = personMatchService;
     this.jdbcTemplate = jdbcTemplate;
     this.qwenEnabled = qwenEnabled;
@@ -153,7 +158,7 @@ public class WorkerSchedulingConfig implements SchedulingConfigurer {
         (qwenEnabled ? qwenConcurrency : 0)
             + (claudeOcrEnabled ? claudeConcurrency : 0)
             + (mistralOcrEnabled ? 1 : 0)
-            + (translateBatchEnabled ? 1 : 0)
+            + (translateBatchEnabled ? 2 : 0)
             + (personMatchEnabled ? 1 : 0);
     if (totalWorkers == 0) return;
 
@@ -259,12 +264,18 @@ public class WorkerSchedulingConfig implements SchedulingConfigurer {
     }
 
     if (translateBatchEnabled) {
-      var translateStage = new TranslateBatchStage(translateBatchModel, jdbcTemplate);
-      var translate =
+      var client = new MistralBatchClient(mistralApiKey, mistralBaseUrl);
+
+      // Bulk translation. Cheap model, whole archive.
+      var bulk =
           new BatchOrchestrator(
               "mistral-batch-translate",
-              translateStage,
-              new MistralBatchClient(mistralApiKey, mistralBaseUrl),
+              new TranslateBatchStage(
+                  TranslationModels.BULK_MODEL,
+                  "translate_page",
+                  jdbcTemplate,
+                  pageTranslationRepository),
+              client,
               jobService,
               jobEventService,
               recordEventService,
@@ -272,12 +283,33 @@ public class WorkerSchedulingConfig implements SchedulingConfigurer {
               translateBatchSize,
               mistralMaxBatchBytes,
               translatePerMinute);
-      registrar.addFixedDelayTask(translate::tick, Duration.ofMillis(mistralTickInterval));
+      registrar.addFixedDelayTask(bulk::tick, Duration.ofMillis(mistralTickInterval));
+
+      // On-demand upgrades. A separate kind because a batch carries one model, and separate
+      // so an upgrade queue can be held or drained independently of the bulk run.
+      var upgrade =
+          new BatchOrchestrator(
+              "mistral-batch-translate-upgrade",
+              new TranslateBatchStage(
+                  TranslationModels.UPGRADE_MODEL,
+                  "translate_page_upgrade",
+                  jdbcTemplate,
+                  pageTranslationRepository),
+              client,
+              jobService,
+              jobEventService,
+              recordEventService,
+              providerBatchRepository,
+              translateBatchSize,
+              mistralMaxBatchBytes,
+              translatePerMinute);
+      registrar.addFixedDelayTask(upgrade::tick, Duration.ofMillis(mistralTickInterval));
+
       log.info(
-          "Registered Mistral batch translation (model={}, batch={} pages, {} pages/min)",
-          translateBatchModel,
-          translateBatchSize,
-          translatePerMinute);
+          "Registered Mistral batch translation (bulk={}, upgrade={}, batch={} pages)",
+          TranslationModels.BULK_MODEL,
+          TranslationModels.UPGRADE_MODEL,
+          translateBatchSize);
     }
 
     if (personMatchEnabled) {
