@@ -30,6 +30,27 @@
 	let exportPages = $state('');
 	/** Which rendering an export produces: the scans, or the English translation. */
 	let exportVariant = $state<'original' | 'english' | 'side-by-side'>('original');
+
+	/**
+	 * Whole-record download, honouring the export choice.
+	 *
+	 * Every variant is rendered on request, including the scans. The stored PDF has a text layer
+	 * built before block coordinates were kept, so every line sits at the left margin with its y
+	 * derived from line number — selecting a word returns text from somewhere else on the page,
+	 * which is worse than having none because it looks like it works. The export positions text
+	 * from the engine's own boxes.
+	 */
+	let wholeRecordHref = $derived(
+		`/api/records/${data.record.id}/export-pdf?pages=1-${Math.max(1, data.pages?.length ?? 1)}&variant=${exportVariant}`
+	);
+
+	let downloadLabel = $derived(
+		exportVariant === 'english'
+			? 'Download English'
+			: exportVariant === 'side-by-side'
+				? 'Download side by side'
+				: 'Download PDF'
+	);
 	let adminDropdownOpen = $state(false);
 	let confirmAction = $state<string | null>(null);
 	let isAdmin = $derived(data.user?.role === 'admin');
@@ -161,14 +182,34 @@
 <!-- Action bar -->
 {#if record.sourceUrl || record.pdfAttachmentId || pages.length > 0}
 	<div class="flex flex-wrap items-center gap-3 mb-6 py-3 px-4 rounded-lg bg-surface border border-border vui-animate-fade-in">
+		{#if pages.length > 0}
+			<select
+				bind:value={exportVariant}
+				class="px-2 py-1.5 rounded-md border border-border bg-bg-deep text-text text-[length:var(--vui-text-sm)] focus:outline-none focus:ring-1 focus:ring-accent"
+				title="Applies to every download below: original scans with a searchable text layer, the English translation as text, or both facing each other"
+			>
+				<option value="original">Original scans</option>
+				<option value="english">English translation</option>
+				<option value="side-by-side">Side by side</option>
+			</select>
+		{/if}
 		{#if record.sourceUrl}
 			<a href={record.sourceUrl} class="vui-btn vui-btn-ghost vui-btn-sm" target="_blank" rel="noopener noreferrer">
 				<ExternalLink size={13} strokeWidth={2} /> {$t('record.source')}
 			</a>
 		{/if}
-		{#if record.pdfAttachmentId}
-			<a href="/api/records/{record.id}/pdf" class="vui-btn vui-btn-primary vui-btn-sm" target="_blank">
-				<Download size={13} strokeWidth={2} /> {$t('record.downloadPdf')}
+		{#if record.pdfAttachmentId || pages.length > 0}
+			<!--
+				The main download honours the export choice like every other download here. It used
+				to always serve the prebuilt scan PDF, so choosing "English translation" and pressing
+				the obvious button silently gave you images.
+			-->
+			<a
+				href={wholeRecordHref}
+				class="vui-btn vui-btn-primary vui-btn-sm"
+				target="_blank"
+			>
+				<Download size={13} strokeWidth={2} /> {downloadLabel}
 			</a>
 		{/if}
 		{#if kCount > 0}
@@ -191,15 +232,6 @@
 		{/if}
 		{#if pages.length > 0}
 			<div class="flex items-center gap-2 ml-auto">
-				<select
-					bind:value={exportVariant}
-					class="px-2 py-1.5 rounded-md border border-border bg-bg-deep text-text text-[length:var(--vui-text-sm)] focus:outline-none focus:ring-1 focus:ring-accent"
-					title="Original scans with a searchable text layer, the English translation as text, or both facing each other"
-				>
-					<option value="original">Original scans</option>
-					<option value="english">English translation</option>
-					<option value="side-by-side">Side by side</option>
-				</select>
 				<input
 					type="text"
 					bind:value={exportPages}

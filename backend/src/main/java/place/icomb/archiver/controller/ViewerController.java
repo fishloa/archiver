@@ -879,11 +879,12 @@ public class ViewerController {
           };
       byte[] pdfBytes = pdfExportService.buildPdf(recordId, seqNumbers, v);
       ByteArrayResource resource = new ByteArrayResource(pdfBytes);
+      // Named for what the file contains, so a folder of exports is readable without opening them.
       String suffix =
           switch (v) {
             case ENGLISH -> "-english";
-            case SIDE_BY_SIDE -> "-side-by-side";
-            case ORIGINAL -> "-pages";
+            case SIDE_BY_SIDE -> "-original-and-english";
+            case ORIGINAL -> "-original";
           };
       String filename = "record-" + recordId + suffix + ".pdf";
       return ResponseEntity.ok()
