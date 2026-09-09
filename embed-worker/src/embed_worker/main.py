@@ -6,6 +6,7 @@ semantic search.
 """
 
 import logging
+import os
 
 import httpx
 from worker_common import run_sse_loop, wait_for_backend
@@ -15,7 +16,20 @@ from .chunker import chunk_document, chunk_text
 log = logging.getLogger(__name__)
 
 JOB_KIND = "embed_record"
-BATCH_SIZE = 16
+# Chunks per embedding request.
+#
+# Measured against the provider with real archive chunks (~615 chars each): per-chunk cost
+# collapses with batch size, because each call carries a fixed overhead of several seconds.
+#
+#     batch   8 -> 900ms/chunk      batch 128 ->  98ms/chunk
+#     batch  16 -> 537ms/chunk      batch 256 ->  46ms/chunk
+#     batch  64 -> 220ms/chunk
+#
+# At 16 a typical 42-chunk record took three sequential calls and ~45s. 128 makes it one call.
+# 256 also succeeded (75,000 tokens in 11.9s), but 128 leaves headroom for records whose chunks
+# are unusually long; embed_batch still halves on a 422, so an oversized batch degrades rather
+# than fails.
+BATCH_SIZE = int(os.environ.get("EMBED_BATCH_SIZE", "128"))
 
 
 def embed_batch(
