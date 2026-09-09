@@ -203,6 +203,29 @@ class PipelineAuditTest {
   // ---------------------------------------------------------------------------
 
   @Test
+  void holdingAStageHoldsEveryKindItRuns() {
+    // Gates are set per job kind, but an operator holds a stage. Holding one of Translation's
+    // three kinds left the others running, so the control looked ignored while work continued.
+    for (String kind : PipelineStages.kindsOf(PipelineStages.TRANSLATION)) {
+      gateService.set(kind, true, "flipping the model", "test");
+    }
+
+    assertThat(jobService.claimJob("translate_page")).isEmpty();
+    assertThat(jobService.claimJob("translate_record")).isEmpty();
+    assertThat(jobService.claimJob("translate_page_upgrade")).isEmpty();
+    // A different stage is unaffected.
+    assertThat(gateService.isPaused("embed_record")).isFalse();
+  }
+
+  @Test
+  void everyStageMapsToAtLeastOneJobKind() {
+    // A stage with no kinds would render a hold button that silently does nothing.
+    for (String stage : PipelineStages.names()) {
+      assertThat(PipelineStages.kindsOf(stage)).as("kinds for %s", stage).isNotEmpty();
+    }
+  }
+
+  @Test
   void pausedKind_isNotClaimed_andItsWorkQueuesUp() {
     Long archiveId = createArchive();
     Long recordId = createRecord(archiveId, "ocr_pending", 1);

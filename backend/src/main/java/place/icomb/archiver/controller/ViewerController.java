@@ -33,6 +33,7 @@ import place.icomb.archiver.service.JobService;
 import place.icomb.archiver.service.OcrContentType;
 import place.icomb.archiver.service.PdfExportService;
 import place.icomb.archiver.service.PipelineGateService;
+import place.icomb.archiver.service.PipelineStages;
 import place.icomb.archiver.service.StorageService;
 import place.icomb.archiver.service.TranslationModels;
 
@@ -901,7 +902,50 @@ public class ViewerController {
   @GetMapping("/admin/gates")
   public ResponseEntity<Map<String, Object>> listGates() {
     return ResponseEntity.ok(
-        Map.of("gates", gateService.list(), "pausedKinds", gateService.pausedKinds()));
+        Map.of(
+            "gates", gateService.list(),
+            "pausedKinds", gateService.pausedKinds(),
+            "stages", PipelineStages.all()));
+  }
+
+  /**
+   * Holds or releases an entire pipeline stage.
+   *
+   * <p>The unit an operator thinks in. Gating single job kinds is the mechanism, but on its own it
+   * misleads: holding translate_record left page translation running, so the stage looked stopped
+   * while it was busy and the control looked ignored.
+   */
+  @PostMapping("/admin/gates/stage/{stage}")
+  public ResponseEntity<Map<String, Object>> setStageGate(
+      @PathVariable String stage, @RequestBody Map<String, Object> body) {
+    Object paused = body.get("paused");
+    if (!(paused instanceof Boolean)) {
+      return ResponseEntity.badRequest().body(Map.of("error", "paused must be true or false"));
+    }
+    List<String> kinds = PipelineStages.kindsOf(stage);
+    if (kinds.isEmpty()) {
+      return ResponseEntity.badRequest()
+          .body(Map.of("error", "Unknown stage: " + stage, "known", PipelineStages.names()));
+    }
+    String reason = body.get("reason") instanceof String r ? r : null;
+    var auth =
+        org.springframework.security.core.context.SecurityContextHolder.getContext()
+            .getAuthentication();
+    String who = auth != null ? auth.getName() : "unknown";
+
+    for (String kind : kinds) {
+      gateService.set(kind, (Boolean) paused, reason, who);
+    }
+    return ResponseEntity.ok(
+        Map.of(
+            "stage",
+            stage,
+            "kinds",
+            kinds,
+            "paused",
+            paused,
+            "reason",
+            reason == null ? "" : reason));
   }
 
   @PostMapping("/admin/gates/{kind}")

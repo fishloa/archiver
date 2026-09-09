@@ -1,4 +1,4 @@
-import { fetchAdminStats, fetchGates, setGate } from '$lib/server/api';
+import { fetchAdminStats, fetchGates, setStageGate } from '$lib/server/api';
 import type { PageServerLoad, Actions } from './$types';
 
 export const load: PageServerLoad = async ({ locals }) => {
@@ -8,16 +8,16 @@ export const load: PageServerLoad = async ({ locals }) => {
 		fetchGates(locals.userEmail),
 		fetchAdminStats(locals.userEmail)
 	]);
-	return { gates: gates.gates, pausedKinds: gates.pausedKinds, stats };
+	return { gates: gates.gates, pausedKinds: gates.pausedKinds, stages: gates.stages, stats };
 };
 
 export const actions: Actions = {
 	toggle: async ({ request, locals }) => {
 		const form = await request.formData();
-		const kind = String(form.get('kind'));
+		const stage = String(form.get('stage'));
 		const paused = form.get('paused') === 'true';
 		const reason = String(form.get('reason') ?? '').trim();
-		await setGate(locals.userEmail, kind, paused, reason || undefined);
-		return { kind, paused };
+		await setStageGate(locals.userEmail, stage, paused, reason || undefined);
+		return { stage, paused };
 	}
 };

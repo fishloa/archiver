@@ -280,10 +280,33 @@ export interface PipelineGate {
 /** Gates hold a stage's work rather than cancelling it — see PipelineGateService. */
 export async function fetchGates(
   email?: string,
-): Promise<{ gates: PipelineGate[]; pausedKinds: string[] }> {
+): Promise<{
+  gates: PipelineGate[];
+  pausedKinds: string[];
+  stages: Record<string, string[]>;
+}> {
   const res = await fetch(`${backendUrl()}/api/admin/gates`, {
     headers: authHeaders(email),
   });
+  if (!res.ok) throw new Error(`Backend error: ${res.status}`);
+  return res.json();
+}
+
+/** Holds or releases every job kind in a pipeline stage — the unit an operator thinks in. */
+export async function setStageGate(
+  email: string | undefined,
+  stage: string,
+  paused: boolean,
+  reason?: string,
+): Promise<Record<string, unknown>> {
+  const res = await fetch(
+    `${backendUrl()}/api/admin/gates/stage/${encodeURIComponent(stage)}`,
+    {
+      method: "POST",
+      headers: { ...authHeaders(email), "Content-Type": "application/json" },
+      body: JSON.stringify({ paused, reason: reason ?? null }),
+    },
+  );
   if (!res.ok) throw new Error(`Backend error: ${res.status}`);
   return res.json();
 }

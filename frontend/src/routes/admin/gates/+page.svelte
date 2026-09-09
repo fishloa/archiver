@@ -9,13 +9,19 @@
 	 * Stages that can be held. A gate stops workers claiming that kind, so its jobs queue up
 	 * as pending rather than being cancelled — opening the gate releases the backlog untouched.
 	 */
-	const KINDS: { kind: string; label: string; note: string }[] = [
-		{ kind: 'ocr_page_mistral', label: 'OCR', note: 'Batched — held work stays queued at our end, not the provider’s' },
-		{ kind: 'translate_page', label: 'Translation (pages)', note: 'The slowest stage; safe to hold without blocking search' },
-		{ kind: 'translate_record', label: 'Translation (metadata)', note: 'Titles and descriptions' },
-		{ kind: 'build_searchable_pdf', label: 'PDF build', note: 'Rebuilds the invisible text layer' },
-		{ kind: 'embed_record', label: 'Embedding', note: 'Powers semantic search; built from the original text' },
-		{ kind: 'match_persons', label: 'Person matching', note: 'Heuristic pass against the family tree' }
+	/**
+	 * Stages that can be held, in pipeline order.
+	 *
+	 * Held by stage, not by job kind. Kinds are the mechanism, but holding one of a stage's
+	 * kinds left the others running — holding "Translation (metadata)" did not stop page
+	 * translation — so the control appeared to be ignored. An operator holds a stage.
+	 */
+	const STAGES: { stage: string; note: string }[] = [
+		{ stage: 'OCR', note: 'Batched at the provider; held work stays queued at our end' },
+		{ stage: 'PDF Build', note: 'Rebuilds the invisible text layer over the scans' },
+		{ stage: 'Embedding', note: 'Powers semantic search; built from the original text, not the translation' },
+		{ stage: 'Translation', note: 'Pages, on-demand upgrades and record metadata' },
+		{ stage: 'Person matching', note: 'Heuristic pass against the family tree' }
 	];
 
 	let gates = $derived((data.gates ?? []) as PipelineGate[]);
@@ -23,13 +29,39 @@
 		((data.stats?.jobsByKindAndStatus ?? []) as { kind: string; status: string; cnt: number }[])
 	);
 
-	function gateFor(kind: string): PipelineGate | undefined {
-		return gates.find((g) => g.kind === kind);
+	let stageKinds = $derived((data.stages ?? {}) as Record<string, string[]>);
+	let pausedKinds = $derived((data.pausedKinds ?? []) as string[]);
+
+	function kindsOf(stage: string): string[] {
+		return stageKinds[stage] ?? [];
 	}
 
-	function queued(kind: string): number {
+	/** A stage is held when every kind it runs is held. */
+	function isHeld(stage: string): boolean {
+		const kinds = kindsOf(stage);
+		return kinds.length > 0 && kinds.every((k) => pausedKinds.includes(k));
+	}
+
+	/** Some but not all — worth showing, since it means work is still going through. */
+	function isPartiallyHeld(stage: string): boolean {
+		const kinds = kindsOf(stage);
+		return !isHeld(stage) && kinds.some((k) => pausedKinds.includes(k));
+	}
+
+	function reasonFor(stage: string): string | null {
+		const g = gates.find((x) => kindsOf(stage).includes(x.kind) && x.paused);
+		return g?.reason ?? null;
+	}
+
+	function heldBy(stage: string): string | null {
+		const g = gates.find((x) => kindsOf(stage).includes(x.kind) && x.paused);
+		return g?.updated_by ?? null;
+	}
+
+	function queued(stage: string): number {
+		const kinds = kindsOf(stage);
 		return jobRows
-			.filter((r) => r.kind === kind && (r.status === 'pending' || r.status === 'claimed'))
+			.filter((r) => kinds.includes(r.kind) && (r.status === 'pending' || r.status === 'claimed'))
 			.reduce((n, r) => n + r.cnt, 0);
 	}
 
@@ -38,60 +70,60 @@
 
 <div class="gates-intro">
 	<p>
-		Holding a stage stops workers claiming its jobs. Nothing is cancelled — work queues up and
-		is released, untouched, when the gate is opened again.
+		Holding a stage stops every job kind it runs. Nothing is cancelled — work queues up and is
+		released, untouched, when the stage is opened again.
 	</p>
 </div>
 
 <div class="gate-list">
-	{#each KINDS as k}
-		{@const gate = gateFor(k.kind)}
-		{@const paused = gate?.paused ?? false}
-		{@const n = queued(k.kind)}
-		<div class="gate-card" class:paused>
+	{#each STAGES as s}
+		{@const held = isHeld(s.stage)}
+		{@const partial = isPartiallyHeld(s.stage)}
+		{@const n = queued(s.stage)}
+		<div class="gate-card" class:paused={held || partial}>
 			<div class="gate-head">
 				<div class="gate-title">
-					<span class="gate-label">{k.label}</span>
-					{#if paused}
-						<span class="badge badge-held">
-							<AlertTriangle size={11} strokeWidth={2.2} /> held
-						</span>
+					<span class="gate-label">{s.stage}</span>
+					{#if held}
+						<span class="badge badge-held"><AlertTriangle size={11} strokeWidth={2.2} /> held</span>
+					{:else if partial}
+						<span class="badge badge-partial">partly held</span>
 					{:else}
 						<span class="badge badge-open">running</span>
 					{/if}
 				</div>
 				<div class="gate-queue">
-					<span class="queue-num" class:queue-growing={paused && n > 0}>{n.toLocaleString()}</span>
+					<span class="queue-num" class:queue-growing={(held || partial) && n > 0}>{n.toLocaleString()}</span>
 					<span class="queue-label">queued</span>
 				</div>
 			</div>
 
-			<div class="gate-note">{k.note}</div>
-			<div class="gate-kind">{k.kind}</div>
+			<div class="gate-note">{s.note}</div>
+			<div class="gate-kind">{kindsOf(s.stage).join('  ')}</div>
 
-			{#if paused && gate?.reason}
+			{#if (held || partial) && reasonFor(s.stage)}
 				<div class="gate-reason">
-					Held: {gate.reason}
-					{#if gate.updated_by}<span class="gate-by">— {gate.updated_by}</span>{/if}
+					Held: {reasonFor(s.stage)}
+					{#if heldBy(s.stage)}<span class="gate-by">— {heldBy(s.stage)}</span>{/if}
 				</div>
 			{/if}
 
 			<form method="POST" action="?/toggle" use:enhance class="gate-form">
-				<input type="hidden" name="kind" value={k.kind} />
-				<input type="hidden" name="paused" value={(!paused).toString()} />
-				{#if !paused}
+				<input type="hidden" name="stage" value={s.stage} />
+				<input type="hidden" name="paused" value={(!(held || partial)).toString()} />
+				{#if held || partial}
+					<button class="vui-btn vui-btn-sm vui-btn-primary" type="submit">
+						<PlayCircle size={13} strokeWidth={2} /> Release
+					</button>
+				{:else}
 					<input
 						class="vui-input gate-reason-input"
 						name="reason"
 						placeholder="Why hold this stage?"
-						bind:value={reasons[k.kind]}
+						bind:value={reasons[s.stage]}
 					/>
 					<button class="vui-btn vui-btn-sm vui-btn-danger" type="submit">
 						<PauseCircle size={13} strokeWidth={2} /> Hold
-					</button>
-				{:else}
-					<button class="vui-btn vui-btn-sm vui-btn-primary" type="submit">
-						<PlayCircle size={13} strokeWidth={2} /> Release
 					</button>
 				{/if}
 			</form>
@@ -149,6 +181,10 @@
 	.badge-held {
 		background: color-mix(in srgb, var(--vui-danger, #b45309) 15%, transparent);
 		color: var(--vui-danger, #b45309);
+	}
+	.badge-partial {
+		background: color-mix(in srgb, var(--vui-warning, #d97706) 15%, transparent);
+		color: var(--vui-warning, #d97706);
 	}
 	.badge-open {
 		background: color-mix(in srgb, var(--vui-accent, #2563eb) 12%, transparent);
