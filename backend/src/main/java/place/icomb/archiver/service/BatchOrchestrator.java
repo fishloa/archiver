@@ -200,6 +200,10 @@ public class BatchOrchestrator {
       for (Job job : claimed) {
         String line;
         try {
+          if (stage.resolveLocally(job)) {
+            jobService.completeJob(job.getId(), null);
+            continue;
+          }
           Map<String, Object> body = stage.buildRequestBody(job);
           if (body == null) {
             jobService.failJob(job.getId(), "stage could not prepare a request");

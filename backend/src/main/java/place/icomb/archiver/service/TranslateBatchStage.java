@@ -56,17 +56,28 @@ public class TranslateBatchStage implements BatchStage {
   }
 
   @Override
+  public boolean resolveLocally(Job job) {
+    // A blank page is legitimately blank. Storing an empty translation is the correct answer;
+    // asking a model to translate nothing is not, and failing the job says the page is broken.
+    List<Map<String, Object>> rows =
+        jdbc.queryForList("SELECT text_raw FROM page_text WHERE page_id = ?", job.getPageId());
+    if (rows.isEmpty()) {
+      return false;
+    }
+    String text = (String) rows.get(0).get("text_raw");
+    if (text == null || text.isBlank()) {
+      jdbc.update("UPDATE page_text SET text_en = '' WHERE page_id = ?", job.getPageId());
+      return true;
+    }
+    return false;
+  }
+
+  @Override
   public Map<String, Object> buildRequestBody(Job job) {
     List<Map<String, Object>> rows =
         jdbc.queryForList("SELECT text_raw FROM page_text WHERE page_id = ?", job.getPageId());
     if (rows.isEmpty()) return null;
     String text = (String) rows.get(0).get("text_raw");
-    // A blank page is legitimately blank; store an empty translation rather than asking a model
-    // to translate nothing.
-    if (text == null || text.isBlank()) {
-      jdbc.update("UPDATE page_text SET text_en = '' WHERE page_id = ?", job.getPageId());
-      return null;
-    }
     return Map.of(
         "max_tokens",
         4000,

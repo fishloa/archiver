@@ -66,6 +66,26 @@ public class RecordTranslateBatchStage implements BatchStage {
   }
 
   @Override
+  public boolean resolveLocally(Job job) {
+    List<Map<String, Object>> rows =
+        jdbc.queryForList(
+            "SELECT title, description, metadata_lang FROM record WHERE id = ?", job.getRecordId());
+    if (rows.isEmpty()) {
+      return false;
+    }
+    String title = str(rows.get(0).get("title"));
+    String description = str(rows.get(0).get("description"));
+    String lang = str(rows.get(0).get("metadata_lang"));
+
+    // Already English, or nothing to translate. Both are answers, not failures.
+    if ("en".equalsIgnoreCase(lang)) {
+      translationService.recordMetadata(job.getRecordId(), model, title, description);
+      return true;
+    }
+    return title.isBlank() && description.isBlank();
+  }
+
+  @Override
   public Map<String, Object> buildRequestBody(Job job) {
     List<Map<String, Object>> rows =
         jdbc.queryForList(
@@ -76,13 +96,6 @@ public class RecordTranslateBatchStage implements BatchStage {
     String title = str(rows.get(0).get("title"));
     String description = str(rows.get(0).get("description"));
     String lang = str(rows.get(0).get("metadata_lang"));
-
-    // Already English, or nothing to translate: neither is a failure, and neither is worth a
-    // provider call.
-    if ("en".equalsIgnoreCase(lang) || (title.isBlank() && description.isBlank())) {
-      translationService.recordMetadata(job.getRecordId(), model, title, description);
-      return null;
-    }
 
     return Map.of(
         "max_tokens",

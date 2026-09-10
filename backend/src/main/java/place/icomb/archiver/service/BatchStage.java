@@ -35,9 +35,23 @@ public interface BatchStage {
   }
 
   /**
-   * The {@code body} of one JSONL request line, or null to skip this job.
+   * Settles a job that needs no provider call, returning true if it did.
    *
-   * <p>Returning null must be accompanied by failing the job — the orchestrator will not guess.
+   * <p>Some jobs are legitimately answerable without asking anything: a record whose metadata is
+   * already English, a page that is genuinely blank. Without this they had to return null from
+   * {@link #buildRequestBody}, which the orchestrator can only read as a failure — so work that had
+   * been done correctly was recorded as broken. An implementation that returns true has already
+   * stored whatever result is appropriate.
+   */
+  default boolean resolveLocally(Job job) {
+    return false;
+  }
+
+  /**
+   * The {@code body} of one JSONL request line, or null when the request cannot be built.
+   *
+   * <p>Null means failure and the orchestrator fails the job. A job that simply needs no provider
+   * call belongs in {@link #resolveLocally} instead.
    */
   Map<String, Object> buildRequestBody(Job job) throws Exception;
 
