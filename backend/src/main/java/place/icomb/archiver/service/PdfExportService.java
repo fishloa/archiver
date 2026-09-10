@@ -32,6 +32,8 @@ public class PdfExportService {
   private final AttachmentRepository attachmentRepository;
   private final StorageService storageService;
   private final OcrImageService ocrImageService;
+  private final CoverSheetService coverSheetService;
+  private final TranslationService translationService;
   private final org.springframework.jdbc.core.JdbcTemplate jdbcTemplate;
 
   public PdfExportService(
@@ -39,11 +41,15 @@ public class PdfExportService {
       AttachmentRepository attachmentRepository,
       StorageService storageService,
       OcrImageService ocrImageService,
+      CoverSheetService coverSheetService,
+      TranslationService translationService,
       org.springframework.jdbc.core.JdbcTemplate jdbcTemplate) {
     this.pageRepository = pageRepository;
     this.attachmentRepository = attachmentRepository;
     this.storageService = storageService;
     this.ocrImageService = ocrImageService;
+    this.coverSheetService = coverSheetService;
+    this.translationService = translationService;
     this.jdbcTemplate = jdbcTemplate;
   }
 
@@ -52,6 +58,30 @@ public class PdfExportService {
     MarkdownPdfRenderer renderer = new MarkdownPdfRenderer(doc);
     renderer.setOcrImageService(ocrImageService);
     return renderer;
+  }
+
+  /**
+   * Opens an extract with the record's cover sheet.
+   *
+   * <p>On the two generated exports only. The scan export is what the stored searchable PDFs are
+   * built from, and prefixing those would mean rebuilding all 3,127 of them.
+   */
+  private void addCoverSheet(
+      PDDocument doc,
+      MarkdownPdfRenderer renderer,
+      PDRectangle size,
+      Long recordId,
+      List<Integer> seqNumbers,
+      float margin)
+      throws IOException {
+    try {
+      CoverSheetService.Cover cover = coverSheetService.gather(recordId, seqNumbers);
+      coverSheetService.render(
+          doc, renderer, size, cover, recordId, publicUrl + "/records/" + recordId, margin);
+    } catch (Exception e) {
+      // An extract without its cover is still the document; failing the export is not better.
+      log.warn("Could not build the cover sheet for record {}", recordId, e);
+    }
   }
 
   /** What an export contains. */
@@ -137,6 +167,12 @@ public class PdfExportService {
       PDRectangle landscape =
           new PDRectangle(PDRectangle.A4.getHeight(), PDRectangle.A4.getWidth());
 
+      addCoverSheet(doc, renderer, landscape, recordId, seqNumbers, margin);
+
+      // Best translation per page, asked for once. An export always shows the best text the
+      // archive holds, whatever page_text happens to have cached.
+      java.util.Map<Integer, String> best = translationService.bestEnglishByRecord(recordId);
+
       for (int seq : seqNumbers) {
         List<java.util.Map<String, Object>> rows =
             jdbcTemplate.queryForList(
@@ -153,7 +189,7 @@ public class PdfExportService {
         }
         java.util.Map<String, Object> row = rows.get(0);
 
-        String english = (String) row.get("text_en");
+        String english = best.getOrDefault(seq, (String) row.get("text_en"));
         String raw = (String) row.get("text_raw");
         String rightText =
             english != null && !english.isBlank() ? english : (raw == null ? "" : raw);
@@ -342,6 +378,8 @@ public class PdfExportService {
   private byte[] buildEnglishPdf(Long recordId, List<Integer> seqNumbers) throws IOException {
     try (PDDocument doc = new PDDocument()) {
       MarkdownPdfRenderer renderer = newRenderer(doc);
+      addCoverSheet(doc, renderer, PDRectangle.A4, recordId, seqNumbers, 56f);
+      java.util.Map<Integer, String> best = translationService.bestEnglishByRecord(recordId);
       for (int seq : seqNumbers) {
         List<java.util.Map<String, Object>> rows =
             jdbcTemplate.queryForList(
@@ -358,7 +396,7 @@ public class PdfExportService {
         Long pageId = null;
         if (!rows.isEmpty()) {
           pageId = ((Number) rows.get(0).get("page_id")).longValue();
-          String en = (String) rows.get(0).get("text_en");
+          String en = best.getOrDefault(seq, (String) rows.get(0).get("text_en"));
           if (en != null && !en.isBlank()) {
             text = en;
           } else {

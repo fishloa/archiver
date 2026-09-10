@@ -46,6 +46,7 @@ public class WorkerSchedulingConfig implements SchedulingConfigurer {
   private final ProviderBatchRepository providerBatchRepository;
   private final PageTranslationRepository pageTranslationRepository;
   private final PersonMatchService personMatchService;
+  private final place.icomb.archiver.service.TranslationService translationService;
   private final place.icomb.archiver.service.PdfExportService pdfExportService;
   private final org.springframework.jdbc.core.JdbcTemplate jdbcTemplate;
 
@@ -92,6 +93,7 @@ public class WorkerSchedulingConfig implements SchedulingConfigurer {
       ProviderBatchRepository providerBatchRepository,
       PageTranslationRepository pageTranslationRepository,
       PersonMatchService personMatchService,
+      place.icomb.archiver.service.TranslationService translationService,
       place.icomb.archiver.service.PdfExportService pdfExportService,
       org.springframework.jdbc.core.JdbcTemplate jdbcTemplate,
       @Value("${archiver.ocr.qwen.enabled:false}") boolean qwenEnabled,
@@ -157,6 +159,7 @@ public class WorkerSchedulingConfig implements SchedulingConfigurer {
     this.translatePerMinute = translatePerMinute;
     this.personMatchEnabled = personMatchEnabled;
     this.personMatchPollInterval = personMatchPollInterval;
+    this.translationService = translationService;
     this.pdfExportService = pdfExportService;
     this.pdfConcurrency = pdfConcurrency;
     this.pdfPollInterval = pdfPollInterval;
@@ -282,10 +285,7 @@ public class WorkerSchedulingConfig implements SchedulingConfigurer {
           new BatchOrchestrator(
               "mistral-batch-translate",
               new TranslateBatchStage(
-                  TranslationModels.BULK_MODEL,
-                  "translate_page",
-                  jdbcTemplate,
-                  pageTranslationRepository),
+                  TranslationModels.BULK_MODEL, "translate_page", jdbcTemplate, translationService),
               client,
               jobService,
               jobEventService,
@@ -305,7 +305,7 @@ public class WorkerSchedulingConfig implements SchedulingConfigurer {
                   TranslationModels.UPGRADE_MODEL,
                   "translate_page_upgrade",
                   jdbcTemplate,
-                  pageTranslationRepository),
+                  translationService),
               client,
               jobService,
               jobEventService,

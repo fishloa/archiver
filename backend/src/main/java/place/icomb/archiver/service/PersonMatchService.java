@@ -36,6 +36,7 @@ public class PersonMatchService {
   private final PageTextRepository pageTextRepo;
   private final PageRepository pageRepo;
   private final RecordRepository recordRepo;
+  private final TranslationService translationService;
   private final String openaiApiKey;
   private final ResilientHttpClient httpClient;
   private final ObjectMapper objectMapper;
@@ -46,12 +47,14 @@ public class PersonMatchService {
       PageTextRepository pageTextRepo,
       PageRepository pageRepo,
       RecordRepository recordRepo,
+      TranslationService translationService,
       @Value("${archiver.openai.api-key:}") String openaiApiKey) {
     this.familyTreeService = familyTreeService;
     this.matchRepo = matchRepo;
     this.pageTextRepo = pageTextRepo;
     this.pageRepo = pageRepo;
     this.recordRepo = recordRepo;
+    this.translationService = translationService;
     this.openaiApiKey = openaiApiKey;
     this.httpClient = ResilientHttpClient.builder().build();
     this.objectMapper = new ObjectMapper();
@@ -478,11 +481,13 @@ public class PersonMatchService {
   private String getBestText(Long pageId) {
     // One current transcription per page since V26; the loops this replaced existed only to
     // pick among several engines' rows.
+    // Prefer the English translation — person names match better against it — and fall back
+    // to the original transcription when the page has not been translated yet. Which English
+    // that is, is TranslationService's decision, not a read of the cached column.
+    String english = translationService.bestEnglish(pageId);
+    if (english != null && !english.isBlank()) return english;
     PageText pt = pageTextRepo.findCurrentByPageId(pageId).orElse(null);
     if (pt == null) return null;
-    // Prefer the English translation — person names match better against it — and fall back
-    // to the original transcription when the page has not been translated yet.
-    if (pt.getTextEn() != null && !pt.getTextEn().isBlank()) return pt.getTextEn();
     if (pt.getTextRaw() != null && !pt.getTextRaw().isBlank()) return pt.getTextRaw();
     return null;
   }

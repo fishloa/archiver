@@ -58,6 +58,7 @@ public class ViewerController {
   private final RecordRepository recordRepository;
   private final StorageService storageService;
   private final place.icomb.archiver.service.OcrImageService ocrImageService;
+  private final place.icomb.archiver.service.TranslationService translationService;
   private final PageTextRepository pageTextRepository;
   private final JdbcTemplate jdbcTemplate;
   private final PipelineGateService gateService;
@@ -90,6 +91,7 @@ public class ViewerController {
       place.icomb.archiver.service.JobEventService jobEventService,
       PipelineGateService gateService,
       place.icomb.archiver.service.OcrImageService ocrImageService,
+      place.icomb.archiver.service.TranslationService translationService,
       PageTranslationRepository pageTranslationRepository) {
     this.pageRepository = pageRepository;
     this.attachmentRepository = attachmentRepository;
@@ -103,6 +105,7 @@ public class ViewerController {
     this.pdfExportService = pdfExportService;
     this.jobEventService = jobEventService;
     this.ocrImageService = ocrImageService;
+    this.translationService = translationService;
   }
 
   /** Known scrapers: id, display name, sourceSystem value they report in heartbeats. */
@@ -534,7 +537,10 @@ public class ViewerController {
     result.put(
         "contentType",
         best.getContentType() != null ? best.getContentType() : OcrContentType.PLAIN);
-    result.put("textEn", best.getTextEn() != null ? best.getTextEn() : "");
+    // Asked for, not read off the cached column: TranslationService owns which of a page's
+    // translations wins, so the viewer cannot drift from the exports and the API.
+    String english = translationService.bestEnglish(pageId);
+    result.put("textEn", english != null ? english : "");
     // Which model produced the translation on show, and what else exists for this page. Without
     // it a reader cannot tell a careful translation from a fast one, which is the whole reason
     // every model's output is kept rather than overwritten.

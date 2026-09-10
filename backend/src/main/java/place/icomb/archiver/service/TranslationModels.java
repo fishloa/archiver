@@ -35,6 +35,29 @@ public final class TranslationModels {
     return rank(candidate) < rank(current);
   }
 
+  /**
+   * Preference order, best first, for handing to SQL.
+   *
+   * <p>Exports rank translations with this rather than reading page_text.text_en, which is only a
+   * cache of the preferred text and can fall behind: 54 pages across 3 records had a paid-for
+   * mistral-medium upgrade sitting in page_translation while the cached English was still
+   * mistral-small. An export must show the best text the archive holds.
+   */
+  public static String[] bestFirst() {
+    return BEST_FIRST.toArray(new String[0]);
+  }
+
+  /**
+   * The preference order as a PostgreSQL array literal, for binding to {@code ?::text[]}.
+   *
+   * <p>A literal rather than a Java array: the driver will not bind {@code String[]} to a text[]
+   * parameter, and as a trailing argument to JdbcTemplate's varargs it silently expands into three
+   * separate parameters instead of one.
+   */
+  public static String ranksLiteral() {
+    return "{" + String.join(",", BEST_FIRST) + "}";
+  }
+
   /** The model an upgrade would use. */
   public static String upgradeModel() {
     return UPGRADE_MODEL;

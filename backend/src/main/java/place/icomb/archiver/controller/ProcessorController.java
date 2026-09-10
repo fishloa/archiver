@@ -57,6 +57,7 @@ public class ProcessorController {
   private final StorageService storageService;
   private final JdbcTemplate jdbcTemplate;
   private final RecordEventService recordEventService;
+  private final place.icomb.archiver.service.TranslationService translationService;
   private final String processorToken;
 
   public ProcessorController(
@@ -68,6 +69,7 @@ public class ProcessorController {
       StorageService storageService,
       JdbcTemplate jdbcTemplate,
       RecordEventService recordEventService,
+      place.icomb.archiver.service.TranslationService translationService,
       @Value("${archiver.processor.token}") String processorToken) {
     this.jobService = jobService;
     this.jobEventService = jobEventService;
@@ -77,6 +79,7 @@ public class ProcessorController {
     this.storageService = storageService;
     this.jdbcTemplate = jdbcTemplate;
     this.recordEventService = recordEventService;
+    this.translationService = translationService;
     this.processorToken = processorToken;
   }
 
@@ -326,6 +329,13 @@ public class ProcessorController {
   // Translation results
   // -------------------------------------------------------------------------
 
+  /**
+   * A translation from the HTTP worker.
+   *
+   * <p>Recorded against its model and then ranked, exactly as the batch path does. Writing
+   * page_text.text_en directly — which this did — lets a cheaper model overwrite a better one that
+   * has already been paid for, and leaves no record that the better one ever existed.
+   */
   @PostMapping("/pages/{pageId}/translation")
   public ResponseEntity<Map<String, Object>> submitTranslation(
       @RequestHeader("Authorization") String authHeader,
@@ -333,7 +343,8 @@ public class ProcessorController {
       @RequestBody Map<String, String> body) {
     validateToken(authHeader);
     String textEn = body.get("textEn");
-    jdbcTemplate.update("UPDATE page_text SET text_en = ? WHERE page_id = ?", textEn, pageId);
+    String model = body.getOrDefault("model", "worker");
+    translationService.record(pageId, model, textEn);
     return ResponseEntity.ok(Map.of("pageId", pageId, "status", "ok"));
   }
 

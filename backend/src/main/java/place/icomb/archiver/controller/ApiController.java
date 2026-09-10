@@ -31,6 +31,7 @@ public class ApiController {
   private final ArchiveRepository archiveRepository;
   private final PageRepository pageRepository;
   private final PageTextRepository pageTextRepository;
+  private final place.icomb.archiver.service.TranslationService translationService;
   private final JdbcTemplate jdbcTemplate;
 
   public ApiController(
@@ -38,11 +39,13 @@ public class ApiController {
       ArchiveRepository archiveRepository,
       PageRepository pageRepository,
       PageTextRepository pageTextRepository,
+      place.icomb.archiver.service.TranslationService translationService,
       JdbcTemplate jdbcTemplate) {
     this.recordRepository = recordRepository;
     this.archiveRepository = archiveRepository;
     this.pageRepository = pageRepository;
     this.pageTextRepository = pageTextRepository;
+    this.translationService = translationService;
     this.jdbcTemplate = jdbcTemplate;
   }
 
@@ -127,7 +130,8 @@ public class ApiController {
       if (current.isPresent()) {
         PageText best = current.get();
         pm.put("text", best.getTextRaw() != null ? best.getTextRaw() : "");
-        pm.put("textEn", best.getTextEn() != null ? best.getTextEn() : "");
+        String english = translationService.bestEnglish(p.getId());
+        pm.put("textEn", english != null ? english : "");
         pm.put("ocrConfidence", best.getConfidence() != null ? best.getConfidence() : 0.0f);
         pm.put("ocrEngine", best.getEngine() != null ? best.getEngine() : "");
       } else {

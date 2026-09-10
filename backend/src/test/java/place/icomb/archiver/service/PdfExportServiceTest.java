@@ -251,7 +251,8 @@ class PdfExportServiceTest {
     // order the signature block is the evidence.
     byte[] pdf = pdfExportService.buildPdf(recordId, List.of(1), PdfExportService.Variant.ENGLISH);
     try (PDDocument doc = Loader.loadPDF(pdf)) {
-      assertThat(countImages(doc)).isEqualTo(1);
+      // Page 0 is the cover; the document's own first page follows it.
+      assertThat(countImages(doc, 1)).isEqualTo(1);
     }
   }
 
@@ -275,7 +276,8 @@ class PdfExportServiceTest {
         List.of(PdfExportService.Variant.ENGLISH, PdfExportService.Variant.SIDE_BY_SIDE)) {
       try (PDDocument doc = Loader.loadPDF(pdfExportService.buildPdf(recordId, List.of(1), v))) {
         var uris = new java.util.ArrayList<String>();
-        for (var annotation : doc.getPage(0).getAnnotations()) {
+        // Page 0 is the cover, which links to the record; page 1 is the document's first page.
+        for (var annotation : doc.getPage(1).getAnnotations()) {
           if (annotation
               instanceof org.apache.pdfbox.pdmodel.interactive.annotation.PDAnnotationLink link) {
             if (link.getAction()
@@ -286,6 +288,20 @@ class PdfExportServiceTest {
         }
         assertThat(uris).as("%s footer link", v).anyMatch(u -> u.endsWith(expected));
         assertThat(uris).as("%s link is absolute", v).allMatch(u -> u.startsWith("http"));
+
+        var coverUris = new java.util.ArrayList<String>();
+        for (var annotation : doc.getPage(0).getAnnotations()) {
+          if (annotation
+              instanceof org.apache.pdfbox.pdmodel.interactive.annotation.PDAnnotationLink link) {
+            if (link.getAction()
+                instanceof org.apache.pdfbox.pdmodel.interactive.action.PDActionURI uri) {
+              coverUris.add(uri.getURI());
+            }
+          }
+        }
+        assertThat(coverUris)
+            .as("%s cover links to the record", v)
+            .anyMatch(u -> u.endsWith("/records/" + recordId));
       }
     }
   }
@@ -305,18 +321,25 @@ class PdfExportServiceTest {
     // The PDF's own page number drifts from the document's as soon as one source page needs two
     // sheets; without "cont." a reader holding sheet two cannot tell a continuation from the
     // next document page.
+    // Set on page_translation, which is where the export takes its English from.
     jdbc.update(
-        "UPDATE page_text SET text_en = ? WHERE page_id = (SELECT id FROM page WHERE record_id = ? AND seq = 1)",
-        "A reasonably long line of translated archival prose. ".repeat(400),
-        recordId);
+        """
+        INSERT INTO page_translation (page_id, model, text_en, created_at)
+        VALUES ((SELECT id FROM page WHERE record_id = ? AND seq = 1),
+                'mistral-small-latest', ?, now())
+        ON CONFLICT (page_id, model) DO UPDATE SET text_en = EXCLUDED.text_en
+        """,
+        recordId,
+        "A reasonably long line of translated archival prose. ".repeat(400));
 
     for (PdfExportService.Variant v :
         List.of(PdfExportService.Variant.ENGLISH, PdfExportService.Variant.SIDE_BY_SIDE)) {
       byte[] pdf = pdfExportService.buildPdf(recordId, List.of(1), v);
       try (PDDocument doc = Loader.loadPDF(pdf)) {
-        assertThat(doc.getNumberOfPages()).as("%s spills", v).isGreaterThan(1);
-        String first = pageText(doc, 1);
-        String second = pageText(doc, 2);
+        // Cover, then the source page's own sheets.
+        assertThat(doc.getNumberOfPages()).as("%s spills", v).isGreaterThan(2);
+        String first = pageText(doc, 2);
+        String second = pageText(doc, 3);
         assertThat(first).as("%s first sheet", v).contains("Archive Page 1");
         assertThat(first).as("%s first sheet not cont", v).doesNotContain("cont.");
         assertThat(second).as("%s second sheet", v).contains("Archive Page 1 cont.");
@@ -334,6 +357,68 @@ class PdfExportServiceTest {
   }
 
   @Test
+  void theGeneratedExportsOpenWithACoverSheet() throws Exception {
+    for (PdfExportService.Variant v :
+        List.of(PdfExportService.Variant.ENGLISH, PdfExportService.Variant.SIDE_BY_SIDE)) {
+      try (PDDocument doc = Loader.loadPDF(pdfExportService.buildPdf(recordId, List.of(1), v))) {
+        String cover = pageText(doc, 1);
+        assertThat(cover).as("%s masthead", v).contains("Czernin Archive");
+        assertThat(cover).as("%s record number", v).contains("Record " + recordId);
+        assertThat(cover).as("%s archive", v).contains("TEST ARCHIVE");
+        assertThat(cover).as("%s title", v).contains("Lagebericht");
+        // The statement that stops a machine translation being read as the document.
+        assertThat(cover).as("%s disclaimer", v).contains("machine translation");
+        assertThat(cover).as("%s authority", v).contains("authoritative text");
+      }
+    }
+  }
+
+  @Test
+  void theScanExportHasNoCoverSheet() throws Exception {
+    String text =
+        textOf(pdfExportService.buildPdf(recordId, List.of(1), PdfExportService.Variant.ORIGINAL));
+    assertThat(text).doesNotContain("Czernin Archive");
+    assertThat(text).doesNotContain("machine translation");
+  }
+
+  @Test
+  void aPartialExtractSaysSoOnTheCover() throws Exception {
+    // Otherwise a two-page extract of a thirty-page file reads as the whole file.
+    jdbc.update("UPDATE record SET page_count = 30 WHERE id = ?", recordId);
+    try (PDDocument doc =
+        Loader.loadPDF(
+            pdfExportService.buildPdf(recordId, List.of(1), PdfExportService.Variant.ENGLISH))) {
+      assertThat(pageText(doc, 1)).contains("This extract contains page 1 of 30");
+    }
+  }
+
+  @Test
+  void theExportShowsTheBestTranslationNotTheCachedOne() throws Exception {
+    // The production fault: an upgrade sat in page_translation while page_text still cached the
+    // cheap translation, and every export served the cheap one.
+    Long pageId =
+        jdbc.queryForObject(
+            "SELECT id FROM page WHERE record_id = ? AND seq = 1", Long.class, recordId);
+    jdbc.update(
+        """
+        INSERT INTO page_translation (page_id, model, text_en, created_at)
+        VALUES (?, 'mistral-medium-latest', ?, now())
+        ON CONFLICT (page_id, model) DO UPDATE SET text_en = EXCLUDED.text_en
+        """,
+        pageId,
+        "The carefully upgraded translation of this page.");
+    jdbc.update("UPDATE page_text SET text_en = ? WHERE page_id = ?", "The cheap one.", pageId);
+
+    for (PdfExportService.Variant v :
+        List.of(PdfExportService.Variant.ENGLISH, PdfExportService.Variant.SIDE_BY_SIDE)) {
+      String text = textOf(pdfExportService.buildPdf(recordId, List.of(1), v));
+      assertThat(text).as("%s shows the upgrade", v).contains("carefully upgraded");
+      assertThat(text).as("%s drops the cheap one", v).doesNotContain("The cheap one.");
+      assertThat(text).as("%s names the model", v).contains("mistral-medium-latest");
+    }
+  }
+
+  @Test
   void storedRecordPdfIsBuiltToFile() throws Exception {
     Path target = Files.createTempFile("searchable-test-", ".pdf");
     try {
@@ -346,8 +431,8 @@ class PdfExportServiceTest {
     }
   }
 
-  private long countImages(PDDocument doc) {
-    var resources = doc.getPage(0).getResources();
+  private long countImages(PDDocument doc, int pageIndex) {
+    var resources = doc.getPage(pageIndex).getResources();
     return java.util.stream.StreamSupport.stream(resources.getXObjectNames().spliterator(), false)
         .filter(
             name -> {

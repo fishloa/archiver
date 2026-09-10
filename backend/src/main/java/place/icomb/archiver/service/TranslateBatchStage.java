@@ -5,7 +5,6 @@ import java.util.List;
 import java.util.Map;
 import org.springframework.jdbc.core.JdbcTemplate;
 import place.icomb.archiver.model.Job;
-import place.icomb.archiver.repository.PageTranslationRepository;
 
 /**
  * Page translation through the provider's batch API.
@@ -31,14 +30,14 @@ public class TranslateBatchStage implements BatchStage {
   private final String model;
   private final String jobKind;
   private final JdbcTemplate jdbc;
-  private final PageTranslationRepository translations;
+  private final TranslationService translationService;
 
   public TranslateBatchStage(
-      String model, String jobKind, JdbcTemplate jdbc, PageTranslationRepository translations) {
+      String model, String jobKind, JdbcTemplate jdbc, TranslationService translationService) {
     this.model = model;
     this.jobKind = jobKind;
     this.jdbc = jdbc;
-    this.translations = translations;
+    this.translationService = translationService;
   }
 
   @Override
@@ -145,22 +144,6 @@ public class TranslateBatchStage implements BatchStage {
     // Every model's output is kept. text_en is only a cache of whichever is preferred, so a
     // cheap translation is never destroyed by a better one — and an upgrade already done can
     // be recognised and refused rather than paid for twice.
-    translations.upsert(job.getPageId(), model, translated);
-
-    String shown =
-        jdbc.query(
-            """
-            SELECT tr.model FROM page_translation tr
-            JOIN page_text pt ON pt.page_id = tr.page_id AND pt.text_en = tr.text_en
-            WHERE tr.page_id = ?
-            LIMIT 1
-            """,
-            rs -> rs.next() ? rs.getString(1) : null,
-            job.getPageId());
-
-    if (TranslationModels.outranks(model, shown)) {
-      jdbc.update(
-          "UPDATE page_text SET text_en = ? WHERE page_id = ?", translated, job.getPageId());
-    }
+    translationService.record(job.getPageId(), model, translated);
   }
 }

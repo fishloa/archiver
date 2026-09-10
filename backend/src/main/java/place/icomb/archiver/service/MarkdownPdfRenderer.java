@@ -225,10 +225,13 @@ public class MarkdownPdfRenderer {
       cs.newLineAtOffset(margin, baseline);
       cs.showText(text);
       cs.endText();
-      // The URL is also a link. An extract is read on screen at least as often as on paper, and
+      float linkWidth = regular.getStringWidth(text) / 1000f * size;
+      // Underlined and clickable. An extract is read on screen at least as often as on paper, and
       // retyping a record and page number by hand to get back to the source is exactly the
-      // friction the footer exists to remove.
-      linkTo(page, left, margin, baseline, regular.getStringWidth(text) / 1000f * size, size);
+      // friction the footer exists to remove — but the link is invisible until the rule under it
+      // says there is one.
+      drawRule(cs, margin, baseline - size * 0.22f, linkWidth, 0.4f);
+      linkTo(page, left, margin, baseline, linkWidth, size);
     }
     if (right != null && !right.isBlank()) {
       String text = sanitise(right);
@@ -270,6 +273,42 @@ public class MarkdownPdfRenderer {
   /** "Archive Page 5", or "Archive Page 5 cont." on a source page's second and later sheets. */
   public static String pageLabel(int seq, boolean continuation) {
     return "Archive Page " + seq + (continuation ? " cont." : "");
+  }
+
+  public PDFont boldFont() {
+    return bold;
+  }
+
+  /** Wraps plain (non-markdown) text to a width — the cover sheet's fields are not markdown. */
+  public List<String> wrapPlain(String text, boolean useBold, float size, float maxWidth)
+      throws IOException {
+    return wrap(text == null ? "" : text, useBold ? bold : regular, size, maxWidth);
+  }
+
+  /** Draws a single run of plain text at a baseline. */
+  public void drawText(
+      PDPageContentStream cs, String text, float x, float y, float size, boolean useBold)
+      throws IOException {
+    if (text == null || text.isBlank()) return;
+    cs.beginText();
+    cs.setFont(useBold ? bold : regular, size);
+    cs.newLineAtOffset(x, y);
+    cs.showText(sanitise(text));
+    cs.endText();
+  }
+
+  /** Width of plain text as it would be drawn. */
+  public float textWidth(String text, float size, boolean useBold) throws IOException {
+    return stringWidth(useBold ? bold : regular, size, text == null ? "" : text);
+  }
+
+  /** A horizontal rule, for the cover sheet's section dividers. */
+  public void drawRule(PDPageContentStream cs, float x, float y, float width, float thickness)
+      throws IOException {
+    cs.setLineWidth(thickness);
+    cs.moveTo(x, y);
+    cs.lineTo(x + width, y);
+    cs.stroke();
   }
 
   public PDFont regularFont() {
