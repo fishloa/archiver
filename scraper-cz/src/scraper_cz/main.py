@@ -688,7 +688,12 @@ def main():
             log.info("Loaded %d records", len(records))
 
             s, f, sk = run_scrape(
-                records, session, client, known_statuses, args.dry_run, args.verbose,
+                records,
+                session,
+                client,
+                known_statuses,
+                args.dry_run,
+                args.verbose,
                 scraper_id=scraper_id,
             )
             total_success += s
@@ -739,7 +744,12 @@ def main():
                 )
 
                 s, f, sk = run_scrape(
-                    records, session, client, known_statuses, args.dry_run, args.verbose,
+                    records,
+                    session,
+                    client,
+                    known_statuses,
+                    args.dry_run,
+                    args.verbose,
                     scraper_id=scraper_id,
                 )
                 total_success += s
@@ -772,7 +782,12 @@ def main():
             )
 
             s, f, sk = run_scrape(
-                records, session, client, known_statuses, args.dry_run, args.verbose,
+                records,
+                session,
+                client,
+                known_statuses,
+                args.dry_run,
+                args.verbose,
                 scraper_id=scraper_id,
             )
             total_success += s

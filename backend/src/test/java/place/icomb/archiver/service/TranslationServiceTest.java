@@ -46,6 +46,7 @@ class TranslationServiceTest {
   @Autowired private JdbcTemplate jdbc;
 
   private Long pageId;
+  private Long recordId;
 
   @BeforeEach
   void seed() {
@@ -57,7 +58,7 @@ class TranslationServiceTest {
 
     Long archiveId =
         jdbc.queryForObject("INSERT INTO archive (name) VALUES ('T') RETURNING id", Long.class);
-    Long recordId =
+    recordId =
         jdbc.queryForObject(
             """
             INSERT INTO record (archive_id, source_system, source_record_id, title, lang,
@@ -210,5 +211,62 @@ class TranslationServiceTest {
 
   private Long recordIdOf(Long page) {
     return jdbc.queryForObject("SELECT record_id FROM page WHERE id = ?", Long.class, page);
+  }
+
+  // -------------------------------------------------------------------------
+  // Record metadata
+  // -------------------------------------------------------------------------
+
+  private String cachedTitle() {
+    return jdbc.queryForObject("SELECT title_en FROM record WHERE id = ?", String.class, recordId);
+  }
+
+  @Test
+  void recordMetadataFollowsTheSameRanking() {
+    translationService.recordMetadata(recordId, "google/gemma-4-31B-it", "An obscene letter", "d1");
+    assertThat(cachedTitle()).isEqualTo("An obscene letter");
+
+    translationService.recordMetadata(
+        recordId, "mistral-medium-latest", "A letter of condolence", "d2");
+    assertThat(cachedTitle()).isEqualTo("A letter of condolence");
+    assertThat(translationService.bestMetadataModel(recordId)).isEqualTo("mistral-medium-latest");
+  }
+
+  @Test
+  void aWorseMetadataModelArrivingLaterDoesNotWin() {
+    // Exactly what the HTTP worker did: it wrote record.title_en unconditionally, so a weaker
+    // model could overwrite a better translation with no trace that the better one existed.
+    translationService.recordMetadata(
+        recordId, "mistral-medium-latest", "A letter of condolence", "d");
+    translationService.recordMetadata(recordId, "google/gemma-4-31B-it", "An obscene letter", "d");
+    assertThat(cachedTitle()).isEqualTo("A letter of condolence");
+  }
+
+  @Test
+  void bothMetadataTranslationsAreKept() {
+    translationService.recordMetadata(recordId, "google/gemma-4-31B-it", "old", "d");
+    translationService.recordMetadata(recordId, "mistral-medium-latest", "new", "d");
+    Integer rows =
+        jdbc.queryForObject(
+            "SELECT count(*) FROM record_translation WHERE record_id = ?", Integer.class, recordId);
+    assertThat(rows).isEqualTo(2);
+  }
+
+  @Test
+  void staleRecordMetadataIsRepairedInBulk() {
+    translationService.recordMetadata(recordId, "google/gemma-4-31B-it", "old", "d");
+    translationService.recordMetadata(recordId, "mistral-medium-latest", "new", "d");
+    jdbc.update("UPDATE record SET title_en = 'old' WHERE id = ?", recordId);
+
+    assertThat(translationService.refreshAllStaleMetadata()).isEqualTo(1);
+    assertThat(cachedTitle()).isEqualTo("new");
+    assertThat(translationService.refreshAllStaleMetadata()).isZero();
+  }
+
+  @Test
+  void aRecordWithNoMetadataTranslationIsLeftAlone() {
+    jdbc.update("UPDATE record SET title_en = 'untouched' WHERE id = ?", recordId);
+    translationService.refreshShownMetadata(recordId);
+    assertThat(cachedTitle()).isEqualTo("untouched");
   }
 }

@@ -23,6 +23,7 @@ import place.icomb.archiver.service.PersonMatchService;
 import place.icomb.archiver.service.PersonMatchWorker;
 import place.icomb.archiver.service.QwenOcrWorker;
 import place.icomb.archiver.service.RecordEventService;
+import place.icomb.archiver.service.RecordTranslateBatchStage;
 import place.icomb.archiver.service.StorageService;
 import place.icomb.archiver.service.TranslateBatchStage;
 import place.icomb.archiver.service.TranslationModels;
@@ -296,6 +297,23 @@ public class WorkerSchedulingConfig implements SchedulingConfigurer {
               translatePerMinute);
       registrar.addFixedDelayTask(bulk::tick, Duration.ofMillis(mistralTickInterval));
 
+      // Record metadata. Titles and descriptions are a few hundred characters, so this rides
+      // the same batch machinery purely to inherit its recovery and accounting.
+      var metadata =
+          new BatchOrchestrator(
+              "mistral-batch-translate-record",
+              new RecordTranslateBatchStage(
+                  TranslationModels.UPGRADE_MODEL, jdbcTemplate, translationService),
+              client,
+              jobService,
+              jobEventService,
+              recordEventService,
+              providerBatchRepository,
+              translateBatchSize,
+              mistralMaxBatchBytes,
+              translatePerMinute);
+      registrar.addFixedDelayTask(metadata::tick, Duration.ofMillis(mistralTickInterval));
+
       // On-demand upgrades. A separate kind because a batch carries one model, and separate
       // so an upgrade queue can be held or drained independently of the bulk run.
       var upgrade =
@@ -317,8 +335,9 @@ public class WorkerSchedulingConfig implements SchedulingConfigurer {
       registrar.addFixedDelayTask(upgrade::tick, Duration.ofMillis(mistralTickInterval));
 
       log.info(
-          "Registered Mistral batch translation (bulk={}, upgrade={}, batch={} pages)",
+          "Registered Mistral batch translation (bulk={}, upgrade={}, metadata={}, batch={})",
           TranslationModels.BULK_MODEL,
+          TranslationModels.UPGRADE_MODEL,
           TranslationModels.UPGRADE_MODEL,
           translateBatchSize);
     }

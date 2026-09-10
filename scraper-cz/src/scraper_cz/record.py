@@ -96,13 +96,23 @@ def parse_record_detail(html: str, xid: str) -> dict:
     sig = fields.get("sig", "")
     fond = fond_name_m.group(1).strip() if fond_name_m else fields.get("fond_name", "")
 
-    # Build a useful title from fond name, inv, sig
-    title_parts = [fond] if fond else []
-    if inv:
-        title_parts.append(f"inv. {inv}")
-    if sig:
-        title_parts.append(f"sig. {sig}")
-    title = ", ".join(title_parts) or f"Record {xid[:8]}"
+    # The record's own subject line, which is what a reader needs to identify it.
+    #
+    # This used to be composed from the fond name, inventory number and signature. All three are
+    # already sent to the backend as their own fields, so the title carried nothing the catalogue
+    # block does not show — while repeating the archive's name across 2,552 records and, once
+    # translated, putting "STATE SECRETARY FOR THE RUSSIAN PROTECTOR IN THINGS AND IN MORAVA" at
+    # the head of 86% of the archive.
+    title = (fields.get("obsah") or "").strip()
+    if not title:
+        # Nothing describes this record. Fall back to the catalogue label so it stays
+        # identifiable in a list rather than appearing blank.
+        title_parts = [fond] if fond else []
+        if inv:
+            title_parts.append(f"inv. {inv}")
+        if sig:
+            title_parts.append(f"sig. {sig}")
+        title = ", ".join(title_parts) or f"Record {xid[:8]}"
 
     return {
         "xid": xid,

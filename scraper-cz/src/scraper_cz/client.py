@@ -80,7 +80,10 @@ class BackendClient:
             "sourceSystem": source_system,
             "sourceRecordId": source_record_id,
             "title": metadata.get("title", ""),
-            "description": metadata.get("desc") or metadata.get("obsah") or "",
+            # vademecum carries one subject line, reached as both "obsah" and "desc". Now that it
+            # is the title, sending it again as the description would store and embed the same
+            # sentence twice and print it twice on a cover sheet.
+            "description": _description_unless_same_as_title(metadata),
             "dateRangeText": metadata.get("datace", ""),
             "referenceCode": metadata.get("sig", ""),
             "inventoryNumber": str(metadata["inv"]) if metadata.get("inv") else None,
@@ -259,3 +262,10 @@ class BackendClient:
                 break
             page += 1
         return all_records
+
+
+def _description_unless_same_as_title(metadata: dict) -> str:
+    """The record's description, dropped when it merely repeats the title."""
+    description = (metadata.get("desc") or metadata.get("obsah") or "").strip()
+    title = (metadata.get("title") or "").strip()
+    return "" if description == title else description

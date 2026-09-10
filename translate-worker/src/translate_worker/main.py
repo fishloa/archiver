@@ -15,7 +15,10 @@ from worker_common import run_sse_loop, wait_for_backend
 
 log = logging.getLogger(__name__)
 
-JOB_KINDS = ("translate_page", "translate_record")
+# translate_record moved to the backend's batch pipeline, where a translation is recorded
+# against its model and ranked. This worker wrote record.title_en directly, so a worse
+# translation could silently replace a better one and nothing recorded which model produced it.
+JOB_KINDS = ("translate_page",)
 
 
 def _job_lang(job: dict) -> str | None:

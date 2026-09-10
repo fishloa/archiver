@@ -7,6 +7,7 @@ import java.util.Map;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import place.icomb.archiver.repository.PageTranslationRepository;
+import place.icomb.archiver.repository.RecordTranslationRepository;
 
 /**
  * The one place that decides which of a page's translations is the right one to show.
@@ -27,10 +28,15 @@ public class TranslationService {
 
   private final JdbcTemplate jdbc;
   private final PageTranslationRepository translations;
+  private final RecordTranslationRepository recordTranslations;
 
-  public TranslationService(JdbcTemplate jdbc, PageTranslationRepository translations) {
+  public TranslationService(
+      JdbcTemplate jdbc,
+      PageTranslationRepository translations,
+      RecordTranslationRepository recordTranslations) {
     this.jdbc = jdbc;
     this.translations = translations;
+    this.recordTranslations = recordTranslations;
   }
 
   // -------------------------------------------------------------------------
@@ -186,6 +192,86 @@ public class TranslationService {
           AND best.text_en IS NOT NULL
           AND pt.text_en IS DISTINCT FROM best.text_en
         """,
+        TranslationModels.ranksLiteral());
+  }
+
+  // -------------------------------------------------------------------------
+  // Record metadata
+  // -------------------------------------------------------------------------
+
+  /**
+   * Records a model's translation of a record's title and description, then repoints the cache.
+   *
+   * <p>The same rule as pages, applied to catalogue metadata. It was not applied there before, and
+   * 2,257 of 2,621 records ended up with "STATE SECRETARY FOR THE RUSSIAN PROTECTOR IN THINGS AND
+   * IN MORAVA" as their English title — on the cover sheet of every extract — with nothing
+   * recording which model produced it or any way for a better one to take over.
+   */
+  public void recordMetadata(Long recordId, String model, String titleEn, String descriptionEn) {
+    boolean anything =
+        (titleEn != null && !titleEn.isBlank())
+            || (descriptionEn != null && !descriptionEn.isBlank());
+    if (anything) {
+      recordTranslations.upsert(recordId, model, titleEn, descriptionEn);
+    }
+    refreshShownMetadata(recordId);
+  }
+
+  /** Points record.title_en / description_en at the best translation the record has. */
+  public void refreshShownMetadata(Long recordId) {
+    jdbc.update(
+        """
+        UPDATE record r SET
+            title_en = COALESCE(best.title_en, r.title_en),
+            description_en = COALESCE(best.description_en, r.description_en),
+            updated_at = now()
+        FROM (
+            SELECT rt.title_en, rt.description_en FROM record_translation rt
+            WHERE rt.record_id = ?
+            ORDER BY COALESCE(array_position(?::text[], rt.model), 999)
+            LIMIT 1
+        ) best
+        WHERE r.id = ?
+        """,
+        recordId,
+        TranslationModels.ranksLiteral(),
+        recordId);
+  }
+
+  /** The model behind a record's shown metadata, or null when it has never been translated. */
+  public String bestMetadataModel(Long recordId) {
+    return jdbc.query(
+        """
+        SELECT rt.model FROM record_translation rt
+        WHERE rt.record_id = ?
+        ORDER BY COALESCE(array_position(?::text[], rt.model), 999)
+        LIMIT 1
+        """,
+        rs -> rs.next() ? rs.getString(1) : null,
+        recordId,
+        TranslationModels.ranksLiteral());
+  }
+
+  /** Repairs every record whose cached metadata has fallen behind its best translation. */
+  public int refreshAllStaleMetadata() {
+    return jdbc.update(
+        """
+        UPDATE record r SET title_en = best.title_en,
+                            description_en = best.description_en,
+                            updated_at = now()
+        FROM (
+            SELECT rt.record_id, rt.title_en, rt.description_en
+            FROM record_translation rt
+            WHERE COALESCE(array_position(?::text[], rt.model), 999) = (
+                SELECT MIN(COALESCE(array_position(?::text[], rt2.model), 999))
+                FROM record_translation rt2 WHERE rt2.record_id = rt.record_id
+            )
+        ) best
+        WHERE r.id = best.record_id
+          AND (r.title_en IS DISTINCT FROM best.title_en
+               OR r.description_en IS DISTINCT FROM best.description_en)
+        """,
+        TranslationModels.ranksLiteral(),
         TranslationModels.ranksLiteral());
   }
 }
