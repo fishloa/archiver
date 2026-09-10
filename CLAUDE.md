@@ -44,10 +44,11 @@ Only the backend touches PostgreSQL and archiver_store.
 | scraper-ddb | Python | Deutsche Digitale Bibliothek (German Digital Library) |
 
 **OCR engines.** Internal backend workers, selected by `OCR_DEFAULT_ENGINE`:
-`ocr_page_mistral` (Mistral OCR API — current default, returns markdown),
-`ocr_page_claude` (Claude vision) and `ocr_page_qwen3vl` (Ollama on the Mac Studio) are
-both **disabled in the deploy** — they remain in the image and are re-enabled with one env
-var each. Mistral is the only OCR engine running. PaddleOCR was retired in September 2026:
+`ocr_page_mistral` (Mistral OCR API — the only engine, returns markdown). `ocr_page_qwen3vl`
+(Ollama on the Mac Studio) remains in the image, disabled, re-enabled with one env var.
+The Claude vision engine was removed in September 2026: it had run 38 jobs, none of whose
+transcriptions survived a later Mistral pass, and every model call in this system now goes
+to one provider. PaddleOCR was retired in September 2026:
 it ran no jobs after 2 August and the backend registered no worker for it. Its 66,796
 pages of stored text remain in `page_text` until re-OCR'd.
 
@@ -247,7 +248,10 @@ docker build -f embed-worker/Dockerfile -t dockerregistry.icomb.place/archiver/e
 
 - **ONLY the backend talks to PostgreSQL and archiver_store.** Workers, scrapers, and frontend communicate exclusively via the backend HTTP API.
 - ISO 639-1 language codes everywhere (2-char: de, cs, en)
-- Job kinds: `ocr_page_mistral`, `ocr_page_claude`, `ocr_page_qwen3vl`, `build_searchable_pdf`, `translate_page`, `translate_record`, `embed_record`, `match_persons`, `extract_entities`
+- Job kinds: `ocr_page_mistral`, `ocr_page_qwen3vl`, `build_searchable_pdf`, `translate_page`,
+  `translate_page_upgrade`, `translate_record`, `embed_record`, `match_persons`,
+  `extract_entities`. `ocr_page_claude` stays in the DB CHECK constraint for 38 historical
+  rows, but the engine is gone.
 - Record statuses: `ingesting`, `ingested`, `ocr_pending`, `ocr_in_progress`, `ocr_done`, `pdf_pending`, `pdf_done`, `translating`, `embedding`, `matching`, `entities_pending`, `entities_done`, `complete`, `error`
 - Python linting: `ruff` (line-length 100, target py314)
 - Java formatting: `spotlessApply` (Google Java Format)

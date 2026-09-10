@@ -14,7 +14,6 @@ import place.icomb.archiver.repository.PageTextRepository;
 import place.icomb.archiver.repository.PageTranslationRepository;
 import place.icomb.archiver.repository.ProviderBatchRepository;
 import place.icomb.archiver.service.BatchOrchestrator;
-import place.icomb.archiver.service.ClaudeOcrWorker;
 import place.icomb.archiver.service.JobEventService;
 import place.icomb.archiver.service.JobService;
 import place.icomb.archiver.service.MistralBatchClient;
@@ -58,12 +57,6 @@ public class WorkerSchedulingConfig implements SchedulingConfigurer {
   private final int qwenConcurrency;
   private final long qwenPollInterval;
 
-  private final boolean claudeOcrEnabled;
-  private final String claudeApiKey;
-  private final String claudeModel;
-  private final int claudeConcurrency;
-  private final long claudePollInterval;
-
   private final boolean mistralOcrEnabled;
   private final String mistralApiKey;
   private final String mistralModel;
@@ -104,11 +97,6 @@ public class WorkerSchedulingConfig implements SchedulingConfigurer {
       @Value("${archiver.ocr.qwen.model:}") String qwenModel,
       @Value("${archiver.ocr.qwen.concurrency:1}") int qwenConcurrency,
       @Value("${archiver.ocr.qwen.poll-interval:5000}") long qwenPollInterval,
-      @Value("${archiver.ocr.claude.enabled:false}") boolean claudeOcrEnabled,
-      @Value("${archiver.ocr.claude.api-key:}") String claudeApiKey,
-      @Value("${archiver.ocr.claude.model:claude-haiku-4-5-20251001}") String claudeModel,
-      @Value("${archiver.ocr.claude.concurrency:1}") int claudeConcurrency,
-      @Value("${archiver.ocr.claude.poll-interval:5000}") long claudePollInterval,
       @Value("${archiver.ocr.mistral.enabled:false}") boolean mistralOcrEnabled,
       @Value("${archiver.ocr.mistral.api-key:}") String mistralApiKey,
       @Value("${archiver.ocr.mistral.model:mistral-ocr-latest}") String mistralModel,
@@ -143,11 +131,6 @@ public class WorkerSchedulingConfig implements SchedulingConfigurer {
     this.qwenModel = qwenModel;
     this.qwenConcurrency = qwenConcurrency;
     this.qwenPollInterval = qwenPollInterval;
-    this.claudeOcrEnabled = claudeOcrEnabled;
-    this.claudeApiKey = claudeApiKey;
-    this.claudeModel = claudeModel;
-    this.claudeConcurrency = claudeConcurrency;
-    this.claudePollInterval = claudePollInterval;
     this.mistralOcrEnabled = mistralOcrEnabled;
     this.mistralApiKey = mistralApiKey;
     this.mistralModel = mistralModel;
@@ -173,7 +156,6 @@ public class WorkerSchedulingConfig implements SchedulingConfigurer {
   public void configureTasks(ScheduledTaskRegistrar registrar) {
     int totalWorkers =
         (qwenEnabled ? qwenConcurrency : 0)
-            + (claudeOcrEnabled ? claudeConcurrency : 0)
             + (mistralOcrEnabled ? 1 : 0)
             + (translateBatchEnabled ? 2 : 0)
             + (translateRecordEnabled ? 1 : 0)
@@ -212,28 +194,6 @@ public class WorkerSchedulingConfig implements SchedulingConfigurer {
           qwenBaseUrl,
           qwenModel,
           qwenPollInterval);
-    }
-
-    if (claudeOcrEnabled) {
-      for (int i = 0; i < claudeConcurrency; i++) {
-        var worker =
-            new ClaudeOcrWorker(
-                "claude-ocr-" + i,
-                jobService,
-                jobEventService,
-                pageRepository,
-                attachmentRepository,
-                storageService,
-                pageTextRepository,
-                claudeApiKey,
-                claudeModel);
-        registrar.addFixedDelayTask(worker::pollAndProcess, Duration.ofMillis(claudePollInterval));
-      }
-      log.info(
-          "Registered {} Claude OCR worker(s) (model={}, poll={}ms)",
-          claudeConcurrency,
-          claudeModel,
-          claudePollInterval);
     }
 
     if (mistralOcrEnabled) {

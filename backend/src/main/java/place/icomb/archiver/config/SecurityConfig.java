@@ -87,9 +87,6 @@ public class SecurityConfig {
                     .hasAnyRole("PROCESSOR", "ADMIN")
                     .requestMatchers(HttpMethod.PUT, "/api/processor/**")
                     .hasAnyRole("PROCESSOR", "ADMIN")
-                    // Claude translation — requires login
-                    .requestMatchers(HttpMethod.POST, "/api/translate/claude")
-                    .hasAnyRole("USER", "ADMIN")
                     // Self-service profile — requires login
                     .requestMatchers(HttpMethod.PUT, "/api/profile")
                     .hasAnyRole("USER", "ADMIN")

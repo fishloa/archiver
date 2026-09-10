@@ -32,11 +32,16 @@ export const load: PageServerLoad = async ({ url, locals }) => {
 		snippet: c.content.substring(0, 300)
 	}));
 
-	// Claude synthesis (only on first page)
+	// Answer synthesis over the retrieved passages (first page only).
+	//
+	// Mistral, like every other model call in this system. This used to go to Anthropic with a
+	// dated model snapshot; when claude-sonnet-4-20250514 was retired the request began failing
+	// with not_found_error, and because the caller only acted on a 200 the answer box simply
+	// stopped appearing with nothing logged.
 	let answer: string | null = null;
 	if (page === 0 && results.length > 0) {
-		const anthropicKey = env.ANTHROPIC_API_KEY;
-		if (anthropicKey) {
+		const mistralKey = env.MISTRAL_API_KEY;
+		if (mistralKey) {
 			try {
 				const context = results
 					.slice(0, 10)
@@ -47,44 +52,43 @@ export const load: PageServerLoad = async ({ url, locals }) => {
 					})
 					.join('\n\n---\n\n');
 
-				const claudeResponse = await fetch('https://api.anthropic.com/v1/messages', {
-					method: 'POST',
-					headers: {
-						'Content-Type': 'application/json',
-						'x-api-key': anthropicKey,
-						'anthropic-version': '2023-06-01'
-					},
-					body: JSON.stringify({
-						model: env.ANTHROPIC_MODEL || 'claude-sonnet-5',
-						max_tokens: 1024,
-						messages: [
-							{
-								role: 'user',
-								content: `You are a research assistant helping with historical archive documents. Answer the user's question based ONLY on the provided document excerpts. Be concise (2-4 sentences). Cite record numbers using the format #NNNN (e.g. #3360). If the documents don't contain relevant information, say so briefly.
+				const res = await fetch(
+					`${env.MISTRAL_BASE_URL || 'https://api.mistral.ai'}/v1/chat/completions`,
+					{
+						method: 'POST',
+						headers: {
+							'Content-Type': 'application/json',
+							Authorization: `Bearer ${mistralKey}`
+						},
+						body: JSON.stringify({
+							model: env.SEARCH_ANSWER_MODEL || 'mistral-medium-latest',
+							max_tokens: 1024,
+							temperature: 0.1,
+							messages: [
+								{
+									role: 'user',
+									content: `You are a research assistant helping with historical archive documents. Answer the user's question based ONLY on the provided document excerpts. Be concise (2-4 sentences). Cite record numbers using the format #NNNN (e.g. #3360). If the documents don't contain relevant information, say so briefly.
 
 Document excerpts:
 ${context}
 
 Question: ${q}`
-							}
-						]
-					})
-				});
+								}
+							]
+						})
+					}
+				);
 
-				if (claudeResponse.ok) {
-					const data = await claudeResponse.json();
-					answer = data.content?.[0]?.text || null;
+				if (res.ok) {
+					const data = await res.json();
+					answer = data.choices?.[0]?.message?.content?.trim() || null;
 				} else {
-					// A retired model returns not_found_error, which never reaches the Usage page.
-					// Silently skipping it is how claude-sonnet-4 kept failing here unnoticed.
-					console.error(
-						'Claude synthesis failed:',
-						claudeResponse.status,
-						await claudeResponse.text()
-					);
+					// Never swallow this: a silent non-200 is exactly how the previous provider's
+					// retirement went unnoticed for three months.
+					console.error('Search answer synthesis failed:', res.status, await res.text());
 				}
 			} catch (e) {
-				console.error('Claude synthesis failed:', e);
+				console.error('Search answer synthesis failed:', e);
 			}
 		}
 	}

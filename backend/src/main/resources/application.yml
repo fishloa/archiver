@@ -66,13 +66,6 @@ archiver:
     # Searchable PDFs are built in-process (see SearchablePdfWorker), not by a separate service.
     concurrency: ${PDF_CONCURRENCY:3}
     poll-interval: ${PDF_POLL_INTERVAL:5000}
-  anthropic:
-    api-key: ${ANTHROPIC_API_KEY:}
-    # Pinned by name, not by dated snapshot: claude-sonnet-4-20250514 was retired on
-    # 15 June 2026 and every request to it failed with not_found_error. Because the caller
-    # only acts on a 200, the failures were invisible — no error surfaced, the feature just
-    # quietly stopped answering.
-    model: ${ANTHROPIC_MODEL:claude-sonnet-5}
   ocr:
     default-engine: ${OCR_DEFAULT_ENGINE:ocr_page_qwen3vl}
     qwen:
@@ -111,12 +104,6 @@ archiver:
       # Catalogue metadata only. Deliberately separate from batch.enabled so turning titles on
       # cannot also arm re-translation of the whole archive's pages.
       enabled: ${TRANSLATE_RECORD_ENABLED:false}
-    claude:
-      enabled: ${CLAUDE_OCR_ENABLED:false}
-      api-key: ${ANTHROPIC_API_KEY:}
-      model: ${CLAUDE_OCR_MODEL:claude-haiku-4-5-20251001}
-      poll-interval: ${CLAUDE_OCR_POLL_INTERVAL:5000}
-      concurrency: ${CLAUDE_OCR_CONCURRENCY:1}
 
 management:
   endpoints:
