@@ -23,4 +23,11 @@ public record IngestRecordRequest(
     String rawSourceMetadata,
     String lang,
     String metadataLang,
-    String sourceUrl) {}
+    String sourceUrl,
+    /**
+     * Which model translates this record's pages: "bulk" (default) or "best".
+     *
+     * <p>Chosen here so the pipeline enqueues one job per page of one kind. Queuing an upgrade
+     * after a bulk pass meant translating the record twice, with the two racing each other.
+     */
+    String translationQuality) {}

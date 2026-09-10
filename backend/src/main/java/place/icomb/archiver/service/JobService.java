@@ -184,7 +184,8 @@ public class JobService {
         UPDATE job SET status = 'completed', error = 'cancelled for ocr reset',
           finished_at = now()
         WHERE record_id = ?
-          AND kind IN ('build_searchable_pdf', 'translate_page', 'translate_record', 'embed_record', 'match_persons')
+          AND kind IN ('build_searchable_pdf', 'translate_page', 'translate_page_upgrade',
+                       'translate_record', 'embed_record', 'match_persons')
           AND status IN ('pending', 'claimed')
         """,
         recordId);
@@ -469,7 +470,11 @@ public class JobService {
       // Check if translation is still pending
       Long pendingTranslation =
           jdbcTemplate.queryForObject(
-              "SELECT count(*) FROM job WHERE record_id = ? AND kind IN ('translate_page', 'translate_record') AND status != 'completed'",
+              """
+              SELECT count(*) FROM job WHERE record_id = ?
+                AND kind IN ('translate_page', 'translate_page_upgrade', 'translate_record')
+                AND status != 'completed'
+              """,
               Long.class,
               recordId);
       if (pendingTranslation != null && pendingTranslation > 0) {
@@ -533,7 +538,11 @@ public class JobService {
     for (Long recordId : pdfDoneStuck) {
       Long pendingTranslation =
           jdbcTemplate.queryForObject(
-              "SELECT count(*) FROM job WHERE record_id = ? AND kind IN ('translate_page', 'translate_record') AND status != 'completed'",
+              """
+              SELECT count(*) FROM job WHERE record_id = ?
+                AND kind IN ('translate_page', 'translate_page_upgrade', 'translate_record')
+                AND status != 'completed'
+              """,
               Long.class,
               recordId);
       if (pendingTranslation != null && pendingTranslation > 0) {
@@ -550,7 +559,11 @@ public class JobService {
         // Log translation completed if there were translation jobs
         Long completedTranslation =
             jdbcTemplate.queryForObject(
-                "SELECT count(*) FROM job WHERE record_id = ? AND kind IN ('translate_page', 'translate_record') AND status = 'completed'",
+                """
+                SELECT count(*) FROM job WHERE record_id = ?
+                  AND kind IN ('translate_page', 'translate_page_upgrade', 'translate_record')
+                  AND status = 'completed'
+                """,
                 Long.class,
                 recordId);
         if (completedTranslation != null && completedTranslation > 0) {
@@ -581,7 +594,7 @@ public class JobService {
           AND NOT EXISTS (
             SELECT 1 FROM job j
             WHERE j.record_id = r.id
-              AND j.kind IN ('translate_page', 'translate_record')
+              AND j.kind IN ('translate_page', 'translate_page_upgrade', 'translate_record')
               AND j.status NOT IN ('completed', 'failed')
           )
         ORDER BY r.id
@@ -612,7 +625,7 @@ public class JobService {
           AND EXISTS (
             SELECT 1 FROM job j
             WHERE j.record_id = r.id
-              AND j.kind IN ('translate_page', 'translate_record')
+              AND j.kind IN ('translate_page', 'translate_page_upgrade', 'translate_record')
               AND j.status = 'completed'
           )
         ORDER BY r.id
@@ -789,7 +802,8 @@ public class JobService {
                 UPDATE job SET status = 'completed', error = 'cancelled by admin reset',
                   finished_at = now()
                 WHERE record_id = ?
-                  AND kind IN ('translate_page', 'translate_record', 'embed_record', 'match_persons')
+                  AND kind IN ('translate_page', 'translate_page_upgrade', 'translate_record',
+                               'embed_record', 'match_persons')
                   AND status IN ('pending', 'claimed')
                 """,
                 recordId);

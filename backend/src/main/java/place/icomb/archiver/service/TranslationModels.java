@@ -58,6 +58,16 @@ public final class TranslationModels {
     return "{" + String.join(",", BEST_FIRST) + "}";
   }
 
+  /** Job kind that translates a page at the given quality. */
+  public static String jobKindFor(String quality) {
+    return "best".equals(quality) ? "translate_page_upgrade" : "translate_page";
+  }
+
+  /** The model that quality resolves to, for logging and for the cover sheet. */
+  public static String modelFor(String quality) {
+    return "best".equals(quality) ? UPGRADE_MODEL : BULK_MODEL;
+  }
+
   /** The model an upgrade would use. */
   public static String upgradeModel() {
     return UPGRADE_MODEL;

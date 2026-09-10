@@ -107,6 +107,13 @@ public class IngestService {
     if (request.sourceUrl() != null) {
       record.setSourceUrl(request.sourceUrl());
     }
+    // Anything other than an explicit "best" is bulk: the default must never silently pick the
+    // dearer model for 128,484 pages.
+    if ("best".equals(request.translationQuality())) {
+      record.setTranslationQuality("best");
+    } else if (record.getTranslationQuality() == null) {
+      record.setTranslationQuality("bulk");
+    }
     record.setUpdatedAt(Instant.now());
 
     record = recordRepository.save(record);

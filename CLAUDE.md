@@ -64,7 +64,10 @@ Pipeline transitions are managed by `PipelineStateMachine` — a formal state ma
 When all OCR jobs complete for a record, the state machine auto-enqueues:
 - `build_searchable_pdf` (1 per record)
 - `translate_record` (metadata translation, uses `record.metadata_lang`)
-- `translate_page` (per page; the LLM handles any source language, no detection step)
+- `translate_page` or `translate_page_upgrade` per page, chosen once from
+  `record.translation_quality` (`bulk` default, or `best`). One job per page of one kind:
+  enqueuing bulk and adding an upgrade behind it translated the record twice and the two raced.
+  The LLM handles any source language, so there is no detection step.
 - `embed_record` (heading-aware chunks of the ORIGINAL text — not the translation —
   embedded cross-lingually so English queries retrieve German and Czech pages)
 - `match_persons` (heuristic + LLM person matching against family tree)

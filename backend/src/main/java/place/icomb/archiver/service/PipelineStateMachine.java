@@ -136,7 +136,7 @@ public class PipelineStateMachine {
                 """
                 SELECT count(*) FROM job
                 WHERE record_id = ?
-                  AND kind IN ('translate_page', 'translate_record')
+                  AND kind IN ('translate_page', 'translate_page_upgrade', 'translate_record')
                   AND status NOT IN ('completed', 'failed')
                 """,
                 Long.class,
@@ -153,7 +153,7 @@ public class PipelineStateMachine {
                 """
                 SELECT count(*) FROM job
                 WHERE record_id = ?
-                  AND kind IN ('translate_page', 'translate_record')
+                  AND kind IN ('translate_page', 'translate_page_upgrade', 'translate_record')
                   AND status != 'completed'
                 """,
                 Long.class,
@@ -509,14 +509,22 @@ public class PipelineStateMachine {
       jobService.enqueueJob("translate_record", recordId, null, metaPayload);
     }
 
-    // Page translations
+    // Page translations, at the quality the record asked for.
+    //
+    // One job per page, of one kind. Enqueuing the bulk kind unconditionally and adding an
+    // upgrade afterwards translated the record twice and left the two racing: the cheap batch
+    // was usually already with the provider before the upgrade was queued.
     int translateCount = 0;
     if (ctx.hasPages() && (contentLang == null || !"en".equals(contentLang))) {
+      String quality =
+          jdbcTemplate.queryForObject(
+              "SELECT translation_quality FROM record WHERE id = ?", String.class, recordId);
+      String jobKind = TranslationModels.jobKindFor(quality);
       List<Long> pageIds =
           jdbcTemplate.queryForList(
               "SELECT p.id FROM page p WHERE p.record_id = ? ORDER BY p.seq", Long.class, recordId);
       for (Long pageId : pageIds) {
-        jobService.enqueueJob("translate_page", recordId, pageId, null);
+        jobService.enqueueJob(jobKind, recordId, pageId, null);
       }
       translateCount = pageIds.size();
     } else if (ctx.hasPages() && "en".equals(contentLang)) {
@@ -563,7 +571,7 @@ public class PipelineStateMachine {
   private void logTranslationCompleteIfNeeded(RecordContext ctx) {
     Long totalTranslation =
         jdbcTemplate.queryForObject(
-            "SELECT count(*) FROM job WHERE record_id = ? AND kind IN ('translate_page', 'translate_record')",
+            "SELECT count(*) FROM job WHERE record_id = ? AND kind IN ('translate_page', 'translate_page_upgrade', 'translate_record')",
             Long.class,
             ctx.recordId);
     if (totalTranslation != null && totalTranslation > 0) {

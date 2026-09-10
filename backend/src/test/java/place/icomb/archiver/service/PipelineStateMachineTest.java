@@ -289,6 +289,55 @@ class PipelineStateMachineTest {
   }
 
   @Test
+  void aBestQualityRecordIsTranslatedOnce_atUpgradeQuality() {
+    // The pipeline used to enqueue the bulk kind unconditionally, so wanting the better model
+    // meant translating the record twice — and the two raced, the cheap batch usually reaching
+    // the provider first. One job per page, of one kind, is the whole point.
+    Long archiveId = createArchive();
+    Long recordId = createRecord(archiveId, "ocr_done", 2);
+    createPage(recordId, 1);
+    createPage(recordId, 2);
+    jdbc.sql("UPDATE record SET translation_quality = 'best' WHERE id = :id")
+        .param("id", recordId)
+        .update();
+
+    stateMachine.autoAdvance(recordId);
+
+    assertThat(countJobs(recordId, "translate_page_upgrade", "pending")).isEqualTo(2);
+    assertThat(countJobs(recordId, "translate_page", "pending")).isZero();
+  }
+
+  @Test
+  void bulkStaysTheDefault() {
+    // 128,484 pages were translated at bulk quality; a migration must not quietly re-price them.
+    Long archiveId = createArchive();
+    Long recordId = createRecord(archiveId, "ocr_done", 1);
+    createPage(recordId, 1);
+
+    stateMachine.autoAdvance(recordId);
+
+    assertThat(countJobs(recordId, "translate_page", "pending")).isEqualTo(1);
+    assertThat(countJobs(recordId, "translate_page_upgrade", "pending")).isZero();
+  }
+
+  @Test
+  void anUpgradeQualityRecordStillCompletesItsTranslationStage() {
+    // The stage guards counted only translate_page, so a 'best' record's translation was
+    // invisible to them and the record would have hung in 'translating' forever.
+    Long archiveId = createArchive();
+    Long recordId = createRecord(archiveId, "translating", 1);
+    Long page1 = createPage(recordId, 1);
+    jdbc.sql("UPDATE record SET translation_quality = 'best' WHERE id = :id")
+        .param("id", recordId)
+        .update();
+    createJob(recordId, page1, "translate_page_upgrade", "completed");
+
+    stateMachine.autoAdvance(recordId);
+
+    assertThat(getRecordStatus(recordId)).isNotEqualTo("translating");
+  }
+
+  @Test
   void ocrDoneToTranslating_whenNoPages_needsTranslation() {
     Long archiveId = createArchive();
     Long recordId = createRecord(archiveId, "ocr_done", 0);

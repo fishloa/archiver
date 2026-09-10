@@ -29,6 +29,10 @@ public class Record {
   private String lang;
   private String metadataLang;
   private String sourceUrl;
+
+  /** "bulk" or "best" — which model translates this record's pages. */
+  private String translationQuality;
+
   private Long pdfAttachmentId;
   private String titleEn;
   private String descriptionEn;
@@ -194,6 +198,14 @@ public class Record {
 
   public String getMetadataLang() {
     return metadataLang;
+  }
+
+  public String getTranslationQuality() {
+    return translationQuality;
+  }
+
+  public void setTranslationQuality(String translationQuality) {
+    this.translationQuality = translationQuality;
   }
 
   public void setMetadataLang(String metadataLang) {
