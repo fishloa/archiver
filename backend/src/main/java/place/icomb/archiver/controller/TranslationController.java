@@ -26,8 +26,6 @@ public class TranslationController {
 
   private final String mistralBaseUrl;
   private final String mistralApiKey;
-  private final String anthropicApiKey;
-  private final String anthropicModel;
   private final place.icomb.archiver.service.ResilientHttpClient httpClient =
       place.icomb.archiver.service.ResilientHttpClient.builder().build();
   private final ObjectMapper objectMapper = new ObjectMapper();
@@ -52,13 +50,9 @@ public class TranslationController {
   public TranslationController(
       @Value("${archiver.ocr.mistral.base-url:https://api.mistral.ai}") String mistralBaseUrl,
       @Value("${archiver.ocr.mistral.api-key:}") String mistralApiKey,
-      @Value("${archiver.anthropic.api-key:}") String anthropicApiKey,
-      @Value("${archiver.anthropic.model:claude-sonnet-5}") String anthropicModel,
       org.springframework.jdbc.core.JdbcTemplate jdbcTemplate) {
     this.mistralBaseUrl = mistralBaseUrl;
     this.mistralApiKey = mistralApiKey;
-    this.anthropicApiKey = anthropicApiKey;
-    this.anthropicModel = anthropicModel;
     this.jdbcTemplate = jdbcTemplate;
   }
 
@@ -163,74 +157,6 @@ public class TranslationController {
     } catch (Exception e) {
       log.error("Translation failed", e);
       return ResponseEntity.status(503).body("{\"error\":\"Translation service unavailable\"}");
-    }
-  }
-
-  @PostMapping("/claude")
-  @Operation(summary = "Translate text via Claude API (requires login)")
-  public ResponseEntity<?> translateWithClaude(@RequestBody TranslateRequest request) {
-    if (anthropicApiKey == null || anthropicApiKey.isBlank()) {
-      return ResponseEntity.status(503).body("{\"error\":\"Claude translation not configured\"}");
-    }
-    if (request.text() == null || request.text().isBlank()) {
-      return ResponseEntity.badRequest().body("{\"error\":\"Text is required\"}");
-    }
-
-    String srcName = LANG_NAMES.getOrDefault(request.sourceLang(), request.sourceLang());
-    String tgtName =
-        LANG_NAMES.getOrDefault(
-            request.targetLang() != null ? request.targetLang() : "en",
-            request.targetLang() != null ? request.targetLang() : "English");
-
-    String prompt =
-        "Translate the following text from "
-            + srcName
-            + " to "
-            + tgtName
-            + ". This is a historical/archival document, so handle archaic language, old spelling"
-            + " conventions, and period-specific terminology faithfully. Preserve the original"
-            + " formatting (line breaks, paragraphs, lists). Return ONLY the translation with no"
-            + " commentary, preamble, or explanation.\n\n"
-            + request.text();
-
-    try {
-      String body =
-          objectMapper.writeValueAsString(
-              Map.of(
-                  "model",
-                  anthropicModel,
-                  "max_tokens",
-                  4096,
-                  "messages",
-                  java.util.List.of(Map.of("role", "user", "content", prompt))));
-
-      HttpRequest httpRequest =
-          HttpRequest.newBuilder()
-              .uri(URI.create("https://api.anthropic.com/v1/messages"))
-              .header("Content-Type", "application/json")
-              .header("x-api-key", anthropicApiKey)
-              .header("anthropic-version", "2023-06-01")
-              .POST(HttpRequest.BodyPublishers.ofString(body))
-              .build();
-
-      HttpResponse<String> response =
-          httpClient.send(httpRequest, HttpResponse.BodyHandlers.ofString());
-
-      if (response.statusCode() != 200) {
-        log.error("Claude API error {}: {}", response.statusCode(), response.body());
-        return ResponseEntity.status(502).body("{\"error\":\"Translation failed\"}");
-      }
-
-      var tree = objectMapper.readTree(response.body());
-      String translatedText = tree.at("/content/0/text").asText("");
-      String targetLang = request.targetLang() != null ? request.targetLang() : "en";
-
-      return ResponseEntity.ok(
-          new TranslateResponse(translatedText, request.sourceLang(), targetLang));
-    } catch (Exception e) {
-      log.error("Claude translation failed", e);
-      return ResponseEntity.status(502)
-          .body("{\"error\":\"Translation failed: " + e.getMessage() + "\"}");
     }
   }
 }
