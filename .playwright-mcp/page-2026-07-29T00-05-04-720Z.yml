@@ -1,0 +1,83 @@
+- generic [ref=f5e1]:
+  - generic [ref=f5e2]:
+    - generic [ref=f5e4]: eBadatelna Archivu bezpečnostních složek
+    - list [ref=f5e6]:
+      - listitem [ref=f5e7]:
+        - link "Registrovat" [ref=f5e8] [cursor=pointer]:
+          - /url: /Account/Register
+      - listitem [ref=f5e9]:
+        - link "Přihlásit" [ref=f5e10] [cursor=pointer]:
+          - /url: "#"
+      - listitem [ref=f5e11]:
+        - link [ref=f5e12] [cursor=pointer]:
+          - /url: /Home/Culture/cs-CZ
+      - listitem [ref=f5e14]:
+        - link [ref=f5e15] [cursor=pointer]:
+          - /url: /Home/Culture/en-US
+  - tablist [active] [ref=f5e19]:
+    - list [ref=f5e20]:
+      - tab "Fondy" [ref=f5e21]
+      - tab "Hledání" [selected] [ref=f5e24]
+      - tab "Hledání ve skenech" [disabled]
+      - tab "Archiválie" [disabled]
+      - tab "Historie bádání" [disabled]
+      - tab "Nápověda" [ref=f5e27]
+      - tab "O aplikaci" [ref=f5e30]
+    - text: 1885 1993 
+    - tabpanel "Hledání" [ref=f5e86]:
+      - generic [ref=f5e87]:
+        - group [ref=f5e88]:
+          - generic [ref=f5e91]:
+            - generic [ref=f5e92]:
+              - generic [ref=f5e94]:
+                - button "Vyhledat" [ref=f5e96] [cursor=pointer]
+                - textbox "hledaný výraz" [ref=f5e99]
+              - generic [ref=f5e102]:
+                - generic [ref=f5e103]: "Datace:"
+                - textbox [ref=f5e106]: "1885"
+                - generic [ref=f5e109]:
+                  - slider [ref=f5e112]: "1885"
+                  - slider [ref=f5e113]: "1993"
+                - textbox [ref=f5e116]: "1993"
+            - generic [ref=f5e117]:
+              - generic [ref=f5e119]:
+                - button "Vyhledat" [ref=f5e121] [cursor=pointer]
+                - textbox "příjmení" [ref=f5e124]
+                - textbox "jméno" [ref=f5e127]
+                - textbox "datum nebo rok narození" [ref=f5e130]
+              - generic [ref=f5e132]:
+                - listbox [ref=f5e133]:
+                  - generic [ref=f5e134]:
+                    - listbox
+                    - generic [ref=f5e135]: Filtr fondů
+                    - text: 
+                - generic [ref=f5e136] [cursor=pointer]: "?"
+            - generic [ref=f5e139]:
+              - button "Vyhledat" [ref=f5e141] [cursor=pointer]
+              - textbox "krycí jméno" [ref=f5e144]
+            - generic [ref=f5e147]:
+              - button "Vyhledat" [ref=f5e149] [cursor=pointer]
+              - textbox "signatura" [ref=f5e152]
+            - generic [ref=f5e155]:
+              - button "Vyhledat" [ref=f5e157] [cursor=pointer]
+              - textbox "rejstříkové heslo" [ref=f5e160]
+        - separator [ref=f5e161]
+        - group [ref=f5e162]:
+          - generic [ref=f5e165]:
+            - grid [ref=f5e166]:
+              - rowgroup [ref=f5e176]:
+                - row "inv. j. signatura popis datace ukládací j. počet souborů" [ref=f5e177]:
+                  - columnheader [ref=f5e178]
+                  - columnheader "inv. j." [ref=f5e180]
+                  - columnheader [ref=f5e182]:
+                    - link "signatura" [ref=f5e183] [cursor=pointer]:
+                      - /url: /?searchGrid-sort=Signature-asc
+                  - columnheader "popis" [ref=f5e184]
+                  - columnheader "datace" [ref=f5e186]
+                  - columnheader "ukládací j." [ref=f5e188]
+                  - columnheader "počet souborů" [ref=f5e190]
+                  - columnheader [ref=f5e192]
+              - rowgroup
+            - paragraph [ref=f5e195]: Žádné nalezené záznamy...
+    - text:  1885 1993      
+  - text:                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    

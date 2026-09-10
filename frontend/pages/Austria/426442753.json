@@ -1,0 +1,291 @@
+{
+  "type": "doc",
+  "content": [
+    {
+      "type": "heading",
+      "attrs": {
+        "level": 2
+      },
+      "content": [
+        {
+          "text": "Record 2915 \u2014 Critical Czernin Information",
+          "type": "text"
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "content": [
+        {
+          "text": "Source: ",
+          "type": "text"
+        },
+        {
+          "text": "Archiver Record #2915",
+          "type": "text",
+          "marks": [
+            {
+              "type": "link",
+              "attrs": {
+                "href": "https://archiver.icomb.place/records/2915"
+              }
+            }
+          ]
+        },
+        {
+          "text": " (replaced former record 2800)",
+          "type": "text"
+        }
+      ]
+    },
+    {
+      "type": "heading",
+      "attrs": {
+        "level": 3
+      },
+      "content": [
+        {
+          "text": "Archive Reference",
+          "type": "text"
+        }
+      ]
+    },
+    {
+      "type": "bulletList",
+      "content": [
+        {
+          "type": "listItem",
+          "content": [
+            {
+              "type": "paragraph",
+              "content": [
+                {
+                  "text": "Fond: 1799 \u2014 ST\u00c1TN\u00cd TAJEMN\u00cdK U \u0158\u00cd\u0160SK\u00c9HO PROTEKTORA V \u010cECH\u00c1CH A NA MORAV\u011a, PRAHA",
+                  "type": "text"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "listItem",
+          "content": [
+            {
+              "type": "paragraph",
+              "content": [
+                {
+                  "text": "Inventory: 1583",
+                  "type": "text"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "listItem",
+          "content": [
+            {
+              "type": "paragraph",
+              "content": [
+                {
+                  "text": "Signature: 109-4/1337",
+                  "type": "text"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "listItem",
+          "content": [
+            {
+              "type": "paragraph",
+              "content": [
+                {
+                  "text": "Karton: 78",
+                  "type": "text"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "listItem",
+          "content": [
+            {
+              "type": "paragraph",
+              "content": [
+                {
+                  "text": "Finding Aid: 1684",
+                  "type": "text"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "listItem",
+          "content": [
+            {
+              "type": "paragraph",
+              "content": [
+                {
+                  "text": "Date Range: (not specified in metadata)",
+                  "type": "text"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "listItem",
+          "content": [
+            {
+              "type": "paragraph",
+              "content": [
+                {
+                  "text": "Pages: 111 scans",
+                  "type": "text"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "listItem",
+          "content": [
+            {
+              "type": "paragraph",
+              "content": [
+                {
+                  "text": "Status: translating (OCR complete, translation in progress)",
+                  "type": "text"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "listItem",
+          "content": [
+            {
+              "type": "paragraph",
+              "content": [
+                {
+                  "text": "VadeMeCum permalink: ",
+                  "type": "text"
+                },
+                {
+                  "text": "https://vademecum.nacr.cz/vademecum/permalink?xid=a21fef63-e9b1-41ca-a61f-fac0f2bb1a62",
+                  "type": "text",
+                  "marks": [
+                    {
+                      "type": "link",
+                      "attrs": {
+                        "href": "https://vademecum.nacr.cz/vademecum/permalink?xid=a21fef63-e9b1-41ca-a61f-fac0f2bb1a62"
+                      }
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "heading",
+      "attrs": {
+        "level": 3
+      },
+      "content": [
+        {
+          "text": "Context",
+          "type": "text"
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "content": [
+        {
+          "text": "This record is from the N\u00e1rodn\u00ed archiv (National Archives), Prague. Fond 109 is the former Czechoslovak security service files. Inventory 1583, signature 109-4/1337 contains critical Czernin-related information that needs detailed review once translation completes.",
+          "type": "text"
+        }
+      ]
+    },
+    {
+      "type": "heading",
+      "attrs": {
+        "level": 3
+      },
+      "content": [
+        {
+          "text": "TODO \u2014 Detailed Review",
+          "type": "text"
+        }
+      ]
+    },
+    {
+      "type": "taskList",
+      "attrs": {
+        "localId": "todo-list"
+      },
+      "content": [
+        {
+          "type": "taskItem",
+          "attrs": {
+            "state": "TODO",
+            "localId": "t1"
+          },
+          "content": [
+            {
+              "text": "Review all 111 pages once translation completes",
+              "type": "text"
+            }
+          ]
+        },
+        {
+          "type": "taskItem",
+          "attrs": {
+            "state": "TODO",
+            "localId": "t2"
+          },
+          "content": [
+            {
+              "text": "Extract names and dates of Czernin relevance",
+              "type": "text"
+            }
+          ]
+        },
+        {
+          "type": "taskItem",
+          "attrs": {
+            "state": "TODO",
+            "localId": "t3"
+          },
+          "content": [
+            {
+              "text": "Cross-reference with other Czernin records",
+              "type": "text"
+            }
+          ]
+        },
+        {
+          "type": "taskItem",
+          "attrs": {
+            "state": "TODO",
+            "localId": "t4"
+          },
+          "content": [
+            {
+              "text": "Summarise key findings on this page",
+              "type": "text"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "version": 1
+}

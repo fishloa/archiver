@@ -13,7 +13,7 @@ scrapers ──→            web (nginx :8099, OAuth2)
                        ↙              ↘
           frontend (SvelteKit)    backend (Spring Boot)
                                        ↕↑
-                                    PostgreSQL           ←── translate-worker
+                                    PostgreSQL
                                        ↕↑               ←── embed-worker
                                  archiver_store
 ```
@@ -31,7 +31,6 @@ Only the backend touches PostgreSQL and archiver_store.
 | backend | Java 25 / Spring Boot 4.1 | REST API, job orchestration, SSE events |
 | frontend | SvelteKit + Tailwind v4 | UI with Verdant design system (`--vui-*` CSS vars) |
 | worker-common | Python shared lib | Base `ProcessorClient`, SSE loop, job lifecycle helpers |
-| translate-worker | Python | LLM translation via OpenAI-compatible API (gemma-4-31B), markdown-preserving |
 | embed-worker | Python | Heading-aware chunking, embeds via Qwen3-Embedding-8B (1024-dim, halfvec) |
 | entity-worker | Python | Named entity extraction (dormant — commented out in compose) |
 | ocr-worker-qwen3vl | Python + Ollama | Qwen3-VL OCR via Ollama (not containerized, runs on Mac Studio) |

@@ -100,7 +100,6 @@ services:
       ARCHIVER_ESCALATION_ENABLE_ABBYY: "false"
       SECRET_KEY: ${SECRET_KEY}
       OPENAI_API_KEY: ${OPENAI_API_KEY}
-      TRANSLATE_WORKER_URL: http://translate-worker:8001
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
       EMBED_TEI_URL: http://embed-tei:80
       EMBED_TEI_KEY: ${TEI_API_KEY}
@@ -145,21 +144,6 @@ services:
     depends_on:
       - backend
     restart: "no"
-
-  translate-worker:
-    image: dockerregistry.icomb.place/archiver/translate-worker:latest
-    user: "${CONTAINER_USER:-1012:1012}"
-    environment:
-      BACKEND_URL: http://backend:8080
-      PROCESSOR_TOKEN: ${PROCESSOR_TOKEN}
-      TRANSLATE_BASE_URL: ${TRANSLATE_BASE_URL:-https://api.deepinfra.com/v1/openai}
-      TRANSLATE_API_KEY: ${TRANSLATE_API_KEY:-}
-      TRANSLATE_MODEL: ${TRANSLATE_MODEL:-google/gemma-4-31B-it}
-    depends_on:
-      - backend
-    restart: unless-stopped
-    deploy:
-      replicas: 2
 
   embed-tei:
     image: ghcr.io/huggingface/text-embeddings-inference:86-1.9

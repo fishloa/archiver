@@ -1,0 +1,115 @@
+- generic [active] [ref=f3e1]:
+  - generic:
+    - generic:   
+    - list [ref=f3e3]:
+      - listitem [ref=f3e4]:
+        - link "Anmelden" [ref=f3e5] [cursor=pointer]:
+          - /url: "#"
+    - generic [ref=f3e6]:
+      - text:        
+      - generic [ref=f3e71]:
+        - tablist [ref=f3e72]:
+          - tab [ref=f3e73]:
+            - link "Navigierende Suche" [ref=f3e74] [cursor=pointer]:
+              - /url: "#masterLayoutForm:tabPanel:navSearchTab"
+          - tab [expanded] [selected] [ref=f3e75]:
+            - link "Suche" [ref=f3e76]:
+              - /url: "#masterLayoutForm:tabPanel:searchTab"
+          - tab [ref=f3e77]:
+            - link "Suchergebnis" [ref=f3e78]:
+              - /url: "#masterLayoutForm:tabPanel:searchResultTab"
+          - tab [ref=f3e79]:
+            - link "Merkzettel/Bestellen" [ref=f3e80] [cursor=pointer]:
+              - /url: "#masterLayoutForm:tabPanel:bestellungTab"
+          - tab [ref=f3e81]:
+            - link "Hilfe" [ref=f3e82] [cursor=pointer]:
+              - /url: "#masterLayoutForm:tabPanel:helpTab"
+          - tab [ref=f3e83]:
+            - link "Kontakt" [ref=f3e84] [cursor=pointer]:
+              - /url: "#masterLayoutForm:tabPanel:kontaktTab"
+        - generic [ref=f3e85]:
+          - tabpanel:
+            - generic [ref=f3e158]:
+              - tablist [ref=f3e159]:
+                - tab [expanded] [selected] [ref=f3e160]:
+                  - link "Einfache Suche" [ref=f3e161]:
+                    - /url: "#masterLayoutForm:tabPanel:tabSearch:searchTabPanel:einfSearch"
+                - tab [ref=f3e162]:
+                  - link "Erweiterte Suche" [ref=f3e163] [cursor=pointer]:
+                    - /url: "#masterLayoutForm:tabPanel:tabSearch:searchTabPanel:allgSearch"
+                - tab [ref=f3e164]:
+                  - link "Namenssuche" [ref=f3e165] [cursor=pointer]:
+                    - /url: "#masterLayoutForm:tabPanel:tabSearch:searchTabPanel:persSearch"
+              - generic [ref=f3e166]:
+                - tabpanel:
+                  - generic:
+                    - group [ref=f3e168]:
+                      - generic [ref=f3e169]:
+                        - generic [ref=f3e170]:
+                          - generic "Suchbegriffe" [ref=f3e172]
+                          - textbox "Suchbegriffe für die Suche" [ref=f3e174]
+                        - list [ref=f3e177]:
+                          - listitem [ref=f3e178]:
+                            - generic "Nur Treffer mit Digitalisaten ein/ausschalten" [ref=f3e179]:
+                              - checkbox [ref=f3e180]
+                            - generic [ref=f3e182]: Nur Treffer mit Digitalisaten anzeigen
+                        - generic [ref=f3e183]:
+                          - generic "Signatur" [ref=f3e185]
+                          - textbox "???search.einf.searchSignatur.infotext???" [ref=f3e187]
+                        - generic [ref=f3e189]:
+                          - radio "Archivsignatur" [checked] [ref=f3e191]
+                          - generic [ref=f3e194] [cursor=pointer]: Archivsignatur
+                          - radio "Bestandssignatur" [ref=f3e196]
+                          - generic [ref=f3e199] [cursor=pointer]: Bestandssignatur
+                        - generic [ref=f3e200]:
+                          - generic "Zeitraum" [ref=f3e202]
+                          - generic [ref=f3e203]:
+                            - textbox "Laufzeit von" [ref=f3e206]:
+                              - /placeholder: JJJJ
+                            - generic "bis" [ref=f3e208]
+                            - textbox "Laufzeit bis" [ref=f3e210]:
+                              - /placeholder: JJJJ
+                        - generic [ref=f3e212]:
+                          - paragraph [ref=f3e213]: Wechseln Sie in die Erweiterte Suche, um weitere Suchparameter einzugeben und/oder die Suche auf bestimmte Bestände einzugrenzen.
+                          - paragraph [ref=f3e214]: Wechseln Sie in die Namenssuche, um nach bestimmten Personen oder Körperschaften zu suchen.
+                          - paragraph [ref=f3e215]:
+                            - text: Hinweise zur Suche nach Personen finden Sie in unserer
+                            - link "Hilfe" [ref=f3e216] [cursor=pointer]:
+                              - /url: https://invenio.bundesarchiv.de/hilfe/bin/view/FAQ/TippsPersonensuche/
+                            - text: .
+                    - generic [ref=f3e217]:
+                      - generic [ref=f3e219]:
+                        - generic [ref=f3e220]: 
+                        - button "Suchen" [ref=f3e221] [cursor=pointer]
+                      - button "Suchkriterien verwerfen" [ref=f3e225] [cursor=pointer]
+      - generic "Slide Open" [ref=f3e227] [cursor=pointer]:
+        - generic "Öffnen" [ref=f3e228]
+    - generic [ref=f3e101]:
+      - generic:
+        - link "zur Hompage des Bundesarchivs" [ref=f3e102] [cursor=pointer]:
+          - /url: http://www.bundesarchiv.de
+        - generic [ref=f3e103]: "Version: 4.0.601 | Zugriff als unregistrierter Benutzer"
+        - list [ref=f3e104]:
+          - listitem [ref=f3e105]:
+            - strong [ref=f3e106]: invenio
+            - text: – Eine Anwendung des Bundesarchivs
+          - listitem [ref=f3e107]:
+            - link "Impressum" [ref=f3e108] [cursor=pointer]:
+              - /url: https://www.bundesarchiv.de/DE/Content/Artikel/impressum.html
+          - listitem [ref=f3e109]:
+            - link "Datenschutz" [ref=f3e110] [cursor=pointer]:
+              - /url: https://www.bundesarchiv.de/DE/Navigation/Footer/Datenschutz/datenschutz.html
+          - listitem [ref=f3e111]:
+            - link "Kontakt" [ref=f3e112] [cursor=pointer]:
+              - /url: https://www.bundesarchiv.de/DE/Navigation/Meta/Kontakt/kontakt.html
+    - generic: 
+  - generic:  
+  - text: 
+  - generic:   
+  - generic: 
+  - heading [level=1] [ref=f3e144]:
+    - link "invenio – Eine Anwendung des Bundesarchivs" [ref=f3e145] [cursor=pointer]:
+      - /url: "#"
+  - text: 
+  - generic:  
+  - text:         

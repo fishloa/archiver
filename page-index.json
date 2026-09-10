@@ -1,0 +1,25 @@
+{
+  "Austria": [
+    {
+      "id": "425656635",
+      "title": "Austria",
+      "parentId": null,
+      "version": 1,
+      "updatedAt": "2026-02-25T12:30:58.483Z"
+    },
+    {
+      "id": "425656652",
+      "title": "Template - How-to guide",
+      "parentId": "425656635",
+      "version": 1,
+      "updatedAt": "2026-02-25T12:30:58.333Z"
+    },
+    {
+      "id": "425656664",
+      "title": "Template - Troubleshooting article",
+      "parentId": "425656635",
+      "version": 1,
+      "updatedAt": "2026-02-25T12:30:58.400Z"
+    }
+  ]
+}

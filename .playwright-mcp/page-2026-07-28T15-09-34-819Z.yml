@@ -1,0 +1,213 @@
+- generic [active] [ref=f3e1]:
+  - generic:
+    - generic:   
+    - list [ref=f3e3]:
+      - listitem [ref=f3e4]:
+        - link "Anmelden" [ref=f3e5] [cursor=pointer]:
+          - /url: "#"
+    - generic [ref=f3e6]:
+      - generic [ref=f3e7]:
+        - generic [ref=f3e231]:
+          - generic [ref=f3e232]:
+            - heading "Treffer in der Tektonik" [level=2] [ref=f3e233]
+            - generic:
+              - list
+          - tree [ref=f3e235]:
+            - list [ref=f3e236]:
+              - listitem [ref=f3e237]:
+                - generic [ref=f3e238]:
+                  - generic [ref=f3e240] [cursor=pointer]: 
+                  - treeitem "(1) Bestände" [ref=f3e241] [cursor=pointer]
+                - group [ref=f3e243]:
+                  - listitem [ref=f3e244]:
+                    - generic [ref=f3e245]:
+                      - generic [ref=f3e247] [cursor=pointer]: 
+                      - treeitem "(1) Norddeutscher Bund und Deutsches Reich (1867/1871-1945)" [ref=f3e248] [cursor=pointer]
+                    - group [ref=f3e250]:
+                      - listitem [ref=f3e251]:
+                        - generic [ref=f3e252]:
+                          - generic [ref=f3e254] [cursor=pointer]: 
+                          - treeitem "(1) Oberste Organe" [ref=f3e255] [cursor=pointer]
+                        - group [ref=f3e257]:
+                          - listitem [ref=f3e258]:
+                            - treeitem "(1) R 43-II Reichskanzlei" [ref=f3e261] [cursor=pointer]
+          - link "Tektonik vollständig anzeigen" [ref=f3e265] [cursor=pointer]:
+            - /url: "#"
+        - generic [ref=f3e269]:
+          - generic [ref=f3e270]:
+            - heading "Treffer in der Klassifikation" [level=2] [ref=f3e271]
+            - generic:
+              - list
+          - tree [ref=f3e273]:
+            - list [ref=f3e274]:
+              - listitem [ref=f3e275]:
+                - generic [ref=f3e276]:
+                  - generic [ref=f3e278] [cursor=pointer]: 
+                  - treeitem "(1) R 43 II Reichskanzlei" [ref=f3e279] [cursor=pointer]
+                - group [ref=f3e281]:
+                  - listitem [ref=f3e282]:
+                    - generic [ref=f3e283]:
+                      - generic [ref=f3e285] [cursor=pointer]: 
+                      - treeitem "(1) 1 A. Betreffserien in der Ordnung des Aktenplans" [ref=f3e286] [cursor=pointer]
+                    - group [ref=f3e288]:
+                      - listitem [ref=f3e289]:
+                        - generic [ref=f3e290]:
+                          - generic [ref=f3e292] [cursor=pointer]: 
+                          - treeitem "(1) 1.29 Länder (1919 - 1945)" [ref=f3e293] [cursor=pointer]
+                        - group [ref=f3e295]:
+                          - listitem [ref=f3e296]:
+                            - generic [ref=f3e297]:
+                              - generic [ref=f3e299] [cursor=pointer]: 
+                              - treeitem "(1) 1.29.2 Angelegenheiten der Länder im einzelnen sowie der ein- und angliederten Gebiete" [ref=f3e300] [cursor=pointer]
+                            - group [ref=f3e302]:
+                              - listitem [ref=f3e303]:
+                                - treeitem "(1) 1.29.2.17 Protektorat Böhmen und Mähren" [ref=f3e306] [cursor=pointer]
+          - link "Klassifikation vollständig anzeigen" [ref=f3e310] [cursor=pointer]:
+            - /url: "#"
+        - generic "Verschieben" [ref=f3e311]:
+          - generic "Schließen" [ref=f3e312] [cursor=pointer]
+      - generic [ref=f3e313]:
+        - tablist [ref=f3e314]:
+          - tab [ref=f3e315]:
+            - link "Navigierende Suche" [ref=f3e316] [cursor=pointer]:
+              - /url: "#masterLayoutForm:tabPanel:navSearchTab"
+          - tab [ref=f3e317]:
+            - link "Suche" [ref=f3e318] [cursor=pointer]:
+              - /url: "#masterLayoutForm:tabPanel:searchTab"
+          - tab [expanded] [selected] [ref=f3e319]:
+            - link "Suchergebnis" [ref=f3e320]:
+              - /url: "#masterLayoutForm:tabPanel:searchResultTab"
+          - tab [ref=f3e321]:
+            - link "Merkzettel/Bestellen" [ref=f3e322] [cursor=pointer]:
+              - /url: "#masterLayoutForm:tabPanel:bestellungTab"
+          - tab [ref=f3e323]:
+            - link "Hilfe" [ref=f3e324] [cursor=pointer]:
+              - /url: "#masterLayoutForm:tabPanel:helpTab"
+          - tab [ref=f3e325]:
+            - link "Kontakt" [ref=f3e326] [cursor=pointer]:
+              - /url: "#masterLayoutForm:tabPanel:kontaktTab"
+        - tabpanel [ref=f3e328]:
+          - generic [ref=f3e334]:
+            - generic [ref=f3e335]:
+              - heading [level=2] [ref=f3e336]
+              - generic [ref=f3e337]:
+                - generic [ref=f3e338]:
+                  - generic [ref=f3e339]: sortieren nach
+                  - combobox [ref=f3e340]:
+                    - option "Klassifikationsvorgabe (Standard)" [selected]
+                    - option "Aktenzeichen/Registriernr."
+                    - option "Laufzeit"
+                    - option "Aktenführende Organisationseinheit"
+                    - option "Archivsignatur"
+                - list [ref=f3e341]:
+                  - listitem "Link kopieren" [ref=f3e342]:
+                    - link "Link kopieren " [ref=f3e343] [cursor=pointer]:
+                      - /url: https://invenio.bundesarchiv.de/invenio/direktlink/78d5546e-aa97-4741-891c-5dd2d240ce60/
+                      - text: Link kopieren
+                      - generic [ref=f3e344]: 
+                  - listitem "als PDF speichern" [ref=f3e345]:
+                    - link "als PDF speichern " [ref=f3e346] [cursor=pointer]:
+                      - /url: "#"
+                      - text: als PDF speichern
+                      - generic [ref=f3e347]: 
+                  - listitem "Seite senden" [ref=f3e348]:
+                    - link "Seite senden " [ref=f3e349] [cursor=pointer]:
+                      - /url: "#"
+                      - text: Seite senden
+                      - generic [ref=f3e350]: 
+            - generic [ref=f3e351]:
+              - generic:
+                - generic:
+                  - generic [ref=f3e352]:
+                    - checkbox [ref=f3e354]
+                    - generic [ref=f3e355]: Archivsignatur
+                    - generic [ref=f3e356]: Titel und weitere Informationen
+                    - generic [ref=f3e357]: Laufzeit
+                  - list [ref=f3e360]:
+                    - listitem [ref=f3e361]:
+                      - checkbox [ref=f3e364]
+                      - generic [ref=f3e366]: Allgemeines
+                      - generic [ref=f3e367]: 1938 - 1945
+                    - listitem [ref=f3e368]:
+                      - generic [ref=f3e369]:
+                        - term [ref=f3e370]: "Unterlagenart :"
+                        - definition [ref=f3e371]: Sachakte
+                        - term [ref=f3e372]:
+                          - link " Im Kontext anzeigen" [ref=f3e373] [cursor=pointer]:
+                            - /url: direktlink/e5237049-5687-41e0-bdf7-c8591b2ecb68/
+                            - generic [ref=f3e374]: 
+                            - text: Im Kontext anzeigen
+                          - link "Link kopieren" [ref=f3e375] [cursor=pointer]:
+                            - /url: https://invenio.bundesarchiv.de/invenio/direktlink/e5237049-5687-41e0-bdf7-c8591b2ecb68/
+                            - generic [ref=f3e376]: 
+                            - text: Link kopieren
+                        - definition
+                    - listitem [ref=f3e377]:
+                      - list [ref=f3e378]:
+                        - listitem [ref=f3e379]:
+                          - checkbox [ref=f3e382]
+                          - generic [ref=f3e383]: R 43-II/1326
+                          - generic [ref=f3e384]: Bd. 8
+                          - generic [ref=f3e385]: Apr. 1941 - Jan. 1942
+                        - listitem [ref=f3e386]:
+                          - generic [ref=f3e387]:
+                            - term [ref=f3e388]: "Bandnummer :"
+                            - definition [ref=f3e389]: "8"
+                            - definition [ref=f3e390]: "Enthält : Behandlung des deutsch-tschechischen Verhältnisses in der Öffentlichkeit im Protektorat 1941 Einführung von Judenarmbinden 1941 Fernschreibbericht von Heydrich über seine Maßnahmen und die Lage im Protektorat 9. Okt. 1941 Rudolfinum (dt. Haus der Kunst), Eröffnungsansprache von Heydrich 1941 Zuständigkeit der Wehrmachtsgerichte zur Aburteilung von Straftaten nichtdt. Staatsangehöriger 1941 - 1942"
+                            - term [ref=f3e392]: "Unterlagenart :"
+                            - definition [ref=f3e393]: Sachakte
+                            - term [ref=f3e394]: "Alte Signatur :"
+                            - definition [ref=f3e395]: Länd. Prot. B. u. M. 1
+                            - term [ref=f3e396]: "Benutzungsort :"
+                            - definition [ref=f3e397]: Berlin-Lichterfelde
+                            - term [ref=f3e398]:
+                              - link " Im Kontext anzeigen" [ref=f3e399] [cursor=pointer]:
+                                - /url: direktlink/26ec0d41-0f24-4287-8064-589df5d7b42c/
+                                - generic [ref=f3e400]: 
+                                - text: Im Kontext anzeigen
+                              - link "Link kopieren" [ref=f3e401] [cursor=pointer]:
+                                - /url: https://invenio.bundesarchiv.de/invenio/direktlink/26ec0d41-0f24-4287-8064-589df5d7b42c/
+                                - generic [ref=f3e402]: 
+                                - text: Link kopieren
+                            - 'link "Anzeige in neuem Fenster: Browser muss Pop-Ups erlauben" [ref=f3e404] [cursor=pointer]':
+                              - /url: "#"
+                              - generic [ref=f3e405]: 
+                              - text: Digitalisat anzeigen
+            - generic [ref=f3e407]:
+              - generic [ref=f3e409] [cursor=pointer]:
+                - button "Merken/Bestellen" [disabled] [ref=f3e410]
+                - generic [ref=f3e412]: 
+              - generic [ref=f3e413]:
+                - button "Vorheriger Treffer" [disabled] [ref=f3e415]
+                - button "Nächster Treffer" [disabled] [ref=f3e418]
+      - generic "Verschieben" [ref=f3e420]:
+        - generic "Schließen" [ref=f3e421] [cursor=pointer]
+    - generic [ref=f3e101]:
+      - generic:
+        - link "zur Hompage des Bundesarchivs" [ref=f3e102] [cursor=pointer]:
+          - /url: http://www.bundesarchiv.de
+        - generic [ref=f3e103]: "Version: 4.0.601 | Zugriff als unregistrierter Benutzer"
+        - list [ref=f3e104]:
+          - listitem [ref=f3e105]:
+            - strong [ref=f3e106]: invenio
+            - text: – Eine Anwendung des Bundesarchivs
+          - listitem [ref=f3e107]:
+            - link "Impressum" [ref=f3e108] [cursor=pointer]:
+              - /url: https://www.bundesarchiv.de/DE/Content/Artikel/impressum.html
+          - listitem [ref=f3e109]:
+            - link "Datenschutz" [ref=f3e110] [cursor=pointer]:
+              - /url: https://www.bundesarchiv.de/DE/Navigation/Footer/Datenschutz/datenschutz.html
+          - listitem [ref=f3e111]:
+            - link "Kontakt" [ref=f3e112] [cursor=pointer]:
+              - /url: https://www.bundesarchiv.de/DE/Navigation/Meta/Kontakt/kontakt.html
+    - generic: 
+  - generic:  
+  - text: 
+  - generic:   
+  - generic: 
+  - heading [level=1] [ref=f3e144]:
+    - link "invenio – Eine Anwendung des Bundesarchivs" [ref=f3e145] [cursor=pointer]:
+      - /url: "#"
+  - text: 
+  - generic:  
+  - text:            

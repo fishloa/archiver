@@ -16,7 +16,7 @@ scrapers ──→            web (nginx :8099, OAuth2)
                        ↙              ↘
           frontend (SvelteKit)    backend (Spring Boot)
                                        ↕↑
-                                    PostgreSQL           ←── translate-worker
+                                    PostgreSQL
                                        ↕↑               ←── embed-worker
                                  archiver_store
 ```
@@ -110,7 +110,7 @@ Two things worth knowing before trusting a green build:
 | `backend/` | Spring Boot API, pipeline state machine, internal OCR workers |
 | `frontend/` | SvelteKit UI |
 | `worker-common/` | shared Python library — HTTP client, SSE loop, markdown handling |
-| `translate-worker/`, `embed-worker/` | pipeline workers |
+| `embed-worker/` | pipeline worker |
 | `scraper-*/` | one per source archive |
 | `deploy/` | docker-compose for the Portainer stack |
 | `docs/superpowers/plans/` | implementation plans |
