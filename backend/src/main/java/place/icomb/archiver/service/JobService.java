@@ -313,10 +313,14 @@ public class JobService {
     int staleClaimed = 0;
 
     // --- Pass 2: Retry failed jobs with < 3 attempts (skip poison jobs) ---
+    //
+    // batch_id must be cleared with the rest. A batch claim looks for pending jobs with no
+    // batch, so a retried job that kept the id of the batch it failed in became invisible to
+    // every future claim — pending forever, counted as outstanding forever, and never run.
     int failedRetried =
         jdbcTemplate.update(
             """
-            UPDATE job SET status = 'pending', error = NULL, finished_at = NULL
+            UPDATE job SET status = 'pending', error = NULL, finished_at = NULL, batch_id = NULL
             WHERE status = 'failed' AND attempts < 3
             """);
     if (failedRetried > 0) {

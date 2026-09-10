@@ -935,4 +935,43 @@ class PipelineAuditTest {
     int fixed = jobService.auditPipeline();
     assertThat(fixed).isEqualTo(0);
   }
+
+  @Test
+  void retryingAFailedBatchJobClearsItsBatch() {
+    // A batch claim looks for pending jobs with no batch. A retried job that kept the id of the
+    // batch it failed in was invisible to every future claim: pending forever, counted as
+    // outstanding forever, never run. Seven record-translation jobs sat like that in production.
+    Long archiveId = createArchive();
+    Long recordId = createRecord(archiveId, "complete", 1);
+    Long batchId =
+        jdbc.sql(
+                """
+                INSERT INTO provider_batch (job_kind, status, page_count, created_at)
+                VALUES ('translate_record', 'failed', 1, now()) RETURNING id
+                """)
+            .query(Long.class)
+            .single();
+
+    Long jobId =
+        jdbc.sql(
+                """
+                INSERT INTO job (kind, record_id, status, attempts, batch_id, error, created_at)
+                VALUES ('translate_record', :rid, 'failed', 1, :bid, 'boom', now())
+                RETURNING id
+                """)
+            .param("rid", recordId)
+            .param("bid", batchId)
+            .query(Long.class)
+            .single();
+
+    jobService.auditPipeline();
+
+    var row =
+        jdbc.sql("SELECT status, batch_id FROM job WHERE id = :id")
+            .param("id", jobId)
+            .query()
+            .singleRow();
+    assertThat(row.get("status")).isEqualTo("pending");
+    assertThat(row.get("batch_id")).as("a retried job must be claimable again").isNull();
+  }
 }
