@@ -104,6 +104,10 @@ archiver:
       model: ${TRANSLATE_BATCH_MODEL:mistral-small-latest}
       size: ${TRANSLATE_BATCH_SIZE:2000}
       pages-per-minute: ${TRANSLATE_BATCH_PAGES_PER_MINUTE:5000}
+    record:
+      # Catalogue metadata only. Deliberately separate from batch.enabled so turning titles on
+      # cannot also arm re-translation of the whole archive's pages.
+      enabled: ${TRANSLATE_RECORD_ENABLED:false}
     claude:
       enabled: ${CLAUDE_OCR_ENABLED:false}
       api-key: ${ANTHROPIC_API_KEY:}

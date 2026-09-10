@@ -73,6 +73,7 @@ public class WorkerSchedulingConfig implements SchedulingConfigurer {
   private final long mistralMaxBatchBytes;
   private final int mistralPagesPerMinute;
   private final boolean translateBatchEnabled;
+  private final boolean translateRecordEnabled;
   private final String translateBatchModel;
   private final int translateBatchSize;
   private final int translatePerMinute;
@@ -117,6 +118,7 @@ public class WorkerSchedulingConfig implements SchedulingConfigurer {
       @Value("${archiver.ocr.mistral.max-batch-bytes:209715200}") long mistralMaxBatchBytes,
       @Value("${archiver.ocr.mistral.pages-per-minute:1250}") int mistralPagesPerMinute,
       @Value("${archiver.translate.batch.enabled:false}") boolean translateBatchEnabled,
+      @Value("${archiver.translate.record.enabled:false}") boolean translateRecordEnabled,
       @Value("${archiver.translate.batch.model:mistral-small-latest}") String translateBatchModel,
       @Value("${archiver.translate.batch.size:2000}") int translateBatchSize,
       @Value("${archiver.translate.batch.pages-per-minute:5000}") int translatePerMinute,
@@ -155,6 +157,7 @@ public class WorkerSchedulingConfig implements SchedulingConfigurer {
     this.mistralMaxBatchBytes = mistralMaxBatchBytes;
     this.mistralPagesPerMinute = mistralPagesPerMinute;
     this.translateBatchEnabled = translateBatchEnabled;
+    this.translateRecordEnabled = translateRecordEnabled;
     this.translateBatchModel = translateBatchModel;
     this.translateBatchSize = translateBatchSize;
     this.translatePerMinute = translatePerMinute;
@@ -173,6 +176,7 @@ public class WorkerSchedulingConfig implements SchedulingConfigurer {
             + (claudeOcrEnabled ? claudeConcurrency : 0)
             + (mistralOcrEnabled ? 1 : 0)
             + (translateBatchEnabled ? 2 : 0)
+            + (translateRecordEnabled ? 1 : 0)
             + (personMatchEnabled ? 1 : 0)
             + pdfConcurrency;
     if (totalWorkers == 0) return;
@@ -297,23 +301,6 @@ public class WorkerSchedulingConfig implements SchedulingConfigurer {
               translatePerMinute);
       registrar.addFixedDelayTask(bulk::tick, Duration.ofMillis(mistralTickInterval));
 
-      // Record metadata. Titles and descriptions are a few hundred characters, so this rides
-      // the same batch machinery purely to inherit its recovery and accounting.
-      var metadata =
-          new BatchOrchestrator(
-              "mistral-batch-translate-record",
-              new RecordTranslateBatchStage(
-                  TranslationModels.UPGRADE_MODEL, jdbcTemplate, translationService),
-              client,
-              jobService,
-              jobEventService,
-              recordEventService,
-              providerBatchRepository,
-              translateBatchSize,
-              mistralMaxBatchBytes,
-              translatePerMinute);
-      registrar.addFixedDelayTask(metadata::tick, Duration.ofMillis(mistralTickInterval));
-
       // On-demand upgrades. A separate kind because a batch carries one model, and separate
       // so an upgrade queue can be held or drained independently of the bulk run.
       var upgrade =
@@ -360,6 +347,34 @@ public class WorkerSchedulingConfig implements SchedulingConfigurer {
     if (pdfConcurrency > 0) {
       log.info(
           "Registered {} searchable PDF worker(s) (poll={}ms)", pdfConcurrency, pdfPollInterval);
+    }
+
+    // Record metadata translation, flagged separately from page translation.
+    //
+    // Sharing one flag would mean that turning metadata translation on also armed the bulk and
+    // upgrade page orchestrators — 128,484 pages of already-translated work standing behind a
+    // single environment variable. Titles are a few hundred characters; they should not be
+    // gated on the same switch as the archive.
+    if (translateRecordEnabled) {
+      var recordClient = new MistralBatchClient(mistralApiKey, mistralBaseUrl);
+      var metadata =
+          new BatchOrchestrator(
+              "mistral-batch-translate-record",
+              new RecordTranslateBatchStage(
+                  TranslationModels.UPGRADE_MODEL, jdbcTemplate, translationService),
+              recordClient,
+              jobService,
+              jobEventService,
+              recordEventService,
+              providerBatchRepository,
+              translateBatchSize,
+              mistralMaxBatchBytes,
+              translatePerMinute);
+      registrar.addFixedDelayTask(metadata::tick, Duration.ofMillis(mistralTickInterval));
+      log.info(
+          "Registered Mistral batch record-metadata translation (model={}, batch={})",
+          TranslationModels.UPGRADE_MODEL,
+          translateBatchSize);
     }
 
     if (personMatchEnabled) {
