@@ -15,6 +15,9 @@ import org.apache.pdfbox.pdmodel.font.PDFont;
 import org.apache.pdfbox.pdmodel.font.PDType0Font;
 import org.apache.pdfbox.pdmodel.graphics.image.JPEGFactory;
 import org.apache.pdfbox.pdmodel.graphics.image.PDImageXObject;
+import org.apache.pdfbox.pdmodel.interactive.action.PDActionURI;
+import org.apache.pdfbox.pdmodel.interactive.annotation.PDAnnotationLink;
+import org.apache.pdfbox.pdmodel.interactive.annotation.PDBorderStyleDictionary;
 
 /**
  * Renders a page's markdown onto PDF pages.
@@ -104,11 +107,29 @@ public class MarkdownPdfRenderer {
    * @return PDF pages used — always at least one, so an empty source page still produces a page and
    *     the export stays aligned with the original
    */
-  public int renderPage(PDDocument doc, String markdown, String header, Long pageId)
+  public int renderPage(PDDocument doc, String markdown, String note, Long pageId)
       throws IOException {
+    return renderPage(doc, markdown, note, pageId, null, null);
+  }
+
+  /**
+   * Draws one source page's markdown, starting a new PDF page and continuing onto further pages if
+   * it overflows.
+   *
+   * @param note an annotation such as "[not translated - original text]", drawn small at the top so
+   *     a reader is never left guessing why a page reads in German
+   * @param footerLeft archive URL for the footer, or null for no footer
+   * @param seq the page's number in the original document, used for the footer's right side
+   * @return PDF pages used — always at least one, so an empty source page still produces a page and
+   *     the export stays aligned with the original
+   */
+  public int renderPage(
+      PDDocument doc, String markdown, String note, Long pageId, String footerLeft, Integer seq)
+      throws IOException {
+    boolean footer = footerLeft != null || seq != null;
     float width = PAGE_SIZE.getWidth() - 2 * MARGIN;
-    float top = PAGE_SIZE.getHeight() - MARGIN;
-    float bottom = MARGIN;
+    float top = PAGE_SIZE.getHeight() - MARGIN - (note == null || note.isBlank() ? 0 : 14f);
+    float bottom = MARGIN + (footer ? footerBandHeight(PAGE_SIZE.getWidth()) : 0);
     List<El> els = layoutTo(markdown, width, top - bottom, pageId);
 
     int pagesUsed = 0;
@@ -118,14 +139,26 @@ public class MarkdownPdfRenderer {
       doc.addPage(page);
       pagesUsed++;
       try (PDPageContentStream cs = new PDPageContentStream(doc, page)) {
-        // Identifies which original page this is, so the two can be held side by side.
-        cs.beginText();
-        cs.setFont(regular, 7.5f);
-        cs.newLineAtOffset(MARGIN, PAGE_SIZE.getHeight() - MARGIN + 16f);
-        cs.showText(sanitise(header + (pagesUsed > 1 ? "  (cont.)" : "")));
-        cs.endText();
+        if (note != null && !note.isBlank()) {
+          cs.beginText();
+          cs.setFont(regular, 7.5f);
+          cs.newLineAtOffset(MARGIN, PAGE_SIZE.getHeight() - MARGIN + 4f);
+          cs.showText(sanitise(note));
+          cs.endText();
+        }
 
         i = drawElements(cs, els, i, MARGIN, top, bottom);
+
+        if (footer) {
+          drawFooter(
+              page,
+              cs,
+              PAGE_SIZE.getWidth(),
+              MARGIN,
+              MARGIN,
+              footerLeft,
+              seq == null ? null : pageLabel(seq, pagesUsed > 1));
+        }
       }
     } while (i < els.size());
 
@@ -161,6 +194,82 @@ public class MarkdownPdfRenderer {
       i++;
     }
     return i;
+  }
+
+  /**
+   * Draws the footer every export carries: where the page came from, and which page it is.
+   *
+   * <p>Left is the archive URL, so a printed or forwarded extract can be traced back to the record
+   * it came from. Right names the page in the original document — not the PDF's own page number,
+   * which drifts from it as soon as one source page needs two sheets. That drift is the reason for
+   * "cont.": without it a reader holding sheet two has no way to tell whether they are looking at a
+   * continuation or at the next document page.
+   *
+   * <p>The size is scaled to the page: the scan exports are sized in image pixels, where a 7pt
+   * footer is invisible.
+   */
+  public void drawFooter(
+      PDPage page,
+      PDPageContentStream cs,
+      float pageWidth,
+      float margin,
+      float baseline,
+      String left,
+      String right)
+      throws IOException {
+    float size = footerSize(pageWidth);
+    if (left != null && !left.isBlank()) {
+      String text = sanitise(left);
+      cs.beginText();
+      cs.setFont(regular, size);
+      cs.newLineAtOffset(margin, baseline);
+      cs.showText(text);
+      cs.endText();
+      // The URL is also a link. An extract is read on screen at least as often as on paper, and
+      // retyping a record and page number by hand to get back to the source is exactly the
+      // friction the footer exists to remove.
+      linkTo(page, left, margin, baseline, regular.getStringWidth(text) / 1000f * size, size);
+    }
+    if (right != null && !right.isBlank()) {
+      String text = sanitise(right);
+      float width = regular.getStringWidth(text) / 1000f * size;
+      cs.beginText();
+      cs.setFont(regular, size);
+      cs.newLineAtOffset(pageWidth - margin - width, baseline);
+      cs.showText(text);
+      cs.endText();
+    }
+  }
+
+  /** Puts an invisible clickable region over drawn text. */
+  private void linkTo(PDPage page, String uri, float x, float baseline, float width, float size)
+      throws IOException {
+    PDActionURI action = new PDActionURI();
+    action.setURI(uri);
+
+    PDAnnotationLink link = new PDAnnotationLink();
+    link.setAction(action);
+    link.setRectangle(new PDRectangle(x, baseline - size * 0.25f, width, size * 1.25f));
+    // No visible border: the footer already looks like a link, and a box round it does not.
+    PDBorderStyleDictionary border = new PDBorderStyleDictionary();
+    border.setWidth(0);
+    link.setBorderStyle(border);
+
+    page.getAnnotations().add(link);
+  }
+
+  /** Footer type size for a page of the given width, and the band it needs. */
+  public float footerSize(float pageWidth) {
+    return Math.max(7f, Math.min(pageWidth / 100f, 26f));
+  }
+
+  public float footerBandHeight(float pageWidth) {
+    return footerSize(pageWidth) * 2.6f;
+  }
+
+  /** "Archive Page 5", or "Archive Page 5 cont." on a source page's second and later sheets. */
+  public static String pageLabel(int seq, boolean continuation) {
+    return "Archive Page " + seq + (continuation ? " cont." : "");
   }
 
   public PDFont regularFont() {

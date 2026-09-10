@@ -256,6 +256,84 @@ class PdfExportServiceTest {
   }
 
   @Test
+  void theOnDemandExportsCarryTheArchiveFooter() throws Exception {
+    for (PdfExportService.Variant v :
+        List.of(PdfExportService.Variant.ENGLISH, PdfExportService.Variant.SIDE_BY_SIDE)) {
+      String text = textOf(pdfExportService.buildPdf(recordId, List.of(1), v));
+      assertThat(text).as("%s footer URL", v).contains("/records/" + recordId + "/pages/1");
+      assertThat(text).as("%s footer page label", v).contains("Archive Page 1");
+      assertThat(text).as("%s not a continuation", v).doesNotContain("cont.");
+    }
+  }
+
+  @Test
+  void theFooterUrlIsAClickableLink() throws Exception {
+    // Extracts get read on screen. Retyping a record and page number by hand to reach the source
+    // is the friction the footer exists to remove.
+    String expected = "/records/" + recordId + "/pages/1";
+    for (PdfExportService.Variant v :
+        List.of(PdfExportService.Variant.ENGLISH, PdfExportService.Variant.SIDE_BY_SIDE)) {
+      try (PDDocument doc = Loader.loadPDF(pdfExportService.buildPdf(recordId, List.of(1), v))) {
+        var uris = new java.util.ArrayList<String>();
+        for (var annotation : doc.getPage(0).getAnnotations()) {
+          if (annotation
+              instanceof org.apache.pdfbox.pdmodel.interactive.annotation.PDAnnotationLink link) {
+            if (link.getAction()
+                instanceof org.apache.pdfbox.pdmodel.interactive.action.PDActionURI uri) {
+              uris.add(uri.getURI());
+            }
+          }
+        }
+        assertThat(uris).as("%s footer link", v).anyMatch(u -> u.endsWith(expected));
+        assertThat(uris).as("%s link is absolute", v).allMatch(u -> u.startsWith("http"));
+      }
+    }
+  }
+
+  @Test
+  void theScanExportIsLeftAlone() throws Exception {
+    // The stored searchable PDF is this variant. It carries no footer, so adding one would mean
+    // rebuilding all 3,127 stored files for a caption.
+    String text =
+        textOf(pdfExportService.buildPdf(recordId, List.of(1), PdfExportService.Variant.ORIGINAL));
+    assertThat(text).doesNotContain("Archive Page");
+    assertThat(text).doesNotContain("/records/" + recordId + "/pages/1");
+  }
+
+  @Test
+  void aSourcePageSpillingOverIsMarkedContinued() throws Exception {
+    // The PDF's own page number drifts from the document's as soon as one source page needs two
+    // sheets; without "cont." a reader holding sheet two cannot tell a continuation from the
+    // next document page.
+    jdbc.update(
+        "UPDATE page_text SET text_en = ? WHERE page_id = (SELECT id FROM page WHERE record_id = ? AND seq = 1)",
+        "A reasonably long line of translated archival prose. ".repeat(400),
+        recordId);
+
+    for (PdfExportService.Variant v :
+        List.of(PdfExportService.Variant.ENGLISH, PdfExportService.Variant.SIDE_BY_SIDE)) {
+      byte[] pdf = pdfExportService.buildPdf(recordId, List.of(1), v);
+      try (PDDocument doc = Loader.loadPDF(pdf)) {
+        assertThat(doc.getNumberOfPages()).as("%s spills", v).isGreaterThan(1);
+        String first = pageText(doc, 1);
+        String second = pageText(doc, 2);
+        assertThat(first).as("%s first sheet", v).contains("Archive Page 1");
+        assertThat(first).as("%s first sheet not cont", v).doesNotContain("cont.");
+        assertThat(second).as("%s second sheet", v).contains("Archive Page 1 cont.");
+        // The URL repeats on every sheet, so any single page traces back on its own.
+        assertThat(second).as("%s url repeats", v).contains("/records/" + recordId + "/pages/1");
+      }
+    }
+  }
+
+  private String pageText(PDDocument doc, int oneBasedPage) throws Exception {
+    var stripper = new PDFTextStripper();
+    stripper.setStartPage(oneBasedPage);
+    stripper.setEndPage(oneBasedPage);
+    return stripper.getText(doc);
+  }
+
+  @Test
   void storedRecordPdfIsBuiltToFile() throws Exception {
     Path target = Files.createTempFile("searchable-test-", ".pdf");
     try {

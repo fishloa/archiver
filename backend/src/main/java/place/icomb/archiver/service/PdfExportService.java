@@ -194,13 +194,15 @@ public class PdfExportService {
                 renderer.drawElements(
                     cs, lines, lineIndex, margin + halfWidth + gutter, contentTop, contentBottom);
 
-            // Footer: where this page lives in the archive.
-            String url = publicUrl + "/records/" + recordId + "/pages/" + seq;
-            cs.beginText();
-            cs.setFont(renderer.regularFont(), 7f);
-            cs.newLineAtOffset(margin, margin);
-            cs.showText(renderer.forDrawing(url + (pageOfPage > 1 ? "   (cont.)" : "")));
-            cs.endText();
+            // Footer: where this page lives in the archive, and which page it is.
+            renderer.drawFooter(
+                page,
+                cs,
+                landscape.getWidth(),
+                margin,
+                margin,
+                publicUrl + "/records/" + recordId + "/pages/" + seq,
+                MarkdownPdfRenderer.pageLabel(seq, pageOfPage > 1));
           }
         } while (lineIndex < lines.size());
       }
@@ -364,13 +366,13 @@ public class PdfExportService {
             // blank, so the export never silently omits a page's content.
             String raw = (String) rows.get(0).get("text_raw");
             text = raw == null ? "" : raw;
-            note =
-                raw == null || raw.isBlank() ? "  [no text]" : "  [not translated - original text]";
+            note = raw == null || raw.isBlank() ? "[no text]" : "[not translated - original text]";
           }
         } else {
-          note = "  [no text]";
+          note = "[no text]";
         }
-        renderer.renderPage(doc, text, "Page " + seq + note, pageId);
+        renderer.renderPage(
+            doc, text, note, pageId, publicUrl + "/records/" + recordId + "/pages/" + seq, seq);
       }
 
       if (doc.getNumberOfPages() == 0) {
