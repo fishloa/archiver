@@ -55,7 +55,7 @@ export const load: PageServerLoad = async ({ url, locals }) => {
 						'anthropic-version': '2023-06-01'
 					},
 					body: JSON.stringify({
-						model: 'claude-sonnet-4-20250514',
+						model: env.ANTHROPIC_MODEL || 'claude-sonnet-5',
 						max_tokens: 1024,
 						messages: [
 							{
@@ -74,6 +74,14 @@ Question: ${q}`
 				if (claudeResponse.ok) {
 					const data = await claudeResponse.json();
 					answer = data.content?.[0]?.text || null;
+				} else {
+					// A retired model returns not_found_error, which never reaches the Usage page.
+					// Silently skipping it is how claude-sonnet-4 kept failing here unnoticed.
+					console.error(
+						'Claude synthesis failed:',
+						claudeResponse.status,
+						await claudeResponse.text()
+					);
 				}
 			} catch (e) {
 				console.error('Claude synthesis failed:', e);

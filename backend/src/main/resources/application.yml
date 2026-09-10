@@ -68,6 +68,11 @@ archiver:
     poll-interval: ${PDF_POLL_INTERVAL:5000}
   anthropic:
     api-key: ${ANTHROPIC_API_KEY:}
+    # Pinned by name, not by dated snapshot: claude-sonnet-4-20250514 was retired on
+    # 15 June 2026 and every request to it failed with not_found_error. Because the caller
+    # only acts on a 200, the failures were invisible — no error surfaced, the feature just
+    # quietly stopped answering.
+    model: ${ANTHROPIC_MODEL:claude-sonnet-5}
   ocr:
     default-engine: ${OCR_DEFAULT_ENGINE:ocr_page_qwen3vl}
     qwen:

@@ -27,6 +27,7 @@ public class TranslationController {
   private final String mistralBaseUrl;
   private final String mistralApiKey;
   private final String anthropicApiKey;
+  private final String anthropicModel;
   private final place.icomb.archiver.service.ResilientHttpClient httpClient =
       place.icomb.archiver.service.ResilientHttpClient.builder().build();
   private final ObjectMapper objectMapper = new ObjectMapper();
@@ -52,10 +53,12 @@ public class TranslationController {
       @Value("${archiver.ocr.mistral.base-url:https://api.mistral.ai}") String mistralBaseUrl,
       @Value("${archiver.ocr.mistral.api-key:}") String mistralApiKey,
       @Value("${archiver.anthropic.api-key:}") String anthropicApiKey,
+      @Value("${archiver.anthropic.model:claude-sonnet-5}") String anthropicModel,
       org.springframework.jdbc.core.JdbcTemplate jdbcTemplate) {
     this.mistralBaseUrl = mistralBaseUrl;
     this.mistralApiKey = mistralApiKey;
     this.anthropicApiKey = anthropicApiKey;
+    this.anthropicModel = anthropicModel;
     this.jdbcTemplate = jdbcTemplate;
   }
 
@@ -195,7 +198,7 @@ public class TranslationController {
           objectMapper.writeValueAsString(
               Map.of(
                   "model",
-                  "claude-sonnet-4-20250514",
+                  anthropicModel,
                   "max_tokens",
                   4096,
                   "messages",
