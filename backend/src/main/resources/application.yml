@@ -38,6 +38,10 @@ springdoc:
 archiver:
   storage:
     root: ${ARCHIVER_STORAGE_ROOT:/tmp/archiver-storage}
+    # Optional second root, mounted read only. Empty in production; a test deployment points it at
+    # the real store so it can read 253 GB of scans without copying them and with no path by which
+    # it could write to them.
+    readonly-root: ${ARCHIVER_STORAGE_READONLY_ROOT:}
   processor:
     token: ${ARCHIVER_PROCESSOR_TOKEN:dev-processor-token}
   admin:

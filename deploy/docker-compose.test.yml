@@ -1,0 +1,91 @@
+# Test deployment: its own database, its own writable store, and the real archive read only.
+#
+# Separate stack from production (archiver), on its own ports. The point of it is that there is
+# somewhere to try a migration, a re-OCR or a provider swap against real data before doing it to
+# the archive that backs a citizenship application — every destructive change so far has been
+# rehearsed only in production.
+#
+# The 253 GB of scans are mounted read only rather than copied. A test can therefore open any real
+# page, and cannot write to one: everything it creates goes to archiver_test_store.
+#
+# Start:  docker compose -f docker-compose.test.yml --env-file .env.test up -d
+# Seed:   see deploy/seed-test-db.sh
+
+services:
+  postgres-test:
+    image: pgvector/pgvector:pg18
+    environment:
+      POSTGRES_DB: archiver_test
+      POSTGRES_USER: archiver
+      POSTGRES_PASSWORD: ${TEST_DB_PASSWORD:-archiver}
+    ports:
+      # 5433 so it cannot be reached by anything configured for production on 5432.
+      - "5433:5432"
+    volumes:
+      - archiver_test_db:/var/lib/postgresql/data
+    command: postgres -c max_connections=100 -c shared_buffers=512MB
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U archiver -d archiver_test"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  backend-test:
+    image: dockerregistry.icomb.place/archiver/backend:${TEST_IMAGE_TAG:-latest}
+    user: "${CONTAINER_USER:-1012:1012}"
+    environment:
+      SPRING_PROFILES_ACTIVE: prod
+      DATASOURCE_URL: jdbc:postgresql://postgres-test:5432/archiver_test?stringtype=unspecified
+      DATASOURCE_USERNAME: archiver
+      DATASOURCE_PASSWORD: ${TEST_DB_PASSWORD:-archiver}
+      ARCHIVER_STORAGE_ROOT: /data/archiver_store
+      # The real archive, read only. Anything not found in this stack's own store is read here.
+      ARCHIVER_STORAGE_READONLY_ROOT: /data/archive_readonly
+      ARCHIVER_PROCESSOR_TOKEN: ${TEST_PROCESSOR_TOKEN:-test-processor-token}
+      ARCHIVER_ADMIN_TOKEN: ${TEST_ADMIN_TOKEN:-test-admin-token}
+      # Model access is off by default: a test stack should not spend money or mutate a provider's
+      # batch queue unless someone deliberately turns it on.
+      MISTRAL_OCR_ENABLED: ${TEST_MISTRAL_OCR_ENABLED:-false}
+      TRANSLATE_BATCH_ENABLED: ${TEST_TRANSLATE_BATCH_ENABLED:-false}
+      TRANSLATE_RECORD_ENABLED: ${TEST_TRANSLATE_RECORD_ENABLED:-false}
+      MISTRAL_API_KEY: ${TEST_MISTRAL_API_KEY:-}
+      MISTRAL_BASE_URL: ${MISTRAL_BASE_URL:-https://api.mistral.ai}
+      EMBED_TEI_URL: ${TEST_EMBED_TEI_URL:-}
+      EMBED_TEI_KEY: ${TEST_EMBED_TEI_KEY:-}
+      EMBED_MODEL: ${EMBED_MODEL:-Qwen/Qwen3-Embedding-8B}
+      EMBED_DIMENSIONS: ${EMBED_DIMENSIONS:-1024}
+      AUTH_TRUSTED_CIDRS: ${TEST_AUTH_TRUSTED_CIDRS:-10.0.0.0/8,192.168.0.0/16,172.16.0.0/12}
+      ARCHIVER_PUBLIC_URL: ${TEST_PUBLIC_URL:-http://localhost:8090}
+    volumes:
+      - archiver_test_store:/data/archiver_store
+      - archiver_store:/data/archive_readonly:ro
+    depends_on:
+      postgres-test:
+        condition: service_healthy
+    ports:
+      - "8090:8080"
+    restart: unless-stopped
+
+  frontend-test:
+    image: dockerregistry.icomb.place/archiver/frontend:${TEST_IMAGE_TAG:-latest}
+    user: "${CONTAINER_USER:-1012:1012}"
+    environment:
+      BACKEND_URL: http://backend-test:8080
+      PROTOCOL_HEADER: x-forwarded-proto
+      HOST_HEADER: host
+      MISTRAL_API_KEY: ${TEST_MISTRAL_API_KEY:-}
+      MISTRAL_BASE_URL: ${MISTRAL_BASE_URL:-https://api.mistral.ai}
+      SEARCH_ANSWER_MODEL: ${SEARCH_ANSWER_MODEL:-mistral-medium-latest}
+    depends_on:
+      - backend-test
+    ports:
+      - "3090:3000"
+    restart: unless-stopped
+
+volumes:
+  archiver_test_db: {}
+  archiver_test_store: {}
+  # The production store, by name. Mounted read only above; this stack never writes to it.
+  archiver_store:
+    external: true

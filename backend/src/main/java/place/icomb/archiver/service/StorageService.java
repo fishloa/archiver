@@ -17,10 +17,30 @@ import place.icomb.archiver.model.Attachment;
 @Service
 public class StorageService {
 
+  private static final org.slf4j.Logger log =
+      org.slf4j.LoggerFactory.getLogger(StorageService.class);
+
   private final Path storageRoot;
 
-  public StorageService(Path storageRoot) {
+  /**
+   * A second root, read only, consulted when a file is not under {@link #storageRoot}.
+   *
+   * <p>Exists so a test deployment can read the real 253 GB of scans without copying them and
+   * without any path by which it could write to them: the archive is mounted read only, and
+   * everything the test writes goes to its own root. Unset in production, where there is one root
+   * and this is never consulted.
+   */
+  private final Path readOnlyRoot;
+
+  public StorageService(Path storageRoot, Path readOnlyStorageRoot) {
     this.storageRoot = storageRoot;
+    this.readOnlyRoot = readOnlyStorageRoot;
+    if (readOnlyRoot != null) {
+      log.info(
+          "Falling back to read-only storage at {} for files not under {}",
+          readOnlyRoot,
+          storageRoot);
+    }
   }
 
   /**
@@ -70,7 +90,23 @@ public class StorageService {
 
   /** Resolves the full filesystem path for an attachment. */
   public Path getPath(Attachment attachment) {
-    return storageRoot.resolve(attachment.getPath());
+    return resolveForRead(attachment.getPath());
+  }
+
+  /**
+   * Where to read a stored file from.
+   *
+   * <p>Its own root first, so anything this deployment wrote wins; then the read-only archive, if
+   * one is configured. Returns the primary path when the file is in neither, so a missing file
+   * fails where a caller expects it to.
+   */
+  public Path resolveForRead(String relativePath) {
+    Path primary = storageRoot.resolve(relativePath);
+    if (readOnlyRoot == null || java.nio.file.Files.exists(primary)) {
+      return primary;
+    }
+    Path fallback = readOnlyRoot.resolve(relativePath);
+    return java.nio.file.Files.exists(fallback) ? fallback : primary;
   }
 
   /** Opens an InputStream for the given attachment. */
