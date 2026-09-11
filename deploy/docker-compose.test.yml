@@ -22,7 +22,9 @@ services:
       # 5433 so it cannot be reached by anything configured for production on 5432.
       - "5433:5432"
     volumes:
-      - archiver_test_db:/var/lib/postgresql/data
+      # Postgres 18 wants a single mount at /var/lib/postgresql and puts its data in a subdirectory,
+      # so that a future pg_upgrade --link is not blocked by a mount-point boundary.
+      - archiver_test_db:/var/lib/postgresql
     command: postgres -c max_connections=100 -c shared_buffers=512MB
     restart: unless-stopped
     healthcheck:
