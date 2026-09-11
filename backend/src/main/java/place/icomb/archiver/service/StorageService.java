@@ -32,6 +32,15 @@ public class StorageService {
    */
   private final Path readOnlyRoot;
 
+  @org.springframework.beans.factory.annotation.Autowired
+  public StorageService(
+      Path storageRoot,
+      @org.springframework.beans.factory.annotation.Value("${archiver.storage.readonly-root:}")
+          String readOnlyStorageRoot) {
+    this(storageRoot, pathOrNull(readOnlyStorageRoot));
+  }
+
+  /** For tests, and for the constructor above once the property has been resolved. */
   public StorageService(Path storageRoot, Path readOnlyStorageRoot) {
     this.storageRoot = storageRoot;
     this.readOnlyRoot = readOnlyStorageRoot;
@@ -41,6 +50,10 @@ public class StorageService {
           readOnlyRoot,
           storageRoot);
     }
+  }
+
+  private static Path pathOrNull(String root) {
+    return root == null || root.isBlank() ? null : Path.of(root);
   }
 
   /**

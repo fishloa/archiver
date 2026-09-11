@@ -59,7 +59,7 @@ class StorageServiceTest {
 
   @Test
   void withNoSecondRootItBehavesAsBefore(@TempDir Path writable) {
-    StorageService service = new StorageService(writable, null);
+    StorageService service = new StorageService(writable, (Path) null);
 
     assertThat(service.getPath(at("records/1/p.jpg")))
         .isEqualTo(writable.resolve("records/1/p.jpg"));
