@@ -46,6 +46,7 @@ public class WorkerSchedulingConfig implements SchedulingConfigurer {
   private final ProviderBatchRepository providerBatchRepository;
   private final PageTranslationRepository pageTranslationRepository;
   private final PersonMatchService personMatchService;
+  private final place.icomb.archiver.ai.AiRegistry aiRegistry;
   private final place.icomb.archiver.service.TranslationService translationService;
   private final place.icomb.archiver.service.PdfExportService pdfExportService;
   private final org.springframework.jdbc.core.JdbcTemplate jdbcTemplate;
@@ -94,6 +95,7 @@ public class WorkerSchedulingConfig implements SchedulingConfigurer {
       ProviderBatchRepository providerBatchRepository,
       PageTranslationRepository pageTranslationRepository,
       PersonMatchService personMatchService,
+      place.icomb.archiver.ai.AiRegistry aiRegistry,
       place.icomb.archiver.service.TranslationService translationService,
       place.icomb.archiver.service.PdfExportService pdfExportService,
       org.springframework.jdbc.core.JdbcTemplate jdbcTemplate,
@@ -158,6 +160,7 @@ public class WorkerSchedulingConfig implements SchedulingConfigurer {
     this.translatePerMinute = translatePerMinute;
     this.personMatchEnabled = personMatchEnabled;
     this.personMatchPollInterval = personMatchPollInterval;
+    this.aiRegistry = aiRegistry;
     this.translationService = translationService;
     this.pdfExportService = pdfExportService;
     this.embedUrl = embedUrl;
@@ -168,6 +171,34 @@ public class WorkerSchedulingConfig implements SchedulingConfigurer {
     this.embedPollInterval = embedPollInterval;
     this.pdfConcurrency = pdfConcurrency;
     this.pdfPollInterval = pdfPollInterval;
+  }
+
+  /**
+   * The translator for a model, from the registry.
+   *
+   * <p>Falls back to the compiled-in Mistral configuration if the model is not registered, so a
+   * missing row degrades to today's behaviour rather than stopping translation.
+   */
+  private place.icomb.archiver.ai.Translator translatorFor(String model) {
+    return aiRegistry.forModel(place.icomb.archiver.ai.AiCapability.TRANSLATION, model).stream()
+        .findFirst()
+        .map(r -> new place.icomb.archiver.ai.MistralTranslator(r, aiRegistry.credential(r)))
+        .orElseGet(
+            () ->
+                new place.icomb.archiver.ai.MistralTranslator(
+                    new place.icomb.archiver.ai.AiRegistry.Registration(
+                        "mistral:" + model,
+                        place.icomb.archiver.ai.AiCapability.TRANSLATION,
+                        "mistral",
+                        model,
+                        mistralBaseUrl,
+                        "/v1/chat/completions",
+                        null,
+                        translateBatchSize,
+                        1,
+                        true,
+                        com.fasterxml.jackson.databind.node.JsonNodeFactory.instance.objectNode()),
+                    mistralApiKey));
   }
 
   @Override
@@ -269,7 +300,10 @@ public class WorkerSchedulingConfig implements SchedulingConfigurer {
           new BatchOrchestrator(
               "mistral-batch-translate",
               new TranslateBatchStage(
-                  TranslationModels.BULK_MODEL, "translate_page", jdbcTemplate, translationService),
+                  translatorFor(TranslationModels.BULK_MODEL),
+                  "translate_page",
+                  jdbcTemplate,
+                  translationService),
               client,
               jobService,
               jobEventService,
@@ -286,7 +320,7 @@ public class WorkerSchedulingConfig implements SchedulingConfigurer {
           new BatchOrchestrator(
               "mistral-batch-translate-upgrade",
               new TranslateBatchStage(
-                  TranslationModels.UPGRADE_MODEL,
+                  translatorFor(TranslationModels.UPGRADE_MODEL),
                   "translate_page_upgrade",
                   jdbcTemplate,
                   translationService),
