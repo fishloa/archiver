@@ -56,7 +56,17 @@ public interface ProviderBatchRepository extends CrudRepository<ProviderBatch, L
   @Query("DELETE FROM provider_batch WHERE id = :id")
   void deleteEmpty(@Param("id") Long id);
 
-  @Query("SELECT * FROM provider_batch WHERE status = :status ORDER BY id")
+  /**
+   * Batches of one kind in a given state.
+   *
+   * <p>The job kind filter is load-bearing and was missing: the query took the parameter and
+   * ignored it, so every orchestrator's reconcile pass saw every other orchestrator's in-flight
+   * batches. Four run concurrently — OCR, bulk translation, upgrade translation and record metadata
+   * — and each could release or fail work belonging to another. Harmless only for as long as they
+   * all share one provider; with two, one orchestrator would release jobs another is being billed
+   * for.
+   */
+  @Query("SELECT * FROM provider_batch WHERE status = :status AND job_kind = :jobKind ORDER BY id")
   List<ProviderBatch> findByStatus(
       @Param("status") String status, @Param("jobKind") String jobKind);
 
