@@ -100,8 +100,10 @@ services:
       ARCHIVER_ESCALATION_ENABLE_ABBYY: "false"
       SECRET_KEY: ${SECRET_KEY}
       OPENAI_API_KEY: ${OPENAI_API_KEY}
-      EMBED_TEI_URL: http://embed-tei:80
-      EMBED_TEI_KEY: ${TEI_API_KEY}
+      EMBED_TEI_URL: ${EMBED_TEI_URL:-https://api.deepinfra.com/v1/openai}
+      EMBED_TEI_KEY: ${EMBED_TEI_KEY:-}
+      EMBED_MODEL: ${EMBED_MODEL:-Qwen/Qwen3-Embedding-8B}
+      EMBED_DIMENSIONS: ${EMBED_DIMENSIONS:-1024}
       QWEN_OCR_ENABLED: ${QWEN_OCR_ENABLED:-false}
       QWEN_BASE_URL: ${QWEN_BASE_URL:-https://api.deepinfra.com/v1/openai}
       QWEN_API_KEY: ${QWEN_API_KEY:-}
@@ -144,28 +146,18 @@ services:
       - backend
     restart: "no"
 
-  embed-tei:
-    image: ghcr.io/huggingface/text-embeddings-inference:86-1.9
-    runtime: nvidia
-    environment:
-      NVIDIA_VISIBLE_DEVICES: all
-      HF_API_TOKEN: ${TEI_API_KEY}
-    volumes:
-      - tei_model_cache:/data
-    command: --model-id BAAI/bge-m3 --port 80 --max-batch-tokens 32768 --api-key ${TEI_API_KEY}
-    restart: unless-stopped
-
   embed-worker:
     image: dockerregistry.icomb.place/archiver/embed-worker:latest
     user: "${CONTAINER_USER:-1012:1012}"
     environment:
       BACKEND_URL: http://backend:8080
       PROCESSOR_TOKEN: ${PROCESSOR_TOKEN}
-      EMBED_TEI_URL: http://embed-tei:80
-      EMBED_TEI_KEY: ${TEI_API_KEY}
+      EMBED_TEI_URL: ${EMBED_TEI_URL:-https://api.deepinfra.com/v1/openai}
+      EMBED_TEI_KEY: ${EMBED_TEI_KEY:-}
+      EMBED_MODEL: ${EMBED_MODEL:-Qwen/Qwen3-Embedding-8B}
+      EMBED_DIMENSIONS: ${EMBED_DIMENSIONS:-1024}
     depends_on:
       - backend
-      - embed-tei
     restart: unless-stopped
 
   scraper-ebadatelna:
@@ -234,4 +226,3 @@ services:
 volumes:
   archiver_store:
     external: true
-  tei_model_cache: {}
