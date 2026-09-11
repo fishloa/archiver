@@ -44,6 +44,7 @@ class TranslationServiceTest {
 
   @Autowired private TranslationService translationService;
   @Autowired private JdbcTemplate jdbc;
+  @Autowired private place.icomb.archiver.ai.AiRegistry registry;
 
   private Long pageId;
   private Long recordId;
@@ -312,5 +313,66 @@ class TranslationServiceTest {
     translation("some-model-nobody-registered", "unknown provenance");
     translation("mistral-small-latest", "cheap");
     assertThat(translationService.bestEnglish(pageId)).isEqualTo("cheap");
+  }
+
+  @Test
+  void theSameModelOnTwoProvidersIsOneQuality() {
+    // A local endpoint and a hosted one can serve the same weights with different URLs and
+    // different keys. They are two implementations to route work to, but not two qualities of
+    // answer, and stored output records only the model — so the ranking must not list it twice
+    // or a translation would be compared against itself.
+    jdbc.update(
+        """
+        INSERT INTO ai_implementation
+            (id, capability, provider, model, base_url, endpoint_path, credential_env,
+             max_batch_size, rank, enabled, settings)
+        VALUES ('local:mistral-small-latest', 'TRANSLATION', 'local', 'mistral-small-latest',
+                'http://localhost:11434/v1', '/chat/completions', NULL, 1, 5, true, '{}')
+        """);
+
+    var ranked = registry.rankedModels(place.icomb.archiver.ai.AiCapability.TRANSLATION);
+    assertThat(ranked).doesNotHaveDuplicates();
+    // It keeps the better of its two ranks: 2 from the hosted row, not 5 from the local one.
+    assertThat(ranked.indexOf("mistral-small-latest"))
+        .isLessThan(ranked.indexOf("google/gemma-4-31B-it"));
+
+    translation("mistral-small-latest", "cheap");
+    translation("mistral-medium-latest", "careful");
+    assertThat(translationService.bestEnglish(pageId)).isEqualTo("careful");
+  }
+
+  @Test
+  void aLocalImplementationNeedsNoCredential() {
+    // A machine in the room has no API key. That must not read as "unconfigured".
+    jdbc.update(
+        """
+        INSERT INTO ai_implementation
+            (id, capability, provider, model, base_url, endpoint_path, credential_env,
+             max_batch_size, rank, enabled, settings)
+        VALUES ('local:qwen3', 'EMBEDDING', 'local', 'Qwen/Qwen3-Embedding-8B',
+                'http://localhost:11434/v1', '/embeddings', NULL, 1, 0, true,
+                '{"dimensions": 1024}')
+        """);
+
+    var best = registry.best(place.icomb.archiver.ai.AiCapability.EMBEDDING);
+    assertThat(best).isPresent();
+    assertThat(best.get().id()).isEqualTo("local:qwen3");
+    assertThat(best.get().maxBatchSize()).isEqualTo(1);
+  }
+
+  @Test
+  void anImplementationWhoseKeyIsUnsetIsSkippedNotFailed() {
+    jdbc.update(
+        """
+        INSERT INTO ai_implementation
+            (id, capability, provider, model, base_url, credential_env, max_batch_size, rank,
+             enabled, settings)
+        VALUES ('nowhere:model-x', 'OCR', 'nowhere', 'model-x', 'https://example.invalid',
+                'A_KEY_THAT_IS_NOT_SET', 1, 0, true, '{}')
+        """);
+
+    var best = registry.best(place.icomb.archiver.ai.AiCapability.OCR);
+    assertThat(best).isPresent();
+    assertThat(best.get().provider()).isEqualTo("mistral");
   }
 }

@@ -84,9 +84,38 @@ public class AiRegistry {
         capability.name());
   }
 
-  /** The preferred implementation for a capability, if one is registered and configured. */
+  /**
+   * The preferred implementation for a capability, if one is registered and configured.
+   *
+   * <p>Skips a row whose credential is absent, so a local endpoint can sit below a hosted one as a
+   * standby and be used only when the hosted one is not configured — or above it, to prefer the
+   * machine in the room and fall back to the hosted endpoint when it is not running.
+   */
   public Optional<Registration> best(AiCapability capability) {
     return forCapability(capability).stream().filter(this::hasCredential).findFirst();
+  }
+
+  /**
+   * Every configured implementation for a capability, best first.
+   *
+   * <p>For callers that want to fail over rather than give up: the same model on a second provider
+   * is a legitimate retry, whereas a different model is a different answer.
+   */
+  public List<Registration> configured(AiCapability capability) {
+    return forCapability(capability).stream().filter(this::hasCredential).toList();
+  }
+
+  /** Implementations of one model, across providers, best first. */
+  public List<Registration> forModel(AiCapability capability, String model) {
+    return jdbc.query(
+        """
+        SELECT * FROM ai_implementation
+        WHERE capability = ? AND model = ? AND enabled
+        ORDER BY rank
+        """,
+        (rs, i) -> map(rs),
+        capability.name(),
+        model);
   }
 
   /** One implementation by id, enabled or not — history refers to retired models. */
@@ -98,14 +127,26 @@ public class AiRegistry {
   }
 
   /**
-   * Preference order for a capability by model name, best first.
+   * Preference order for a capability by model name, best first, each model once.
+   *
+   * <p>Distinct because the same model can be registered against more than one provider — Qwen3 on
+   * a hosted endpoint and on a local server, say, with different URLs and different keys. Those are
+   * different implementations to route work to, but not different qualities of answer: a
+   * translation is as good as the model that produced it, wherever it ran. Stored output records
+   * only the model, so ranking is by model, and a model inherits the best rank any of its providers
+   * holds.
    *
    * <p>Includes disabled rows: a retired model's output is still in the archive and still has to
    * rank correctly against whatever replaced it.
    */
   public List<String> rankedModels(AiCapability capability) {
     return jdbc.queryForList(
-        "SELECT model FROM ai_implementation WHERE capability = ? ORDER BY rank",
+        """
+        SELECT model FROM ai_implementation
+        WHERE capability = ?
+        GROUP BY model
+        ORDER BY MIN(rank)
+        """,
         String.class,
         capability.name());
   }
