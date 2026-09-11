@@ -50,6 +50,23 @@ class AdminPipelineControllerTest {
   }
 
   @BeforeEach
+  void registerAnOcrEngine() {
+    // The endpoint refuses to clear a record's text unless something can transcribe it again.
+    // A local engine needs no API key, so this holds on a developer's machine and on CI alike.
+    jdbc.sql("UPDATE ai_implementation SET enabled = false WHERE capability = 'OCR'").update();
+    jdbc.sql(
+            """
+            INSERT INTO ai_implementation
+                (id, capability, provider, model, base_url, endpoint_path, credential_env,
+                 max_batch_size, rank, enabled, settings)
+            VALUES ('local:test-ocr', 'OCR', 'local', 'test-ocr', 'http://localhost:1/v1',
+                    '/v1/ocr', NULL, 1, 0, true, '{"jobKind": "ocr_page_mistral"}')
+            ON CONFLICT (id) DO UPDATE SET enabled = true
+            """)
+        .update();
+  }
+
+  @BeforeEach
   void setUp() {
     // Clean up test data (order matters: FK constraints)
     jdbc.sql("DELETE FROM job WHERE kind = 'ocr_page_qwen3vl'").update();
@@ -133,13 +150,85 @@ class AdminPipelineControllerTest {
     Map<String, Object> body = mapper.readValue(resp.body(), Map.class);
     assertThat(((Number) body.get("jobsEnqueued")).intValue()).isGreaterThanOrEqualTo(2);
 
-    // Verify jobs were created
+    // The jobs are for the engine that is actually enabled, not a hardcoded one. This asserted
+    // ocr_page_qwen3vl, which has been disabled in the deployment since Mistral became the only
+    // engine — so the endpoint cleared each record's text and queued work nothing could claim.
+    assertThat(body.get("engine")).isEqualTo("ocr_page_mistral");
     int jobCount =
-        jdbc.sql("SELECT count(*) FROM job WHERE kind = 'ocr_page_qwen3vl' AND record_id = :rid")
+        jdbc.sql("SELECT count(*) FROM job WHERE kind = :kind AND record_id = :rid")
+            .param("kind", "ocr_page_mistral")
             .param("rid", recordId)
             .query(Integer.class)
             .single();
     assertThat(jobCount).isEqualTo(2);
+    assertThat(
+            jdbc.sql("SELECT count(*) FROM job WHERE kind = 'ocr_page_qwen3vl'")
+                .query(Integer.class)
+                .single())
+        .isZero();
+  }
+
+  @Test
+  void enqueueReocrDestroysNothingWhenNoEngineIsConfigured() throws Exception {
+    // It deletes each record's text, searchable PDF and translations before queuing. With no
+    // engine to transcribe them again, the deletion happens and the repair never does.
+    Long archiveId =
+        jdbc.sql("INSERT INTO archive (name) VALUES ('No Engine') RETURNING id")
+            .query(Long.class)
+            .single();
+    Long recordId =
+        jdbc.sql(
+                """
+                INSERT INTO record (archive_id, source_system, source_record_id, title, status,
+                                    lang)
+                VALUES (:aid, 'test', 'reocr-none', 'Keep My Text', 'complete', 'de')
+                RETURNING id
+                """)
+            .param("aid", archiveId)
+            .query(Long.class)
+            .single();
+    Long attId =
+        jdbc.sql(
+                """
+                INSERT INTO attachment (record_id, role, path, mime, bytes, created_at)
+                VALUES (:rid, 'page_image', 'x.jpg', 'image/jpeg', 1, now()) RETURNING id
+                """)
+            .param("rid", recordId)
+            .query(Long.class)
+            .single();
+    Long pageId =
+        jdbc.sql(
+                "INSERT INTO page (record_id, seq, attachment_id) VALUES (:rid, 1, :att)"
+                    + " RETURNING id")
+            .param("rid", recordId)
+            .param("att", attId)
+            .query(Long.class)
+            .single();
+    jdbc.sql(
+            """
+            INSERT INTO page_text (page_id, engine, text_raw, content_type, created_at)
+            VALUES (:pid, 'ocr_page_mistral', 'irreplaceable transcription', 'text/plain', now())
+            """)
+        .param("pid", pageId)
+        .update();
+
+    jdbc.sql("UPDATE ai_implementation SET enabled = false WHERE capability = 'OCR'").update();
+
+    var resp =
+        http.send(
+            HttpRequest.newBuilder(URI.create(url("/api/admin/enqueue-reocr")))
+                .header("X-Auth-Email", ADMIN_EMAIL)
+                .POST(HttpRequest.BodyPublishers.noBody())
+                .build(),
+            HttpResponse.BodyHandlers.ofString());
+
+    assertThat(resp.statusCode()).isEqualTo(409);
+    assertThat(
+            jdbc.sql("SELECT text_raw FROM page_text WHERE page_id = :pid")
+                .param("pid", pageId)
+                .query(String.class)
+                .single())
+        .isEqualTo("irreplaceable transcription");
   }
 
   @Test
