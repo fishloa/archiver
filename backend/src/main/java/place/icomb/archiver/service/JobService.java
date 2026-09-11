@@ -930,7 +930,6 @@ public class JobService {
   private static String channelForKind(String kind) {
     return switch (kind) {
       case "build_searchable_pdf" -> "pdf_jobs";
-      case "extract_entities" -> "entity_jobs";
       case "generate_thumbs" -> "ocr_jobs";
       case "translate_page", "translate_record" -> "translate_jobs";
       case "embed_record" -> "embed_jobs";

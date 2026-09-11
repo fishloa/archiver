@@ -2,7 +2,6 @@ package place.icomb.archiver.controller;
 
 import static com.github.tomakehurst.wiremock.client.WireMock.*;
 import static org.assertj.core.api.Assertions.assertThat;
-import static place.icomb.archiver.TestAuth.PROCESSOR_AUTH_HEADER;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.github.tomakehurst.wiremock.WireMockServer;
@@ -44,6 +43,8 @@ class SemanticSearchTest {
 
   static WireMockServer teiServer;
 
+  private static final String ADMIN_TOKEN = "test-admin-token";
+
   @LocalServerPort private int port;
 
   @Autowired private JdbcClient jdbc;
@@ -69,6 +70,10 @@ class SemanticSearchTest {
     registry.add("spring.datasource.url", () -> postgres.getJdbcUrl() + "&stringtype=unspecified");
     registry.add("spring.datasource.username", postgres::getUsername);
     registry.add("spring.datasource.password", postgres::getPassword);
+    registry.add("archiver.admin.token", () -> ADMIN_TOKEN);
+    // The reset refuses to run without a usable embedding model, so that it cannot delete an
+    // index it has no way to rebuild. Give it one.
+    registry.add("EMBED_TEI_KEY", () -> "test-embedding-key");
     registry.add("archiver.embed.tei-url", () -> "http://localhost:" + teiServer.port());
     registry.add("archiver.embed.tei-key", () -> "test-tei-key");
   }
@@ -258,14 +263,45 @@ class SemanticSearchTest {
         .param("vec", vecStr.toString())
         .update();
 
-    // Call reset-embeddings
+    // Wiping the index is an administrator's decision, not a worker's: the processor token is
+    // held by every scraper, and this deletes every embedding in the archive. It also has to be
+    // confirmed with the count, so an operator who has miscounted finds out before the delete.
+    Long held = jdbc.sql("SELECT count(*) FROM text_chunk").query(Long.class).single();
+
+    HttpResponse<String> unconfirmed =
+        http.send(
+            HttpRequest.newBuilder()
+                .uri(URI.create(base() + "/admin/reset-embeddings"))
+                .header("Authorization", "Bearer " + ADMIN_TOKEN)
+                .POST(HttpRequest.BodyPublishers.noBody())
+                .build(),
+            HttpResponse.BodyHandlers.ofString());
+    assertThat(unconfirmed.statusCode()).isEqualTo(409);
+    assertThat(jdbc.sql("SELECT count(*) FROM text_chunk").query(Long.class).single())
+        .isEqualTo(held);
+
+    // With no embedding model it must refuse outright rather than empty the index.
+    jdbc.sql("UPDATE ai_implementation SET enabled = false WHERE capability = 'EMBEDDING'")
+        .update();
+    HttpResponse<String> noModel =
+        http.send(
+            HttpRequest.newBuilder()
+                .uri(URI.create(base() + "/admin/reset-embeddings?confirmChunks=" + held))
+                .header("Authorization", "Bearer " + ADMIN_TOKEN)
+                .POST(HttpRequest.BodyPublishers.noBody())
+                .build(),
+            HttpResponse.BodyHandlers.ofString());
+    assertThat(noModel.statusCode()).isEqualTo(409);
+    assertThat(jdbc.sql("SELECT count(*) FROM text_chunk").query(Long.class).single())
+        .isEqualTo(held);
+    jdbc.sql("UPDATE ai_implementation SET enabled = true WHERE capability = 'EMBEDDING'").update();
+
     HttpResponse<String> response =
         http.send(
             HttpRequest.newBuilder()
-                .uri(URI.create(base() + "/processor/reset-embeddings"))
-                .header("Content-Type", "application/json")
-                .header("Authorization", PROCESSOR_AUTH_HEADER)
-                .POST(HttpRequest.BodyPublishers.ofString(""))
+                .uri(URI.create(base() + "/admin/reset-embeddings?confirmChunks=" + held))
+                .header("Authorization", "Bearer " + ADMIN_TOKEN)
+                .POST(HttpRequest.BodyPublishers.noBody())
                 .build(),
             HttpResponse.BodyHandlers.ofString());
 

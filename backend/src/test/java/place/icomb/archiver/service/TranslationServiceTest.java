@@ -40,6 +40,9 @@ class TranslationServiceTest {
     registry.add("spring.datasource.url", () -> postgres.getJdbcUrl() + "&stringtype=unspecified");
     registry.add("spring.datasource.username", postgres::getUsername);
     registry.add("spring.datasource.password", postgres::getPassword);
+    // A credential the test controls, so "is this implementation usable" does not depend on what
+    // happens to be exported in the shell running the build.
+    registry.add("A_KEY_THAT_IS_SET", () -> "present");
   }
 
   @Autowired private TranslationService translationService;
@@ -59,6 +62,8 @@ class TranslationServiceTest {
     jdbc.update(
         "UPDATE ai_implementation SET rank = 3 WHERE id = 'deepinfra:google/gemma-4-31B-it'");
     jdbc.update("UPDATE ai_implementation SET rank = 99 WHERE id = 'legacy'");
+    jdbc.update("DELETE FROM ai_implementation WHERE provider IN ('nowhere','somewhere','local')");
+    jdbc.update("UPDATE ai_implementation SET enabled = true WHERE provider = 'mistral'");
 
     jdbc.execute("DELETE FROM page_translation");
     jdbc.execute("DELETE FROM page_text");
@@ -362,17 +367,45 @@ class TranslationServiceTest {
 
   @Test
   void anImplementationWhoseKeyIsUnsetIsSkippedNotFailed() {
+    // Preferred but unusable, and a usable one behind it. The first must be passed over rather
+    // than tried and failed: a half-filled configuration must not send work to a provider that
+    // will reject it.
+    //
+    // The seeded Mistral row is disabled for the duration: whether its key is exported differs
+    // between a developer's shell and CI, and a test whose result depends on that is not a test.
+    jdbc.update("UPDATE ai_implementation SET enabled = false WHERE capability = 'OCR'");
     jdbc.update(
         """
         INSERT INTO ai_implementation
             (id, capability, provider, model, base_url, credential_env, max_batch_size, rank,
              enabled, settings)
         VALUES ('nowhere:model-x', 'OCR', 'nowhere', 'model-x', 'https://example.invalid',
-                'A_KEY_THAT_IS_NOT_SET', 1, 0, true, '{}')
+                'A_KEY_THAT_IS_DEFINITELY_NOT_SET', 1, 0, true, '{}'),
+               ('somewhere:model-y', 'OCR', 'somewhere', 'model-y', 'https://example.test',
+                'A_KEY_THAT_IS_SET', 1, 2, true, '{}')
         """);
 
     var best = registry.best(place.icomb.archiver.ai.AiCapability.OCR);
     assertThat(best).isPresent();
-    assertThat(best.get().provider()).isEqualTo("mistral");
+    assertThat(best.get().id()).isEqualTo("somewhere:model-y");
+  }
+
+  @Test
+  void anImplementationNamingNoKeyIsUsable() {
+    // A local endpoint has no API key, and that must not read as missing configuration.
+    jdbc.update("UPDATE ai_implementation SET enabled = false WHERE capability = 'OCR'");
+    jdbc.update(
+        """
+        INSERT INTO ai_implementation
+            (id, capability, provider, model, base_url, credential_env, max_batch_size, rank,
+             enabled, settings)
+        VALUES ('local:ocr', 'OCR', 'local', 'local-ocr', 'http://localhost:11434/v1', NULL,
+                1, 0, true, '{}')
+        """);
+
+    assertThat(registry.best(place.icomb.archiver.ai.AiCapability.OCR))
+        .get()
+        .extracting(place.icomb.archiver.ai.AiRegistry.Registration::id)
+        .isEqualTo("local:ocr");
   }
 }

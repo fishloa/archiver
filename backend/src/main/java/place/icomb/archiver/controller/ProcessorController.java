@@ -4,7 +4,6 @@ import jakarta.validation.Valid;
 import java.io.IOException;
 import java.sql.Timestamp;
 import java.time.Instant;
-import java.util.List;
 import java.util.Map;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -25,7 +24,6 @@ import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
-import place.icomb.archiver.dto.EntityHitRequest;
 import place.icomb.archiver.dto.JobClaimRequest;
 import place.icomb.archiver.dto.JobCompleteRequest;
 import place.icomb.archiver.dto.JobFailRequest;
@@ -267,104 +265,6 @@ public class ProcessorController {
   }
 
   // -------------------------------------------------------------------------
-  // Entity extraction results
-  // -------------------------------------------------------------------------
-
-  @PostMapping("/entities/{pageId}")
-  public ResponseEntity<Map<String, Object>> submitEntities(
-      @RequestHeader("Authorization") String authHeader,
-      @PathVariable Long pageId,
-      @RequestBody EntityHitRequest request) {
-    validateToken(authHeader);
-    pageRepository
-        .findById(pageId)
-        .orElseThrow(() -> new IllegalArgumentException("Page not found: " + pageId));
-
-    for (EntityHitRequest.EntityHitItem item : request.entities()) {
-      jdbcTemplate.update(
-          "INSERT INTO entity_hit (page_id, entity_type, value, confidence, start_offset,"
-              + " end_offset, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
-          pageId,
-          item.entityType(),
-          item.value(),
-          item.confidence(),
-          item.startOffset(),
-          item.endOffset(),
-          Timestamp.from(Instant.now()));
-    }
-
-    return ResponseEntity.status(HttpStatus.CREATED)
-        .body(Map.of("pageId", pageId, "count", request.entities().size()));
-  }
-
-  // -------------------------------------------------------------------------
-  // Record pages with OCR text (for PDF worker)
-  // -------------------------------------------------------------------------
-
-  @GetMapping("/records/{recordId}/pages")
-  public ResponseEntity<java.util.List<java.util.Map<String, Object>>> getRecordPagesWithText(
-      @RequestHeader("Authorization") String authHeader, @PathVariable Long recordId) {
-    validateToken(authHeader);
-    java.util.List<java.util.Map<String, Object>> rows =
-        jdbcTemplate.queryForList(
-            """
-            SELECT p.id AS page_id, p.seq, p.attachment_id, p.width, p.height,
-                   pt.text_raw, pt.text_en, pt.confidence, pt.content_type
-            FROM page p
-            LEFT JOIN LATERAL (
-                SELECT pt2.text_raw, pt2.text_en, pt2.confidence, pt2.content_type
-                FROM page_text pt2
-                WHERE pt2.page_id = p.id
-                ORDER BY pt2.confidence DESC NULLS LAST
-                LIMIT 1
-            ) pt ON true
-            WHERE p.record_id = ?
-            ORDER BY p.seq
-            """,
-            recordId);
-    return ResponseEntity.ok(rows);
-  }
-
-  // -------------------------------------------------------------------------
-  // Translation results
-  // -------------------------------------------------------------------------
-
-  /**
-   * A translation from the HTTP worker.
-   *
-   * <p>Recorded against its model and then ranked, exactly as the batch path does. Writing
-   * page_text.text_en directly — which this did — lets a cheaper model overwrite a better one that
-   * has already been paid for, and leaves no record that the better one ever existed.
-   */
-  @PostMapping("/pages/{pageId}/translation")
-  public ResponseEntity<Map<String, Object>> submitTranslation(
-      @RequestHeader("Authorization") String authHeader,
-      @PathVariable Long pageId,
-      @RequestBody Map<String, String> body) {
-    validateToken(authHeader);
-    String textEn = body.get("textEn");
-    String model = body.getOrDefault("model", "worker");
-    translationService.record(pageId, model, textEn);
-    return ResponseEntity.ok(Map.of("pageId", pageId, "status", "ok"));
-  }
-
-  @PostMapping("/records/{recordId}/translation")
-  public ResponseEntity<Map<String, Object>> submitRecordTranslation(
-      @RequestHeader("Authorization") String authHeader,
-      @PathVariable Long recordId,
-      @RequestBody Map<String, String> body) {
-    validateToken(authHeader);
-    String titleEn = body.get("titleEn");
-    String descriptionEn = body.get("descriptionEn");
-    jdbcTemplate.update(
-        "UPDATE record SET title_en = ?, description_en = ?, updated_at = now() WHERE id = ?",
-        titleEn,
-        descriptionEn,
-        recordId);
-    recordEventService.recordChanged(recordId, "translation");
-    return ResponseEntity.ok(Map.of("recordId", recordId, "status", "ok"));
-  }
-
   // -------------------------------------------------------------------------
   // Embedding storage
   // -------------------------------------------------------------------------
@@ -443,29 +343,6 @@ public class ProcessorController {
     validateToken(authHeader);
     int requeued = jobService.auditPipeline();
     return ResponseEntity.ok(Map.of("requeued", requeued));
-  }
-
-  @PostMapping("/reset-embeddings")
-  public ResponseEntity<Map<String, Object>> resetEmbeddings(
-      @RequestHeader("Authorization") String authHeader) {
-    validateToken(authHeader);
-
-    // 1. Clear all existing text chunks
-    int deleted = jdbcTemplate.update("DELETE FROM text_chunk");
-    log.info("Deleted {} text chunks", deleted);
-
-    // 2. Re-enqueue embed_record jobs for all complete records
-    List<Long> recordIds =
-        jdbcTemplate.queryForList("SELECT id FROM record WHERE status = 'complete'", Long.class);
-
-    for (Long recordId : recordIds) {
-      jdbcTemplate.update(
-          "UPDATE record SET status = 'embedding', updated_at = now() WHERE id = ?", recordId);
-      jobService.enqueueJob("embed_record", recordId, null, null);
-    }
-
-    log.info("Re-enqueued embed_record jobs for {} records", recordIds.size());
-    return ResponseEntity.ok(Map.of("recordsQueued", recordIds.size(), "chunksDeleted", deleted));
   }
 
   // -------------------------------------------------------------------------
