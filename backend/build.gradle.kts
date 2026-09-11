@@ -43,6 +43,12 @@ dependencies {
     // PDF generation (page export)
     implementation("org.apache.pdfbox:pdfbox:3.0.8")
 
+    // Markdown. Mistral OCR returns markdown for 128,118 pages and the structure is load-bearing —
+    // a table's header row is what makes its values mean anything. Parsed properly rather than by
+    // regex: hand-rolled handling existed in three places and disagreed with itself.
+    implementation("org.commonmark:commonmark:0.24.0")
+    implementation("org.commonmark:commonmark-ext-gfm-tables:0.24.0")
+
     // MCP (Model Context Protocol) server via Spring AI
     implementation(platform("org.springframework.ai:spring-ai-bom:2.0.1"))
     implementation("org.springframework.ai:spring-ai-starter-mcp-server-webmvc")
