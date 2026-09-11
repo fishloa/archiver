@@ -14,7 +14,6 @@ scrapers ──→            web (nginx :8099, OAuth2)
           frontend (SvelteKit)    backend (Spring Boot)
                                        ↕↑
                                     PostgreSQL
-                                       ↕↑               ←── embed-worker
                                  archiver_store
 ```
 
@@ -30,8 +29,7 @@ Only the backend touches PostgreSQL and archiver_store.
 |---------|-------|-------------|
 | backend | Java 25 / Spring Boot 4.1 | REST API, job orchestration, SSE events |
 | frontend | SvelteKit + Tailwind v4 | UI with Verdant design system (`--vui-*` CSS vars) |
-| worker-common | Python shared lib | Base `ProcessorClient`, SSE loop, job lifecycle helpers |
-| embed-worker | Python | Heading-aware chunking, embeds via Qwen3-Embedding-8B (1024-dim, halfvec) |
+| worker-common | Python shared lib | HTTP client and SSE loop, used by the scrapers |
 | entity-worker | Python | Named entity extraction (dormant — commented out in compose) |
 | ocr-worker-qwen3vl | Python + Ollama | Qwen3-VL OCR via Ollama (not containerized, runs on Mac Studio) |
 | web | nginx | Internal reverse proxy: OAuth2 routing, SSE buffering, backend/frontend dispatch |
@@ -84,7 +82,8 @@ bullets across the archive.
 normalised on write. This is an archive backing a citizenship application; the stored
 transcription must be what the OCR engine actually said.
 
-All markdown handling lives in `worker_common.markdown`, shared by every Python worker:
+All markdown is parsed by commonmark-java through `service/Markdown.java`, shared by the
+PDF renderer and the chunker:
 
 - `to_plain_text(text, content_type)` — strips markup for the PDF's invisible text layer
 - `parse_blocks` / `render_blocks` — separate a block's marker from its translatable text
@@ -105,11 +104,14 @@ Queries arrive in English; pages are German or Czech. Every retrieval is cross-l
 - Chunks carry `heading`, prefixed to the embedded content so a mid-section chunk still
   carries its section's subject
 
-**The trap:** two components embed text. `embed-worker` embeds passages with **no**
-prefix; `SemanticSearchController.embedText()` embeds queries **with** Qwen3's
-instruction prefix. Both read `archiver.embed.*`. If they drift apart retrieval degrades
-silently — no error is raised anywhere. Only a search with a known-correct answer
-catches it.
+**The trap:** two components embed text — `EmbedRecordWorker` embeds passages with **no**
+prefix, `SemanticSearchController.embedText()` embeds queries **with** Qwen3's instruction
+prefix. Both are in the backend and both read `archiver.embed.*`, so they cannot be pointed
+at different providers. They previously could: the Python embed-worker carried its own
+environment, the compose file hardcoded a local bge-m3 server while the stack held the
+Qwen3 endpoint, and passages were embedded by one model while queries were built for
+another. Nothing failed — both return 1024 dimensions and the endpoint ignores the model
+field — retrieval simply got worse. Only a search with a known-correct answer catches it.
 
 ### Language Handling
 
@@ -146,7 +148,7 @@ cd backend && ./gradlew test --tests '*IngestControllerTest'
 cd backend && ./gradlew spotlessApply
 
 # Python workers — single test file
-cd embed-worker && pytest tests/test_something.py -v
+cd scraper-cz && pytest tests/test_something.py -v
 
 # Python — format + lint fix
 ruff check --fix scraper-cz/ && ruff format scraper-cz/
@@ -244,7 +246,7 @@ cd <service> && docker build -t dockerregistry.icomb.place/archiver/<service>:la
 
 Workers that depend on `worker-common` use a Dockerfile context from repo root:
 ```bash
-docker build -f embed-worker/Dockerfile -t dockerregistry.icomb.place/archiver/embed-worker:latest .
+docker build -f scraper-cz/Dockerfile -t dockerregistry.icomb.place/archiver/scraper-cz:latest .
 ```
 
 ## Conventions

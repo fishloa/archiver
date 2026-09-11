@@ -61,6 +61,8 @@ archiver:
     tei-key: ${EMBED_TEI_KEY:}
     model: ${EMBED_MODEL:Qwen/Qwen3-Embedding-8B}
     dimensions: ${EMBED_DIMENSIONS:1024}
+    concurrency: ${EMBED_CONCURRENCY:4}
+    poll-interval: ${EMBED_POLL_INTERVAL:5000}
     query-prefix: "${EMBED_QUERY_PREFIX:Instruct: Given a research question, retrieve the archive passage that answers it\nQuery: }"
   pdf:
     # Searchable PDFs are built in-process (see SearchablePdfWorker), not by a separate service.

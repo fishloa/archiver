@@ -74,6 +74,12 @@ public class WorkerSchedulingConfig implements SchedulingConfigurer {
   private final boolean personMatchEnabled;
   private final long personMatchPollInterval;
 
+  private final String embedUrl;
+  private final String embedKey;
+  private final String embedModel;
+  private final int embedDimensions;
+  private final int embedConcurrency;
+  private final long embedPollInterval;
   private final int pdfConcurrency;
   private final long pdfPollInterval;
 
@@ -112,6 +118,12 @@ public class WorkerSchedulingConfig implements SchedulingConfigurer {
       @Value("${archiver.translate.batch.pages-per-minute:5000}") int translatePerMinute,
       @Value("${archiver.person-match.enabled:true}") boolean personMatchEnabled,
       @Value("${archiver.person-match.poll-interval:5000}") long personMatchPollInterval,
+      @Value("${archiver.embed.tei-url:}") String embedUrl,
+      @Value("${archiver.embed.tei-key:}") String embedKey,
+      @Value("${archiver.embed.model:}") String embedModel,
+      @Value("${archiver.embed.dimensions:1024}") int embedDimensions,
+      @Value("${archiver.embed.concurrency:4}") int embedConcurrency,
+      @Value("${archiver.embed.poll-interval:5000}") long embedPollInterval,
       @Value("${archiver.pdf.concurrency:3}") int pdfConcurrency,
       @Value("${archiver.pdf.poll-interval:5000}") long pdfPollInterval) {
     this.jobService = jobService;
@@ -148,6 +160,12 @@ public class WorkerSchedulingConfig implements SchedulingConfigurer {
     this.personMatchPollInterval = personMatchPollInterval;
     this.translationService = translationService;
     this.pdfExportService = pdfExportService;
+    this.embedUrl = embedUrl;
+    this.embedKey = embedKey;
+    this.embedModel = embedModel;
+    this.embedDimensions = embedDimensions;
+    this.embedConcurrency = embedConcurrency;
+    this.embedPollInterval = embedPollInterval;
     this.pdfConcurrency = pdfConcurrency;
     this.pdfPollInterval = pdfPollInterval;
   }
@@ -160,7 +178,8 @@ public class WorkerSchedulingConfig implements SchedulingConfigurer {
             + (translateBatchEnabled ? 2 : 0)
             + (translateRecordEnabled ? 1 : 0)
             + (personMatchEnabled ? 1 : 0)
-            + pdfConcurrency;
+            + pdfConcurrency
+            + embedConcurrency;
     if (totalWorkers == 0) return;
 
     // Headroom above the worker count. This pool also serves every other @Scheduled bean in
@@ -335,6 +354,28 @@ public class WorkerSchedulingConfig implements SchedulingConfigurer {
           "Registered Mistral batch record-metadata translation (model={}, batch={})",
           TranslationModels.UPGRADE_MODEL,
           translateBatchSize);
+    }
+
+    // Embedding, in-process. The query side and the passage side now read one configuration,
+    // so they cannot be pointed at different models.
+    var embeddingClient =
+        new place.icomb.archiver.service.EmbeddingClient(
+            embedUrl, embedKey, embedModel, embedDimensions);
+    if (embeddingClient.isConfigured()) {
+      for (int i = 0; i < embedConcurrency; i++) {
+        var worker =
+            new place.icomb.archiver.service.EmbedRecordWorker(
+                "embed-" + i, jobService, jobEventService, jdbcTemplate, embeddingClient);
+        registrar.addFixedDelayTask(worker::pollAndProcess, Duration.ofMillis(embedPollInterval));
+      }
+      log.info(
+          "Registered {} embedding worker(s) (model={}, dims={}, poll={}ms)",
+          embedConcurrency,
+          embedModel,
+          embedDimensions,
+          embedPollInterval);
+    } else {
+      log.warn("Embedding not configured (archiver.embed.tei-url is empty); no worker registered");
     }
 
     if (personMatchEnabled) {

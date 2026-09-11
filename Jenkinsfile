@@ -37,8 +37,7 @@ pipeline {
                     env.BUILD_SCRAPER_AROLSEN = params.BUILD_ALL || changed('scraper-arolsen') || workerCommonChanged
                     env.BUILD_SCRAPER_DDB = params.BUILD_ALL || changed('scraper-ddb') || workerCommonChanged
                     env.BUILD_SCRAPER_BARCH = params.BUILD_ALL || changed('scraper-barch') || workerCommonChanged
-                    env.BUILD_EMBED = params.BUILD_ALL || changed('embed-worker') || workerCommonChanged
-                    echo "backend=${env.BUILD_BACKEND} frontend=${env.BUILD_FRONTEND} web=${env.BUILD_WEB} oauth2-proxy-apple=${env.BUILD_OAUTH2_PROXY_APPLE} scraper-cz=${env.BUILD_SCRAPER} ebadatelna=${env.BUILD_SCRAPER_EBADATELNA} findbuch=${env.BUILD_SCRAPER_FINDBUCH} oesta=${env.BUILD_SCRAPER_OESTA} matricula=${env.BUILD_SCRAPER_MATRICULA} arolsen=${env.BUILD_SCRAPER_AROLSEN} ddb=${env.BUILD_SCRAPER_DDB} barch=${env.BUILD_SCRAPER_BARCH} embed=${env.BUILD_EMBED}"
+                    echo "backend=${env.BUILD_BACKEND} frontend=${env.BUILD_FRONTEND} web=${env.BUILD_WEB} oauth2-proxy-apple=${env.BUILD_OAUTH2_PROXY_APPLE} scraper-cz=${env.BUILD_SCRAPER} ebadatelna=${env.BUILD_SCRAPER_EBADATELNA} findbuch=${env.BUILD_SCRAPER_FINDBUCH} oesta=${env.BUILD_SCRAPER_OESTA} matricula=${env.BUILD_SCRAPER_MATRICULA} arolsen=${env.BUILD_SCRAPER_AROLSEN} ddb=${env.BUILD_SCRAPER_DDB} barch=${env.BUILD_SCRAPER_BARCH}"
                 }
             }
         }
@@ -154,17 +153,6 @@ pipeline {
                         script {
                             dockerPush(registry, "${prefix}/scraper-cz:latest")
                             dockerPush(registry, "${prefix}/scraper-cz:\${GIT_COMMIT}")
-                        }
-                    }
-                }
-
-                stage('embed-worker') {
-                    when { expression { env.BUILD_EMBED == 'true' } }
-                    steps {
-                        sh "docker build -f embed-worker/Dockerfile -t ${prefix}/embed-worker:latest -t ${prefix}/embed-worker:\${GIT_COMMIT} ."
-                        script {
-                            dockerPush(registry, "${prefix}/embed-worker:latest")
-                            dockerPush(registry, "${prefix}/embed-worker:\${GIT_COMMIT}")
                         }
                     }
                 }
