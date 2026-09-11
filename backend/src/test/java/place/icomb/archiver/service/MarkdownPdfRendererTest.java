@@ -135,6 +135,18 @@ class MarkdownPdfRendererTest {
   }
 
   @Test
+  void aSourceLineBreakIsKept() throws Exception {
+    // CommonMark folds a soft line break into a space, which is right for prose and wrong here:
+    // these are typescripts and forms with one field per line, and joining them loses the
+    // label/value pairing that is the whole content of a wage card.
+    String text = "390 Ltr. Otto fuel\n895 Ltr. Diesel fuel\n";
+    String rendered = renderAndExtract(text);
+    assertThat(rendered).contains("390 Ltr. Otto fuel");
+    assertThat(rendered).contains("895 Ltr. Diesel fuel");
+    assertThat(rendered).doesNotContain("Otto fuel 895");
+  }
+
+  @Test
   void aCentredPageNumberIsNotABullet() throws Exception {
     // "- 5 -" is how nearly every typescript in this archive numbers itself, and it is
     // byte-identical to a markdown bullet.

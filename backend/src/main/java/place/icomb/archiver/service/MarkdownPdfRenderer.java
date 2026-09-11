@@ -18,6 +18,22 @@ import org.apache.pdfbox.pdmodel.graphics.image.PDImageXObject;
 import org.apache.pdfbox.pdmodel.interactive.action.PDActionURI;
 import org.apache.pdfbox.pdmodel.interactive.annotation.PDAnnotationLink;
 import org.apache.pdfbox.pdmodel.interactive.annotation.PDBorderStyleDictionary;
+import org.commonmark.ext.gfm.tables.TableBlock;
+import org.commonmark.node.BlockQuote;
+import org.commonmark.node.BulletList;
+import org.commonmark.node.Code;
+import org.commonmark.node.FencedCodeBlock;
+import org.commonmark.node.HardLineBreak;
+import org.commonmark.node.Heading;
+import org.commonmark.node.Image;
+import org.commonmark.node.IndentedCodeBlock;
+import org.commonmark.node.Node;
+import org.commonmark.node.OrderedList;
+import org.commonmark.node.Paragraph;
+import org.commonmark.node.SoftLineBreak;
+import org.commonmark.node.StrongEmphasis;
+import org.commonmark.node.Text;
+import org.commonmark.node.ThematicBreak;
 
 /**
  * Renders a page's markdown onto PDF pages.
@@ -399,75 +415,232 @@ public class MarkdownPdfRenderer {
       String markdown, float width, float maxImageHeight, Map<String, OcrImageService.Crop> crops)
       throws IOException {
     List<El> out = new ArrayList<>();
-    String[] raw = markdown.split("\n", -1);
+    if (markdown == null || markdown.isBlank()) {
+      return out;
+    }
+    Node doc = Markdown.parse(markdown);
+    String[] lines = markdown.split("\n", -1);
 
-    for (int i = 0; i < raw.length; i++) {
-      String line = raw[i].stripTrailing();
+    for (Node node = doc.getFirstChild(); node != null; node = node.getNext()) {
+      layoutBlock(out, node, lines, width, maxImageHeight, crops);
+      out.add(new TextEl(List.of(), 0, LEADING * 0.55f));
+    }
+    return out;
+  }
 
-      if (line.isBlank()) {
-        out.add(new TextEl(List.of(), 0, LEADING * 0.55f));
-        continue;
+  /** Lays out one parsed block. */
+  private void layoutBlock(
+      List<El> out,
+      Node node,
+      String[] lines,
+      float width,
+      float maxImageHeight,
+      Map<String, OcrImageService.Crop> crops)
+      throws IOException {
+
+    if (node instanceof Heading heading) {
+      addHeading(
+          out, spansOf(heading, headingSize(heading.getLevel()), true), heading.getLevel(), width);
+      return;
+    }
+    if (node instanceof TableBlock table) {
+      addTable(out, tableRows(table, lines), width);
+      return;
+    }
+    if (node instanceof ThematicBreak) {
+      out.add(new RuleEl(width, 0.4f, 6f));
+      return;
+    }
+    if (node instanceof BulletList || node instanceof OrderedList) {
+      addList(out, node, lines, width, maxImageHeight, crops);
+      return;
+    }
+    if (node instanceof FencedCodeBlock || node instanceof IndentedCodeBlock) {
+      String literal =
+          node instanceof FencedCodeBlock fenced
+              ? fenced.getLiteral()
+              : ((IndentedCodeBlock) node).getLiteral();
+      for (String line : literal.split("\n")) {
+        out.add(new TextEl(List.of(new Span(line, false, BODY_SIZE)), 6f, LEADING));
       }
-
-      // A figure on its own line, drawn where the engine found it.
-      Matcher img = IMAGE.matcher(line.trim());
-      if (img.matches()) {
-        ImageEl el = imageElement(img.group(1), width, maxImageHeight, crops);
-        if (el != null) {
-          out.add(el);
-          continue;
-        }
-        // No crop available — fall through so a caption or alt text is not lost.
+      return;
+    }
+    if (node instanceof BlockQuote) {
+      for (Node child = node.getFirstChild(); child != null; child = child.getNext()) {
+        layoutBlock(out, child, lines, width - 14f, maxImageHeight, crops);
       }
-
-      int hashes = 0;
-      while (hashes < line.length() && line.charAt(hashes) == '#') hashes++;
-      if (hashes > 0 && hashes <= 6 && hashes < line.length() && line.charAt(hashes) == ' ') {
-        addHeading(out, line.substring(hashes + 1).trim(), hashes, width);
-        continue;
-      }
-
-      String t = line.trim();
-
-      // A table: gather every consecutive pipe row, then lay the block out as columns.
-      if (isTableRow(t)) {
-        int end = i;
-        List<String> rows = new ArrayList<>();
-        while (end < raw.length && isTableRow(raw[end].trim())) {
-          rows.add(raw[end].trim());
-          end++;
-        }
-        addTable(out, rows, width);
-        i = end - 1;
-        continue;
-      }
-
-      String bulletBody = null;
-      float indent = 0;
-      if (PAGE_NUMBER.matcher(t).matches()) {
-        out.add(new TextEl(parseSpans(t, BODY_SIZE), 0, LEADING));
-        continue;
-      }
-      if (t.startsWith("- ") || t.startsWith("* ")) {
-        bulletBody = "• " + t.substring(2);
-        indent = 10f;
-      } else if (t.matches("^\\d+[.)]\\s+.*")) {
-        bulletBody = t;
-        indent = 10f;
-      }
-      if (bulletBody != null) {
-        List<List<Span>> wrapped = wrapSpans(parseSpans(bulletBody, BODY_SIZE), width - indent);
-        for (int k = 0; k < wrapped.size(); k++) {
-          out.add(new TextEl(wrapped.get(k), k == 0 ? indent : indent + 10f, LEADING));
-        }
-        continue;
-      }
-
-      for (List<Span> w : wrapSpans(parseSpans(line, BODY_SIZE), width)) {
+      return;
+    }
+    if (node instanceof Paragraph) {
+      addParagraph(out, node, width, maxImageHeight, crops, 0f);
+      return;
+    }
+    // Anything unrecognised is drawn as its own source text rather than dropped: losing content
+    // silently is the failure that matters here.
+    String source = Markdown.sourceOf(node, lines);
+    if (!source.isBlank()) {
+      for (List<Span> w : wrapSpans(List.of(new Span(source, false, BODY_SIZE)), width)) {
         out.add(new TextEl(w, 0, LEADING));
       }
     }
+  }
+
+  /**
+   * A paragraph, with any figure the OCR engine cut out drawn where it appears.
+   *
+   * <p>A figure on its own is emitted as an image; one among words keeps its place in the flow.
+   */
+  private void addParagraph(
+      List<El> out,
+      Node paragraph,
+      float width,
+      float maxImageHeight,
+      Map<String, OcrImageService.Crop> crops,
+      float indent)
+      throws IOException {
+
+    List<Span> spans = new ArrayList<>();
+    for (Node child = paragraph.getFirstChild(); child != null; child = child.getNext()) {
+      if (child instanceof Image image) {
+        ImageEl el = imageElement(image.getDestination(), width - indent, maxImageHeight, crops);
+        if (el != null) {
+          flushSpans(out, spans, width - indent, indent, 0f);
+          out.add(el);
+          continue;
+        }
+        // No crop for it. Mistral names a figure by its file — "![img-0.jpeg](img-0.jpeg)" —
+        // so the alt text is an internal id, not a caption, and printing it puts a filename in
+        // front of the reader. Only a genuine caption is kept.
+        String alt = Markdown.plainText(image);
+        if (!alt.isBlank() && !alt.equals(image.getDestination())) {
+          spans.add(new Span(alt, false, BODY_SIZE));
+        }
+        continue;
+      }
+      if (child instanceof SoftLineBreak || child instanceof HardLineBreak) {
+        // A line break in the source ends the line here. CommonMark would fold it into a space,
+        // which is right for prose and wrong for these documents: they are typescripts and forms
+        // where one field sits per line, and joining them loses every label/value pairing — the
+        // whole content of a wage card.
+        flushSpans(out, spans, width - indent, indent, 0f);
+        continue;
+      }
+      spans.addAll(inlineSpans(child, BODY_SIZE, false));
+    }
+    flushSpans(out, spans, width - indent, indent, 0f);
+  }
+
+  /**
+   * Emits wrapped lines.
+   *
+   * <p>{@code hanging} indents every line after the first, which is what a list item wants so its
+   * text aligns under itself rather than under its bullet. A paragraph wants none: applying it
+   * everywhere indented the second and later lines of ordinary prose.
+   */
+  private void flushSpans(List<El> out, List<Span> spans, float width, float indent, float hanging)
+      throws IOException {
+    if (spans.isEmpty()) {
+      return;
+    }
+    List<List<Span>> wrapped = wrapSpans(List.copyOf(spans), width);
+    for (int i = 0; i < wrapped.size(); i++) {
+      out.add(new TextEl(wrapped.get(i), i == 0 ? indent : indent + hanging, LEADING));
+    }
+    spans.clear();
+  }
+
+  /**
+   * A list, with one guard: a centred page number is not a bullet.
+   *
+   * <p>"- 5 -" is how nearly every typescript in this archive numbers itself, and it is valid
+   * markdown for a list item containing "5 -". A parser is right to read it as a list; a reader
+   * looking at a scanned page is not helped by a bullet at the top of it.
+   */
+  private void addList(
+      List<El> out,
+      Node list,
+      String[] lines,
+      float width,
+      float maxImageHeight,
+      Map<String, OcrImageService.Crop> crops)
+      throws IOException {
+
+    String source = Markdown.sourceOf(list, lines).strip();
+    if (PAGE_NUMBER.matcher(source).matches()) {
+      out.add(new TextEl(List.of(new Span(source, false, BODY_SIZE)), 0, LEADING));
+      return;
+    }
+
+    boolean ordered = list instanceof OrderedList;
+    int number = ordered ? ((OrderedList) list).getMarkerStartNumber() : 0;
+    for (Node item = list.getFirstChild(); item != null; item = item.getNext()) {
+      String marker = ordered ? (number++) + ". " : "\u2022 ";
+      boolean first = true;
+      for (Node child = item.getFirstChild(); child != null; child = child.getNext()) {
+        if (first && child instanceof Paragraph) {
+          List<Span> spans = new ArrayList<>();
+          spans.add(new Span(marker, false, BODY_SIZE));
+          for (Node inline = child.getFirstChild(); inline != null; inline = inline.getNext()) {
+            spans.addAll(inlineSpans(inline, BODY_SIZE, false));
+          }
+          flushSpans(out, spans, width - 10f, 10f, 10f);
+          first = false;
+          continue;
+        }
+        layoutBlock(out, child, lines, width - 10f, maxImageHeight, crops);
+      }
+    }
+  }
+
+  private static float headingSize(int level) {
+    return switch (level) {
+      case 1 -> 16f;
+      case 2 -> 13f;
+      case 3 -> 11.5f;
+      default -> 10.5f;
+    };
+  }
+
+  /** The rows of a table, as source text, so cell contents stay exactly as transcribed. */
+  private List<String> tableRows(TableBlock table, String[] lines) {
+    List<String> rows = new ArrayList<>();
+    for (String line : Markdown.sourceOf(table, lines).split("\n")) {
+      if (!line.isBlank()) {
+        rows.add(line.strip());
+      }
+    }
+    return rows;
+  }
+
+  /** Inline nodes as styled runs. */
+  private List<Span> inlineSpans(Node node, float size, boolean bold) {
+    List<Span> out = new ArrayList<>();
+    if (node instanceof Text text) {
+      out.add(new Span(text.getLiteral(), bold, size));
+      return out;
+    }
+    if (node instanceof Code code) {
+      out.add(new Span(code.getLiteral(), bold, size));
+      return out;
+    }
+    if (node instanceof SoftLineBreak || node instanceof HardLineBreak) {
+      // Reached only inside a list item or heading, where the line is kept flowing.
+      out.add(new Span(" ", bold, size));
+      return out;
+    }
+    boolean strong = bold || node instanceof StrongEmphasis;
+    for (Node child = node.getFirstChild(); child != null; child = child.getNext()) {
+      out.addAll(inlineSpans(child, size, strong));
+    }
     return out;
+  }
+
+  private List<Span> spansOf(Node node, float size, boolean bold) {
+    List<Span> out = new ArrayList<>();
+    for (Node child = node.getFirstChild(); child != null; child = child.getNext()) {
+      out.addAll(inlineSpans(child, size, bold));
+    }
+    return out.isEmpty() ? List.of(new Span(Markdown.plainText(node), bold, size)) : out;
   }
 
   /**
@@ -477,19 +650,14 @@ public class MarkdownPdfRenderer {
    * space above and the rule under the top two levels are what make a report's section headings
    * scannable rather than just slightly darker text.
    */
-  private void addHeading(List<El> out, String text, int level, float width) throws IOException {
-    float size =
-        switch (level) {
-          case 1 -> 16f;
-          case 2 -> 13f;
-          case 3 -> 11.5f;
-          default -> 10.5f;
-        };
+  private void addHeading(List<El> out, List<Span> spans, int level, float width)
+      throws IOException {
+    float size = headingSize(level);
     // Space above, but not a gap at the very top of a page.
     if (!out.isEmpty()) {
       out.add(new TextEl(List.of(), 0, size * 0.7f));
     }
-    for (List<Span> w : wrapSpans(parseSpans(text, size, true), width)) {
+    for (List<Span> w : wrapSpans(spans, width)) {
       out.add(new TextEl(w, 0, size * 1.35f));
     }
     if (level <= 2) {

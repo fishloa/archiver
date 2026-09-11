@@ -3,16 +3,9 @@ package place.icomb.archiver.service;
 import java.util.ArrayList;
 import java.util.List;
 import org.commonmark.ext.gfm.tables.TableBlock;
-import org.commonmark.ext.gfm.tables.TablesExtension;
-import org.commonmark.node.AbstractVisitor;
-import org.commonmark.node.Code;
 import org.commonmark.node.Document;
 import org.commonmark.node.Heading;
 import org.commonmark.node.Node;
-import org.commonmark.node.SourceSpan;
-import org.commonmark.node.Text;
-import org.commonmark.parser.IncludeSourceSpans;
-import org.commonmark.parser.Parser;
 
 /**
  * Splits a page into the chunks that get embedded.
@@ -34,14 +27,6 @@ public final class TextChunker {
 
   public static final int OVERLAP = 200;
 
-  private static final String MARKDOWN = "text/markdown";
-
-  private static final Parser PARSER =
-      Parser.builder()
-          .extensions(List.of(TablesExtension.create()))
-          .includeSourceSpans(IncludeSourceSpans.BLOCKS)
-          .build();
-
   private TextChunker() {}
 
   /** One chunk: the text to embed, and the heading path it came from. */
@@ -58,7 +43,7 @@ public final class TextChunker {
     if (text == null || text.isBlank()) {
       return out;
     }
-    if (!MARKDOWN.equals(contentType)) {
+    if (!Markdown.isMarkdown(contentType)) {
       // Content type is read, never sniffed: a typescript's centred page number "- 5 -" is
       // byte-identical to a markdown bullet, so the two cannot be told apart by inspection.
       for (String piece : chunkText(text)) {
@@ -68,7 +53,7 @@ public final class TextChunker {
     }
 
     String[] lines = text.split("\n", -1);
-    Document doc = (Document) PARSER.parse(text);
+    Document doc = (Document) Markdown.parse(text);
 
     List<String> headings = new ArrayList<>();
     List<Integer> levels = new ArrayList<>();
@@ -84,12 +69,12 @@ public final class TextChunker {
           headings.remove(headings.size() - 1);
         }
         levels.add(level);
-        headings.add(headingText(heading));
+        headings.add(Markdown.plainText(heading));
         pendingHeading = String.join(" > ", headings);
         continue;
       }
 
-      String block = sourceOf(node, lines);
+      String block = Markdown.sourceOf(node, lines);
       if (block.isBlank()) {
         continue;
       }
@@ -129,48 +114,6 @@ public final class TextChunker {
 
   private static Chunk chunk(String body, String heading) {
     return new Chunk(heading.isEmpty() ? body : heading + "\n\n" + body, heading);
-  }
-
-  /**
-   * A heading's words, without its markup.
-   *
-   * <p>Collected from the tree rather than rendered: commonmark's text renderer quotes inline code,
-   * so "# **Bold** and `code`" comes back as {@code Bold and "code"} and the quotes end up prefixed
-   * to every chunk in the section.
-   */
-  private static String headingText(Heading heading) {
-    StringBuilder sb = new StringBuilder();
-    heading.accept(
-        new AbstractVisitor() {
-          @Override
-          public void visit(Text text) {
-            sb.append(text.getLiteral());
-          }
-
-          @Override
-          public void visit(Code code) {
-            sb.append(code.getLiteral());
-          }
-        });
-    return sb.toString().strip();
-  }
-
-  /** The block's own source text, verbatim, from the lines it was parsed from. */
-  private static String sourceOf(Node node, String[] lines) {
-    List<SourceSpan> spans = node.getSourceSpans();
-    if (spans.isEmpty()) {
-      return "";
-    }
-    int first = spans.get(0).getLineIndex();
-    int last = spans.get(spans.size() - 1).getLineIndex();
-    StringBuilder sb = new StringBuilder();
-    for (int i = first; i <= last && i < lines.length; i++) {
-      if (sb.length() > 0) {
-        sb.append('\n');
-      }
-      sb.append(lines[i]);
-    }
-    return sb.toString().stripTrailing();
   }
 
   /**
