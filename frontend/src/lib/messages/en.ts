@@ -144,6 +144,7 @@ export const en = {
 	'admin.tab.audit': 'Audit',
 	'admin.tab.events': 'Events',
 	'admin.tab.gates': 'Gates',
+	'admin.tab.models': 'Models',
 	'admin.users': 'Users',
 	'admin.addUser': 'Add User',
 	'admin.displayName': 'Display name',

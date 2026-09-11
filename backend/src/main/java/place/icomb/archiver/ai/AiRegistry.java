@@ -156,6 +156,20 @@ public class AiRegistry {
     return "{" + String.join(",", rankedModels(capability)) + "}";
   }
 
+  /**
+   * Whether the deployment actually holds the credential a row names.
+   *
+   * <p>A row naming nothing is configured: a local endpoint has no API key, and that must not read
+   * as missing configuration.
+   */
+  public boolean credentialPresent(String credentialEnv) {
+    if (credentialEnv == null || credentialEnv.isBlank()) {
+      return true;
+    }
+    String value = environment.getProperty(credentialEnv);
+    return value != null && !value.isBlank();
+  }
+
   /** The credential for an implementation, read from the environment it names. */
   public String credential(Registration registration) {
     if (registration.credentialEnv() == null || registration.credentialEnv().isBlank()) {

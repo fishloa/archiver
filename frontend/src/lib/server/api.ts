@@ -702,3 +702,102 @@ export async function removeUserEmail(
   );
   if (!res.ok) throw new Error(`Backend error: ${res.status}`);
 }
+
+/** One model, from one provider, doing one job. */
+export interface AiImplementation {
+  id: string;
+  capability: "OCR" | "TRANSLATION" | "EMBEDDING";
+  provider: string;
+  model: string;
+  base_url: string;
+  endpoint_path: string | null;
+  credential_env: string | null;
+  /** Whether the deployment holds the named credential. Never the value. */
+  credentialPresent: boolean;
+  max_batch_size: number;
+  rank: number;
+  enabled: boolean;
+  settings: string;
+  updated_at: string;
+}
+
+export async function fetchAiImplementations(
+  email?: string,
+): Promise<Record<string, AiImplementation[]>> {
+  const res = await fetch(`${backendUrl()}/api/admin/ai/implementations`, {
+    headers: authHeaders(email),
+  });
+  if (!res.ok) throw new Error(`Backend error: ${res.status}`);
+  return res.json();
+}
+
+/**
+ * Sets the whole preference order for a capability.
+ *
+ * The whole order, not one row's rank: (capability, rank) is unique, so moving one past another
+ * collides unless both move together.
+ */
+export async function setAiOrder(
+  email: string | undefined,
+  capability: string,
+  order: string[],
+): Promise<Record<string, unknown>> {
+  const res = await fetch(
+    `${backendUrl()}/api/admin/ai/capabilities/${encodeURIComponent(capability)}/order`,
+    {
+      method: "PUT",
+      headers: { ...authHeaders(email), "Content-Type": "application/json" },
+      body: JSON.stringify({ order }),
+    },
+  );
+  if (!res.ok) throw new Error(`Backend error: ${res.status}`);
+  return res.json();
+}
+
+export async function updateAiImplementation(
+  email: string | undefined,
+  id: string,
+  patch: Record<string, unknown>,
+): Promise<Record<string, unknown>> {
+  const res = await fetch(
+    `${backendUrl()}/api/admin/ai/implementations/${encodeURIComponent(id)}`,
+    {
+      method: "PUT",
+      headers: { ...authHeaders(email), "Content-Type": "application/json" },
+      body: JSON.stringify(patch),
+    },
+  );
+  if (!res.ok) throw new Error(`Backend error: ${res.status}`);
+  return res.json();
+}
+
+export async function createAiImplementation(
+  email: string | undefined,
+  body: Record<string, unknown>,
+): Promise<Record<string, unknown>> {
+  const res = await fetch(`${backendUrl()}/api/admin/ai/implementations`, {
+    method: "POST",
+    headers: { ...authHeaders(email), "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) {
+    const detail = await res.text();
+    throw new Error(detail || `Backend error: ${res.status}`);
+  }
+  return res.json();
+}
+
+export async function deleteAiImplementation(
+  email: string | undefined,
+  id: string,
+): Promise<{ ok: boolean; message?: string }> {
+  const res = await fetch(
+    `${backendUrl()}/api/admin/ai/implementations/${encodeURIComponent(id)}`,
+    { method: "DELETE", headers: authHeaders(email) },
+  );
+  if (res.status === 204) return { ok: true };
+  // 409 means stored output still refers to this model; the message explains what to do instead.
+  const body = await res.json().catch(() => ({}));
+  return { ok: false, message: body.message ?? `Backend error: ${res.status}` };
+}
+

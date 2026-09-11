@@ -146,6 +146,7 @@ export const de: Record<MessageKey, string> = {
 	'admin.tab.audit': 'Pr\u00fcfung',
 	'admin.tab.events': 'Ereignisse',
 	'admin.tab.gates': 'Schleusen',
+	'admin.tab.models': 'Modelle',
 	'admin.users': 'Benutzer',
 	'admin.addUser': 'Benutzer hinzuf\u00fcgen',
 	'admin.displayName': 'Anzeigename',
