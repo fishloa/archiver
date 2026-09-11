@@ -50,6 +50,15 @@ class TranslationServiceTest {
 
   @BeforeEach
   void seed() {
+    // Restore the seeded preference order: a test that reorders it must not leak that into the
+    // next one. Moved aside first because (capability, rank) is unique, so a direct swap collides.
+    jdbc.update("UPDATE ai_implementation SET rank = rank + 100 WHERE capability = 'TRANSLATION'");
+    jdbc.update("UPDATE ai_implementation SET rank = 1 WHERE id = 'mistral:mistral-medium-latest'");
+    jdbc.update("UPDATE ai_implementation SET rank = 2 WHERE id = 'mistral:mistral-small-latest'");
+    jdbc.update(
+        "UPDATE ai_implementation SET rank = 3 WHERE id = 'deepinfra:google/gemma-4-31B-it'");
+    jdbc.update("UPDATE ai_implementation SET rank = 99 WHERE id = 'legacy'");
+
     jdbc.execute("DELETE FROM page_translation");
     jdbc.execute("DELETE FROM page_text");
     jdbc.execute("DELETE FROM page");
@@ -268,5 +277,40 @@ class TranslationServiceTest {
     jdbc.update("UPDATE record SET title_en = 'untouched' WHERE id = ?", recordId);
     translationService.refreshShownMetadata(recordId);
     assertThat(cachedTitle()).isEqualTo("untouched");
+  }
+
+  // -------------------------------------------------------------------------
+  // Preference order, from ai_implementation
+  // -------------------------------------------------------------------------
+
+  @Test
+  void preferenceComesFromTheDatabase() {
+    // "Prefer model XX over YY" has to be a row update, not a release. Swapping the ranks must
+    // change which stored translation is served, with no code change and no re-translation.
+    translation("mistral-small-latest", "cheap");
+    translation("mistral-medium-latest", "careful");
+    assertThat(translationService.bestEnglish(pageId)).isEqualTo("careful");
+
+    jdbc.update("UPDATE ai_implementation SET rank = 10 WHERE model = 'mistral-medium-latest'");
+    jdbc.update("UPDATE ai_implementation SET rank = 1 WHERE model = 'mistral-small-latest'");
+
+    assertThat(translationService.bestEnglish(pageId)).isEqualTo("cheap");
+    assertThat(translationService.bestModel(pageId)).isEqualTo("mistral-small-latest");
+  }
+
+  @Test
+  void aRetiredModelStillRanksAgainstItsReplacement() {
+    // gemma is disabled but its output is still in the archive, so it has to keep losing to the
+    // models that replaced it rather than becoming unordered.
+    translation("google/gemma-4-31B-it", "an obscene letter");
+    translation("mistral-small-latest", "a letter of condolence");
+    assertThat(translationService.bestEnglish(pageId)).isEqualTo("a letter of condolence");
+  }
+
+  @Test
+  void anUnrankedModelLosesToEveryRankedOne() {
+    translation("some-model-nobody-registered", "unknown provenance");
+    translation("mistral-small-latest", "cheap");
+    assertThat(translationService.bestEnglish(pageId)).isEqualTo("cheap");
   }
 }

@@ -53,6 +53,12 @@ public final class TranslationModels {
    * <p>A literal rather than a Java array: the driver will not bind {@code String[]} to a text[]
    * parameter, and as a trailing argument to JdbcTemplate's varargs it silently expands into three
    * separate parameters instead of one.
+   *
+   * <p>This is the compiled-in fallback. The live order comes from {@code ai_implementation} via
+   * {@link place.icomb.archiver.ai.AiRegistry}, so changing which model is preferred is a row
+   * update rather than a release. The two are seeded identically, and a registry that returns
+   * nothing falls back here rather than ranking everything equally — which would let a worse
+   * translation overwrite a better one.
    */
   public static String ranksLiteral() {
     return "{" + String.join(",", BEST_FIRST) + "}";

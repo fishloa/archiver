@@ -26,17 +26,44 @@ import place.icomb.archiver.repository.RecordTranslationRepository;
 @Service
 public class TranslationService {
 
+  private static final org.slf4j.Logger log =
+      org.slf4j.LoggerFactory.getLogger(TranslationService.class);
+
   private final JdbcTemplate jdbc;
   private final PageTranslationRepository translations;
   private final RecordTranslationRepository recordTranslations;
+  private final place.icomb.archiver.ai.AiRegistry registry;
 
   public TranslationService(
       JdbcTemplate jdbc,
       PageTranslationRepository translations,
-      RecordTranslationRepository recordTranslations) {
+      RecordTranslationRepository recordTranslations,
+      place.icomb.archiver.ai.AiRegistry registry) {
     this.jdbc = jdbc;
     this.translations = translations;
     this.recordTranslations = recordTranslations;
+    this.registry = registry;
+  }
+
+  /**
+   * The preference order translations are ranked by.
+   *
+   * <p>From ai_implementation, so "prefer model XX over YY" is a row update rather than a release.
+   * Falls back to the compiled-in order if the table is empty: ranking everything equally would let
+   * a worse translation overwrite a better one, which is the failure this ordering exists to
+   * prevent.
+   */
+  private String ranks() {
+    try {
+      String literal =
+          registry.rankedModelsLiteral(place.icomb.archiver.ai.AiCapability.TRANSLATION);
+      if (!literal.equals("{}")) {
+        return literal;
+      }
+    } catch (Exception e) {
+      log.warn("Could not read the translation ranking; using the compiled-in order", e);
+    }
+    return TranslationModels.ranksLiteral();
   }
 
   // -------------------------------------------------------------------------
@@ -55,7 +82,7 @@ public class TranslationService {
         """,
         rs -> rs.next() ? rs.getString(1) : null,
         pageId,
-        TranslationModels.ranksLiteral());
+        ranks());
   }
 
   /**
@@ -81,7 +108,7 @@ public class TranslationService {
         rs -> {
           out.put(rs.getInt(1), rs.getString(2));
         },
-        TranslationModels.ranksLiteral(),
+        ranks(),
         recordId);
     return out;
   }
@@ -98,7 +125,7 @@ public class TranslationService {
         """,
         rs -> rs.next() ? rs.getString(1) : null,
         pageId,
-        TranslationModels.ranksLiteral());
+        ranks());
   }
 
   /**
@@ -126,9 +153,9 @@ public class TranslationService {
         rs -> {
           out.add(new String[] {rs.getString(1), String.valueOf(rs.getInt(2))});
         },
-        TranslationModels.ranksLiteral(),
+        ranks(),
         recordId,
-        TranslationModels.ranksLiteral());
+        ranks());
     return out;
   }
 
@@ -165,7 +192,7 @@ public class TranslationService {
           AND EXISTS (SELECT 1 FROM page_translation tr WHERE tr.page_id = ?)
         """,
         pageId,
-        TranslationModels.ranksLiteral(),
+        ranks(),
         pageId,
         pageId);
   }
@@ -192,7 +219,7 @@ public class TranslationService {
           AND best.text_en IS NOT NULL
           AND pt.text_en IS DISTINCT FROM best.text_en
         """,
-        TranslationModels.ranksLiteral());
+        ranks());
   }
 
   // -------------------------------------------------------------------------
@@ -234,7 +261,7 @@ public class TranslationService {
         WHERE r.id = ?
         """,
         recordId,
-        TranslationModels.ranksLiteral(),
+        ranks(),
         recordId);
   }
 
@@ -249,7 +276,7 @@ public class TranslationService {
         """,
         rs -> rs.next() ? rs.getString(1) : null,
         recordId,
-        TranslationModels.ranksLiteral());
+        ranks());
   }
 
   /** Repairs every record whose cached metadata has fallen behind its best translation. */
@@ -271,7 +298,7 @@ public class TranslationService {
           AND (r.title_en IS DISTINCT FROM best.title_en
                OR r.description_en IS DISTINCT FROM best.description_en)
         """,
-        TranslationModels.ranksLiteral(),
-        TranslationModels.ranksLiteral());
+        ranks(),
+        ranks());
   }
 }
