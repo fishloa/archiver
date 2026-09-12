@@ -16,6 +16,13 @@ RUN ./gradlew bootJar --no-daemon -x test -x spotlessCheck
 # ==========================================================================
 FROM eclipse-temurin:25-jre-alpine
 
+# The released version, stamped by CI from the git tag. Defaults make a locally built image
+# say so rather than claiming to be a release.
+ARG APP_VERSION=dev
+ARG APP_COMMIT=unknown
+ENV ARCHIVER_VERSION=${APP_VERSION}
+ENV ARCHIVER_COMMIT=${APP_COMMIT}
+
 WORKDIR /app
 
 RUN addgroup -S archiver && adduser -S -G archiver archiver

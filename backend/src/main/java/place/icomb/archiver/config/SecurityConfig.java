@@ -72,6 +72,10 @@ public class SecurityConfig {
                     // shadowed; /api/auth/me must answer for a signed-out caller.
                     .requestMatchers("/api/auth/**")
                     .permitAll()
+                    // What is deployed is not a secret, and being able to read it without a
+                    // session is the point: it answers "did the release actually go out".
+                    .requestMatchers(HttpMethod.GET, "/api/version")
+                    .permitAll()
                     // All reads require an allowlisted user
                     .requestMatchers(HttpMethod.GET, "/api/**")
                     .hasAnyRole("USER", "ADMIN", "PROCESSOR")

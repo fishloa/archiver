@@ -6,6 +6,44 @@ def changed(module) {
     return changes.length() > 0
 }
 
+/**
+ * The release version, or empty when this is not a release build.
+ *
+ * A release is a build of a commit that carries an exact tag. Asking git directly means this
+ * works on a plain pipeline job, which has no TAG_NAME — that is a multibranch-only variable.
+ */
+def releaseVersion() {
+    return sh(script: "git describe --exact-match --tags HEAD 2>/dev/null || true",
+              returnStdout: true).trim()
+}
+
+/**
+ * Tags for one service.
+ *
+ * A main build publishes :<commit> and moves :test, which is what the test stack runs. Only a
+ * release moves :latest, so ":latest" means "the latest release" and production never picks up
+ * an untagged commit merely because a build went green.
+ */
+def tagsFor(prefix, service, isRelease, version, commit) {
+    def tags = ["${prefix}/${service}:${commit}"]
+    if (isRelease) {
+        tags << "${prefix}/${service}:${version}"
+        tags << "${prefix}/${service}:latest"
+    } else {
+        tags << "${prefix}/${service}:test"
+    }
+    return tags
+}
+
+def buildAndPush(reg, prefix, service, context, isRelease, version, commit, extraArgs = '') {
+    def tags = tagsFor(prefix, service, isRelease, version, commit)
+    def tagArgs = tags.collect { "-t ${it}" }.join(' ')
+    def versionArgs = "--build-arg APP_VERSION=${isRelease ? version : 'dev-' + commit.take(7)}" +
+                      " --build-arg APP_COMMIT=${commit}"
+    sh "docker build ${tagArgs} ${versionArgs} ${extraArgs} ${context}"
+    tags.each { dockerPush(reg, it) }
+}
+
 def dockerPush(reg, image) {
     withCredentials([usernamePassword(credentialsId: 'dockerregistry.icomb.place', usernameVariable: 'REG_USER', passwordVariable: 'REG_PASS')]) {
         sh "echo \$REG_PASS | docker login ${reg} -u \$REG_USER --password-stdin"
@@ -24,19 +62,30 @@ pipeline {
         stage('Detect Changes') {
             steps {
                 script {
-                    env.BUILD_BACKEND = params.BUILD_ALL || changed('backend')
-                    env.BUILD_FRONTEND = params.BUILD_ALL || changed('frontend')
-                    env.BUILD_WEB = params.BUILD_ALL || changed('web')
-                    env.BUILD_OAUTH2_PROXY_APPLE = params.BUILD_ALL || changed('oauth2-proxy-apple')
+                    env.RELEASE_VERSION = releaseVersion()
+                    env.IS_RELEASE = (env.RELEASE_VERSION ? 'true' : 'false')
+
+                    // A release must be coherent: production runs every image at the same
+                    // version, so a tag build rebuilds everything rather than whatever the last
+                    // commit happened to touch.
+                    def buildAll = params.BUILD_ALL || env.IS_RELEASE == 'true'
+                    echo(env.IS_RELEASE == 'true'
+                         ? "Release build: ${env.RELEASE_VERSION} -> production"
+                         : "Main build -> test stack")
+
+                    env.BUILD_BACKEND = buildAll || changed('backend')
+                    env.BUILD_FRONTEND = buildAll || changed('frontend')
+                    env.BUILD_WEB = buildAll || changed('web')
+                    env.BUILD_OAUTH2_PROXY_APPLE = buildAll || changed('oauth2-proxy-apple')
                     def workerCommonChanged = changed('worker-common')
-                    env.BUILD_SCRAPER = params.BUILD_ALL || changed('scraper-cz') || workerCommonChanged
-                    env.BUILD_SCRAPER_EBADATELNA = params.BUILD_ALL || changed('scraper-ebadatelna') || workerCommonChanged
-                    env.BUILD_SCRAPER_FINDBUCH = params.BUILD_ALL || changed('scraper-findbuch') || workerCommonChanged
-                    env.BUILD_SCRAPER_OESTA = params.BUILD_ALL || changed('scraper-oesta') || workerCommonChanged
-                    env.BUILD_SCRAPER_MATRICULA = params.BUILD_ALL || changed('scraper-matricula') || workerCommonChanged
-                    env.BUILD_SCRAPER_AROLSEN = params.BUILD_ALL || changed('scraper-arolsen') || workerCommonChanged
-                    env.BUILD_SCRAPER_DDB = params.BUILD_ALL || changed('scraper-ddb') || workerCommonChanged
-                    env.BUILD_SCRAPER_BARCH = params.BUILD_ALL || changed('scraper-barch') || workerCommonChanged
+                    env.BUILD_SCRAPER = buildAll || changed('scraper-cz') || workerCommonChanged
+                    env.BUILD_SCRAPER_EBADATELNA = buildAll || changed('scraper-ebadatelna') || workerCommonChanged
+                    env.BUILD_SCRAPER_FINDBUCH = buildAll || changed('scraper-findbuch') || workerCommonChanged
+                    env.BUILD_SCRAPER_OESTA = buildAll || changed('scraper-oesta') || workerCommonChanged
+                    env.BUILD_SCRAPER_MATRICULA = buildAll || changed('scraper-matricula') || workerCommonChanged
+                    env.BUILD_SCRAPER_AROLSEN = buildAll || changed('scraper-arolsen') || workerCommonChanged
+                    env.BUILD_SCRAPER_DDB = buildAll || changed('scraper-ddb') || workerCommonChanged
+                    env.BUILD_SCRAPER_BARCH = buildAll || changed('scraper-barch') || workerCommonChanged
                     echo "backend=${env.BUILD_BACKEND} frontend=${env.BUILD_FRONTEND} web=${env.BUILD_WEB} oauth2-proxy-apple=${env.BUILD_OAUTH2_PROXY_APPLE} scraper-cz=${env.BUILD_SCRAPER} ebadatelna=${env.BUILD_SCRAPER_EBADATELNA} findbuch=${env.BUILD_SCRAPER_FINDBUCH} oesta=${env.BUILD_SCRAPER_OESTA} matricula=${env.BUILD_SCRAPER_MATRICULA} arolsen=${env.BUILD_SCRAPER_AROLSEN} ddb=${env.BUILD_SCRAPER_DDB} barch=${env.BUILD_SCRAPER_BARCH}"
                 }
             }
@@ -99,12 +148,10 @@ pipeline {
                 stage('backend') {
                     when { expression { env.BUILD_BACKEND == 'true' } }
                     steps {
-                        dir('backend') {
-                            sh "docker build -t ${prefix}/backend:latest -t ${prefix}/backend:\${GIT_COMMIT} ."
-                        }
                         script {
-                            dockerPush(registry, "${prefix}/backend:latest")
-                            dockerPush(registry, "${prefix}/backend:\${GIT_COMMIT}")
+                            buildAndPush(registry, prefix, 'backend', 'backend',
+                                         env.IS_RELEASE == 'true', env.RELEASE_VERSION,
+                                         env.GIT_COMMIT)
                         }
                     }
                 }
@@ -112,12 +159,10 @@ pipeline {
                 stage('frontend') {
                     when { expression { env.BUILD_FRONTEND == 'true' } }
                     steps {
-                        dir('frontend') {
-                            sh "docker build -t ${prefix}/frontend:latest -t ${prefix}/frontend:\${GIT_COMMIT} ."
-                        }
                         script {
-                            dockerPush(registry, "${prefix}/frontend:latest")
-                            dockerPush(registry, "${prefix}/frontend:\${GIT_COMMIT}")
+                            buildAndPush(registry, prefix, 'frontend', 'frontend',
+                                         env.IS_RELEASE == 'true', env.RELEASE_VERSION,
+                                         env.GIT_COMMIT)
                         }
                     }
                 }
@@ -125,12 +170,10 @@ pipeline {
                 stage('web') {
                     when { expression { env.BUILD_WEB == 'true' } }
                     steps {
-                        dir('web') {
-                            sh "docker build -t ${prefix}/web:latest -t ${prefix}/web:\${GIT_COMMIT} ."
-                        }
                         script {
-                            dockerPush(registry, "${prefix}/web:latest")
-                            dockerPush(registry, "${prefix}/web:\${GIT_COMMIT}")
+                            buildAndPush(registry, prefix, 'web', 'web',
+                                         env.IS_RELEASE == 'true', env.RELEASE_VERSION,
+                                         env.GIT_COMMIT)
                         }
                     }
                 }
@@ -138,10 +181,10 @@ pipeline {
                 stage('oauth2-proxy-apple') {
                     when { expression { env.BUILD_OAUTH2_PROXY_APPLE == 'true' } }
                     steps {
-                        sh "docker build -f oauth2-proxy-apple/Dockerfile -t ${prefix}/oauth2-proxy-apple:latest -t ${prefix}/oauth2-proxy-apple:\${GIT_COMMIT} ."
                         script {
-                            dockerPush(registry, "${prefix}/oauth2-proxy-apple:latest")
-                            dockerPush(registry, "${prefix}/oauth2-proxy-apple:\${GIT_COMMIT}")
+                            buildAndPush(registry, prefix, 'oauth2-proxy-apple', '.',
+                                         env.IS_RELEASE == 'true', env.RELEASE_VERSION,
+                                         env.GIT_COMMIT, '-f oauth2-proxy-apple/Dockerfile')
                         }
                     }
                 }
@@ -149,10 +192,10 @@ pipeline {
                 stage('scraper-cz') {
                     when { expression { env.BUILD_SCRAPER == 'true' } }
                     steps {
-                        sh "docker build -f scraper-cz/Dockerfile -t ${prefix}/scraper-cz:latest -t ${prefix}/scraper-cz:\${GIT_COMMIT} ."
                         script {
-                            dockerPush(registry, "${prefix}/scraper-cz:latest")
-                            dockerPush(registry, "${prefix}/scraper-cz:\${GIT_COMMIT}")
+                            buildAndPush(registry, prefix, 'scraper-cz', '.',
+                                         env.IS_RELEASE == 'true', env.RELEASE_VERSION,
+                                         env.GIT_COMMIT, '-f scraper-cz/Dockerfile')
                         }
                     }
                 }
@@ -160,10 +203,10 @@ pipeline {
                 stage('scraper-ebadatelna') {
                     when { expression { env.BUILD_SCRAPER_EBADATELNA == 'true' } }
                     steps {
-                        sh "docker build -f scraper-ebadatelna/Dockerfile -t ${prefix}/scraper-ebadatelna:latest -t ${prefix}/scraper-ebadatelna:\${GIT_COMMIT} ."
                         script {
-                            dockerPush(registry, "${prefix}/scraper-ebadatelna:latest")
-                            dockerPush(registry, "${prefix}/scraper-ebadatelna:\${GIT_COMMIT}")
+                            buildAndPush(registry, prefix, 'scraper-ebadatelna', '.',
+                                         env.IS_RELEASE == 'true', env.RELEASE_VERSION,
+                                         env.GIT_COMMIT, '-f scraper-ebadatelna/Dockerfile')
                         }
                     }
                 }
@@ -171,10 +214,10 @@ pipeline {
                 stage('scraper-findbuch') {
                     when { expression { env.BUILD_SCRAPER_FINDBUCH == 'true' } }
                     steps {
-                        sh "docker build -f scraper-findbuch/Dockerfile -t ${prefix}/scraper-findbuch:latest -t ${prefix}/scraper-findbuch:\${GIT_COMMIT} ."
                         script {
-                            dockerPush(registry, "${prefix}/scraper-findbuch:latest")
-                            dockerPush(registry, "${prefix}/scraper-findbuch:\${GIT_COMMIT}")
+                            buildAndPush(registry, prefix, 'scraper-findbuch', '.',
+                                         env.IS_RELEASE == 'true', env.RELEASE_VERSION,
+                                         env.GIT_COMMIT, '-f scraper-findbuch/Dockerfile')
                         }
                     }
                 }
@@ -182,10 +225,10 @@ pipeline {
                 stage('scraper-oesta') {
                     when { expression { env.BUILD_SCRAPER_OESTA == 'true' } }
                     steps {
-                        sh "docker build -f scraper-oesta/Dockerfile -t ${prefix}/scraper-oesta:latest -t ${prefix}/scraper-oesta:\${GIT_COMMIT} ."
                         script {
-                            dockerPush(registry, "${prefix}/scraper-oesta:latest")
-                            dockerPush(registry, "${prefix}/scraper-oesta:\${GIT_COMMIT}")
+                            buildAndPush(registry, prefix, 'scraper-oesta', '.',
+                                         env.IS_RELEASE == 'true', env.RELEASE_VERSION,
+                                         env.GIT_COMMIT, '-f scraper-oesta/Dockerfile')
                         }
                     }
                 }
@@ -193,10 +236,10 @@ pipeline {
                 stage('scraper-matricula') {
                     when { expression { env.BUILD_SCRAPER_MATRICULA == 'true' } }
                     steps {
-                        sh "docker build -f scraper-matricula/Dockerfile -t ${prefix}/scraper-matricula:latest -t ${prefix}/scraper-matricula:\${GIT_COMMIT} ."
                         script {
-                            dockerPush(registry, "${prefix}/scraper-matricula:latest")
-                            dockerPush(registry, "${prefix}/scraper-matricula:\${GIT_COMMIT}")
+                            buildAndPush(registry, prefix, 'scraper-matricula', '.',
+                                         env.IS_RELEASE == 'true', env.RELEASE_VERSION,
+                                         env.GIT_COMMIT, '-f scraper-matricula/Dockerfile')
                         }
                     }
                 }
@@ -204,10 +247,10 @@ pipeline {
                 stage('scraper-arolsen') {
                     when { expression { env.BUILD_SCRAPER_AROLSEN == 'true' } }
                     steps {
-                        sh "docker build -f scraper-arolsen/Dockerfile -t ${prefix}/scraper-arolsen:latest -t ${prefix}/scraper-arolsen:\${GIT_COMMIT} ."
                         script {
-                            dockerPush(registry, "${prefix}/scraper-arolsen:latest")
-                            dockerPush(registry, "${prefix}/scraper-arolsen:\${GIT_COMMIT}")
+                            buildAndPush(registry, prefix, 'scraper-arolsen', '.',
+                                         env.IS_RELEASE == 'true', env.RELEASE_VERSION,
+                                         env.GIT_COMMIT, '-f scraper-arolsen/Dockerfile')
                         }
                     }
                 }
@@ -215,10 +258,10 @@ pipeline {
                 stage('scraper-ddb') {
                     when { expression { env.BUILD_SCRAPER_DDB == 'true' } }
                     steps {
-                        sh "docker build -f scraper-ddb/Dockerfile -t ${prefix}/scraper-ddb:latest -t ${prefix}/scraper-ddb:\${GIT_COMMIT} ."
                         script {
-                            dockerPush(registry, "${prefix}/scraper-ddb:latest")
-                            dockerPush(registry, "${prefix}/scraper-ddb:\${GIT_COMMIT}")
+                            buildAndPush(registry, prefix, 'scraper-ddb', '.',
+                                         env.IS_RELEASE == 'true', env.RELEASE_VERSION,
+                                         env.GIT_COMMIT, '-f scraper-ddb/Dockerfile')
                         }
                     }
                 }
@@ -226,10 +269,10 @@ pipeline {
                 stage('scraper-barch') {
                     when { expression { env.BUILD_SCRAPER_BARCH == 'true' } }
                     steps {
-                        sh "docker build -f scraper-barch/Dockerfile -t ${prefix}/scraper-barch:latest -t ${prefix}/scraper-barch:\${GIT_COMMIT} ."
                         script {
-                            dockerPush(registry, "${prefix}/scraper-barch:latest")
-                            dockerPush(registry, "${prefix}/scraper-barch:\${GIT_COMMIT}")
+                            buildAndPush(registry, prefix, 'scraper-barch', '.',
+                                         env.IS_RELEASE == 'true', env.RELEASE_VERSION,
+                                         env.GIT_COMMIT, '-f scraper-barch/Dockerfile')
                         }
                     }
                 }
@@ -239,7 +282,19 @@ pipeline {
 
     post {
         success {
-            sh 'curl -s -X POST https://docker.icomb.place/api/stacks/webhooks/b7e3a1d2-5f4c-4e8a-9b1d-3c6f8a2e4d71 || true'
+            script {
+                // A green build on main deploys the test stack. Production moves only for a
+                // tagged release, so shipping is a deliberate act rather than a side effect of
+                // pushing to main.
+                def hook = env.IS_RELEASE == 'true'
+                    ? 'b7e3a1d2-5f4c-4e8a-9b1d-3c6f8a2e4d71'   // production, stack 183
+                    : 'c4d81f60-2a37-4b19-9e05-7f3ac6821de4'   // test, stack 212
+                def target = env.IS_RELEASE == 'true' ? "PRODUCTION (${env.RELEASE_VERSION})" : 'test'
+                echo "Deploying to ${target}"
+                // -f so a rejected webhook fails the build instead of passing silently, which
+                // is how a deploy could look green while production stayed on the old image.
+                sh "curl -sf -X POST https://docker.icomb.place/api/stacks/webhooks/${hook}"
+            }
         }
         always {
             sh "docker logout ${registry} || true"

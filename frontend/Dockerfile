@@ -6,6 +6,12 @@ COPY . .
 RUN bun run build
 
 FROM oven/bun:1-alpine
+
+# The released version, stamped by CI from the git tag. Read at runtime through
+# $env/dynamic/public, so the image does not have to be rebuilt to correct it.
+ARG APP_VERSION=dev
+ENV PUBLIC_APP_VERSION=${APP_VERSION}
+
 WORKDIR /app
 COPY package.json bun.lock ./
 RUN bun install --frozen-lockfile --production

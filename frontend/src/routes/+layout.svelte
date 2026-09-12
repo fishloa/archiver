@@ -6,7 +6,12 @@
 	import { language, initLanguage, t } from '$lib/i18n';
 	import LanguageSwitcher from '$lib/components/LanguageSwitcher.svelte';
 
+	import { env as publicEnv } from '$env/dynamic/public';
+
 	let { children, data }: { children: Snippet; data: any } = $props();
+
+	// Stamped into the image by CI from the git tag. A locally built image says "dev".
+	const appVersion = publicEnv.PUBLIC_APP_VERSION || 'dev';
 
 	// Initialize language during SSR (effect is client-only, won't run server-side)
 	// eslint-disable-next-line -- intentionally capturing initial data for SSR
@@ -79,6 +84,7 @@
 				<PanelLeftClose size={16} strokeWidth={1.8} />
 			{/if}
 		</button>
+		<div class="sidebar-version" title="Deployed version">{appVersion}</div>
 	</nav>
 
 	<main class="main-area">
@@ -293,11 +299,28 @@
 		padding: 32px 40px;
 	}
 
+	.sidebar-version {
+		margin-top: auto;
+		padding: 12px 16px;
+		font-size: 10px;
+		font-variant-numeric: tabular-nums;
+		color: var(--vui-text-muted);
+		opacity: 0.6;
+		white-space: nowrap;
+		overflow: hidden;
+		text-overflow: ellipsis;
+	}
+
+	.sidebar.collapsed .sidebar-version {
+		display: none;
+	}
+
 	@media (max-width: 768px) {
 		.sidebar {
 			width: 60px;
 		}
 		.sidebar-title,
+		.sidebar-version,
 		.nav-item span {
 			display: none;
 		}

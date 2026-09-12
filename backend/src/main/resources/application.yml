@@ -36,6 +36,9 @@ springdoc:
     path: /swagger-ui.html
 
 archiver:
+  # Stamped into the image at build time. "dev" means a local run or an image built outside CI.
+  version: ${ARCHIVER_VERSION:dev}
+  commit: ${ARCHIVER_COMMIT:unknown}
   storage:
     root: ${ARCHIVER_STORAGE_ROOT:/tmp/archiver-storage}
     # Optional second root, mounted read only. Empty in production; a test deployment points it at
