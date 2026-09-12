@@ -115,6 +115,26 @@ services:
         server {
           listen 3000;
           client_max_body_size 512m;
+
+          # /api goes to the backend, everything else to the frontend — the same split the
+          # production web container makes. The frontend serves no /api route of its own; its
+          # loaders call the backend server-side. Sending /api to it means every client-side
+          # call 404s, which shows up as a pipeline page stuck on "Connecting...".
+          location /api/ {
+            proxy_pass http://backend-test:8080;
+            proxy_set_header Host $$host;
+            proxy_set_header X-Real-IP $$remote_addr;
+            proxy_set_header X-Forwarded-For $$proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto $$scheme;
+            proxy_set_header X-Auth-Email "${TEST_AUTH_EMAIL:-alex.fishlock@racingjag.com}";
+            # SSE: the record list and pipeline page hold an EventSource open on
+            # /api/records/events, which dies if nginx buffers it or times it out.
+            proxy_buffering off;
+            proxy_cache off;
+            proxy_read_timeout 1h;
+            chunked_transfer_encoding off;
+          }
+
           location / {
             proxy_pass http://frontend-test:3000;
             proxy_set_header Host $$host;
@@ -122,15 +142,13 @@ services:
             proxy_set_header X-Forwarded-For $$proxy_add_x_forwarded_for;
             proxy_set_header X-Forwarded-Proto $$scheme;
             proxy_set_header X-Auth-Email "${TEST_AUTH_EMAIL:-alex.fishlock@racingjag.com}";
-            # SSE: the record list and pipeline page hold an EventSource open.
-            proxy_buffering off;
-            proxy_read_timeout 1h;
           }
         }
         NGINX
         exec nginx -g 'daemon off;'
     depends_on:
       - frontend-test
+      - backend-test
     ports:
       - "3090:3000"
     restart: unless-stopped
