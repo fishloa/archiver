@@ -33,6 +33,18 @@ services:
       timeout: 5s
       retries: 10
 
+  # Docker creates a named volume owned by root. The backend runs as an unprivileged user and
+  # must be able to create directories at the root of its store — derivatives/thumbnails, for
+  # one. Without this the failure is silent: thumbnail generation catches the AccessDenied and
+  # falls back to serving the full scan, which is exactly the behaviour thumbnails exist to stop.
+  init-store:
+    image: busybox:1.36
+    user: "0:0"
+    command: ["sh", "-c", "chown -R ${CONTAINER_USER:-1012:1012} /data/archiver_store"]
+    volumes:
+      - archiver_test_store:/data/archiver_store
+    restart: "no"
+
   backend-test:
     image: dockerregistry.icomb.place/archiver/backend:${TEST_IMAGE_TAG:-latest}
     user: "${CONTAINER_USER:-1012:1012}"
@@ -68,6 +80,8 @@ services:
     depends_on:
       postgres-test:
         condition: service_healthy
+      init-store:
+        condition: service_completed_successfully
     ports:
       - "8090:8080"
     restart: unless-stopped
