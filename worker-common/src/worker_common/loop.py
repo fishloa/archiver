@@ -14,19 +14,6 @@ from collections.abc import Callable, Sequence
 log = logging.getLogger(__name__)
 
 
-def wait_for_backend(client, job_kind: str, max_retries: int = 30, delay: int = 5):
-    """Wait for the backend to become reachable before proceeding."""
-    for attempt in range(1, max_retries + 1):
-        try:
-            client.claim_job(job_kind)
-            log.info("Backend reachable")
-            return
-        except Exception:
-            log.info("Waiting for backend (%d/%d)...", attempt, max_retries)
-            time.sleep(delay)
-    raise RuntimeError(f"Backend not reachable after {max_retries * delay}s")
-
-
 def drain_jobs(
     client,
     job_kinds: Sequence[str],

@@ -2,8 +2,8 @@
 
 from .client import ProcessorClient
 from .config import BaseConfig
-from .http import ResilientClient, wait_for_backend as wait_for_backend_http
-from .loop import drain_jobs, run_sse_loop, wait_for_backend
+from .http import ResilientClient, wait_for_backend
+from .loop import drain_jobs, run_sse_loop
 
 __all__ = [
     "BaseConfig",
@@ -12,5 +12,4 @@ __all__ = [
     "drain_jobs",
     "run_sse_loop",
     "wait_for_backend",
-    "wait_for_backend_http",
 ]

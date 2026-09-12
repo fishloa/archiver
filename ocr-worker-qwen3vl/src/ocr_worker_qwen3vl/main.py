@@ -66,7 +66,7 @@ def main():
         cfg.poll_interval,
     )
 
-    wait_for_backend(client, JOB_KIND)
+    wait_for_backend(cfg.backend_url)
 
     try:
         run_sse_loop(
