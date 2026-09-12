@@ -46,7 +46,7 @@ services:
     restart: "no"
 
   backend-test:
-    image: dockerregistry.icomb.place/archiver/backend:${TEST_IMAGE_TAG:-latest}
+    image: dockerregistry.icomb.place/archiver/backend:${TEST_IMAGE_TAG:-test}
     user: "${CONTAINER_USER:-1012:1012}"
     environment:
       SPRING_PROFILES_ACTIVE: prod
@@ -87,7 +87,7 @@ services:
     restart: unless-stopped
 
   frontend-test:
-    image: dockerregistry.icomb.place/archiver/frontend:${TEST_IMAGE_TAG:-latest}
+    image: dockerregistry.icomb.place/archiver/frontend:${TEST_IMAGE_TAG:-test}
     user: "${CONTAINER_USER:-1012:1012}"
     environment:
       BACKEND_URL: http://backend-test:8080
