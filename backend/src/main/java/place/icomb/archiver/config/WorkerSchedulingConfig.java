@@ -47,6 +47,7 @@ public class WorkerSchedulingConfig implements SchedulingConfigurer {
   private final PageTranslationRepository pageTranslationRepository;
   private final PersonMatchService personMatchService;
   private final place.icomb.archiver.ai.AiRegistry aiRegistry;
+  private final place.icomb.archiver.ai.RegistryEmbedder embedder;
   private final place.icomb.archiver.service.TranslationService translationService;
   private final place.icomb.archiver.service.PdfExportService pdfExportService;
   private final org.springframework.jdbc.core.JdbcTemplate jdbcTemplate;
@@ -75,10 +76,6 @@ public class WorkerSchedulingConfig implements SchedulingConfigurer {
   private final boolean personMatchEnabled;
   private final long personMatchPollInterval;
 
-  private final String embedUrl;
-  private final String embedKey;
-  private final String embedModel;
-  private final int embedDimensions;
   private final int embedConcurrency;
   private final long embedPollInterval;
   private final int pdfConcurrency;
@@ -96,6 +93,7 @@ public class WorkerSchedulingConfig implements SchedulingConfigurer {
       PageTranslationRepository pageTranslationRepository,
       PersonMatchService personMatchService,
       place.icomb.archiver.ai.AiRegistry aiRegistry,
+      place.icomb.archiver.ai.RegistryEmbedder embedder,
       place.icomb.archiver.service.TranslationService translationService,
       place.icomb.archiver.service.PdfExportService pdfExportService,
       org.springframework.jdbc.core.JdbcTemplate jdbcTemplate,
@@ -120,10 +118,6 @@ public class WorkerSchedulingConfig implements SchedulingConfigurer {
       @Value("${archiver.translate.batch.pages-per-minute:5000}") int translatePerMinute,
       @Value("${archiver.person-match.enabled:true}") boolean personMatchEnabled,
       @Value("${archiver.person-match.poll-interval:5000}") long personMatchPollInterval,
-      @Value("${archiver.embed.tei-url:}") String embedUrl,
-      @Value("${archiver.embed.tei-key:}") String embedKey,
-      @Value("${archiver.embed.model:}") String embedModel,
-      @Value("${archiver.embed.dimensions:1024}") int embedDimensions,
       @Value("${archiver.embed.concurrency:4}") int embedConcurrency,
       @Value("${archiver.embed.poll-interval:5000}") long embedPollInterval,
       @Value("${archiver.pdf.concurrency:3}") int pdfConcurrency,
@@ -161,12 +155,9 @@ public class WorkerSchedulingConfig implements SchedulingConfigurer {
     this.personMatchEnabled = personMatchEnabled;
     this.personMatchPollInterval = personMatchPollInterval;
     this.aiRegistry = aiRegistry;
+    this.embedder = embedder;
     this.translationService = translationService;
     this.pdfExportService = pdfExportService;
-    this.embedUrl = embedUrl;
-    this.embedKey = embedKey;
-    this.embedModel = embedModel;
-    this.embedDimensions = embedDimensions;
     this.embedConcurrency = embedConcurrency;
     this.embedPollInterval = embedPollInterval;
     this.pdfConcurrency = pdfConcurrency;
@@ -390,12 +381,10 @@ public class WorkerSchedulingConfig implements SchedulingConfigurer {
           translateBatchSize);
     }
 
-    // Embedding, in-process. The query side and the passage side now read one configuration,
-    // so they cannot be pointed at different models.
-    var embeddingClient =
-        new place.icomb.archiver.service.EmbeddingClient(
-            embedUrl, embedKey, embedModel, embedDimensions);
-    if (embeddingClient.isConfigured()) {
+    // Embedding, in-process. The query side and the passage side share one registration, so
+    // they cannot be pointed at different models.
+    var embeddingClient = embedder.client();
+    if (embedder.isConfigured()) {
       for (int i = 0; i < embedConcurrency; i++) {
         var worker =
             new place.icomb.archiver.service.EmbedRecordWorker(
@@ -405,11 +394,11 @@ public class WorkerSchedulingConfig implements SchedulingConfigurer {
       log.info(
           "Registered {} embedding worker(s) (model={}, dims={}, poll={}ms)",
           embedConcurrency,
-          embedModel,
-          embedDimensions,
+          embedder.model(),
+          embedder.dimensions(),
           embedPollInterval);
     } else {
-      log.warn("Embedding not configured (archiver.embed.tei-url is empty); no worker registered");
+      log.warn("Embedding not configured ({}); no worker registered", embedder.id());
     }
 
     if (personMatchEnabled) {

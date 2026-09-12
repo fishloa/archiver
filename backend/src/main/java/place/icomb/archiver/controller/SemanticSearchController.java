@@ -12,7 +12,6 @@ import java.util.Set;
 import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -41,28 +40,19 @@ public class SemanticSearchController {
           "get", "got", "find", "found", "know", "think", "tell", "say", "said");
 
   private final JdbcTemplate jdbcTemplate;
-  private final String teiUrl;
-  private final String teiKey;
-  private final String embedModel;
-  private final int embedDimensions;
-  private final String queryPrefix;
+  // The same embedder the passage side uses. Queries and passages must reach the same model at
+  // the same width, and only the query side adds the instruction prefix — when those came from
+  // separate properties they did, for two days, describe different models, which degrades every
+  // search while raising no error at all.
+  private final place.icomb.archiver.ai.RegistryEmbedder embedder;
   private final place.icomb.archiver.service.ResilientHttpClient httpClient =
       place.icomb.archiver.service.ResilientHttpClient.builder().build();
   private final ObjectMapper objectMapper = new ObjectMapper();
 
   public SemanticSearchController(
-      JdbcTemplate jdbcTemplate,
-      @Value("${archiver.embed.tei-url:}") String teiUrl,
-      @Value("${archiver.embed.tei-key:}") String teiKey,
-      @Value("${archiver.embed.model:Qwen/Qwen3-Embedding-8B}") String embedModel,
-      @Value("${archiver.embed.dimensions:1024}") int embedDimensions,
-      @Value("${archiver.embed.query-prefix:}") String queryPrefix) {
+      JdbcTemplate jdbcTemplate, place.icomb.archiver.ai.RegistryEmbedder embedder) {
     this.jdbcTemplate = jdbcTemplate;
-    this.teiUrl = teiUrl;
-    this.teiKey = teiKey;
-    this.embedModel = embedModel;
-    this.embedDimensions = embedDimensions;
-    this.queryPrefix = queryPrefix;
+    this.embedder = embedder;
   }
 
   @PostMapping("/search/semantic")
@@ -74,7 +64,7 @@ public class SemanticSearchController {
       return ResponseEntity.ok(Map.of("results", List.of()));
     }
 
-    if (teiUrl == null || teiUrl.isBlank()) {
+    if (!embedder.isConfigured()) {
       return ResponseEntity.status(503).body(Map.of("error", "Embedding service not configured"));
     }
 
@@ -229,24 +219,26 @@ public class SemanticSearchController {
   }
 
   private float[] embedText(String text) throws Exception {
-    // Qwen3-Embedding needs its instruction prefix on the QUERY side only — embed-worker
-    // sends passages with no prefix. Both sides read archiver.embed.* so they can't drift.
-    String prefixedText = queryPrefix + text;
+    // The instruction prefix goes on the QUERY side only; the worker embeds passages without
+    // one. Both come from the same registration, so the model, the width and the prefix cannot
+    // describe different things.
+    String prefixedText = embedder.queryPrefix() + text;
     String jsonBody =
         objectMapper.writeValueAsString(
             Map.of(
-                "model", embedModel,
+                "model", embedder.model(),
                 "input", List.of(prefixedText),
-                "dimensions", embedDimensions));
+                "dimensions", embedder.dimensions()));
 
     var requestBuilder =
         HttpRequest.newBuilder()
-            .uri(URI.create(teiUrl + "/embeddings"))
+            .uri(URI.create(embedder.baseUrl() + embedder.endpointPath()))
             .header("Content-Type", "application/json")
             .POST(HttpRequest.BodyPublishers.ofString(jsonBody));
 
-    if (teiKey != null && !teiKey.isBlank()) {
-      requestBuilder.header("Authorization", "Bearer " + teiKey);
+    String apiKey = embedder.apiKey();
+    if (apiKey != null && !apiKey.isBlank()) {
+      requestBuilder.header("Authorization", "Bearer " + apiKey);
     }
 
     HttpResponse<String> response =

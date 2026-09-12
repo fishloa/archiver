@@ -65,6 +65,43 @@ class SemanticSearchTest {
     }
   }
 
+  /**
+   * The embedding model under test.
+   *
+   * <p>Configuration comes from the registry now, not from archiver.embed.*, so pointing the search
+   * at this WireMock server means supplying the registration rather than the properties. One
+   * registration feeds both the query side and the passage side, which is the property this test
+   * exists to protect.
+   */
+  @org.springframework.boot.test.context.TestConfiguration
+  static class EmbedderOverride {
+
+    @org.springframework.context.annotation.Bean
+    @org.springframework.context.annotation.Primary
+    place.icomb.archiver.ai.RegistryEmbedder testEmbedder() {
+      com.fasterxml.jackson.databind.node.ObjectNode settings =
+          com.fasterxml.jackson.databind.node.JsonNodeFactory.instance.objectNode();
+      settings.put("dimensions", 1024);
+      settings.put(
+          "queryPrefix",
+          "Instruct: Given a research question, retrieve the archive passage that answers it\nQuery: ");
+      return new place.icomb.archiver.ai.RegistryEmbedder(
+          new place.icomb.archiver.ai.AiRegistry.Registration(
+              "test:embedding",
+              place.icomb.archiver.ai.AiCapability.EMBEDDING,
+              "test",
+              "Qwen/Qwen3-Embedding-8B",
+              "http://localhost:" + teiServer.port(),
+              "/embeddings",
+              null,
+              128,
+              1,
+              true,
+              settings),
+          "test-tei-key");
+    }
+  }
+
   @DynamicPropertySource
   static void configureProperties(DynamicPropertyRegistry registry) {
     registry.add("spring.datasource.url", () -> postgres.getJdbcUrl() + "&stringtype=unspecified");
