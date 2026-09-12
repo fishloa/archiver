@@ -48,6 +48,7 @@ public class ProcessorController {
   private static final Logger log = LoggerFactory.getLogger(ProcessorController.class);
 
   private final JobService jobService;
+  private final place.icomb.archiver.service.PipelineAuditService auditService;
   private final JobEventService jobEventService;
   private final JobRepository jobRepository;
   private final PageRepository pageRepository;
@@ -59,6 +60,7 @@ public class ProcessorController {
   private final String processorToken;
 
   public ProcessorController(
+      place.icomb.archiver.service.PipelineAuditService auditService,
       JobService jobService,
       JobEventService jobEventService,
       JobRepository jobRepository,
@@ -70,6 +72,7 @@ public class ProcessorController {
       place.icomb.archiver.service.TranslationService translationService,
       @Value("${archiver.processor.token}") String processorToken) {
     this.jobService = jobService;
+    this.auditService = auditService;
     this.jobEventService = jobEventService;
     this.jobRepository = jobRepository;
     this.pageRepository = pageRepository;
@@ -341,7 +344,7 @@ public class ProcessorController {
   public ResponseEntity<Map<String, Object>> auditPipeline(
       @RequestHeader("Authorization") String authHeader) {
     validateToken(authHeader);
-    int requeued = jobService.auditPipeline();
+    int requeued = auditService.auditPipeline();
     return ResponseEntity.ok(Map.of("requeued", requeued));
   }
 

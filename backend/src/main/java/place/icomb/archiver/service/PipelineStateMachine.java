@@ -232,6 +232,7 @@ public class PipelineStateMachine {
       JdbcTemplate jdbcTemplate,
       JobService jobService,
       RecordEventService recordEventService,
+      PipelineAuditService auditService,
       @org.springframework.beans.factory.annotation.Value(
               "${archiver.ocr.default-engine:ocr_page_qwen3vl}")
           String defaultOcrEngine) {
@@ -239,8 +240,10 @@ public class PipelineStateMachine {
     this.jobService = jobService;
     this.recordEventService = recordEventService;
     this.defaultOcrEngine = defaultOcrEngine;
-    // Break circular dependency: JobService ← PipelineStateMachine → JobService
+    // Break circular dependency: JobService ← PipelineStateMachine → JobService. The audit is
+    // wired the same way: it decides which records are stuck, this decides what happens to them.
     jobService.setStateMachine(this);
+    auditService.setStateMachine(this);
     defineTransitions();
   }
 

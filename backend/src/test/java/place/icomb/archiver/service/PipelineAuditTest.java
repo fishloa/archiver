@@ -29,6 +29,7 @@ class PipelineAuditTest {
           .withCommand("postgres", "-c", "max_connections=50");
 
   @Autowired private JobService jobService;
+  @Autowired private PipelineAuditService auditService;
   @Autowired private PipelineGateService gateService;
 
   @Value("${archiver.ocr.default-engine:ocr_page_qwen3vl}")
@@ -414,7 +415,7 @@ class PipelineAuditTest {
         createJobWithError(
             recordId, pageId, "ocr_page_mistral", "failed", 2, "Timeout during OCR processing");
 
-    int fixed = jobService.auditPipeline();
+    int fixed = auditService.auditPipeline();
 
     assertThat(fixed).isGreaterThanOrEqualTo(1);
     assertThat(getJobStatus(jobId)).isEqualTo("pending");
@@ -440,7 +441,7 @@ class PipelineAuditTest {
         createJobWithError(
             recordId, pageId, "ocr_page_mistral", "failed", 3, "Persistent OCR failure");
 
-    jobService.auditPipeline();
+    auditService.auditPipeline();
 
     assertThat(getJobStatus(jobId)).isEqualTo("failed");
   }
@@ -454,7 +455,7 @@ class PipelineAuditTest {
     Long jobId =
         createJobWithError(recordId, pageId, "ocr_page_mistral", "failed", 0, "Initial failure");
 
-    int fixed = jobService.auditPipeline();
+    int fixed = auditService.auditPipeline();
 
     assertThat(fixed).isGreaterThanOrEqualTo(1);
     assertThat(getJobStatus(jobId)).isEqualTo("pending");
@@ -469,7 +470,7 @@ class PipelineAuditTest {
     Long jobId =
         createJobWithError(recordId, null, "build_searchable_pdf", "failed", 1, "PDF build failed");
 
-    int fixed = jobService.auditPipeline();
+    int fixed = auditService.auditPipeline();
 
     assertThat(fixed).isGreaterThanOrEqualTo(1);
     assertThat(getJobStatus(jobId)).isEqualTo("pending");
@@ -502,7 +503,7 @@ class PipelineAuditTest {
     createPage(recordId, 1);
     createPage(recordId, 2);
 
-    int fixed = jobService.auditPipeline();
+    int fixed = auditService.auditPipeline();
 
     assertThat(fixed).isGreaterThanOrEqualTo(1);
     assertThat(getRecordStatus(recordId)).isEqualTo("ocr_pending");
@@ -536,7 +537,7 @@ class PipelineAuditTest {
 
     createPage(recordId, 1);
 
-    jobService.auditPipeline();
+    auditService.auditPipeline();
 
     // Still ingesting — pages are incomplete
     assertThat(getRecordStatus(recordId)).isEqualTo("ingesting");
@@ -564,7 +565,7 @@ class PipelineAuditTest {
 
     createPage(recordId, 1);
 
-    jobService.auditPipeline();
+    auditService.auditPipeline();
 
     assertThat(getRecordStatus(recordId)).isEqualTo("ingesting");
     assertThat(countJobs(recordId, "ocr_page_mistral", "pending")).isEqualTo(0);
@@ -589,7 +590,7 @@ class PipelineAuditTest {
             .query(Long.class)
             .single();
 
-    int fixed = jobService.auditPipeline();
+    int fixed = auditService.auditPipeline();
 
     assertThat(fixed).isGreaterThanOrEqualTo(1);
     // 0-page record: ingesting → ocr_done → translating (metadata-only, skip PDF)
@@ -614,7 +615,7 @@ class PipelineAuditTest {
 
     // No build_searchable_pdf job exists yet
 
-    int fixed = jobService.auditPipeline();
+    int fixed = auditService.auditPipeline();
 
     assertThat(fixed).isGreaterThanOrEqualTo(1);
 
@@ -652,7 +653,7 @@ class PipelineAuditTest {
             .single()
             .intValue();
 
-    jobService.auditPipeline();
+    auditService.auditPipeline();
 
     // Still ocr_done (startPostOcrPipeline was not called for this record)
     assertThat(getRecordStatus(recordId)).isEqualTo("ocr_done");
@@ -686,7 +687,7 @@ class PipelineAuditTest {
             .single();
     createPage(recordId, 1);
 
-    jobService.auditPipeline();
+    auditService.auditPipeline();
 
     assertThat(getRecordStatus(recordId)).isEqualTo("pdf_pending");
     assertThat(countJobs(recordId, "build_searchable_pdf", "pending")).isEqualTo(1);
@@ -713,7 +714,7 @@ class PipelineAuditTest {
     // searchable_pdf attachment exists
     Long attId = createAttachment(recordId, "searchable_pdf");
 
-    int fixed = jobService.auditPipeline();
+    int fixed = auditService.auditPipeline();
 
     assertThat(fixed).isGreaterThanOrEqualTo(1);
     // State machine chains: pdf_pending → pdf_done → embedding (no translations pending)
@@ -744,7 +745,7 @@ class PipelineAuditTest {
     Long pdfJobId = createJob(recordId, null, "build_searchable_pdf", "completed", 1);
     jdbc.sql("UPDATE job SET finished_at = now() WHERE id = :id").param("id", pdfJobId).update();
 
-    jobService.auditPipeline();
+    auditService.auditPipeline();
 
     assertThat(getRecordStatus(recordId)).isEqualTo("pdf_pending");
   }
@@ -759,7 +760,7 @@ class PipelineAuditTest {
     createJob(recordId, null, "build_searchable_pdf", "claimed", 1);
     createAttachment(recordId, "searchable_pdf");
 
-    jobService.auditPipeline();
+    auditService.auditPipeline();
 
     assertThat(getRecordStatus(recordId)).isEqualTo("pdf_pending");
   }
@@ -773,7 +774,7 @@ class PipelineAuditTest {
     // No PDF job at all
     createAttachment(recordId, "searchable_pdf");
 
-    jobService.auditPipeline();
+    auditService.auditPipeline();
 
     // No completed PDF job → Pass 5 doesn't match, record stays pdf_pending
     assertThat(getRecordStatus(recordId)).isEqualTo("pdf_pending");
@@ -801,7 +802,7 @@ class PipelineAuditTest {
 
     // No translation/completed pipeline_event exists yet
 
-    int fixed = jobService.auditPipeline();
+    int fixed = auditService.auditPipeline();
 
     assertThat(fixed).isGreaterThanOrEqualTo(1);
     // Pass 6 transitions pdf_done → embedding and backfills the translation completed event
@@ -828,7 +829,7 @@ class PipelineAuditTest {
 
     // No translation/completed event
 
-    int fixed = jobService.auditPipeline();
+    int fixed = auditService.auditPipeline();
 
     assertThat(fixed).isGreaterThanOrEqualTo(1);
     assertThat(countPipelineEvents(recordId, "translation", "completed")).isEqualTo(1);
@@ -851,7 +852,7 @@ class PipelineAuditTest {
         .param("rid", recordId)
         .update();
 
-    jobService.auditPipeline();
+    auditService.auditPipeline();
 
     // Still exactly 1 event
     assertThat(countPipelineEvents(recordId, "translation", "completed")).isEqualTo(1);
@@ -870,7 +871,7 @@ class PipelineAuditTest {
         .param("id", translateRecordJob)
         .update();
 
-    jobService.auditPipeline();
+    auditService.auditPipeline();
 
     assertThat(countPipelineEvents(recordId, "translation", "completed")).isEqualTo(0);
   }
@@ -882,7 +883,7 @@ class PipelineAuditTest {
     createPage(recordId, 1);
 
     // No translation jobs at all — the EXISTS check for translate jobs fails → not matched
-    jobService.auditPipeline();
+    auditService.auditPipeline();
 
     assertThat(countPipelineEvents(recordId, "translation", "completed")).isEqualTo(0);
   }
@@ -905,7 +906,7 @@ class PipelineAuditTest {
         .param("id", translateJob)
         .update();
 
-    jobService.auditPipeline();
+    auditService.auditPipeline();
 
     assertThat(getRecordStatus(recordId)).isEqualTo("embedding");
     // The audit used to enqueue a second embed job here, embedding every audited record twice.
@@ -919,7 +920,7 @@ class PipelineAuditTest {
     // No pages: a searchable_pdf can never be built, so the job can never be satisfied.
     createJob(recordId, null, "build_searchable_pdf", "pending", 0);
 
-    jobService.auditPipeline();
+    auditService.auditPipeline();
 
     assertThat(getRecordStatus(recordId)).isNotEqualTo("pdf_pending");
     assertThat(countJobs(recordId, "build_searchable_pdf", "pending")).isEqualTo(0);
@@ -933,7 +934,7 @@ class PipelineAuditTest {
     createPage(recordId, 1);
 
     // Nothing to wait for: the record would sit in embedding forever.
-    jobService.auditPipeline();
+    auditService.auditPipeline();
 
     assertThat(countJobs(recordId, "embed_record", "pending")).isEqualTo(1);
   }
@@ -1001,7 +1002,7 @@ class PipelineAuditTest {
 
     // Run the audit exactly as PipelineAuditScheduler and the admin endpoint do: recovery
     // first, in its own transaction, then the remaining passes.
-    int fixed = jobService.recoverStaleClaims() + jobService.auditPipeline();
+    int fixed = jobService.recoverStaleClaims() + auditService.auditPipeline();
 
     assertThat(fixed).isGreaterThanOrEqualTo(3);
 
@@ -1019,7 +1020,7 @@ class PipelineAuditTest {
   @Test
   void audit_noStuckRecordsOrJobs_returnsZero() {
     // Nothing to fix — audit should return 0
-    int fixed = jobService.auditPipeline();
+    int fixed = auditService.auditPipeline();
     assertThat(fixed).isEqualTo(0);
   }
 
@@ -1051,7 +1052,7 @@ class PipelineAuditTest {
             .query(Long.class)
             .single();
 
-    jobService.auditPipeline();
+    auditService.auditPipeline();
 
     var row =
         jdbc.sql("SELECT status, batch_id FROM job WHERE id = :id")

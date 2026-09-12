@@ -39,9 +39,11 @@ public class PipelineAuditScheduler {
   }
 
   private final JobService jobService;
+  private final PipelineAuditService auditService;
 
-  public PipelineAuditScheduler(JobService jobService) {
+  public PipelineAuditScheduler(JobService jobService, PipelineAuditService auditService) {
     this.jobService = jobService;
+    this.auditService = auditService;
   }
 
   /** Run audit immediately on application startup. */
@@ -62,7 +64,7 @@ public class PipelineAuditScheduler {
       // Recovery first, and in its own transaction: if auditPipeline throws, jobs abandoned
       // by a crashed worker have still been returned to the queue.
       int count = jobService.recoverStaleClaims();
-      count += jobService.auditPipeline();
+      count += auditService.auditPipeline();
       if (count > 0) {
         log.info("Pipeline audit fixed {} record(s)/job(s)", count);
       }

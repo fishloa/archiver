@@ -32,18 +32,23 @@ public class AdminPipelineOpsController {
 
   private final JdbcTemplate jdbcTemplate;
   private final JobService jobService;
+  private final place.icomb.archiver.service.PipelineAuditService auditService;
   private final PipelineGateService gateService;
 
   public AdminPipelineOpsController(
-      JdbcTemplate jdbcTemplate, JobService jobService, PipelineGateService gateService) {
+      JdbcTemplate jdbcTemplate,
+      JobService jobService,
+      place.icomb.archiver.service.PipelineAuditService auditService,
+      PipelineGateService gateService) {
     this.jdbcTemplate = jdbcTemplate;
     this.jobService = jobService;
+    this.auditService = auditService;
     this.gateService = gateService;
   }
 
   @PostMapping("/admin/audit")
   public ResponseEntity<Map<String, Object>> runAudit() {
-    int fixed = jobService.recoverStaleClaims() + jobService.auditPipeline();
+    int fixed = jobService.recoverStaleClaims() + auditService.auditPipeline();
     return ResponseEntity.ok(Map.of("fixed", fixed));
   }
 
