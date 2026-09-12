@@ -48,11 +48,14 @@ public enum ProviderApi {
           Setting.integer(
                   "tickIntervalMs", "Tick interval (ms)", "How often to look for work.", 15000)
               .forCapabilities(AiCapability.OCR),
-          Setting.text(
+          Setting.choice(
                   "tier",
                   "Tier",
-                  "Which translation quality this model serves: bulk or best.",
-                  "bulk")
+                  "Which translation quality this model serves. Bulk runs across the whole"
+                      + " archive; best is the on-demand upgrade, queued as a separate job kind.",
+                  "bulk",
+                  "bulk",
+                  "best")
               .forCapabilities(AiCapability.TRANSLATION))),
 
   /**
@@ -84,11 +87,14 @@ public enum ProviderApi {
                       + " every search while raising no error.",
                   "")
               .forCapabilities(AiCapability.EMBEDDING),
-          Setting.text(
+          Setting.choice(
                   "tier",
                   "Tier",
-                  "Which translation quality this model serves: bulk or best.",
-                  "bulk")
+                  "Which translation quality this model serves. Bulk runs across the whole"
+                      + " archive; best is the on-demand upgrade, queued as a separate job kind.",
+                  "bulk",
+                  "bulk",
+                  "best")
               .forCapabilities(AiCapability.TRANSLATION)));
 
   private final String id;
@@ -143,6 +149,11 @@ public enum ProviderApi {
     return maxBatchSize;
   }
 
+  /** The settings this provider takes for one capability. */
+  public List<Setting> settingsFor(AiCapability capability) {
+    return settings.stream().filter(x -> x.appliesTo(capability)).toList();
+  }
+
   /** Looks up a provider by the id stored in the database. */
   public static Optional<ProviderApi> byId(String id) {
     if (id == null) {
@@ -166,22 +177,35 @@ public enum ProviderApi {
       String type,
       String help,
       Object defaultValue,
+      List<String> options,
       List<AiCapability> capabilities) {
 
     static Setting text(String key, String label, String help, String defaultValue) {
-      return new Setting(key, label, "text", help, defaultValue, List.of());
+      return new Setting(key, label, "text", help, defaultValue, List.of(), List.of());
     }
 
     static Setting integer(String key, String label, String help, int defaultValue) {
-      return new Setting(key, label, "integer", help, defaultValue, List.of());
+      return new Setting(key, label, "integer", help, defaultValue, List.of(), List.of());
+    }
+
+    /**
+     * A value that may only be one of a fixed set.
+     *
+     * <p>Typed as free text it is an invitation to misspell: "Best" or "premium" in the tier field
+     * reads as a tier that is not "best", and the row then silently serves bulk work. The choices
+     * belong to the backend because it is the backend that acts on them.
+     */
+    static Setting choice(
+        String key, String label, String help, String defaultValue, String... options) {
+      return new Setting(key, label, "choice", help, defaultValue, List.of(options), List.of());
     }
 
     Setting forCapabilities(AiCapability... caps) {
-      return new Setting(key, label, type, help, defaultValue, List.of(caps));
+      return new Setting(key, label, type, help, defaultValue, options, List.of(caps));
     }
 
     /** Empty capabilities means the setting applies to every capability the provider serves. */
-    boolean appliesTo(AiCapability capability) {
+    public boolean appliesTo(AiCapability capability) {
       return capabilities.isEmpty() || capabilities.contains(capability);
     }
 
@@ -192,6 +216,7 @@ public enum ProviderApi {
       m.put("type", type);
       m.put("help", help);
       m.put("default", defaultValue);
+      m.put("options", options);
       return m;
     }
   }

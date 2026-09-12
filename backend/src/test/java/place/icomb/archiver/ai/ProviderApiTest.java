@@ -97,6 +97,49 @@ class ProviderApiTest {
   }
 
   @Test
+  @SuppressWarnings("unchecked")
+  void aFixedChoiceDeclaresItsOptionsSoTheFormCanOfferThem() {
+    Map<String, Object> mistral =
+        ProviderApi.describeAll().stream()
+            .filter(p -> "mistral-batch".equals(p.get("id")))
+            .findFirst()
+            .orElseThrow();
+    List<Map<String, Object>> translation =
+        (List<Map<String, Object>>)
+            ((Map<String, Object>)
+                    ((Map<String, Object>) mistral.get("capabilities")).get("TRANSLATION"))
+                .get("settings");
+
+    Map<String, Object> tier =
+        translation.stream().filter(x -> "tier".equals(x.get("key"))).findFirst().orElseThrow();
+
+    // Free text here invites a misspelling that reads as a tier which is not "best", leaving the
+    // row quietly serving bulk work.
+    assertThat(tier.get("type")).isEqualTo("choice");
+    assertThat((List<String>) tier.get("options")).containsExactly("bulk", "best");
+    assertThat(tier.get("default")).isEqualTo("bulk");
+  }
+
+  @Test
+  void everySettingDeclaresOptionsEvenWhenItHasNone() {
+    // The UI reads options unconditionally; a missing key would be a runtime error there.
+    for (ProviderApi api : ProviderApi.values()) {
+      for (AiCapability capability : AiCapability.values()) {
+        if (!api.supports(capability)) {
+          continue;
+        }
+        for (ProviderApi.Setting setting : api.settingsFor(capability)) {
+          assertThat(setting.options()).isNotNull();
+          if (setting.type().equals("choice")) {
+            assertThat(setting.options()).isNotEmpty();
+            assertThat(setting.options()).contains(String.valueOf(setting.defaultValue()));
+          }
+        }
+      }
+    }
+  }
+
+  @Test
   void aProviderThatCannotBatchIsCappedAtOne() {
     for (ProviderApi api : ProviderApi.values()) {
       if (api.batchStyle() == BatchStyle.SINGLE) {

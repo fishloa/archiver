@@ -231,14 +231,23 @@
 									</dd>
 
 									{#each rowProvider?.capabilities?.[capability.key]?.settings ?? [] as setting (setting.key)}
+										{@const current = settingValue(row, setting.key) ?? setting.default ?? ''}
 										<dt><label for="es-{row.id}-{setting.key}">{setting.label}</label></dt>
 										<dd>
-											<input
-												id="es-{row.id}-{setting.key}"
-												name="setting.{setting.key}"
-												type={setting.type === 'integer' ? 'number' : 'text'}
-												value={settingValue(row, setting.key) ?? setting.default ?? ''}
-											/>
+											{#if setting.type === 'choice'}
+												<select id="es-{row.id}-{setting.key}" name="setting.{setting.key}">
+													{#each setting.options as option (option)}
+														<option value={option} selected={option === current}>{option}</option>
+													{/each}
+												</select>
+											{:else}
+												<input
+													id="es-{row.id}-{setting.key}"
+													name="setting.{setting.key}"
+													type={setting.type === 'integer' ? 'number' : 'text'}
+													value={current}
+												/>
+											{/if}
 											{#if setting.help}<p class="hint">{setting.help}</p>{/if}
 										</dd>
 									{/each}
@@ -312,12 +321,20 @@
 							{#each provider?.capabilities?.[capability.key]?.settings ?? [] as setting (setting.key)}
 								<dt><label for="s-{capability.key}-{setting.key}">{setting.label}</label></dt>
 								<dd>
-									<input
-										id="s-{capability.key}-{setting.key}"
-										name="setting.{setting.key}"
-										type={setting.type === 'integer' ? 'number' : 'text'}
-										value={setting.default ?? ''}
-									/>
+									{#if setting.type === 'choice'}
+										<select id="s-{capability.key}-{setting.key}" name="setting.{setting.key}">
+											{#each setting.options as option (option)}
+												<option value={option} selected={option === setting.default}>{option}</option>
+											{/each}
+										</select>
+									{:else}
+										<input
+											id="s-{capability.key}-{setting.key}"
+											name="setting.{setting.key}"
+											type={setting.type === 'integer' ? 'number' : 'text'}
+											value={setting.default ?? ''}
+										/>
+									{/if}
 									{#if setting.help}<p class="hint">{setting.help}</p>{/if}
 								</dd>
 							{/each}

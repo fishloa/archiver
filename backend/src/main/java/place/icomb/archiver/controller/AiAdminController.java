@@ -61,6 +61,10 @@ public class AiAdminController {
     if (!api.supports(capability)) {
       return "provider '" + providerId + "' has no " + capability + " adapter";
     }
+    String settingsProblem = validateSettings(api, capability, body.get("settings"));
+    if (settingsProblem != null) {
+      return settingsProblem;
+    }
     Object batch = body.get("maxBatchSize");
     if (batch != null) {
       int size = intOr(batch, 1);
@@ -78,6 +82,49 @@ public class AiAdminController {
     }
     return null;
   }
+
+  /**
+   * Rejects a settings value outside the choices its provider declared.
+   *
+   * <p>The form offers a dropdown, but a constraint that lives only in the UI is not a constraint:
+   * "Best" or "premium" in the tier field reads as a tier that is not "best", and the row then
+   * quietly serves bulk work while claiming otherwise.
+   */
+  private String validateSettings(ProviderApi api, AiCapability capability, Object settings) {
+    if (settings == null) {
+      return null;
+    }
+    com.fasterxml.jackson.databind.JsonNode parsed;
+    try {
+      parsed = MAPPER.readTree(settings.toString());
+    } catch (Exception e) {
+      return "settings must be a JSON object";
+    }
+    if (!parsed.isObject()) {
+      return "settings must be a JSON object";
+    }
+    for (ProviderApi.Setting setting : api.settingsFor(capability)) {
+      if (setting.options().isEmpty()) {
+        continue;
+      }
+      com.fasterxml.jackson.databind.JsonNode value = parsed.get(setting.key());
+      if (value == null || value.isNull()) {
+        continue;
+      }
+      if (!setting.options().contains(value.asText())) {
+        return setting.key()
+            + " must be one of "
+            + String.join(", ", setting.options())
+            + " (got '"
+            + value.asText()
+            + "')";
+      }
+    }
+    return null;
+  }
+
+  private static final com.fasterxml.jackson.databind.ObjectMapper MAPPER =
+      new com.fasterxml.jackson.databind.ObjectMapper();
 
   private static String providerIds() {
     return java.util.Arrays.stream(ProviderApi.values())

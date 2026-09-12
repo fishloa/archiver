@@ -731,9 +731,11 @@ export interface AiImplementation {
 export interface ProviderSetting {
   key: string;
   label: string;
-  type: "text" | "integer";
+  /** "choice" renders a select over `options`; the backend rejects anything outside them. */
+  type: "text" | "integer" | "choice";
   help: string;
   default: unknown;
+  options: string[];
 }
 
 export interface ProviderCapability {

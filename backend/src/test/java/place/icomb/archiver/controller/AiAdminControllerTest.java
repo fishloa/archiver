@@ -59,7 +59,16 @@ class AiAdminControllerTest {
   @BeforeEach
   void resetOrder() {
     jdbc.update("DELETE FROM page_translation");
-    jdbc.update("DELETE FROM ai_implementation WHERE provider IN ('custom', 'local')");
+    // Anything a test registered. This used to delete by provider, which worked only while
+    // 'custom' and 'local' were free-text values no seeded row used; provider names a protocol
+    // now, so tests share those values and their rows survived to pollute the next test's order.
+    jdbc.update(
+        """
+        DELETE FROM ai_implementation WHERE id NOT IN (
+          'mistral:mistral-ocr-latest', 'mistral:mistral-medium-latest',
+          'mistral:mistral-small-latest', 'deepinfra:google/gemma-4-31B-it',
+          'deepinfra:Qwen/Qwen3-Embedding-8B', 'legacy')
+        """);
     jdbc.update("UPDATE ai_implementation SET rank = rank + 100 WHERE capability = 'TRANSLATION'");
     jdbc.update("UPDATE ai_implementation SET rank = 1 WHERE id = 'mistral:mistral-medium-latest'");
     jdbc.update("UPDATE ai_implementation SET rank = 2 WHERE id = 'mistral:mistral-small-latest'");
@@ -316,6 +325,39 @@ class AiAdminControllerTest {
 
     assertThat(response.statusCode()).isEqualTo(400);
     assertThat(response.body()).contains("provider");
+  }
+
+  @Test
+  void refusesASettingOutsideTheChoicesItsProviderDeclared() throws Exception {
+    // The dropdown constrains the form, but a constraint that lives only in the UI is not one.
+    var response =
+        send(
+            "POST",
+            "/api/admin/ai/implementations",
+            """
+            {"id": "mistral:tiertest", "capability": "TRANSLATION", "provider": "mistral-batch",
+             "model": "mistral-tiny", "baseUrl": "https://api.mistral.ai", "rank": 64,
+             "settings": "{\\"tier\\": \\"premium\\"}"}
+            """);
+
+    assertThat(response.statusCode()).isEqualTo(400);
+    assertThat(response.body()).contains("tier");
+    assertThat(response.body()).contains("bulk");
+  }
+
+  @Test
+  void acceptsADeclaredChoice() throws Exception {
+    var response =
+        send(
+            "POST",
+            "/api/admin/ai/implementations",
+            """
+            {"id": "mistral:tierok", "capability": "TRANSLATION", "provider": "mistral-batch",
+             "model": "mistral-tiny-2", "baseUrl": "https://api.mistral.ai", "rank": 65,
+             "settings": "{\\"tier\\": \\"best\\"}"}
+            """);
+
+    assertThat(response.statusCode()).isEqualTo(201);
   }
 
   @Test
