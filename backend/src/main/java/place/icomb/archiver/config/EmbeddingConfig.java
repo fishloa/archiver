@@ -34,6 +34,10 @@ public class EmbeddingConfig {
       @Value("${archiver.embed.query-prefix:}") String envQueryPrefix) {
 
     var registered = registry.best(AiCapability.EMBEDDING);
+    // best() skips a row whose credential environment variable is empty. Saying "no
+    // enabled row" in that case sends an operator looking for a row that is right
+    // there, so the two cases are reported apart.
+    var enabledRows = registry.forCapability(AiCapability.EMBEDDING);
     if (registered.isPresent()) {
       var r = registered.get();
       var embedder = new RegistryEmbedder(r, registry.credential(r));
@@ -64,10 +68,19 @@ public class EmbeddingConfig {
             1,
             true,
             settings);
-    log.warn(
-        "No enabled EMBEDDING row; falling back to archiver.embed.* (model={}, dims={})",
-        envModel,
-        envDimensions);
+    if (enabledRows.isEmpty()) {
+      log.warn(
+          "No enabled EMBEDDING row; falling back to archiver.embed.* (model={}, dims={})",
+          envModel,
+          envDimensions);
+    } else {
+      log.warn(
+          "EMBEDDING row {} is enabled but its credential {} is empty; falling back to"
+              + " archiver.embed.* (model={})",
+          enabledRows.get(0).id(),
+          enabledRows.get(0).credentialEnv(),
+          envModel);
+    }
     return new RegistryEmbedder(fallback, envKey);
   }
 }

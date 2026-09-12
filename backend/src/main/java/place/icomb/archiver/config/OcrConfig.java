@@ -36,6 +36,10 @@ public class OcrConfig {
       @Value("${archiver.ocr.mistral.pages-per-minute:1250}") int envPagesPerMinute) {
 
     var registered = registry.best(AiCapability.OCR);
+    // best() skips a row whose credential environment variable is empty. Saying "no
+    // enabled row" in that case sends an operator looking for a row that is right
+    // there, so the two cases are reported apart.
+    var enabledRows = registry.forCapability(AiCapability.OCR);
     if (registered.isPresent()) {
       var r = registered.get();
       var ocr = new RegistryOcr(r, registry.credential(r));
@@ -67,7 +71,17 @@ public class OcrConfig {
             settings);
     // An env-configured deployment only runs OCR when the flag says so; a registry-configured one
     // expresses the same thing by enabling or disabling the row.
-    log.info("No enabled OCR row; falling back to archiver.ocr.mistral.* (enabled={})", envEnabled);
+    if (enabledRows.isEmpty()) {
+      log.info(
+          "No enabled OCR row; falling back to archiver.ocr.mistral.* (enabled={})", envEnabled);
+    } else {
+      log.warn(
+          "OCR row {} is enabled but its credential {} is empty; falling back to"
+              + " archiver.ocr.mistral.* (enabled={})",
+          enabledRows.get(0).id(),
+          enabledRows.get(0).credentialEnv(),
+          envEnabled);
+    }
     return new RegistryOcr(fallback, envEnabled ? envApiKey : "");
   }
 }
