@@ -78,6 +78,7 @@ public class ViewerController {
   private final JobService jobService;
   private final PdfExportService pdfExportService;
   private final place.icomb.archiver.service.JobEventService jobEventService;
+  private final place.icomb.archiver.service.ThumbnailService thumbnailService;
 
   public ViewerController(
       PageRepository pageRepository,
@@ -92,7 +93,8 @@ public class ViewerController {
       PipelineGateService gateService,
       place.icomb.archiver.service.OcrImageService ocrImageService,
       place.icomb.archiver.service.TranslationService translationService,
-      PageTranslationRepository pageTranslationRepository) {
+      PageTranslationRepository pageTranslationRepository,
+      place.icomb.archiver.service.ThumbnailService thumbnailService) {
     this.pageRepository = pageRepository;
     this.attachmentRepository = attachmentRepository;
     this.recordRepository = recordRepository;
@@ -106,6 +108,7 @@ public class ViewerController {
     this.jobEventService = jobEventService;
     this.ocrImageService = ocrImageService;
     this.translationService = translationService;
+    this.thumbnailService = thumbnailService;
   }
 
   /** Known scrapers: id, display name, sourceSystem value they report in heartbeats. */
@@ -759,9 +762,24 @@ public class ViewerController {
 
   @GetMapping("/files/{attachmentId}/thumbnail")
   public ResponseEntity<Resource> streamThumbnail(@PathVariable Long attachmentId) {
-    // Stub: In a full implementation, this would serve a pre-generated thumbnail.
-    // For now, serve the original file (useful for page images that are already small).
-    return streamFile(attachmentId);
+    Attachment attachment = attachmentRepository.findById(attachmentId).orElse(null);
+    if (attachment == null) {
+      return ResponseEntity.notFound().build();
+    }
+
+    java.nio.file.Path thumb = thumbnailService.thumbnailFor(attachment);
+    if (thumb == null) {
+      // Not an image, or one ImageIO cannot decode. Serving the original is what every
+      // request got before thumbnails existed, so the page still draws.
+      return streamFile(attachmentId);
+    }
+
+    return ResponseEntity.ok()
+        .contentType(MediaType.IMAGE_JPEG)
+        .header(HttpHeaders.CONTENT_DISPOSITION, "inline")
+        // Immutable: the cache is keyed by attachment id, and a replaced scan gets a new one.
+        .header(HttpHeaders.CACHE_CONTROL, "public, max-age=31536000, immutable")
+        .body(new org.springframework.core.io.FileSystemResource(thumb));
   }
 
   @GetMapping("/records/{recordId}/pdf")
