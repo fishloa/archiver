@@ -49,6 +49,8 @@ public class WorkerSchedulingConfig implements SchedulingConfigurer {
   private final place.icomb.archiver.ai.AiRegistry aiRegistry;
   private final place.icomb.archiver.ai.RegistryEmbedder embedder;
   private final place.icomb.archiver.ai.RegistryOcr registryOcr;
+  private final int translateSyncConcurrency;
+  private final long translateSyncPoll;
   private final place.icomb.archiver.service.TranslationService translationService;
   private final place.icomb.archiver.service.PdfExportService pdfExportService;
   private final org.springframework.jdbc.core.JdbcTemplate jdbcTemplate;
@@ -92,6 +94,8 @@ public class WorkerSchedulingConfig implements SchedulingConfigurer {
       place.icomb.archiver.ai.AiRegistry aiRegistry,
       place.icomb.archiver.ai.RegistryEmbedder embedder,
       place.icomb.archiver.ai.RegistryOcr registryOcr,
+      @Value("${archiver.translate.sync.concurrency:4}") int translateSyncConcurrency,
+      @Value("${archiver.translate.sync.poll-interval:2000}") long translateSyncPoll,
       place.icomb.archiver.service.TranslationService translationService,
       place.icomb.archiver.service.PdfExportService pdfExportService,
       org.springframework.jdbc.core.JdbcTemplate jdbcTemplate,
@@ -147,6 +151,8 @@ public class WorkerSchedulingConfig implements SchedulingConfigurer {
     this.aiRegistry = aiRegistry;
     this.embedder = embedder;
     this.registryOcr = registryOcr;
+    this.translateSyncConcurrency = translateSyncConcurrency;
+    this.translateSyncPoll = translateSyncPoll;
     this.translationService = translationService;
     this.pdfExportService = pdfExportService;
     this.embedConcurrency = embedConcurrency;
@@ -164,10 +170,10 @@ public class WorkerSchedulingConfig implements SchedulingConfigurer {
   private place.icomb.archiver.ai.Translator translatorFor(String model) {
     return aiRegistry.forModel(place.icomb.archiver.ai.AiCapability.TRANSLATION, model).stream()
         .findFirst()
-        .map(r -> new place.icomb.archiver.ai.MistralTranslator(r, aiRegistry.credential(r)))
+        .map(r -> new place.icomb.archiver.ai.ChatTranslator(r, aiRegistry.credential(r)))
         .orElseGet(
             () ->
-                new place.icomb.archiver.ai.MistralTranslator(
+                new place.icomb.archiver.ai.ChatTranslator(
                     new place.icomb.archiver.ai.AiRegistry.Registration(
                         "mistral:" + model,
                         place.icomb.archiver.ai.AiCapability.TRANSLATION,
@@ -181,6 +187,77 @@ public class WorkerSchedulingConfig implements SchedulingConfigurer {
                         true,
                         com.fasterxml.jackson.databind.node.JsonNodeFactory.instance.objectNode()),
                     mistralApiKey));
+  }
+
+  /**
+   * Registers page translation for one model, using whichever transport its provider speaks.
+   *
+   * <p>Mistral runs work asynchronously: upload a file of requests, create a job, poll, download.
+   * Nothing else implements that. An OpenAI-compatible endpoint takes one document per request. The
+   * request body is identical either way — {@link place.icomb.archiver.ai.ChatTranslator} builds
+   * the same chat call — so the provider chooses the transport and nothing else.
+   *
+   * <p>Before this, every row was submitted through Mistral's batch API whatever its provider said,
+   * so a row pointing anywhere else failed every job it claimed.
+   */
+  private void registerTranslation(ScheduledTaskRegistrar registrar, String model, String jobKind) {
+    var registration =
+        aiRegistry.forModel(place.icomb.archiver.ai.AiCapability.TRANSLATION, model).stream()
+            .findFirst();
+    var api =
+        registration
+            .flatMap(r -> place.icomb.archiver.ai.ProviderApi.byId(r.provider()))
+            // No row, or a provider with no adapter: fall back to Mistral's batch API, which is
+            // what every translation did before providers meant anything.
+            .orElse(place.icomb.archiver.ai.ProviderApi.MISTRAL_BATCH);
+
+    var translator = translatorFor(model);
+    String apiKey = registration.map(aiRegistry::credential).orElse(mistralApiKey);
+
+    if (api.batchStyle() == place.icomb.archiver.ai.BatchStyle.ASYNC_JOB) {
+      var orchestrator =
+          new BatchOrchestrator(
+              "mistral-batch-" + jobKind,
+              new TranslateBatchStage(translator, jobKind, jdbcTemplate, translationService),
+              new MistralBatchClient(apiKey, translator.endpoint()),
+              jobService,
+              jobEventService,
+              recordEventService,
+              providerBatchRepository,
+              translateBatchSize,
+              mistralMaxBatchBytes,
+              translatePerMinute);
+      registrar.addFixedDelayTask(orchestrator::tick, Duration.ofMillis(mistralTickInterval));
+      log.info(
+          "Registered batch translation {} (model={}, provider={}, batch={})",
+          jobKind,
+          model,
+          api.id(),
+          translateBatchSize);
+      return;
+    }
+
+    // One request per document. Concurrency comes from running several workers, since there is
+    // no batch to make wider.
+    for (int i = 0; i < translateSyncConcurrency; i++) {
+      var worker =
+          new place.icomb.archiver.service.SyncTranslateWorker(
+              jobKind + "-" + i,
+              jobKind,
+              translator,
+              apiKey,
+              jobService,
+              jobEventService,
+              jdbcTemplate,
+              translationService);
+      registrar.addFixedDelayTask(worker::pollAndProcess, Duration.ofMillis(translateSyncPoll));
+    }
+    log.info(
+        "Registered synchronous translation {} (model={}, provider={}, {} worker(s))",
+        jobKind,
+        model,
+        api.id(),
+        translateSyncConcurrency);
   }
 
   @Override
@@ -276,53 +353,11 @@ public class WorkerSchedulingConfig implements SchedulingConfigurer {
     }
 
     if (translateBatchEnabled) {
-      var client = new MistralBatchClient(mistralApiKey, mistralBaseUrl);
-
-      // Bulk translation. Cheap model, whole archive.
-      var bulk =
-          new BatchOrchestrator(
-              "mistral-batch-translate",
-              new TranslateBatchStage(
-                  translatorFor(TranslationModels.BULK_MODEL),
-                  "translate_page",
-                  jdbcTemplate,
-                  translationService),
-              client,
-              jobService,
-              jobEventService,
-              recordEventService,
-              providerBatchRepository,
-              translateBatchSize,
-              mistralMaxBatchBytes,
-              translatePerMinute);
-      registrar.addFixedDelayTask(bulk::tick, Duration.ofMillis(mistralTickInterval));
-
-      // On-demand upgrades. A separate kind because a batch carries one model, and separate
-      // so an upgrade queue can be held or drained independently of the bulk run.
-      var upgrade =
-          new BatchOrchestrator(
-              "mistral-batch-translate-upgrade",
-              new TranslateBatchStage(
-                  translatorFor(TranslationModels.UPGRADE_MODEL),
-                  "translate_page_upgrade",
-                  jdbcTemplate,
-                  translationService),
-              client,
-              jobService,
-              jobEventService,
-              recordEventService,
-              providerBatchRepository,
-              translateBatchSize,
-              mistralMaxBatchBytes,
-              translatePerMinute);
-      registrar.addFixedDelayTask(upgrade::tick, Duration.ofMillis(mistralTickInterval));
-
-      log.info(
-          "Registered Mistral batch translation (bulk={}, upgrade={}, metadata={}, batch={})",
-          TranslationModels.BULK_MODEL,
-          TranslationModels.UPGRADE_MODEL,
-          TranslationModels.UPGRADE_MODEL,
-          translateBatchSize);
+      // Bulk translation across the whole archive, and the on-demand upgrade. Separate kinds
+      // because a batch carries one model, and separate so an upgrade queue can be held or
+      // drained independently of the bulk run.
+      registerTranslation(registrar, TranslationModels.BULK_MODEL, "translate_page");
+      registerTranslation(registrar, TranslationModels.UPGRADE_MODEL, "translate_page_upgrade");
     }
 
     // Searchable PDFs are built in-process rather than by a separate service: the invisible

@@ -19,6 +19,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import place.icomb.archiver.ai.AiCapability;
 import place.icomb.archiver.ai.AiRegistry;
+import place.icomb.archiver.ai.ProviderApi;
 
 /**
  * Managing which models do which job, and which is preferred.
@@ -38,6 +39,51 @@ import place.icomb.archiver.ai.AiRegistry;
 public class AiAdminController {
 
   private static final Logger log = LoggerFactory.getLogger(AiAdminController.class);
+
+  /**
+   * Rejects a configuration this build cannot actually run.
+   *
+   * <p>Provider was free text and nothing read it: every translation row became a chat request
+   * submitted through Mistral's batch API whatever the row claimed, so a row pointing at an
+   * OpenAI-compatible endpoint would fire POST /v1/files at it and fail every job. Returns the
+   * reason, or null when the configuration is one the runtime can honour.
+   */
+  private String validateProvider(
+      String providerId, AiCapability capability, Map<String, Object> body) {
+    if (providerId == null || providerId.isBlank()) {
+      return "provider is required; choose one of " + providerIds();
+    }
+    var provider = ProviderApi.byId(providerId);
+    if (provider.isEmpty()) {
+      return "unknown provider '" + providerId + "'; this build implements " + providerIds();
+    }
+    ProviderApi api = provider.get();
+    if (!api.supports(capability)) {
+      return "provider '" + providerId + "' has no " + capability + " adapter";
+    }
+    Object batch = body.get("maxBatchSize");
+    if (batch != null) {
+      int size = intOr(batch, 1);
+      if (size < api.minBatchSize() || size > api.maxBatchSize()) {
+        return "maxBatchSize for "
+            + providerId
+            + " must be between "
+            + api.minBatchSize()
+            + " and "
+            + api.maxBatchSize()
+            + " (batch style "
+            + api.batchStyle()
+            + ")";
+      }
+    }
+    return null;
+  }
+
+  private static String providerIds() {
+    return java.util.Arrays.stream(ProviderApi.values())
+        .map(ProviderApi::id)
+        .collect(java.util.stream.Collectors.joining(", "));
+  }
 
   private final JdbcTemplate jdbc;
   private final AiRegistry registry;
@@ -71,6 +117,19 @@ public class AiAdminController {
     return ResponseEntity.ok(out);
   }
 
+  /**
+   * The provider protocols this build implements, and what each one needs configured.
+   *
+   * <p>The admin UI renders its form from this rather than holding a list of its own: a provider is
+   * a protocol with an adapter behind it, so the set of valid choices is a property of the backend.
+   * Adding a provider is an entry in {@link ProviderApi} plus an adapter, and the UI picks it up
+   * without being touched.
+   */
+  @GetMapping("/providers")
+  public ResponseEntity<Map<String, Object>> providers() {
+    return ResponseEntity.ok(Map.of("providers", ProviderApi.describeAll()));
+  }
+
   /** Registers a model. */
   @PostMapping("/implementations")
   public ResponseEntity<?> create(@RequestBody Map<String, Object> body) {
@@ -83,6 +142,11 @@ public class AiAdminController {
     if (!isCapability(capability)) {
       return ResponseEntity.badRequest().body(Map.of("error", "unknown capability: " + capability));
     }
+    String provider = str(body.getOrDefault("provider", ""));
+    var problem = validateProvider(provider, AiCapability.valueOf(capability), body);
+    if (problem != null) {
+      return ResponseEntity.badRequest().body(Map.of("error", problem));
+    }
     try {
       jdbc.update(
           """
@@ -93,7 +157,7 @@ public class AiAdminController {
           """,
           id,
           capability,
-          str(body.getOrDefault("provider", "custom")),
+          provider,
           str(body.get("model")),
           str(body.getOrDefault("baseUrl", "")),
           emptyToNull(str(body.get("endpointPath"))),
@@ -117,6 +181,13 @@ public class AiAdminController {
   public ResponseEntity<?> update(@PathVariable String id, @RequestBody Map<String, Object> body) {
     if (registry.byId(id).isEmpty()) {
       return ResponseEntity.notFound().build();
+    }
+    var existing = registry.byId(id).orElseThrow();
+    if (body.get("provider") != null) {
+      var problem = validateProvider(str(body.get("provider")), existing.capability(), body);
+      if (problem != null) {
+        return ResponseEntity.badRequest().body(Map.of("error", problem));
+      }
     }
     int updated =
         jdbc.update(

@@ -147,7 +147,7 @@ class AiAdminControllerTest {
   void registersALocalImplementation() throws Exception {
     String create =
         """
-        {"id": "local:qwen3", "capability": "EMBEDDING", "provider": "local",
+        {"id": "local:qwen3", "capability": "EMBEDDING", "provider": "openai",
          "model": "Qwen/Qwen3-Embedding-8B", "baseUrl": "http://localhost:11434/v1",
          "endpointPath": "/embeddings", "maxBatchSize": 1, "rank": 5,
          "settings": "{\\"dimensions\\": 1024}"}
@@ -224,11 +224,98 @@ class AiAdminControllerTest {
         "POST",
         "/api/admin/ai/implementations",
         """
-        {"id": "custom:unused", "capability": "OCR", "provider": "custom", "model": "unused-model",
+        {"id": "custom:unused", "capability": "OCR", "provider": "mistral-batch", "model": "unused-model",
          "baseUrl": "https://example.invalid", "rank": 50}
         """);
     assertThat(send("DELETE", "/api/admin/ai/implementations/custom:unused", null).statusCode())
         .isEqualTo(204);
+  }
+
+  @Test
+  void servesTheProvidersTheBuildImplements() throws Exception {
+    JsonNode body = mapper.readTree(send("GET", "/api/admin/ai/providers", null).body());
+
+    JsonNode providers = body.get("providers");
+    assertThat(providers).isNotNull();
+    assertThat(providers.findValues("id").stream().map(JsonNode::asText))
+        .contains("mistral-batch", "openai");
+
+    // The UI builds its form from this, so each provider must say what it can do and what it
+    // needs — without the frontend knowing what any particular provider is.
+    JsonNode mistral =
+        providers.findParents("id").stream()
+            .filter(n -> "mistral-batch".equals(n.path("id").asText()))
+            .findFirst()
+            .orElseThrow();
+    assertThat(mistral.get("batchStyle").asText()).isEqualTo("ASYNC_JOB");
+    assertThat(mistral.get("capabilities").has("OCR")).isTrue();
+    assertThat(mistral.get("capabilities").get("OCR").get("endpointPath").asText())
+        .isEqualTo("/v1/ocr");
+    assertThat(mistral.get("capabilities").get("OCR").get("settings").isArray()).isTrue();
+  }
+
+  @Test
+  void refusesAProviderWithNoAdapter() throws Exception {
+    // Free text let a row name any provider while the runtime submitted it through Mistral's
+    // batch API regardless, failing every job it claimed.
+    var response =
+        send(
+            "POST",
+            "/api/admin/ai/implementations",
+            """
+            {"id": "anthropic:claude", "capability": "TRANSLATION", "provider": "anthropic",
+             "model": "claude-opus-5", "baseUrl": "https://api.anthropic.com", "rank": 60}
+            """);
+
+    assertThat(response.statusCode()).isEqualTo(400);
+    assertThat(response.body()).contains("anthropic");
+  }
+
+  @Test
+  void refusesAProviderThatCannotServeThatCapability() throws Exception {
+    // There is no Mistral embedding adapter, so a row claiming one would never run.
+    var response =
+        send(
+            "POST",
+            "/api/admin/ai/implementations",
+            """
+            {"id": "mistral:embed", "capability": "EMBEDDING", "provider": "mistral-batch",
+             "model": "mistral-embed", "baseUrl": "https://api.mistral.ai", "rank": 61}
+            """);
+
+    assertThat(response.statusCode()).isEqualTo(400);
+    assertThat(response.body()).contains("EMBEDDING");
+  }
+
+  @Test
+  void refusesABatchSizeTheProviderCannotHonour() throws Exception {
+    var response =
+        send(
+            "POST",
+            "/api/admin/ai/implementations",
+            """
+            {"id": "openai:toobig", "capability": "EMBEDDING", "provider": "openai",
+             "model": "text-embedding-3-small", "baseUrl": "https://api.openai.com/v1",
+             "maxBatchSize": 99999, "rank": 62}
+            """);
+
+    assertThat(response.statusCode()).isEqualTo(400);
+    assertThat(response.body()).contains("maxBatchSize");
+  }
+
+  @Test
+  void refusesAMissingProvider() throws Exception {
+    var response =
+        send(
+            "POST",
+            "/api/admin/ai/implementations",
+            """
+            {"id": "nameless:model", "capability": "TRANSLATION", "model": "x",
+             "baseUrl": "https://example.invalid", "rank": 63}
+            """);
+
+    assertThat(response.statusCode()).isEqualTo(400);
+    assertThat(response.body()).contains("provider");
   }
 
   @Test

@@ -5,14 +5,20 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * Translation through Mistral's chat completions endpoint.
+ * Translation through a chat completions endpoint.
+ *
+ * <p>Provider-agnostic: the request is the OpenAI chat shape and the answer is read from {@code
+ * choices[0].message.content}, which Mistral, DeepInfra, vLLM, Ollama and OpenAI all speak. What
+ * differs between them is not the request but how it is submitted — Mistral's asynchronous batch
+ * job, or one HTTP call per document — and that is chosen by {@link BatchStyle} when the worker is
+ * wired, not here.
  *
  * <p>The instruction and the cleanup of the answer live together because they are two halves of the
  * same knowledge about this model. Kept apart, they drifted: the model wrapped 13% of the archive
  * in a code fence and opened 5,454 pages with "Here is the translation:", and the code reading the
  * answers expected neither.
  */
-public class MistralTranslator implements Translator {
+public class ChatTranslator implements Translator {
 
   /**
    * Names, dates and reference numbers are evidence in these documents, so the instruction leads
@@ -28,7 +34,7 @@ public class MistralTranslator implements Translator {
   private final AiRegistry.Registration registration;
   private final String apiKey;
 
-  public MistralTranslator(AiRegistry.Registration registration, String apiKey) {
+  public ChatTranslator(AiRegistry.Registration registration, String apiKey) {
     this.registration = registration;
     this.apiKey = apiKey;
   }
