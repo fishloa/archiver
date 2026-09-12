@@ -111,8 +111,12 @@ public class ArchiverMcpTools {
       title = "Get Document",
       description =
           "Get a complete document by record ID. Returns full metadata (title, description, date"
-              + " range, reference code, both original and English translation), all pages with OCR"
-              + " text (original + English), and links to images/PDF.",
+              + " range, reference code, both original and English translation), the whole record"
+              + " as one string in fullText (original) and fullTextEn (English) with pages"
+              + " separated by a form feed, every page individually with its own OCR text and"
+              + " translation, and links to images/PDF. Each page states the media type of its"
+              + " text in contentType (text/markdown or text/plain) - read it, do not guess:"
+              + " a page number like '- 5 -' is indistinguishable from a markdown bullet.",
       annotations =
           @McpTool.McpAnnotations(
               title = "Get Document",

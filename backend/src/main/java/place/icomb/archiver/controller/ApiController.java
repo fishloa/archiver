@@ -130,12 +130,18 @@ public class ApiController {
       if (current.isPresent()) {
         PageText best = current.get();
         pm.put("text", best.getTextRaw() != null ? best.getTextRaw() : "");
+        // The media type of `text`. Mistral returns markdown and everything else plain text,
+        // and the two cannot be told apart by looking: a typescript's centred page number
+        // "- 5 -" is byte-identical to a markdown bullet. A consumer that guesses turns page
+        // numbers into bullets across the archive, so it is stated here rather than sniffed.
+        pm.put("contentType", best.getContentType() != null ? best.getContentType() : "text/plain");
         String english = translationService.bestEnglish(p.getId());
         pm.put("textEn", english != null ? english : "");
         pm.put("ocrConfidence", best.getConfidence() != null ? best.getConfidence() : 0.0f);
         pm.put("ocrEngine", best.getEngine() != null ? best.getEngine() : "");
       } else {
         pm.put("text", "");
+        pm.put("contentType", "text/plain");
         pm.put("textEn", "");
       }
 
@@ -143,6 +149,13 @@ public class ApiController {
     }
 
     doc.put("pages", pageList);
+
+    // The whole record as one document. Callers asking "what does this file say" had to stitch
+    // the page array themselves, and an LLM tool doing that per record is the slow path this
+    // API exists to avoid. Pages are separated by a form feed, the character that has meant
+    // "page break" since the teletype, so a consumer can split them apart again if it wants.
+    doc.put("fullText", joinPages(pageList, "text"));
+    doc.put("fullTextEn", joinPages(pageList, "textEn"));
     return doc;
   }
 
@@ -319,5 +332,32 @@ public class ApiController {
         include.add(token);
       }
     }
+  }
+
+  /**
+   * The record's pages joined into one document.
+   *
+   * <p>Blank pages are skipped rather than contributing a run of separators: a record where OCR
+   * found nothing on half its scans should read as continuous text, not as a field of form feeds.
+   * Returns an empty string when no page carried any text, so a caller can test one field instead
+   * of walking the array to find out.
+   */
+  private static String joinPages(List<Map<String, Object>> pages, String key) {
+    StringBuilder sb = new StringBuilder();
+    for (Map<String, Object> page : pages) {
+      Object value = page.get(key);
+      if (value == null) {
+        continue;
+      }
+      String text = value.toString();
+      if (text.isBlank()) {
+        continue;
+      }
+      if (!sb.isEmpty()) {
+        sb.append("\n\f\n");
+      }
+      sb.append(text);
+    }
+    return sb.toString();
   }
 }
