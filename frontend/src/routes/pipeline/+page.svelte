@@ -138,22 +138,22 @@
 <!-- Vertical pipeline -->
 <div class="pipeline vui-animate-fade-in">
 	<!-- Scrapers node -->
-	<div class="stage" style="--delay: 0ms">
+	<div class="stage stage-scrapers">
 		<div class="stage-rail">
-			<div class="node-ring" style="border-color: #6ec6f0; box-shadow: 0 0 12px rgba(110,198,240,0.08)">
-				<div class="node-dot" style="background: #6ec6f0"></div>
+			<div class="node-ring">
+				<div class="node-dot"></div>
 			</div>
-			<div class="connector" style="border-color: #6ec6f0"></div>
+			<div class="connector"></div>
 		</div>
-		<div class="stage-card" style="border-color: rgba(110,198,240,0.35)">
-			<div class="accent-bar" style="background: #6ec6f0"></div>
+		<div class="stage-card">
+			<div class="accent-bar"></div>
 			<div class="card-body">
-				<div class="card-header" style="margin-bottom: 10px">
-					<div class="card-icon" style="background: rgba(110,198,240,0.08)">
-						<Radio size={16} color="#6ec6f0" strokeWidth={2} />
+				<div class="card-header card-header-spaced">
+					<div class="card-icon">
+						<Radio size={16} color="currentColor" strokeWidth={2} />
 					</div>
 					<div>
-						<div class="card-title" style="color: #6ec6f0">{$t('pipeline.scrapers')}</div>
+						<div class="card-title">{$t('pipeline.scrapers')}</div>
 					</div>
 				</div>
 				{#if data.sources && data.sources.length > 0}
@@ -205,29 +205,38 @@
 		{@const idle = Math.max(0, workers - busy)}
 		{@const StageIcon = cfg.icon}
 
-		<div class="stage" style="--delay: {(i + 1) * 60}ms">
+		<!-- The stage's palette is handed to CSS once, here; every rule below resolves its own
+		     colour from these. Spraying the same three values across eight elements is what this
+		     replaced. -->
+		<div
+			class="stage"
+			style:--delay="{(i + 1) * 60}ms"
+			style:--stage-color={cfg.color}
+			style:--stage-dim={cfg.dimBg}
+			style:--stage-border={cfg.borderColor}
+		>
 			<!-- Node + connector column -->
 			<div class="stage-rail">
-				<div class="node-ring" style="border-color: {cfg.color}; box-shadow: 0 0 12px {cfg.dimBg}">
-					<div class="node-dot {running > 0 || pending > 0 ? 'animate-pulse' : ''}" style="background: {cfg.color}"></div>
+				<div class="node-ring">
+					<div class="node-dot {running > 0 || pending > 0 ? 'animate-pulse' : ''}"></div>
 				</div>
 				{#if !isLast}
-					<div class="connector" style="border-color: {cfg.color}"></div>
+					<div class="connector"></div>
 				{/if}
 			</div>
 
 			<!-- Card -->
-			<div class="stage-card" style="border-color: {cfg.borderColor}">
-				<div class="accent-bar" style="background: {cfg.color}"></div>
+			<div class="stage-card">
+				<div class="accent-bar"></div>
 
 				<div class="card-body">
 					<!-- Header: icon + name + record/page counts -->
 					<div class="card-header">
-						<div class="card-icon" style="background: {cfg.dimBg}">
-							<StageIcon size={16} color={cfg.color} strokeWidth={2} />
+						<div class="card-icon">
+							<StageIcon size={16} color="currentColor" strokeWidth={2} />
 						</div>
 						<div>
-							<div class="card-title" style="color: {cfg.color}">
+							<div class="card-title">
 								{stage.name}
 								{#if heldKinds(stage).length > 0}
 									{@const partial = heldKinds(stage).length < (stage.kinds ?? []).length}
@@ -243,7 +252,7 @@
 							<div class="card-desc">{cfg.desc}</div>
 						</div>
 						<div class="card-counts">
-							<span class="count-num" style="color: {cfg.color}">{fmt(stage.records)}</span>
+							<span class="count-num count-num-stage">{fmt(stage.records)}</span>
 							<span class="count-label">{$t('pipeline.records')}</span>
 							<span class="count-sep">&middot;</span>
 							<span class="count-num count-pages">{fmt(stage.pages)}</span>
@@ -268,12 +277,12 @@
 						{@const pct = Math.round((stage.pagesDone ?? 0) / stage.pagesTotal * 100)}
 						<div class="progress-row">
 							<div class="progress-track">
-								<div class="progress-fill" style="width: {pct}%; background: {cfg.color}"></div>
+								<div class="progress-fill" style:width="{pct}%"></div>
 							</div>
 							<span class="progress-label">
-								<span style="color: {cfg.color}">{fmt(stage.pagesDone ?? 0)}</span>
+								<span class="progress-done">{fmt(stage.pagesDone ?? 0)}</span>
 								/ {fmt(stage.pagesTotal)} pages
-								<span class="progress-pct" style="color: {cfg.color}">{pct}%</span>
+								<span class="progress-pct">{pct}%</span>
 							</span>
 						</div>
 					{:else if (stage.jobsCompleted ?? 0) + (stage.jobsPending ?? 0) + (stage.jobsRunning ?? 0) > 0}
@@ -281,12 +290,12 @@
 						{@const pct = Math.round((stage.jobsCompleted ?? 0) / jobsTotal * 100)}
 						<div class="progress-row">
 							<div class="progress-track">
-								<div class="progress-fill" style="width: {pct}%; background: {cfg.color}"></div>
+								<div class="progress-fill" style:width="{pct}%"></div>
 							</div>
 							<span class="progress-label">
-								<span style="color: {cfg.color}">{fmt(stage.jobsCompleted ?? 0)}</span>
+								<span class="progress-done">{fmt(stage.jobsCompleted ?? 0)}</span>
 								/ {fmt(jobsTotal)} jobs
-								<span class="progress-pct" style="color: {cfg.color}">{pct}%</span>
+								<span class="progress-pct">{pct}%</span>
 							</span>
 						</div>
 					{/if}
@@ -343,7 +352,7 @@
 												<span class="worker-detail-dot" class:worker-detail-dot-active={wd.workers > 0 && (wd.busy > 0 || wd.pending > 0)}></span>
 												<span class="worker-detail-label">{wd.label}</span>
 												{#if wd.workers > 0}
-													<span class="worker-detail-count" style="color: {cfg.color}">{wd.busy}/{wd.workers}</span>
+													<span class="worker-detail-count">{wd.busy}/{wd.workers}</span>
 													<span class="worker-detail-status">{$t('pipeline.busy')}</span>
 												{:else}
 													<span class="worker-detail-status text-muted">{$t('pipeline.noWorkers')}</span>
@@ -371,14 +380,14 @@
 											<div class="worker-dots">
 												{#each Array(wd.workers) as _, w}
 													{#if w < wd.busy}
-														<div class="worker-dot worker-busy" style="--dot-color: {cfg.color}">
+														<div class="worker-dot worker-busy">
 															<svg viewBox="0 0 20 20" class="worker-spinner">
-																<circle cx="10" cy="10" r="7" fill="none" stroke={cfg.color} stroke-width="2.5" opacity="0.2" />
-																<circle cx="10" cy="10" r="7" fill="none" stroke={cfg.color} stroke-width="2.5" stroke-dasharray="20 24" stroke-linecap="round" class="spin-arc" />
+																<circle cx="10" cy="10" r="7" fill="none" stroke="currentColor" stroke-width="2.5" opacity="0.2" />
+																<circle cx="10" cy="10" r="7" fill="none" stroke="currentColor" stroke-width="2.5" stroke-dasharray="20 24" stroke-linecap="round" class="spin-arc" />
 															</svg>
 														</div>
 													{:else}
-														<div class="worker-dot worker-idle" style="background: {cfg.color}"></div>
+														<div class="worker-dot worker-idle"></div>
 													{/if}
 												{/each}
 											</div>
@@ -390,14 +399,14 @@
 								<div class="worker-dots">
 									{#each Array(MAX_WORKER_SLOTS) as _, w}
 										{#if w < busy}
-											<div class="worker-dot worker-busy" style="--dot-color: {cfg.color}">
+											<div class="worker-dot worker-busy">
 												<svg viewBox="0 0 20 20" class="worker-spinner">
-													<circle cx="10" cy="10" r="7" fill="none" stroke={cfg.color} stroke-width="2.5" opacity="0.2" />
-													<circle cx="10" cy="10" r="7" fill="none" stroke={cfg.color} stroke-width="2.5" stroke-dasharray="20 24" stroke-linecap="round" class="spin-arc" />
+													<circle cx="10" cy="10" r="7" fill="none" stroke="currentColor" stroke-width="2.5" opacity="0.2" />
+													<circle cx="10" cy="10" r="7" fill="none" stroke="currentColor" stroke-width="2.5" stroke-dasharray="20 24" stroke-linecap="round" class="spin-arc" />
 												</svg>
 											</div>
 										{:else if w < busy + idle}
-											<div class="worker-dot worker-idle" style="background: {cfg.color}"></div>
+											<div class="worker-dot worker-idle"></div>
 										{:else}
 											<div class="worker-dot worker-empty"></div>
 										{/if}
@@ -405,7 +414,7 @@
 								</div>
 								<div class="worker-label">
 									{#if workers > 0}
-										<span style="color: {cfg.color}">{busy}/{workers}</span> {$t('pipeline.busy')}
+										<span class="worker-busy-count">{busy}/{workers}</span> {$t('pipeline.busy')}
 									{:else}
 										<span class="text-muted">{$t('pipeline.noWorkers')}</span>
 									{/if}
@@ -431,6 +440,10 @@
 	}
 
 	.stage {
+		/* Overridden per stage; the Sources card below keeps these. */
+		--stage-color: #6ec6f0;
+		--stage-dim: rgba(110, 198, 240, 0.08);
+		--stage-border: rgba(110, 198, 240, 0.35);
 		display: flex;
 		gap: 16px;
 		animation: stage-in 0.4s ease-out both;
@@ -456,7 +469,8 @@
 		width: 32px;
 		height: 32px;
 		border-radius: 50%;
-		border: 2.5px solid;
+		border: 2.5px solid var(--stage-color);
+		box-shadow: 0 0 12px var(--stage-dim);
 		background: var(--vui-surface);
 		display: flex;
 		align-items: center;
@@ -469,13 +483,14 @@
 		width: 10px;
 		height: 10px;
 		border-radius: 50%;
+		background: var(--stage-color);
 	}
 
 	.connector {
 		flex: 1;
 		width: 0;
 		min-height: 16px;
-		border-left: 2px dashed;
+		border-left: 2px dashed var(--stage-color);
 		opacity: 0.4;
 	}
 
@@ -483,7 +498,7 @@
 	.stage-card {
 		flex: 1;
 		min-width: 0;
-		border: 1.5px solid;
+		border: 1.5px solid var(--stage-border);
 		border-radius: 10px;
 		background: var(--vui-surface);
 		overflow: hidden;
@@ -492,6 +507,7 @@
 
 	.accent-bar {
 		height: 4px;
+		background: var(--stage-color);
 	}
 
 	.card-body {
@@ -504,7 +520,18 @@
 		gap: 10px;
 	}
 
+	.card-header-spaced {
+		margin-bottom: 10px;
+	}
+
+	.stage-scrapers {
+		--delay: 0ms;
+	}
+
 	.card-icon {
+		background: var(--stage-dim);
+		/* The lucide icon inside draws with currentColor. */
+		color: var(--stage-color);
 		width: 32px;
 		height: 32px;
 		border-radius: 8px;
@@ -515,6 +542,7 @@
 	}
 
 	.card-title {
+		color: var(--stage-color);
 		font-size: 14px;
 		font-weight: 700;
 		white-space: nowrap;
@@ -534,6 +562,10 @@
 		gap: 4px;
 		font-variant-numeric: tabular-nums;
 		flex-shrink: 0;
+	}
+
+	.count-num-stage {
+		color: var(--stage-color);
 	}
 
 	.count-num {
@@ -572,6 +604,7 @@
 	}
 
 	.progress-fill {
+		background: var(--stage-color);
 		height: 100%;
 		border-radius: 3px;
 		transition: width 0.6s ease;
@@ -587,7 +620,12 @@
 		color: var(--vui-text-muted);
 	}
 
+	.progress-done {
+		color: var(--stage-color);
+	}
+
 	.progress-pct {
+		color: var(--stage-color);
 		margin-left: auto;
 		font-weight: 600;
 	}
@@ -615,6 +653,8 @@
 	/* Busy: animated spinner */
 	.worker-busy {
 		position: relative;
+		/* The spinner's arcs are stroked with currentColor. */
+		color: var(--stage-color);
 	}
 
 	.worker-spinner {
@@ -633,6 +673,7 @@
 
 	/* Idle: solid filled dot */
 	.worker-idle {
+		background: var(--stage-color);
 		opacity: 0.4;
 	}
 
@@ -703,7 +744,12 @@
 	}
 
 	.worker-detail-count {
+		color: var(--stage-color);
 		font-weight: 600;
+	}
+
+	.worker-busy-count {
+		color: var(--stage-color);
 	}
 
 	.worker-detail-status {

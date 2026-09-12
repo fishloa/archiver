@@ -447,7 +447,7 @@
 					<a
 						href="/records/{record.id}/pages/{pg.seq}"
 						class="group vui-card vui-hover-lift overflow-hidden p-0 relative"
-						style="--delay: {Math.min(i * 30, 300)}ms"
+						style:--delay="{Math.min(i * 30, 300)}ms"
 					>
 						{#if isKept(record.id, pg.seq)}
 							<div class="absolute top-1.5 right-1.5 z-10 rounded-full bg-emerald-600 p-0.5 shadow-sm">
@@ -612,7 +612,7 @@
 										<Play size={12} color={stage.color} strokeWidth={2} class="animate-pulse" />
 									{/if}
 								</div>
-								<span class="font-medium" style="color: {stage.color}">{stage.label}</span>
+								<span class="font-medium" style:color={stage.color}>{stage.label}</span>
 								<span class="ml-auto tabular-nums text-text-sub">{stage.duration ?? ''}</span>
 							</div>
 						{/each}

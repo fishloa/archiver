@@ -102,9 +102,9 @@
 				{#if p.events && p.events.length > 0}
 					<div class="timeline">
 						{#each p.events as ev, i}
-							<div class="tl-row">
+							<div class="tl-row" style:--event-color={eventColor[ev.type] ?? 'var(--vui-text-muted)'}>
 								<div class="tl-dot-col">
-									<span class="tl-dot" style="background: {eventColor[ev.type] ?? 'var(--vui-text-muted)'}">
+									<span class="tl-dot">
 										{#if eventIconComponent[ev.type]}
 											{@const EvIcon = eventIconComponent[ev.type]}
 											<EvIcon size={14} strokeWidth={2.5} />
@@ -115,7 +115,7 @@
 									{/if}
 								</div>
 								<div class="tl-content">
-									<span class="tl-type" style="color: {eventColor[ev.type] ?? 'var(--vui-text-muted)'}">
+									<span class="tl-type">
 										{ev.type === 'marriage & divorce' ? 'Marriage (divorced)' : ev.type.charAt(0).toUpperCase() + ev.type.slice(1)}
 									</span>
 									{#if ev.year}
@@ -432,6 +432,7 @@
 	}
 
 	.tl-dot {
+		background: var(--event-color, var(--vui-text-muted));
 		display: flex;
 		align-items: center;
 		justify-content: center;
@@ -458,6 +459,7 @@
 	}
 
 	.tl-type {
+		color: var(--event-color, var(--vui-text-muted));
 		font-size: 11px;
 		font-weight: 700;
 		text-transform: uppercase;

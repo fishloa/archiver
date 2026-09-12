@@ -59,6 +59,9 @@ services:
       EMBED_DIMENSIONS: ${EMBED_DIMENSIONS:-1024}
       AUTH_TRUSTED_CIDRS: ${TEST_AUTH_TRUSTED_CIDRS:-10.0.0.0/8,192.168.0.0/16,172.16.0.0/12}
       ARCHIVER_PUBLIC_URL: ${TEST_PUBLIC_URL:-http://localhost:8090}
+      # The backend refuses to start without one. Test gets its own throwaway key: a token
+      # signed here must never be accepted by production, and vice versa.
+      MCP_OAUTH_SIGNING_KEY_B64: ${TEST_MCP_OAUTH_SIGNING_KEY_B64}
     volumes:
       - archiver_test_store:/data/archiver_store
       - archiver_store:/data/archive_readonly:ro

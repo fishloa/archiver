@@ -99,7 +99,7 @@
 				<div class="flex items-center gap-3 py-2 px-3 rounded bg-bg-deep border border-border">
 					<span class="text-[length:var(--vui-text-sm)] font-medium text-text-sub w-32">{row.status}</span>
 					<div class="flex-1 h-2 rounded-full bg-border overflow-hidden">
-						<div class="h-full rounded-full bg-accent transition-all" style="width: {pct}%"></div>
+						<div class="h-full rounded-full bg-accent transition-all" style:width="{pct}%"></div>
 					</div>
 					<span class="text-[length:var(--vui-text-sm)] font-bold tabular-nums text-accent w-12 text-right">{row.cnt}</span>
 				</div>
