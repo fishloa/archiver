@@ -1,29 +1,23 @@
 package place.icomb.archiver.controller;
 
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import org.springframework.core.io.ByteArrayResource;
 import org.springframework.core.io.Resource;
-import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import place.icomb.archiver.dto.PageResponse;
-import place.icomb.archiver.model.Attachment;
 import place.icomb.archiver.model.PageText;
-import place.icomb.archiver.model.Record;
 import place.icomb.archiver.repository.AttachmentRepository;
 import place.icomb.archiver.repository.PageRepository;
 import place.icomb.archiver.repository.PageTextRepository;
@@ -31,9 +25,7 @@ import place.icomb.archiver.repository.PageTranslationRepository;
 import place.icomb.archiver.repository.RecordRepository;
 import place.icomb.archiver.service.JobService;
 import place.icomb.archiver.service.OcrContentType;
-import place.icomb.archiver.service.PdfExportService;
 import place.icomb.archiver.service.PipelineGateService;
-import place.icomb.archiver.service.PipelineStages;
 import place.icomb.archiver.service.StorageService;
 import place.icomb.archiver.service.TranslationModels;
 
@@ -76,9 +68,7 @@ public class ViewerController {
   private double ocrPricePerPage;
 
   private final JobService jobService;
-  private final PdfExportService pdfExportService;
   private final place.icomb.archiver.service.JobEventService jobEventService;
-  private final place.icomb.archiver.service.ThumbnailService thumbnailService;
 
   public ViewerController(
       PageRepository pageRepository,
@@ -88,13 +78,11 @@ public class ViewerController {
       PageTextRepository pageTextRepository,
       JdbcTemplate jdbcTemplate,
       JobService jobService,
-      PdfExportService pdfExportService,
       place.icomb.archiver.service.JobEventService jobEventService,
       PipelineGateService gateService,
       place.icomb.archiver.service.OcrImageService ocrImageService,
       place.icomb.archiver.service.TranslationService translationService,
-      PageTranslationRepository pageTranslationRepository,
-      place.icomb.archiver.service.ThumbnailService thumbnailService) {
+      PageTranslationRepository pageTranslationRepository) {
     this.pageRepository = pageRepository;
     this.attachmentRepository = attachmentRepository;
     this.recordRepository = recordRepository;
@@ -104,11 +92,9 @@ public class ViewerController {
     this.pageTranslationRepository = pageTranslationRepository;
     this.jdbcTemplate = jdbcTemplate;
     this.jobService = jobService;
-    this.pdfExportService = pdfExportService;
     this.jobEventService = jobEventService;
     this.ocrImageService = ocrImageService;
     this.translationService = translationService;
-    this.thumbnailService = thumbnailService;
   }
 
   /** Known scrapers: id, display name, sourceSystem value they report in heartbeats. */
@@ -741,118 +727,6 @@ public class ViewerController {
     }
   }
 
-  @GetMapping("/files/{attachmentId}")
-  public ResponseEntity<Resource> streamFile(@PathVariable Long attachmentId) {
-    Attachment attachment = attachmentRepository.findById(attachmentId).orElse(null);
-    if (attachment == null) {
-      return ResponseEntity.notFound().build();
-    }
-
-    Resource resource = storageService.streamFile(attachment);
-    MediaType mediaType =
-        attachment.getMime() != null
-            ? MediaType.parseMediaType(attachment.getMime())
-            : MediaType.APPLICATION_OCTET_STREAM;
-
-    return ResponseEntity.ok()
-        .contentType(mediaType)
-        .header(HttpHeaders.CONTENT_DISPOSITION, "inline")
-        .body(resource);
-  }
-
-  @GetMapping("/files/{attachmentId}/thumbnail")
-  public ResponseEntity<Resource> streamThumbnail(@PathVariable Long attachmentId) {
-    Attachment attachment = attachmentRepository.findById(attachmentId).orElse(null);
-    if (attachment == null) {
-      return ResponseEntity.notFound().build();
-    }
-
-    java.nio.file.Path thumb = thumbnailService.thumbnailFor(attachment);
-    if (thumb == null) {
-      // Not an image, or one ImageIO cannot decode. Serving the original is what every
-      // request got before thumbnails existed, so the page still draws.
-      return streamFile(attachmentId);
-    }
-
-    return ResponseEntity.ok()
-        .contentType(MediaType.IMAGE_JPEG)
-        .header(HttpHeaders.CONTENT_DISPOSITION, "inline")
-        // Immutable: the cache is keyed by attachment id, and a replaced scan gets a new one.
-        .header(HttpHeaders.CACHE_CONTROL, "public, max-age=31536000, immutable")
-        .body(new org.springframework.core.io.FileSystemResource(thumb));
-  }
-
-  @GetMapping("/records/{recordId}/pdf")
-  public ResponseEntity<Resource> streamRecordPdf(@PathVariable Long recordId) {
-    Record record = recordRepository.findById(recordId).orElse(null);
-    if (record == null || record.getPdfAttachmentId() == null) {
-      return ResponseEntity.notFound().build();
-    }
-
-    Attachment attachment = attachmentRepository.findById(record.getPdfAttachmentId()).orElse(null);
-    if (attachment == null) {
-      return ResponseEntity.notFound().build();
-    }
-
-    Resource resource = storageService.streamFile(attachment);
-    return ResponseEntity.ok()
-        .contentType(MediaType.APPLICATION_PDF)
-        .header(
-            HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"record-" + recordId + ".pdf\"")
-        .body(resource);
-  }
-
-  @GetMapping("/records/{recordId}/export-pdf")
-  public ResponseEntity<Resource> exportPdf(
-      @PathVariable Long recordId,
-      @RequestParam String pages,
-      @RequestParam(defaultValue = "original") String variant) {
-    Record record = recordRepository.findById(recordId).orElse(null);
-    if (record == null) {
-      return ResponseEntity.notFound().build();
-    }
-
-    List<Integer> seqNumbers;
-    try {
-      seqNumbers = pdfExportService.parsePageRange(pages);
-    } catch (IllegalArgumentException e) {
-      return ResponseEntity.badRequest().build();
-    }
-
-    if (seqNumbers.isEmpty()) {
-      return ResponseEntity.badRequest().build();
-    }
-
-    try {
-      PdfExportService.Variant v =
-          switch (variant == null ? "original" : variant.toLowerCase()) {
-            case "english" -> PdfExportService.Variant.ENGLISH;
-            case "side-by-side", "sidebyside" -> PdfExportService.Variant.SIDE_BY_SIDE;
-            default -> PdfExportService.Variant.ORIGINAL;
-          };
-      byte[] pdfBytes = pdfExportService.buildPdf(recordId, seqNumbers, v);
-      ByteArrayResource resource = new ByteArrayResource(pdfBytes);
-      // Named for what the file contains, so a folder of exports is readable without opening them.
-      String suffix =
-          switch (v) {
-            case ENGLISH -> "-english";
-            case SIDE_BY_SIDE -> "-original-and-english";
-            case ORIGINAL -> "-original";
-          };
-      String filename = "record-" + recordId + suffix + ".pdf";
-      return ResponseEntity.ok()
-          .contentType(MediaType.APPLICATION_PDF)
-          .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + filename + "\"")
-          .contentLength(pdfBytes.length)
-          .body(resource);
-    } catch (IOException e) {
-      if (e.getMessage() != null && e.getMessage().contains("No valid pages")) {
-        return ResponseEntity.notFound().build();
-      }
-      return ResponseEntity.internalServerError().build();
-    }
-  }
-
   @GetMapping("/records/{recordId}/timeline")
   public ResponseEntity<List<Map<String, Object>>> getRecordTimeline(@PathVariable Long recordId) {
     // Pipeline events
@@ -883,12 +757,6 @@ public class ViewerController {
   // -------------------------------------------------------------------------
   // Admin endpoints
   // -------------------------------------------------------------------------
-
-  @PostMapping("/admin/audit")
-  public ResponseEntity<Map<String, Object>> runAudit() {
-    int fixed = jobService.recoverStaleClaims() + jobService.auditPipeline();
-    return ResponseEntity.ok(Map.of("fixed", fixed));
-  }
 
   /**
    * Requests a better translation for a record, using a stronger model.
@@ -970,181 +838,6 @@ public class ViewerController {
             "pagesUpgradable", missing,
             "inFlight", inFlight == null ? 0 : inFlight,
             "canUpgrade", missing > 0 && (inFlight == null || inFlight == 0)));
-  }
-
-  /**
-   * Pipeline gates: pause a stage without losing its queue.
-   *
-   * <p>A paused kind is not claimed by any worker, so its jobs accumulate as {@code pending} and
-   * are released untouched when the gate reopens. Scaling workers to zero would strand in-flight
-   * claims and cancelling jobs would lose the queue; this does neither.
-   */
-  @GetMapping("/admin/gates")
-  public ResponseEntity<Map<String, Object>> listGates() {
-    return ResponseEntity.ok(
-        Map.of(
-            "gates", gateService.list(),
-            "pausedKinds", gateService.pausedKinds(),
-            "stages", PipelineStages.all()));
-  }
-
-  /**
-   * Holds or releases an entire pipeline stage.
-   *
-   * <p>The unit an operator thinks in. Gating single job kinds is the mechanism, but on its own it
-   * misleads: holding translate_record left page translation running, so the stage looked stopped
-   * while it was busy and the control looked ignored.
-   */
-  @PostMapping("/admin/gates/stage/{stage}")
-  public ResponseEntity<Map<String, Object>> setStageGate(
-      @PathVariable String stage, @RequestBody Map<String, Object> body) {
-    Object paused = body.get("paused");
-    if (!(paused instanceof Boolean)) {
-      return ResponseEntity.badRequest().body(Map.of("error", "paused must be true or false"));
-    }
-    List<String> kinds = PipelineStages.kindsOf(stage);
-    if (kinds.isEmpty()) {
-      return ResponseEntity.badRequest()
-          .body(Map.of("error", "Unknown stage: " + stage, "known", PipelineStages.names()));
-    }
-    String reason = body.get("reason") instanceof String r ? r : null;
-    var auth =
-        org.springframework.security.core.context.SecurityContextHolder.getContext()
-            .getAuthentication();
-    String who = auth != null ? auth.getName() : "unknown";
-
-    for (String kind : kinds) {
-      gateService.set(kind, (Boolean) paused, reason, who);
-    }
-    return ResponseEntity.ok(
-        Map.of(
-            "stage",
-            stage,
-            "kinds",
-            kinds,
-            "paused",
-            paused,
-            "reason",
-            reason == null ? "" : reason));
-  }
-
-  @PostMapping("/admin/gates/{kind}")
-  public ResponseEntity<Map<String, Object>> setGate(
-      @PathVariable String kind, @RequestBody Map<String, Object> body) {
-    Object paused = body.get("paused");
-    if (!(paused instanceof Boolean)) {
-      return ResponseEntity.badRequest().body(Map.of("error", "paused must be true or false"));
-    }
-    String reason = body.get("reason") instanceof String r ? r : null;
-    var auth =
-        org.springframework.security.core.context.SecurityContextHolder.getContext()
-            .getAuthentication();
-    String who = auth != null ? auth.getName() : "unknown";
-    return ResponseEntity.ok(gateService.set(kind, (Boolean) paused, reason, who));
-  }
-
-  @SuppressWarnings("unchecked")
-  @PostMapping("/admin/records/reset-pipeline")
-  public ResponseEntity<Map<String, Object>> resetPipeline(@RequestBody Map<String, Object> body) {
-    // Validate targetStage
-    String targetStage = (String) body.get("targetStage");
-    if (targetStage == null
-        || !Set.of("ocr_pending", "translating", "embedding").contains(targetStage)) {
-      return ResponseEntity.badRequest()
-          .body(
-              Map.of("error", "Invalid targetStage. Must be: ocr_pending, translating, embedding"));
-    }
-
-    // Validate recordIds
-    List<Number> rawIds = (List<Number>) body.get("recordIds");
-    if (rawIds == null || rawIds.isEmpty()) {
-      return ResponseEntity.badRequest().body(Map.of("error", "recordIds must be non-empty"));
-    }
-    if (rawIds.size() > 100) {
-      return ResponseEntity.badRequest().body(Map.of("error", "Maximum 100 records per request"));
-    }
-
-    List<Map<String, Object>> results = new ArrayList<>();
-    for (Number rawId : rawIds) {
-      long recordId = rawId.longValue();
-      try {
-        results.add(jobService.resetRecordToStage(recordId, targetStage));
-      } catch (IllegalArgumentException e) {
-        Map<String, Object> err = new LinkedHashMap<>();
-        err.put("recordId", recordId);
-        err.put("error", e.getMessage());
-        results.add(err);
-      }
-    }
-
-    return ResponseEntity.ok(Map.of("results", results));
-  }
-
-  @GetMapping("/admin/stats")
-  public ResponseEntity<Map<String, Object>> adminStats() {
-    Map<String, Object> stats = new LinkedHashMap<>();
-
-    // Record status counts
-    stats.put(
-        "recordsByStatus",
-        jdbcTemplate.queryForList(
-            "SELECT status, count(*) AS cnt FROM record GROUP BY status ORDER BY status"));
-
-    // Job status counts
-    stats.put(
-        "jobsByKindAndStatus",
-        jdbcTemplate.queryForList(
-            "SELECT kind, status, count(*) AS cnt FROM job GROUP BY kind, status ORDER BY kind, status"));
-
-    // Stale claimed jobs (> 1 hour)
-    stats.put(
-        "staleClaimedJobs",
-        jdbcTemplate.queryForObject(
-            "SELECT count(*) FROM job WHERE status = 'claimed' AND started_at < now() - interval '1 hour'",
-            Long.class));
-
-    // Failed jobs eligible for retry
-    stats.put(
-        "failedRetriableJobs",
-        jdbcTemplate.queryForObject(
-            "SELECT count(*) FROM job WHERE status = 'failed' AND attempts < 3", Long.class));
-
-    // Stuck ingesting records
-    stats.put(
-        "stuckIngestingRecords",
-        jdbcTemplate.queryForObject(
-            """
-        SELECT count(*) FROM record r
-        WHERE r.status = 'ingesting' AND r.page_count > 0
-          AND r.page_count = (SELECT count(*) FROM page p WHERE p.record_id = r.id)
-          AND r.updated_at < now() - interval '10 minutes'
-        """,
-            Long.class));
-
-    // ocr_done without post-OCR jobs
-    stats.put(
-        "ocrDoneNoPostOcrJobs",
-        jdbcTemplate.queryForObject(
-            """
-        SELECT count(*) FROM record r
-        WHERE r.status = 'ocr_done'
-          AND NOT EXISTS (SELECT 1 FROM job j WHERE j.record_id = r.id AND j.kind = 'build_searchable_pdf')
-        """,
-            Long.class));
-
-    // Recent pipeline events
-    stats.put(
-        "recentEvents",
-        jdbcTemplate.queryForList(
-            """
-        SELECT pe.record_id, pe.stage, pe.event, pe.detail, pe.created_at,
-               r.title AS record_title
-        FROM pipeline_event pe
-        LEFT JOIN record r ON r.id = pe.record_id
-        ORDER BY pe.created_at DESC LIMIT 20
-        """));
-
-    return ResponseEntity.ok(stats);
   }
 
   private String extractSnippet(String text, String query, int maxLen) {
