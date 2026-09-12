@@ -1,8 +1,31 @@
 def registry = 'dockerregistry.icomb.place'
 def prefix = "${registry}/archiver"
 
+/**
+ * The commit to diff against when deciding what to rebuild.
+ *
+ * This used to be a hardcoded HEAD~1, which is wrong whenever a build does not correspond to
+ * exactly one commit. Push three commits at once and only the last one's files were considered;
+ * fix a failed build with a commit touching different files and the service that actually broke
+ * was never rebuilt. Jenkins knows the last commit it built green — use that, and fall back to
+ * HEAD~1 only when it does not exist (first build, or a force push that orphaned it).
+ */
+def diffBase() {
+    def prev = env.GIT_PREVIOUS_SUCCESSFUL_COMMIT
+    if (prev) {
+        def present = sh(script: "git cat-file -e ${prev}^{commit} 2>/dev/null && echo yes || echo no",
+                         returnStdout: true).trim()
+        if (present == 'yes') {
+            return prev
+        }
+        echo "Last successful commit ${prev} is not in this clone; falling back to HEAD~1"
+    }
+    return 'HEAD~1'
+}
+
 def changed(module) {
-    def changes = sh(script: "git diff --name-only HEAD~1 HEAD -- ${module}/", returnStdout: true).trim()
+    def changes = sh(script: "git diff --name-only ${env.DIFF_BASE} HEAD -- ${module}/",
+                     returnStdout: true).trim()
     return changes.length() > 0
 }
 
@@ -62,6 +85,8 @@ pipeline {
         stage('Detect Changes') {
             steps {
                 script {
+                    env.DIFF_BASE = diffBase()
+                    echo "Comparing against ${env.DIFF_BASE}"
                     env.RELEASE_VERSION = releaseVersion()
                     env.IS_RELEASE = (env.RELEASE_VERSION ? 'true' : 'false')
 
@@ -78,6 +103,10 @@ pipeline {
                     env.BUILD_WEB = buildAll || changed('web')
                     env.BUILD_OAUTH2_PROXY_APPLE = buildAll || changed('oauth2-proxy-apple')
                     def workerCommonChanged = changed('worker-common')
+                    // worker-common ships inside every scraper image but had no test stage of
+                    // its own, so a break in the shared client or loop was only ever caught by
+                    // whichever scraper happened to be rebuilt.
+                    env.BUILD_WORKER_COMMON = buildAll || workerCommonChanged
                     env.BUILD_SCRAPER = buildAll || changed('scraper-cz') || workerCommonChanged
                     env.BUILD_SCRAPER_EBADATELNA = buildAll || changed('scraper-ebadatelna') || workerCommonChanged
                     env.BUILD_SCRAPER_FINDBUCH = buildAll || changed('scraper-findbuch') || workerCommonChanged
@@ -120,6 +149,17 @@ pipeline {
                         }
                     }
                 }
+                stage('test-worker-common') {
+                    when { expression { env.BUILD_WORKER_COMMON == 'true' } }
+                    steps {
+                        sh '''
+                            tar cf - worker-common | docker run --rm -i \
+                                python:3.14-slim \
+                                sh -c "mkdir -p /repo && cd /repo && tar xf - && pip install -e 'worker-common[dev,pdf]' && pytest worker-common/tests -v"
+                        '''
+                    }
+                }
+
                 stage('test-scraper-cz') {
                     when { expression { env.BUILD_SCRAPER == 'true' } }
                     steps {

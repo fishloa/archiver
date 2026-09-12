@@ -19,7 +19,7 @@ from worker_common.http import wait_for_backend
 from .config import Config, set_config, get_config
 from .client import BackendClient, SOURCE_SYSTEM
 from .session import DDBSession
-from .pdf import build_pdf
+from worker_common.pdf import build_pdf
 
 log = logging.getLogger(__name__)
 

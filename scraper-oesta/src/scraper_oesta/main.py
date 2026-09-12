@@ -18,7 +18,7 @@ from .client import BackendClient, SOURCE_SYSTEM
 from worker_common.http import wait_for_backend
 from .session import OeStASession
 from .parser import parse_detail_page
-from .pdf import build_pdf
+from worker_common.pdf import build_pdf
 
 log = logging.getLogger(__name__)
 

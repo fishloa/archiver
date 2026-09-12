@@ -23,7 +23,7 @@ from .record import (
     collect_all_scan_uuids,
 )
 from .zoomify import download_and_stitch, image_to_jpeg_bytes
-from .pdf import build_pdf
+from worker_common.pdf import build_pdf
 
 log = logging.getLogger(__name__)
 

@@ -9,6 +9,12 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+# worker_common.pdf only. Kept out of the base dependencies so a scraper that never assembles
+# a PDF (findbuch, barch) does not pull reportlab; the six that do already declare both.
+pdf = [
+    "Pillow>=10.0",
+    "reportlab>=4.0",
+]
 dev = [
     "pytest>=8.0",
     "ruff>=0.7",
