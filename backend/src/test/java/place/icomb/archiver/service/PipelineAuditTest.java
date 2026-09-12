@@ -888,6 +888,93 @@ class PipelineAuditTest {
   }
 
   // ---------------------------------------------------------------------------
+  // Audit passes delegate to the state machine rather than re-implementing transitions
+  // ---------------------------------------------------------------------------
+
+  @Test
+  void pass7_translatingDone_enqueuesExactlyOneEmbedJob() {
+    Long archiveId = createArchive();
+    Long recordId = createRecord(archiveId, "translating", 1);
+    Long pageId = createPage(recordId, 1);
+
+    // Entry to TRANSLATING already enqueued the embed job — that is where embedding starts.
+    createJob(recordId, null, "embed_record", "pending", 0);
+
+    Long translateJob = createJob(recordId, pageId, "translate_page", "completed", 1);
+    jdbc.sql("UPDATE job SET finished_at = now() WHERE id = :id")
+        .param("id", translateJob)
+        .update();
+
+    jobService.auditPipeline();
+
+    assertThat(getRecordStatus(recordId)).isEqualTo("embedding");
+    // The audit used to enqueue a second embed job here, embedding every audited record twice.
+    assertThat(countJobs(recordId, "embed_record", "pending")).isEqualTo(1);
+  }
+
+  @Test
+  void pass4b_pdfPendingNoPages_skipsPdfAndCancelsTheJob() {
+    Long archiveId = createArchive();
+    Long recordId = createRecord(archiveId, "pdf_pending", 0);
+    // No pages: a searchable_pdf can never be built, so the job can never be satisfied.
+    createJob(recordId, null, "build_searchable_pdf", "pending", 0);
+
+    jobService.auditPipeline();
+
+    assertThat(getRecordStatus(recordId)).isNotEqualTo("pdf_pending");
+    assertThat(countJobs(recordId, "build_searchable_pdf", "pending")).isEqualTo(0);
+    assertThat(countPipelineEvents(recordId, "pdf_build", "completed")).isEqualTo(1);
+  }
+
+  @Test
+  void pass9c_embeddingWithNoEmbedJob_getsOne() {
+    Long archiveId = createArchive();
+    Long recordId = createRecord(archiveId, "embedding", 1);
+    createPage(recordId, 1);
+
+    // Nothing to wait for: the record would sit in embedding forever.
+    jobService.auditPipeline();
+
+    assertThat(countJobs(recordId, "embed_record", "pending")).isEqualTo(1);
+  }
+
+  // ---------------------------------------------------------------------------
+  // Admin reset honours the record's translation quality
+  // ---------------------------------------------------------------------------
+
+  @Test
+  void resetToTranslating_bestQualityRecord_requeuesTheUpgradeKind() {
+    Long archiveId = createArchive();
+    Long recordId = createRecord(archiveId, "complete", 1);
+    Long pageId = createPage(recordId, 1);
+    jdbc.sql("UPDATE record SET lang = 'de', translation_quality = 'best' WHERE id = :id")
+        .param("id", recordId)
+        .update();
+
+    jobService.resetRecordToStage(recordId, "translating");
+
+    // Enqueuing plain translate_page here silently downgraded the record to the cheap model.
+    assertThat(countJobs(recordId, "translate_page_upgrade", "pending")).isEqualTo(1);
+    assertThat(countJobs(recordId, "translate_page", "pending")).isEqualTo(0);
+    assertThat(pageId).isNotNull();
+  }
+
+  @Test
+  void resetToTranslating_bulkQualityRecord_requeuesThePlainKind() {
+    Long archiveId = createArchive();
+    Long recordId = createRecord(archiveId, "complete", 1);
+    createPage(recordId, 1);
+    jdbc.sql("UPDATE record SET lang = 'de', translation_quality = 'bulk' WHERE id = :id")
+        .param("id", recordId)
+        .update();
+
+    jobService.resetRecordToStage(recordId, "translating");
+
+    assertThat(countJobs(recordId, "translate_page", "pending")).isEqualTo(1);
+    assertThat(countJobs(recordId, "translate_page_upgrade", "pending")).isEqualTo(0);
+  }
+
+  // ---------------------------------------------------------------------------
   // Multi-pass — all passes run in a single audit call
   // ---------------------------------------------------------------------------
 

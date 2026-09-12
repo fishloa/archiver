@@ -291,6 +291,26 @@ public class PipelineStateMachine {
     addTransition(
         PDF_PENDING, PDF_DONE, RecordContext::pdfJobComplete, ctx -> setPdfAttachmentId(ctx));
 
+    // PDF_PENDING → PDF_DONE: nothing to build. A record with no pages can never gain a
+    // searchable_pdf attachment, so pdfJobComplete() is false forever and the record sits in
+    // pdf_pending until something outside the state machine shoves it. Model the skip here
+    // instead, so every pdf_pending exit lives in one place.
+    addTransition(
+        PDF_PENDING,
+        PDF_DONE,
+        ctx -> !ctx.hasPages(),
+        ctx -> {
+          jdbcTemplate.update(
+              """
+              UPDATE job SET status = 'completed', error = 'skipped (no pages)',
+                finished_at = now()
+              WHERE record_id = ? AND kind = 'build_searchable_pdf'
+                AND status IN ('pending', 'claimed', 'failed')
+              """,
+              ctx.recordId);
+          logPipelineEvent(ctx.recordId, "pdf_build", "completed", "skipped (no pages)");
+        });
+
     // PDF_DONE → TRANSLATING: still has pending translation jobs
     // Embedding starts here, not after translation. Chunks are built from the ORIGINAL text,
     // so embedding never needed the translation — yet it used to wait for it, which left
@@ -574,9 +594,24 @@ public class PipelineStateMachine {
             "SELECT count(*) FROM job WHERE record_id = ? AND kind IN ('translate_page', 'translate_page_upgrade', 'translate_record')",
             Long.class,
             ctx.recordId);
-    if (totalTranslation != null && totalTranslation > 0) {
-      logPipelineEvent(ctx.recordId, "translation", "completed", "finished before pdf");
+    if (totalTranslation == null || totalTranslation == 0) {
+      return;
     }
+    // A record can reach PDF_DONE more than once (a reset, or an audit nudge). Logging
+    // unconditionally gave those records two "translation completed" events, which the
+    // pipeline stats then counted twice.
+    Long existing =
+        jdbcTemplate.queryForObject(
+            """
+            SELECT count(*) FROM pipeline_event
+            WHERE record_id = ? AND stage = 'translation' AND event = 'completed'
+            """,
+            Long.class,
+            ctx.recordId);
+    if (existing != null && existing > 0) {
+      return;
+    }
+    logPipelineEvent(ctx.recordId, "translation", "completed", "finished before pdf");
   }
 
   void logPipelineEvent(Long recordId, String stage, String event, String detail) {

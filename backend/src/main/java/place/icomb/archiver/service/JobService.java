@@ -463,34 +463,10 @@ public class JobService {
             Long.class);
 
     for (Long recordId : noPageRecords) {
-      // Cancel any pending/claimed build_searchable_pdf jobs
-      jdbcTemplate.update(
-          "UPDATE job SET status = 'completed', error = 'skipped (no pages)', finished_at = now() WHERE record_id = ? AND kind = 'build_searchable_pdf' AND status IN ('pending', 'claimed', 'failed')",
-          recordId);
-      // Check if translation is still pending
-      Long pendingTranslation =
-          jdbcTemplate.queryForObject(
-              """
-              SELECT count(*) FROM job WHERE record_id = ?
-                AND kind IN ('translate_page', 'translate_page_upgrade', 'translate_record')
-                AND status != 'completed'
-              """,
-              Long.class,
-              recordId);
-      if (pendingTranslation != null && pendingTranslation > 0) {
-        jdbcTemplate.update(
-            "UPDATE record SET status = 'translating', updated_at = now() WHERE id = ?", recordId);
-        log.info("Audit: record {} pdf_pending → translating (0 pages, skip PDF)", recordId);
-      } else {
-        jdbcTemplate.update(
-            "UPDATE record SET status = 'embedding', updated_at = now() WHERE id = ?", recordId);
-        enqueueJob("embed_record", recordId, null, null);
-        logPipelineEvent(recordId, "embedding", "started", "from audit (0 pages)");
-        log.info(
-            "Audit: record {} pdf_pending → embedding (0 pages, no translation pending)", recordId);
-      }
-      logPipelineEvent(recordId, "pdf_build", "completed", "skipped (no pages)");
-      recordEventService.recordChanged(recordId, "status");
+      // The state machine owns the skip (PDF_PENDING → PDF_DONE when a record has no pages),
+      // including cancelling the build_searchable_pdf job that can never be satisfied.
+      log.info("Audit: record {} pdf_pending with 0 pages, skipping PDF", recordId);
+      stateMachine.autoAdvance(recordId);
     }
     total += noPageRecords.size();
 
@@ -533,55 +509,9 @@ public class JobService {
         """,
             Long.class);
 
-    int pdfDoneToTranslating = 0;
-    int pdfDoneToComplete = 0;
     for (Long recordId : pdfDoneStuck) {
-      Long pendingTranslation =
-          jdbcTemplate.queryForObject(
-              """
-              SELECT count(*) FROM job WHERE record_id = ?
-                AND kind IN ('translate_page', 'translate_page_upgrade', 'translate_record')
-                AND status != 'completed'
-              """,
-              Long.class,
-              recordId);
-      if (pendingTranslation != null && pendingTranslation > 0) {
-        jdbcTemplate.update(
-            "UPDATE record SET status = 'translating', updated_at = now() WHERE id = ?", recordId);
-        log.info(
-            "Audit: record {} pdf_done → translating ({} jobs remaining)",
-            recordId,
-            pendingTranslation);
-        pdfDoneToTranslating++;
-      } else {
-        jdbcTemplate.update(
-            "UPDATE record SET status = 'embedding', updated_at = now() WHERE id = ?", recordId);
-        // Log translation completed if there were translation jobs
-        Long completedTranslation =
-            jdbcTemplate.queryForObject(
-                """
-                SELECT count(*) FROM job WHERE record_id = ?
-                  AND kind IN ('translate_page', 'translate_page_upgrade', 'translate_record')
-                  AND status = 'completed'
-                """,
-                Long.class,
-                recordId);
-        if (completedTranslation != null && completedTranslation > 0) {
-          Long existingEvent =
-              jdbcTemplate.queryForObject(
-                  "SELECT count(*) FROM pipeline_event WHERE record_id = ? AND stage = 'translation' AND event = 'completed'",
-                  Long.class,
-                  recordId);
-          if (existingEvent == null || existingEvent == 0) {
-            logPipelineEvent(recordId, "translation", "completed", "from audit");
-          }
-        }
-        enqueueJob("embed_record", recordId, null, null);
-        logPipelineEvent(recordId, "embedding", "started", "from audit");
-        log.info("Audit: record {} pdf_done → embedding (translation done)", recordId);
-        pdfDoneToComplete++;
-      }
-      recordEventService.recordChanged(recordId, "status");
+      log.info("Audit: advancing stuck pdf_done record {}", recordId);
+      stateMachine.autoAdvance(recordId);
     }
     total += pdfDoneStuck.size();
 
@@ -602,13 +532,11 @@ public class JobService {
             Long.class);
 
     for (Long recordId : translatingDone) {
-      jdbcTemplate.update(
-          "UPDATE record SET status = 'embedding', updated_at = now() WHERE id = ?", recordId);
+      // autoAdvance deliberately does NOT enqueue embed_record here: the embed job was already
+      // enqueued on entry to TRANSLATING. This pass used to enqueue a second one, embedding
+      // every audited record twice.
       log.info("Audit: record {} translating → embedding (all translation done)", recordId);
-      logPipelineEvent(recordId, "translation", "completed", "from audit");
-      enqueueJob("embed_record", recordId, null, null);
-      logPipelineEvent(recordId, "embedding", "started", "from audit");
-      recordEventService.recordChanged(recordId, "status");
+      stateMachine.autoAdvance(recordId);
     }
     total += translatingDone.size();
 
@@ -682,6 +610,30 @@ public class JobService {
     }
     total += matchingDone.size();
 
+    // --- Pass 9c: embedding records with no embed_record job at all ---
+    //     Pass 9 only advances records whose embed job finished. A record that reached
+    //     'embedding' without one (legacy rows, or a transition that predates the state
+    //     machine) has nothing to wait for and would sit there forever.
+    List<Long> embeddingNoJob =
+        jdbcTemplate.queryForList(
+            """
+        SELECT r.id FROM record r
+        WHERE r.status = 'embedding'
+          AND NOT EXISTS (
+            SELECT 1 FROM job j
+            WHERE j.record_id = r.id AND j.kind = 'embed_record'
+          )
+        ORDER BY r.id
+        """,
+            Long.class);
+
+    for (Long recordId : embeddingNoJob) {
+      log.info("Audit: record {} embedding with no embed job, enqueuing", recordId);
+      enqueueJob("embed_record", recordId, null, null);
+      logPipelineEvent(recordId, "embedding", "started", "backfill from audit");
+    }
+    total += embeddingNoJob.size();
+
     // --- Pass 10: Backfill embedding for complete records that were never embedded ---
     List<Long> completeUnembedded =
         jdbcTemplate.queryForList(
@@ -710,9 +662,9 @@ public class JobService {
     log.info(
         "Pipeline audit complete: {} stale jobs reset, {} failed retried, {} ingesting fixed, "
             + "{} ocr_pending text-done, {} ocr_done re-queued, {} pdf_pending nudged, "
-            + "{} pdf_done→translating, {} pdf_done→embedding, "
-            + "{} translating→embedding, {} translation events backfilled, "
-            + "{} embedding advanced, {} matching advanced, "
+            + "{} pdf_done advanced, {} translating→embedding, "
+            + "{} translation events backfilled, "
+            + "{} embedding advanced, {} embedding re-queued, {} matching advanced, "
             + "{} complete→embedding backfill ({} total)",
         staleClaimed,
         failedRetried,
@@ -720,11 +672,11 @@ public class JobService {
         ocrPendingAllDone.size(),
         ocrDoneStuck.size(),
         pdfPendingStuck.size(),
-        pdfDoneToTranslating,
-        pdfDoneToComplete,
+        pdfDoneStuck.size(),
         translatingDone.size(),
         translationEventsMissing.size(),
         embeddingDone.size(),
+        embeddingNoJob.size(),
         matchingDone.size(),
         completeUnembedded.size(),
         total);
@@ -827,9 +779,14 @@ public class JobService {
         // Enqueue translate jobs
         var langRow =
             jdbcTemplate.queryForMap(
-                "SELECT lang, metadata_lang FROM record WHERE id = ?", recordId);
+                "SELECT lang, metadata_lang, translation_quality FROM record WHERE id = ?",
+                recordId);
         String contentLang = (String) langRow.get("lang");
         String metadataLang = (String) langRow.get("metadata_lang");
+        // A record marked for the better translation must be re-queued at that quality. Enqueuing
+        // plain translate_page here silently downgraded every upgraded record an admin reset.
+        String translateKind =
+            TranslationModels.jobKindFor((String) langRow.get("translation_quality"));
 
         // Metadata translation
         if (metadataLang == null || !"en".equals(metadataLang)) {
@@ -846,7 +803,7 @@ public class JobService {
                   Long.class,
                   recordId);
           for (Long pageId : pageIds) {
-            enqueueJob("translate_page", recordId, pageId, null);
+            enqueueJob(translateKind, recordId, pageId, null);
             jobsEnqueued++;
           }
         }
