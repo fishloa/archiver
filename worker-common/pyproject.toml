@@ -17,6 +17,7 @@ pdf = [
 ]
 dev = [
     "pytest>=8.0",
+    "pytest-httpx>=0.30",
     "ruff>=0.7",
 ]
 
