@@ -48,6 +48,7 @@ public class WorkerSchedulingConfig implements SchedulingConfigurer {
   private final PersonMatchService personMatchService;
   private final place.icomb.archiver.ai.AiRegistry aiRegistry;
   private final place.icomb.archiver.ai.RegistryEmbedder embedder;
+  private final place.icomb.archiver.ai.RegistryOcr registryOcr;
   private final place.icomb.archiver.service.TranslationService translationService;
   private final place.icomb.archiver.service.PdfExportService pdfExportService;
   private final org.springframework.jdbc.core.JdbcTemplate jdbcTemplate;
@@ -59,14 +60,10 @@ public class WorkerSchedulingConfig implements SchedulingConfigurer {
   private final int qwenConcurrency;
   private final long qwenPollInterval;
 
-  private final boolean mistralOcrEnabled;
   private final String mistralApiKey;
-  private final String mistralModel;
   private final String mistralBaseUrl;
   private final long mistralTickInterval;
-  private final int mistralMaxBatchPages;
   private final long mistralMaxBatchBytes;
-  private final int mistralPagesPerMinute;
   private final boolean translateBatchEnabled;
   private final boolean translateRecordEnabled;
   private final String translateBatchModel;
@@ -94,6 +91,7 @@ public class WorkerSchedulingConfig implements SchedulingConfigurer {
       PersonMatchService personMatchService,
       place.icomb.archiver.ai.AiRegistry aiRegistry,
       place.icomb.archiver.ai.RegistryEmbedder embedder,
+      place.icomb.archiver.ai.RegistryOcr registryOcr,
       place.icomb.archiver.service.TranslationService translationService,
       place.icomb.archiver.service.PdfExportService pdfExportService,
       org.springframework.jdbc.core.JdbcTemplate jdbcTemplate,
@@ -103,14 +101,10 @@ public class WorkerSchedulingConfig implements SchedulingConfigurer {
       @Value("${archiver.ocr.qwen.model:}") String qwenModel,
       @Value("${archiver.ocr.qwen.concurrency:1}") int qwenConcurrency,
       @Value("${archiver.ocr.qwen.poll-interval:5000}") long qwenPollInterval,
-      @Value("${archiver.ocr.mistral.enabled:false}") boolean mistralOcrEnabled,
       @Value("${archiver.ocr.mistral.api-key:}") String mistralApiKey,
-      @Value("${archiver.ocr.mistral.model:mistral-ocr-latest}") String mistralModel,
       @Value("${archiver.ocr.mistral.base-url:https://api.mistral.ai}") String mistralBaseUrl,
       @Value("${archiver.ocr.mistral.tick-interval:15000}") long mistralTickInterval,
-      @Value("${archiver.ocr.mistral.max-batch-pages:1000}") int mistralMaxBatchPages,
       @Value("${archiver.ocr.mistral.max-batch-bytes:209715200}") long mistralMaxBatchBytes,
-      @Value("${archiver.ocr.mistral.pages-per-minute:1250}") int mistralPagesPerMinute,
       @Value("${archiver.translate.batch.enabled:false}") boolean translateBatchEnabled,
       @Value("${archiver.translate.record.enabled:false}") boolean translateRecordEnabled,
       @Value("${archiver.translate.batch.model:mistral-small-latest}") String translateBatchModel,
@@ -139,14 +133,10 @@ public class WorkerSchedulingConfig implements SchedulingConfigurer {
     this.qwenModel = qwenModel;
     this.qwenConcurrency = qwenConcurrency;
     this.qwenPollInterval = qwenPollInterval;
-    this.mistralOcrEnabled = mistralOcrEnabled;
     this.mistralApiKey = mistralApiKey;
-    this.mistralModel = mistralModel;
     this.mistralBaseUrl = mistralBaseUrl;
     this.mistralTickInterval = mistralTickInterval;
-    this.mistralMaxBatchPages = mistralMaxBatchPages;
     this.mistralMaxBatchBytes = mistralMaxBatchBytes;
-    this.mistralPagesPerMinute = mistralPagesPerMinute;
     this.translateBatchEnabled = translateBatchEnabled;
     this.translateRecordEnabled = translateRecordEnabled;
     this.translateBatchModel = translateBatchModel;
@@ -156,6 +146,7 @@ public class WorkerSchedulingConfig implements SchedulingConfigurer {
     this.personMatchPollInterval = personMatchPollInterval;
     this.aiRegistry = aiRegistry;
     this.embedder = embedder;
+    this.registryOcr = registryOcr;
     this.translationService = translationService;
     this.pdfExportService = pdfExportService;
     this.embedConcurrency = embedConcurrency;
@@ -196,7 +187,7 @@ public class WorkerSchedulingConfig implements SchedulingConfigurer {
   public void configureTasks(ScheduledTaskRegistrar registrar) {
     int totalWorkers =
         (qwenEnabled ? qwenConcurrency : 0)
-            + (mistralOcrEnabled ? 1 : 0)
+            + (registryOcr.isConfigured() ? 1 : 0)
             + (translateBatchEnabled ? 2 : 0)
             + (translateRecordEnabled ? 1 : 0)
             + (personMatchEnabled ? 1 : 0)
@@ -237,14 +228,14 @@ public class WorkerSchedulingConfig implements SchedulingConfigurer {
           qwenPollInterval);
     }
 
-    if (mistralOcrEnabled) {
-      var client = new MistralBatchClient(mistralApiKey, mistralBaseUrl);
+    if (registryOcr.isConfigured()) {
+      var client = new MistralBatchClient(registryOcr.apiKey(), registryOcr.baseUrl());
 
       // OCR. One orchestrator instance per stage: the phases run in sequence, so nothing needs
       // locking, and throughput comes from batch size rather than thread count.
       var ocrStage =
           new OcrBatchStage(
-              mistralModel,
+              registryOcr.model(),
               pageId -> {
                 var page =
                     pageRepository
@@ -270,17 +261,18 @@ public class WorkerSchedulingConfig implements SchedulingConfigurer {
               jobEventService,
               recordEventService,
               providerBatchRepository,
-              mistralMaxBatchPages,
-              mistralMaxBatchBytes,
-              mistralPagesPerMinute);
-      registrar.addFixedDelayTask(ocr::tick, Duration.ofMillis(mistralTickInterval));
+              registryOcr.maxBatchPages(),
+              registryOcr.maxBatchBytes(),
+              registryOcr.pagesPerMinute());
+      registrar.addFixedDelayTask(ocr::tick, Duration.ofMillis(registryOcr.tickInterval()));
 
       log.info(
-          "Registered Mistral batch OCR (model={}, tick={}ms, max-batch={} bytes, {} pages/min)",
-          mistralModel,
-          mistralTickInterval,
-          mistralMaxBatchBytes,
-          mistralPagesPerMinute);
+          "Registered batch OCR {} (model={}, tick={}ms, max-batch={} bytes, {} pages/min)",
+          registryOcr.id(),
+          registryOcr.model(),
+          registryOcr.tickInterval(),
+          registryOcr.maxBatchBytes(),
+          registryOcr.pagesPerMinute());
     }
 
     if (translateBatchEnabled) {
