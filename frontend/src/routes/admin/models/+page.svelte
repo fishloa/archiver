@@ -10,9 +10,52 @@
 		Trash2,
 		TriangleAlert
 	} from 'lucide-svelte';
-	import type { AiImplementation } from '$lib/server/api';
+	import type { AiImplementation, ProviderApi } from '$lib/server/api';
 
 	let { data, form } = $props();
+
+	/**
+	 * Which provider the add form is set to, per capability.
+	 *
+	 * The form is built from what the backend says each provider needs, so choosing one changes
+	 * the fields below it. A provider is a protocol with an adapter behind it — the list is the
+	 * backend's to state, and adding one there needs no change here.
+	 */
+	let chosenProvider = $state<Record<string, string>>({});
+
+	/** Providers that have an adapter for this capability. Nothing else may be offered. */
+	function providersFor(capability: string): ProviderApi[] {
+		return (data.providers ?? []).filter((p: ProviderApi) => p.capabilities?.[capability]);
+	}
+
+	function providerFor(capability: string): ProviderApi | undefined {
+		const available = providersFor(capability);
+		const chosen = chosenProvider[capability];
+		return available.find((p) => p.id === chosen) ?? available[0];
+	}
+
+	/** A setting already stored on a row, so editing shows what is actually configured. */
+	function settingValue(row: AiImplementation, key: string): unknown {
+		try {
+			const parsed = typeof row.settings === 'string' ? JSON.parse(row.settings) : row.settings;
+			return parsed?.[key];
+		} catch {
+			return undefined;
+		}
+	}
+
+	/** How this provider takes more than one item, said plainly. */
+	function batchNote(provider: ProviderApi | undefined): string {
+		if (!provider) return '';
+		switch (provider.batchStyle) {
+			case 'ASYNC_JOB':
+				return `Submitted as a batch job — up to ${provider.maxBatchSize} requests per submission.`;
+			case 'INLINE_ARRAY':
+				return `Up to ${provider.maxBatchSize} inputs in a single request.`;
+			default:
+				return 'One item per request; this provider has no batch facility.';
+		}
+	}
 
 	/**
 	 * What each capability is for, and what changing it costs.
@@ -163,14 +206,43 @@
 						</div>
 
 						{#if editing === row.id}
+							{@const rowProvider = (data.providers ?? []).find((p: ProviderApi) => p.id === row.provider)}
 							<form class="editor" method="POST" action="?/update" use:enhance>
 								<input type="hidden" name="id" value={row.id} />
-								<label>Endpoint<input name="baseUrl" value={row.base_url} /></label>
-								<label>Path<input name="endpointPath" value={row.endpoint_path ?? ''} /></label>
-								<label>Key variable<input name="credentialEnv" value={row.credential_env ?? ''}
-									placeholder="none for a local endpoint" /></label>
-								<label>Max batch<input name="maxBatchSize" type="number" min="1"
-									value={row.max_batch_size} /></label>
+								<dl class="fields">
+									<dt><label for="e-base-{row.id}">Endpoint</label></dt>
+									<dd><input id="e-base-{row.id}" name="baseUrl" value={row.base_url} /></dd>
+
+									<dt><label for="e-path-{row.id}">Path</label></dt>
+									<dd><input id="e-path-{row.id}" name="endpointPath" value={row.endpoint_path ?? ''} /></dd>
+
+									<dt><label for="e-cred-{row.id}">Key variable</label></dt>
+									<dd>
+										<input id="e-cred-{row.id}" name="credentialEnv" value={row.credential_env ?? ''}
+											placeholder="none for a local endpoint" />
+									</dd>
+
+									<dt><label for="e-batch-{row.id}">Max batch</label></dt>
+									<dd>
+										<input id="e-batch-{row.id}" name="maxBatchSize" type="number"
+											min={rowProvider?.minBatchSize ?? 1} max={rowProvider?.maxBatchSize ?? 100000}
+											value={row.max_batch_size} />
+										{#if rowProvider}<p class="hint">{batchNote(rowProvider)}</p>{/if}
+									</dd>
+
+									{#each rowProvider?.capabilities?.[capability.key]?.settings ?? [] as setting (setting.key)}
+										<dt><label for="es-{row.id}-{setting.key}">{setting.label}</label></dt>
+										<dd>
+											<input
+												id="es-{row.id}-{setting.key}"
+												name="setting.{setting.key}"
+												type={setting.type === 'integer' ? 'number' : 'text'}
+												value={settingValue(row, setting.key) ?? setting.default ?? ''}
+											/>
+											{#if setting.help}<p class="hint">{setting.help}</p>{/if}
+										</dd>
+									{/each}
+								</dl>
 								<button class="vui-btn vui-btn-primary vui-btn-sm">Save</button>
 							</form>
 						{/if}
@@ -179,16 +251,80 @@
 			</ol>
 
 			{#if addingTo === capability.key}
-				<form class="editor add" method="POST" action="?/create" use:enhance>
-					<input type="hidden" name="capability" value={capability.key} />
-					<label>Provider<input name="provider" placeholder="mistral, local, openai…" required /></label>
-					<label>Model<input name="model" placeholder="model name as the provider calls it" required /></label>
-					<label>Endpoint<input name="baseUrl" placeholder="https://api.example.com" /></label>
-					<label>Path<input name="endpointPath" placeholder="/v1/chat/completions" /></label>
-					<label>Key variable<input name="credentialEnv" placeholder="leave empty for a local endpoint" /></label>
-					<label>Max batch<input name="maxBatchSize" type="number" min="1" value="1" /></label>
-					<button class="vui-btn vui-btn-primary vui-btn-sm">Register</button>
-				</form>
+				{@const available = providersFor(capability.key)}
+				{@const provider = providerFor(capability.key)}
+				{#if available.length === 0}
+					<p class="note">No provider in this build has an adapter for {capability.label.toLowerCase()}.</p>
+				{:else}
+					<form class="editor add" method="POST" action="?/create" use:enhance>
+						<input type="hidden" name="capability" value={capability.key} />
+						<dl class="fields">
+							<dt><label for="provider-{capability.key}">Provider</label></dt>
+							<dd>
+								<select
+									id="provider-{capability.key}"
+									name="provider"
+									bind:value={
+										() => provider?.id ?? '',
+										(v) => (chosenProvider = { ...chosenProvider, [capability.key]: v })
+									}
+								>
+									{#each available as option (option.id)}
+										<option value={option.id}>{option.label}</option>
+									{/each}
+								</select>
+								<p class="hint">{batchNote(provider)}</p>
+							</dd>
+
+							<dt><label for="model-{capability.key}">Model</label></dt>
+							<dd>
+								<input id="model-{capability.key}" name="model" required
+									placeholder="model name as the provider calls it" />
+							</dd>
+
+							<dt><label for="baseurl-{capability.key}">Endpoint</label></dt>
+							<dd>
+								<input id="baseurl-{capability.key}" name="baseUrl"
+									value={provider?.defaultBaseUrl ?? ''}
+									placeholder="https://api.example.com" />
+							</dd>
+
+							<dt><label for="path-{capability.key}">Path</label></dt>
+							<dd>
+								<input id="path-{capability.key}" name="endpointPath"
+									value={provider?.capabilities?.[capability.key]?.endpointPath ?? ''} />
+							</dd>
+
+							<dt><label for="cred-{capability.key}">Key variable</label></dt>
+							<dd>
+								<input id="cred-{capability.key}" name="credentialEnv"
+									placeholder="leave empty for a local endpoint" />
+								<p class="hint">The environment variable holding the key. The key itself is never stored here.</p>
+							</dd>
+
+							<dt><label for="batch-{capability.key}">Max batch</label></dt>
+							<dd>
+								<input id="batch-{capability.key}" name="maxBatchSize" type="number"
+									min={provider?.minBatchSize ?? 1} max={provider?.maxBatchSize ?? 1}
+									value={provider?.minBatchSize ?? 1} />
+							</dd>
+
+							{#each provider?.capabilities?.[capability.key]?.settings ?? [] as setting (setting.key)}
+								<dt><label for="s-{capability.key}-{setting.key}">{setting.label}</label></dt>
+								<dd>
+									<input
+										id="s-{capability.key}-{setting.key}"
+										name="setting.{setting.key}"
+										type={setting.type === 'integer' ? 'number' : 'text'}
+										value={setting.default ?? ''}
+									/>
+									{#if setting.help}<p class="hint">{setting.help}</p>{/if}
+								</dd>
+							{/each}
+						</dl>
+						<button class="vui-btn vui-btn-primary vui-btn-sm">Register</button>
+					</form>
+				{/if}
 			{/if}
 		</section>
 	{/each}
@@ -219,9 +355,17 @@
 	.badge.missing { border-color: var(--vui-danger, #b91c1c); color: var(--vui-danger, #b91c1c); }
 	.actions { display: flex; align-items: center; gap: 0.3rem; }
 	.actions :global(.danger) { color: var(--vui-danger, #b91c1c); }
-	.editor { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 0.6rem; align-items: flex-end; padding-top: 0.7rem; margin-top: 0.4rem; border-top: 1px solid var(--vui-border); }
+	.editor { grid-column: 1 / -1; padding-top: 0.7rem; margin-top: 0.4rem; border-top: 1px solid var(--vui-border); }
 	.editor.add { border: 1px dashed var(--vui-border); border-radius: 0.5rem; padding: 0.9rem; margin-top: 0.9rem; }
-	.editor label { display: flex; flex-direction: column; gap: 0.2rem; font-size: var(--vui-text-xs); color: var(--vui-text-sub); }
-	.editor input { padding: 0.35rem 0.5rem; border-radius: 0.35rem; border: 1px solid var(--vui-border); background: var(--vui-bg-deep); color: var(--vui-text); font-size: var(--vui-text-sm); min-width: 11rem; }
+
+	/* One field per row. These were laid out as a wrapping flex line, which put six inputs of
+	   different lengths on one line and made the form unreadable as soon as a provider added
+	   settings of its own. */
+	.fields { display: grid; grid-template-columns: minmax(7rem, max-content) minmax(0, 1fr); gap: 0.5rem 0.9rem; align-items: start; margin: 0 0 0.9rem; max-width: 46rem; }
+	.fields dt { font-size: var(--vui-text-xs); color: var(--vui-text-sub); padding-top: 0.42rem; }
+	.fields dd { margin: 0; min-width: 0; }
+	.fields label { font-size: var(--vui-text-xs); color: var(--vui-text-sub); }
+	.editor input, .editor select { width: 100%; padding: 0.35rem 0.5rem; border-radius: 0.35rem; border: 1px solid var(--vui-border); background: var(--vui-bg-deep); color: var(--vui-text); font-size: var(--vui-text-sm); }
+	.hint { font-size: var(--vui-text-xs); color: var(--vui-text-sub); margin: 0.25rem 0 0; }
 	.notice { display: flex; align-items: center; gap: 0.5rem; padding: 0.6rem 0.8rem; border-radius: 0.5rem; border: 1px solid var(--vui-danger, #b91c1c); color: var(--vui-danger, #b91c1c); font-size: var(--vui-text-sm); }
 </style>

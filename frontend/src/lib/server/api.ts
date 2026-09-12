@@ -721,6 +721,45 @@ export interface AiImplementation {
   updated_at: string;
 }
 
+/**
+ * The provider protocols the backend implements, and what each one needs configured.
+ *
+ * The admin page builds its form from this rather than holding a list of its own: a provider is a
+ * protocol with an adapter behind it, so which ones are valid is a property of the backend. Adding
+ * a provider there needs no change here.
+ */
+export interface ProviderSetting {
+  key: string;
+  label: string;
+  type: "text" | "integer";
+  help: string;
+  default: unknown;
+}
+
+export interface ProviderCapability {
+  endpointPath: string;
+  settings: ProviderSetting[];
+}
+
+export interface ProviderApi {
+  id: string;
+  label: string;
+  batchStyle: "ASYNC_JOB" | "INLINE_ARRAY" | "SINGLE";
+  defaultBaseUrl: string;
+  minBatchSize: number;
+  maxBatchSize: number;
+  capabilities: Record<string, ProviderCapability>;
+}
+
+export async function fetchAiProviders(email?: string): Promise<ProviderApi[]> {
+  const res = await fetch(`${backendUrl()}/api/admin/ai/providers`, {
+    headers: authHeaders(email),
+  });
+  if (!res.ok) throw new Error(`Backend error: ${res.status}`);
+  const body = await res.json();
+  return body.providers ?? [];
+}
+
 export async function fetchAiImplementations(
   email?: string,
 ): Promise<Record<string, AiImplementation[]>> {

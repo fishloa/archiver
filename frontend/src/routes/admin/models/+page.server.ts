@@ -2,6 +2,7 @@ import {
 	createAiImplementation,
 	deleteAiImplementation,
 	fetchAiImplementations,
+	fetchAiProviders,
 	setAiOrder,
 	updateAiImplementation
 } from '$lib/server/api';
@@ -9,8 +10,33 @@ import { fail } from '@sveltejs/kit';
 import type { Actions, PageServerLoad } from './$types';
 
 export const load: PageServerLoad = async ({ locals }) => {
-	return { implementations: await fetchAiImplementations(locals.userEmail) };
+	const [implementations, providers] = await Promise.all([
+		fetchAiImplementations(locals.userEmail),
+		fetchAiProviders(locals.userEmail)
+	]);
+	return { implementations, providers };
 };
+
+
+/**
+ * Collects the provider-declared settings out of the submitted form.
+ *
+ * The form does not know what any given provider needs; it renders whatever the backend described
+ * and posts each one back as `setting.<key>`. This turns those into the JSON the API stores, so a
+ * new provider setting needs no change here either.
+ */
+function settingsFrom(form: FormData): string {
+	const settings: Record<string, unknown> = {};
+	for (const [key, value] of form.entries()) {
+		if (!key.startsWith('setting.')) continue;
+		const name = key.slice('setting.'.length);
+		const raw = String(value).trim();
+		if (raw === '') continue;
+		// Integers must not be stored as strings: the backend reads them with asInt.
+		settings[name] = /^-?\d+$/.test(raw) ? Number(raw) : raw;
+	}
+	return JSON.stringify(settings);
+}
 
 export const actions: Actions = {
 	/** Moves one implementation up or down, sending the whole resulting order. */
@@ -44,12 +70,17 @@ export const actions: Actions = {
 	update: async ({ request, locals }) => {
 		const form = await request.formData();
 		const id = String(form.get('id'));
-		await updateAiImplementation(locals.userEmail, id, {
-			baseUrl: String(form.get('baseUrl') ?? ''),
-			endpointPath: String(form.get('endpointPath') ?? ''),
-			credentialEnv: String(form.get('credentialEnv') ?? ''),
-			maxBatchSize: Number(form.get('maxBatchSize') ?? 1)
-		});
+		try {
+			await updateAiImplementation(locals.userEmail, id, {
+				baseUrl: String(form.get('baseUrl') ?? ''),
+				endpointPath: String(form.get('endpointPath') ?? ''),
+				credentialEnv: String(form.get('credentialEnv') ?? ''),
+				maxBatchSize: Number(form.get('maxBatchSize') ?? 1),
+				settings: settingsFrom(form)
+			});
+		} catch (e) {
+			return fail(400, { message: e instanceof Error ? e.message : 'Could not save it' });
+		}
 		return { updated: id };
 	},
 
@@ -69,7 +100,8 @@ export const actions: Actions = {
 				baseUrl: String(form.get('baseUrl') ?? ''),
 				endpointPath: String(form.get('endpointPath') ?? '') || null,
 				credentialEnv: String(form.get('credentialEnv') ?? '') || null,
-				maxBatchSize: Number(form.get('maxBatchSize') ?? 1)
+				maxBatchSize: Number(form.get('maxBatchSize') ?? 1),
+				settings: settingsFrom(form)
 			});
 		} catch (e) {
 			return fail(400, { message: e instanceof Error ? e.message : 'Could not register it' });
