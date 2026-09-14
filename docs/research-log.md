@@ -272,3 +272,153 @@ Records 3366 and 3410 both reference Arolsen document 12120657. Consolidation or
 - Our scraper architecture: all scrapers depend on `worker-common` and communicate with backend via HTTP API (`/api/ingest`). Files stored in archiver_store via backend.
 - VadeMeCum uses Zoomify tiles; other archives will have different image delivery (IIIF, direct JPEG, PDF, etc.)
 - All existing scrapers listed in `CLAUDE.md`: scraper-cz, scraper-ebadatelna, scraper-findbuch, scraper-oesta, scraper-matricula
+
+---
+
+## 2026-09-14 — Execution of the September 2026 Archive Search Plan
+
+Worked through `archive-search-plan-2026-09.md`. What follows is what each task
+actually returned, including the negatives.
+
+### Task 1 — ebadatelna.cz (ABS): BLOCKED, not negative
+
+The four name searches could not be run. The ebadatelna JSON API is only half
+public:
+
+| Endpoint | Auth required | Works |
+|----------|---------------|-------|
+| `/Home/Item_Read` (browse hierarchy) | no | yes |
+| `/Home/Item_Read` with `filter[filters][…]` | no | **filters are ignored** — returns the unfiltered children |
+| `/Home/Fulltext_Read` (general / person / codename search) | yes | returns the homepage HTML when unauthenticated |
+| `/Home/OcrFulltextRead` | yes | returns `{"Data":[],"Total":0}` — *for every query, including `Praha`* |
+
+`POST /Account/Login` with the stack credentials returns `0`: the account is
+recognised (it sets `RESEARCHER_INFO … ID=25429`) but is **not verified**, and
+every search endpoint is gated on verification, not on login. A zero-result OCR
+search is therefore not evidence of absence — `Praha` returns zero too.
+
+Verification cannot be done remotely by us: ABS (Mgr. Hypšová, 25 Feb 2026,
+mail 427699) confirmed no video-call verification exists and pointed at Czech
+eID / bank identity / mojeID / I.CA, or the IIG route. This is a user action.
+
+Also confirmed, and worth recording: **fond 114 (ÚŘP) is no longer at ABS.**
+ABS (Mgr. Houzarová, mail 455579) says fond 114 was part of the so-called
+Studijní ústav MV, and was transferred to the Národní archiv — which is why NA
+Chodovec is the institution scanning 114-3-17. Browsing `s1354` ("Fondy tzv.
+Studijního ústavu MV") confirms it: its four children are Velitelství StB Praha,
+Kabinet státobezpečnostních materiálů, Stíhání nacistických válečných zločinců,
+and Židovské organizace. No fond 114.
+
+**Next step for Task 1:** ABS still holds security-police fonds, so the four-name
+search is worth requesting as a written rešerše (badatelna@abscr.cz /
+info@abscr.cz) rather than waiting on account verification.
+
+### Task 2 — ÚSTR PDFs: DONE
+
+- **2a Hořejš**, *Rudolf a Humprecht Czerninové z Chudenic*, was already in the
+  archive as **record 3519** (12 pp). The plan's URL guess was wrong in two ways:
+  the path segment is `pamet-dejiny`, not `pamet-a-dejiny`, and the issue is
+  **2014/04**, not 2014/03 —
+  `https://www.ustrcr.cz/data/pdf/pamet-dejiny/pad1404/031-042.pdf`.
+- **2b Jelínková**, *Příběh rodiny Huga Salm-Reifferscheidta*, Securitas Imperii
+  18 (2011), pp. 42–69 — downloaded (28 pp, the complete article) and ingested as
+  **record 3803**. Relevant because it documents the Pozemkový úřad's forced
+  administration of a noble estate in detail, the same mechanism applied to the
+  Czernins.
+
+### Task 3 — Czech theses: PARTIAL
+
+theses.cz needs a cookie handshake (it answers the first request with a
+`<meta http-equiv="refresh">` stub), after which its search works fine.
+
+Found and ingested:
+
+- **Kučerová, Kateřina**: *Deklarace zástupců české šlechty na obranu
+  československého státu a národa v letech 1938-1939*, MU FF 2012, 54 pp —
+  **record 3804**. 13 Czernin mentions. Names Rudolf Theobald Czernin
+  (1904–1984) among the signatories, and states that the imposed administrators
+  **sold** the estates of Rudolf Czernin, alongside the forced administration of
+  Humprecht Czernin's property. Full text at `https://is.muni.cz/th/ud2xj/`.
+
+Checked and deliberately not re-ingested (already held):
+
+- Hazdra 2013 dissertation = **record 3797**; Hazdra 2009 article = **record 3495**.
+- Knoflíčková, *Heydrichiáda pohledem současníků a historiků*, MU FF 2015
+  (`https://is.muni.cz/th/q0wqu/`) — downloaded and checked: **one** Czernin
+  mention in 62 pages. Not ingested; say the word if it should go in anyway.
+
+Blocked:
+
+- **Jelínková's dissertation** (*Šlechta v proměnách*, UPa 2015) is in the
+  Pardubice repository (`dk.upce.cz`, item `24a9ced1-9d1a-4fc7-a34c-b1eb258e067e`)
+  but the bitstream returns **401 Unauthorized** — restricted to authenticated
+  UPCE users. The published book (NLN 2017) is the practical route.
+- **dspace.cuni.cz is rate-limiting this network** (429 on IPv6, connection
+  reset on IPv4). Two Charles University items are identified and still to fetch:
+  Vochozka's thesis
+  (`/bitstream/handle/20.500.11956/75616/DPTX_2015_2_11220_0_321865_0_142032.pdf`)
+  and *Vyvlastnění majetku šlechtických rodů po druhé světové válce*
+  (`/bitstream/handle/20.500.11956/94464/120282050.pdf`). Retry later.
+
+### Task 4 — Czech National Archives: MOSTLY ALREADY HELD
+
+- **4c is already done.** Sign. **110-4/59** is **record 195** — *Soudní proces s
+  R. Černínem, F. Kinským a K. Rohanem pro poslech zahraničního rozhlasu*,
+  1943–1944, 53 pp, complete.
+- **4a** — the archive already holds the Pozemkový úřad material: record **3791**
+  (graphic overviews of the Land Office's imposed administrations, 110-4/368),
+  **3206** (establishment and activity of the Land Office, overview of forced
+  administrations as at 31 Dec 1942, 109-4/1359), **2915** (forced administration
+  over the landed property of the Bohemian-Moravian nobility, 109-4/1337, with
+  Zarnack's appeal), and **1540**/**1563** (appeals against forced administration).
+  The 12 February 1942 order itself has not surfaced in the digitised material.
+- **4b Národní soud** — nothing digitised. A VadeMeCum item-level search for
+  `Černín` returns 172 digitised hits, of which 119 are single-scan ČTK press
+  photographs, 38 are in NSM / ÚŘP-ST (fonds already fully scraped) and 13 are
+  Jewish registers. The K. H. Frank trial records remain physical-only.
+
+### Task 5 — ÖStA: RECORDS IDENTIFIED, NONE DIGITISED
+
+`volltextsuche.aspx` reports **715** records for `Czernin`; the bulk are Ottokar
+Czernin's WWI foreign-ministry papers in HHStA. Filtered searches produced the
+items that matter:
+
+| ID | Signature | Title | Date |
+|----|-----------|-------|------|
+| 7187521 | AT-OeStA/AdR Inneres BMI StSu StaPo Akten Kzl 32.961-2/47 | Czernin Ferdinand; Information | 1947 |
+| 7187625 | AT-OeStA/AdR Inneres BMI StSu StaPo Akten Kzl 81.124-2/47 | Czernin Dr. Peter und Czernin Melanie, Wien 3., Reisnerstraße 30. Übernahme des jüdischen Gutsbesitzes Aichhof der Fanny Seemann | 1947 |
+| 3380985 | AT-OeStA/HHStA SB Partezettelsammlung 17-290 | Vermählungsanzeige Czernin von Chudenitz, Paul Graf mit Gabriele Gräfin von Orsini und Rosenberg (wedding in the Maltese church, Prague Malá Strana) | 22.04.1901 |
+| 3380941 / 3380943 | AT-OeStA/HHStA SB Partezettelsammlung 17-246 / 17-248 | Partezettel Felix Graf Czernin | 03.01.1968 |
+| 3381004 | AT-OeStA/HHStA SB Partezettelsammlung 17-309 | Partezettel Wolfgang Dipl.Ing. Graf Czernin | 10.10.1982 |
+| 7224625 | AT-OeStA/HHStA SB NL Nostitz-Rieneck 5-73 | Briefe von Felix Czernin an Georg Nostitz (2 letters) | 1966 |
+| 7224646 | AT-OeStA/HHStA SB NL Nostitz-Rieneck 5-79 | Brief von Wolfgang Czernin an Georg Nostitz | 1957 |
+
+**None of these carry digital objects** — the detail pages contain only the
+`openimage(veid, deid, sqnznr)` stub and no `getimage.aspx` links, so every one
+of them has to be ordered as copies. All are `Zugänglichkeit: Öffentlich` with
+protection periods long expired, so no permission is needed.
+
+Two observations worth acting on:
+
+1. **3380985 is direct lineage evidence** — the marriage announcement of
+   Alexander's parents, Paul Czernin and Gabriele Orsini-Rosenberg, April 1901.
+2. **7224625 / 7224646 are the "what did they know" material** the plan asks
+   for: post-war private letters from Felix and Wolfgang, Alexander's own
+   brothers, in the Nostitz-Rieneck papers.
+
+And one to be aware of rather than to order: **7187625** is a StaPo file on the
+takeover of a Jewish estate by Dr. Peter and Melanie Czernin of Vienna 3. That is
+a different branch and points the opposite way politically; it should be known
+about before an opposing reader finds it.
+
+### Method notes for whoever runs this next
+
+- ÖStA search is a plain ASP.NET POST to `/volltextsuche.aspx` with the three
+  ViewState fields and `ctl00$cphMainArea$txtMitAllenWoertern`. Result **paging**
+  is a Telerik RadGrid postback that did not reproduce with a plain form POST —
+  narrow the query instead of paging 72 pages.
+- theses.cz and is.muni.cz both need the cookie handshake first; thereafter
+  `https://is.muni.cz/th/<id>/` lists the thesis files directly.
+- dk.upce.cz is DSpace 7: `/server/api/discover/search/objects?query=…`, then
+  `/core/items/{uuid}/bundles` → `/core/bundles/{uuid}/bitstreams` → the
+  `_links.content.href`. Restricted items 401 at the content step.
