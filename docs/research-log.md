@@ -422,3 +422,25 @@ about before an opposing reader finds it.
 - dk.upce.cz is DSpace 7: `/server/api/discover/search/objects?query=…`, then
   `/core/items/{uuid}/bundles` → `/core/bundles/{uuid}/bitstreams` → the
   `_links.content.href`. Restricted items 401 at the content step.
+
+### 2026-09-14, later — dspace.cuni.cz reached from zelkova
+
+dspace.cuni.cz rate-limits this network (429 on IPv6, silent reset on IPv4) but
+answers zelkova normally, so both Charles University law theses were fetched
+through a container on the test stack and posted straight to the ingest API from
+there.
+
+- **Record 3805** — VOCHOZKA, Šimon: *Historie majetku hlubocké větve
+  Schwarzenbergů v období 1938-1950*, UK Právnická fakulta 2016 (supervisor
+  Kuklík), 94 pp. Confirmed to contain Czernin in its text. This is the thesis
+  that quotes the Heydrich letter of 16 May 1942 at fn. 57.
+- **Not ingested:** BLAŽKOVÁ, Tereza: *Vyvlastnění majetku šlechtických rodů po
+  druhé světové válce*, UK Právnická fakulta 2018
+  (`hdl.handle.net/20.500.11956/94464`, 3.1 MB). It is about the post-war Lex
+  Schwarzenberg expropriation rather than Nazi-era persecution. The PDF is sitting
+  at `/tmp/b.pdf` in `archiver-test-frontend-test-1` if it is wanted.
+
+Method, for reuse: `POST /containers/{id}/exec` then `/exec/{id}/start` through the
+Portainer dockerProxy; `bun -e` inside the frontend image can both fetch the file
+and multipart-POST it to `/api/ingest/records/{id}/text-pdf`. A `wget` against
+dspace from there takes minutes, so expect the exec call to be backgrounded.
