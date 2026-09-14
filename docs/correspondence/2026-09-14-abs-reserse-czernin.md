@@ -1,10 +1,19 @@
-**To:** badatelna@abscr.cz
-**Cc:** info@abscr.cz
+**To:** badatelna.struha@abscr.cz
+**Cc:** ebadatelna@abscr.cz
+
+> The first attempt went to `badatelna@abscr.cz` and bounced — 550 User unknown.
+> That address is the Národní archiv's pattern, not ABS. ABS research rooms (both
+> Prague Na Struze and Brno-Kanice) are `badatelna.struha@abscr.cz`; `info@abscr.cz`
+> is the general submissions box and did receive the cc.
 **Subject:** Žádost o archivní rešerši — rodina Czernin (Černín z Chudenic), 1939–1945
 
 Vážená paní, vážený pane,
 
-obracím se na Vás se žádostí o archivní rešerši ve fondech Archivu bezpečnostních
+omlouvám se za případné opakování — tuto žádost jsem se pokusil zaslat na adresu
+badatelna@abscr.cz, doručení se však nezdařilo; kopie byla doručena na adresu
+info@abscr.cz.
+
+Obracím se na Vás se žádostí o archivní rešerši ve fondech Archivu bezpečnostních
 složek. Jsem britský státní příslušník a vedu archivní výzkum pro řízení o udělení
 státního občanství Rakouské republiky podle § 58c rakouského zákona o státním
 občanství (StbG); předmětem řízení je perzekuce mého děda Alexandra Czernina a
