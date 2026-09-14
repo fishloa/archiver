@@ -5,6 +5,7 @@
 > That address is the Národní archiv's pattern, not ABS. ABS research rooms (both
 > Prague Na Struze and Brno-Kanice) are `badatelna.struha@abscr.cz`; `info@abscr.cz`
 > is the general submissions box and did receive the cc.
+**Status:** sent 14 September 2026 (Zimbra message 463590)
 **Subject:** Žádost o archivní rešerši — rodina Czernin (Černín z Chudenic), 1939–1945
 
 Vážená paní, vážený pane,
