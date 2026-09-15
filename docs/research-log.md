@@ -944,3 +944,52 @@ A caution for anyone repeating the searches: most noble surnames return Jewish
 namesakes from the Ghetto database, because the surname field is "Příjmení
 (rozená)" and matches maiden names. Sternberg's 149 hits are almost entirely of
 that kind. The political-prison records are the ones with `mp-` and `pa-` slugs.
+
+### 2026-09-16 — Arolsen holds an ITS tracing case on Rudolf, and one on Vera
+
+Rudolf's Terezín card ends with a transport to **Gollnow**, and nothing in the
+archive covered that leg. Searching Arolsen for the name turns up 108 people
+records, none of them his — the five "CZERNIN, Rudolf" entries are the other
+Rudolf, born 18.02.1924 in Prague. The find is under **Topics**, not People:
+
+> **Tracing and documentation case no. 1.314.605 for CZERNIN, RUDOLF born
+> 25.08.1904** — ITS signature **06030302.1.314.605**, created **1990–1992**,
+> **8 documents**.
+> *"Contains information about CZERNIN, RUDOLF (further first names: THEOBALD)."*
+
+Birth date and the second name **Theobald** identify him beyond argument: Rudolf
+Theobald Czernin, 1904–1984, the signatory named in Kučerová's thesis. An ITS
+tracing case is the file the International Tracing Service built when someone
+asked it to establish what had happened to a person — which is to say, a
+compilation of his imprisonment record made by the body that held the camp
+registers.
+
+A search on the case description turns up four more, of which one matters:
+
+| Case | Person | Documents |
+|------|--------|-----------|
+| **1.314.605** | CZERNIN, RUDOLF b. 25.08.1904 (Theobald) | **8** |
+| **709.023** | **VON SCHUSCHNIGG, VERA** b. 04.06.1904 | **6** |
+| 281.939 | Czernin, Aron b. 20.05.1919 | 18 |
+| 394.235 | Czernin, Hela b. 15.05.1918 | 11 |
+| 902.495 | Czernin, Franz b. 19.03.1897 | 6 |
+
+**Vera** is Vera Czernin, who married Kurt von Schuschnigg by proxy in 1938 while
+he was in Gestapo custody and then followed him into Sachsenhausen, Flossenbürg
+and Dachau. The search plan lists her among the persecution evidence; her own ITS
+file has never been looked at. Aron and Hela are the unrelated Jewish Czernins
+already distinguished in the Terezín database. Franz, born 19.03.1897, is
+unidentified — worth placing before anything is claimed about him.
+
+**Neither file can be read online.** The case page states that parts are withheld
+for data protection and directs enquiries to the Arolsen Archives, and no
+document links are rendered. Arolsen takes inquiries through a form —
+`https://arolsenarchives.my.site.com/guest/s/?language=en_US` — not by email, so
+this one needs the applicant's own details and is left to be submitted rather
+than drafted as a letter.
+
+What to ask for: the complete T/D case files **1.314.605** (Czernin, Rudolf, b.
+25.08.1904) and **709.023** (von Schuschnigg, Vera, b. 04.06.1904), citing the
+§58c proceedings, and asking in the same request whether ITS holds a case or any
+documents for **Humprecht Ottokar Czernin (b. 09.02.1909)** beyond the Brandenburg
+material already held as record 3410, and for **Felix Czernin (b. 07.03.1902)**.
