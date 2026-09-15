@@ -848,3 +848,33 @@ drafted as Zimbra **463863**, not sent.
 Searched and absent: no Partezettel for Maria Gabriele (d. Salzburg 1951) and
 none for the other siblings — the collection is Vienna-centred, and they died
 elsewhere.
+
+### 2026-09-15 — Rudolf in the Terezín Memorial's own prisoner database
+
+The Památník Terezín runs a free database of the politically and racially
+persecuted, covering the Small Fortress Gestapo prison, Pankrác, Litoměřice,
+Flossenbürg, the Ghetto and more. It had never been searched for this family.
+A surname search returns five Czernin-like records, of which one is ours:
+
+> **RUDOLF CZERNIN** — *Věznice gestapa v Malé pevnosti Terezín 1940–1945*
+> geb. **25. 8. 1904**, **Dymokury**
+> Místo transportu: **Ad-Kolin, Prag-Pankratz**
+> Příčina/důvod odchodu: **transport**
+> Cílové místo (odchodu): **Gollnow**
+> `https://www.pamatnik-terezin.cz/vezen/mp-czernin-rudolf`
+
+Date and place of birth match Rudolf Děpold Czernin exactly. The value is that
+the route — Kolín, then Prague-Pankrác, then the Terezín Small Fortress, then
+Gollnow near Stettin — was until now carried only by secondary literature. It is
+now attested by the memorial institution that holds the prison's records.
+
+Ingested as **record 3934** in new archive **13, Památník Terezín**.
+
+The other four hits are unrelated: Czernin Aron (b. 1919 Parič/Minsk, Litoměřice
+and Ghetto Terezín), Czerninski Grete, and a cross-reference.
+
+Method note: the database search does not work by constructing query URLs — the
+parameters are ignored and the unfiltered page comes back, which looks exactly
+like a nil result. A control search for a common Czech surname exposed that. The
+form has to be filled and submitted in a browser; results then appear at
+`/vezen/<slug>`.
