@@ -679,3 +679,25 @@ NARA M-1019 Roll 12.
 
 Images and OCR are held locally pending a decision on ingest: 40 pages is a small
 paid pass, but it is a paid pass.
+
+**Ingested, 15 September 2026.** New archive **12 — Harvard Law School Library,
+Nuremberg Trials Project (US)** holds all thirteen documents, **records
+3920–3932**, 40 pages:
+
+| Record | Document | Pages |
+|--------|----------|-------|
+| 3920 | Interrogation Summary 4031, Int. 2330 A, 6 Nov 1947 | 2 |
+| 3921 | Interrogation Summary 4050, Int. 2330-B, 7 Nov 1947 | 3 |
+| 3922 | Interrogation Summary 4049, 10 Nov 1947 (Falkenhausen) | 1 |
+| 3923 | Interrogation Summary 4108, Int. 2330-D, 19 Nov 1947 | 2 |
+| 3924 / 3925 | Czernin to Rasche on the Hungary trip, 24 May 1944, English, NI-6681 | 7 / 1 |
+| 3926 / 3927 | the same letter in German, "und den Fortgang der Arisierung", NI-6681 | 15 / 4 |
+| 3928 | Czernin to Rasche on his future tasks, coal deliveries, 13 Mar 1944 | 1 |
+| 3929–3932 | Entflechtung in the paper industry, Neusser Papier A.G., NI-13829 | 1 each |
+
+Mistral's OCR is markedly better than the local tesseract pass used to triage
+these — it reads the index as **2330 A**, which fixes the session sequence
+(A = 6 Nov, B = 7 Nov, then 10 Nov, D = 19 Nov). The records are catalogued as
+English where the original is English, so the pipeline correctly skips
+translation and only OCR, PDF, embedding and person-matching run. Person matching
+found hits on record 3920 immediately.
