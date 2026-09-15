@@ -616,3 +616,66 @@ ranges put him in **Roll 12** (Cremer–Deutsch). So the interrogations can be
 ordered from Staatsarchiv Nürnberg or obtained from NARA M-1019 Roll 12.
 
 Neither is digitised; both are now precisely enough identified to order.
+
+### 2026-09-15 — Harvard has Felix's Nuremberg interrogations, digitised and free
+
+The Staatsarchiv Nürnberg record said the interrogations exist. Harvard Law
+School's Nuremberg Trials Project has the images. Its search returns **13
+documents** for Czernin; all 40 page images were downloaded from
+`sfo2.digitaloceanspaces.com/harvard-law-library-nuremberg-documents/` and OCR'd
+locally. Cost: nothing.
+
+**The four interrogations, matching the Nürnberg finding aid exactly:**
+
+| Summary | Index | Date | Harvard id |
+|---------|-------|------|-----------|
+| No. 4031 | 2330 | 6 Nov 1947 | 609602 |
+| No. 4050 | 2330-B | 7 Nov 1947 | 609621 |
+| No. 4049 | — | 10 Nov 1947 | 609620 |
+| No. 4108 | 2330-D | 19 Nov 1947 | 609677 |
+
+Office of U.S. Chief of Counsel for War Crimes, Evidence Division, Interrogation
+Branch; interrogated by Mr. O. Verber for the **Dresdner Bank Trial Team**
+(Mr. Adams).
+
+**What Felix says about himself.** Director of the Böhmische Escompte Bank from
+1931; manager of its Aussig branch from summer 1939, during which the institution
+became part of the Dresdner Bank; transferred in 1941 to the **Continentale Bank
+in Brussels**; drafted in 1943. Rasche then kept him out of the army for
+intelligence work: after a course in Berlin he was sent to the Handelskreditbank
+in Pressburg and, under Major Bechtle of Berlin counter-intelligence office I
+(Air), spent his time **trying to build an information centre about Russia via
+Turkey and Persia**, "failing to establish any contacts whatsoever", after which
+he was returned to military service.
+
+Two things in that bear directly on the case.
+
+1. **Turkey.** Felix was arrested by the Gestapo on 28 March 1945 charged, among
+   other things, with contact with enemy powers *via Turkey*. Here he is in 1947,
+   to American interrogators, describing exactly such a Turkey channel — as an
+   Abwehr task he failed at. Whatever the truth of it, the factual thread behind
+   the Gestapo charge is now independently documented.
+2. **Falkenhausen.** Summary 4049: "Subject states that he was on excellent terms
+   with FALKENHAUSEN" — Alexander von Falkenhausen, military commander in
+   Belgium, and lunch guest of Felix's. The 1945 charge sheet cites Felix's
+   connections to the Falkenhausen resistance circle. Brussels is where that
+   connection was formed, and this is the man himself confirming the relationship.
+
+**The other nine documents cut the other way, and must be read before anyone
+else reads them.** They include letters from Czernin to Rasche reporting on a
+trip to Hungary "and the progress of aryanization" (687846, 15 pp; 687928, 4 pp;
+687845, 7 pp; 687844), and memoranda signed Czernin on *Entflechtung* — the
+elimination of foreign influence — in the paper industry (708297, 708298, 708299,
+647378). On the present reading Felix was a Dresdner Bank officer inside the
+occupation economy of Belgium and Hungary, not a bystander to it.
+
+That is uncomfortable for a §58c narrative and it is better known now than raised
+by someone else later. It also does not cancel the persecution: a man can have
+run a German bank's Belgian subsidiary and still have been arrested by the RSHA
+in March 1945 for legitimism, defeatism and contact with the enemy. Both records
+exist. The full interrogation texts, not the summaries, are what settle the
+weight — those are at Staatsarchiv Nürnberg (KV-Anklage Interrogations C 22) and
+NARA M-1019 Roll 12.
+
+Images and OCR are held locally pending a decision on ingest: 40 pages is a small
+paid pass, but it is a paid pass.
