@@ -1,5 +1,5 @@
 **To:** militaerarchiv@bundesarchiv.de
-**Status:** drafted, not sent
+**Status:** sent 15 September 2026 (Zimbra message 463859)
 **Subject:** Anfrage — Abwehr-Unterlagen zu einer Türkei/Persien-Operation 1943/44 (Felix Graf Czernin, Handelskreditbank Pressburg)
 
 Sehr geehrte Damen und Herren,

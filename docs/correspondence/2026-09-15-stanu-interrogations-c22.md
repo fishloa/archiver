@@ -1,5 +1,5 @@
 **To:** poststelle@stanu.bayern.de
-**Status:** drafted, not sent
+**Status:** sent 15 September 2026 (Zimbra message 463857)
 **Subject:** Reproduktionsauftrag — Nürnberger Prozesse, KV-Anklage, Interrogations C 22 (Czernin, Felix Graf)
 
 Sehr geehrte Damen und Herren,
