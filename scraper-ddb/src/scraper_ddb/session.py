@@ -54,7 +54,13 @@ class DDBSession:
             "wt": "json",
             "fq": [
                 "sector_fct:sec_01",  # archive sector
-                "type_fct:mediatype_003",  # archival documents
+                # mediatype_007 is an archival file (Akte); mediatype_003 is a
+                # document. Filtering to 003 alone hid every Akte: a "Czernin"
+                # search returned 5 records, all about the wrong branch of the
+                # family, while the sector holds 149 — including Humprecht's
+                # Zuchthaus Brandenburg prisoner file and the Nuremberg
+                # interrogations of Felix, both of them Akten.
+                "type_fct:(mediatype_003 OR mediatype_007)",
             ],
             "rows": rows,
             "start": start,

@@ -180,6 +180,26 @@ pipeline {
                         '''
                     }
                 }
+                stage('test-scraper-ddb') {
+                    when { expression { env.BUILD_SCRAPER_DDB == 'true' } }
+                    steps {
+                        sh '''
+                            tar cf - worker-common scraper-ddb | docker run --rm -i \
+                                python:3.14-slim \
+                                sh -c "mkdir -p /repo && cd /repo && tar xf - && pip install -e worker-common && pip install -e 'scraper-ddb[test]' && pytest scraper-ddb/tests -v"
+                        '''
+                    }
+                }
+                stage('test-scraper-findbuch') {
+                    when { expression { env.BUILD_SCRAPER_FINDBUCH == 'true' } }
+                    steps {
+                        sh '''
+                            tar cf - worker-common scraper-findbuch | docker run --rm -i \
+                                python:3.14-slim \
+                                sh -c "mkdir -p /repo && cd /repo && tar xf - && pip install -e worker-common && pip install -e 'scraper-findbuch[test]' && pytest scraper-findbuch/tests -v"
+                        '''
+                    }
+                }
             }
         }
 
