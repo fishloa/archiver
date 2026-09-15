@@ -821,3 +821,30 @@ with no token — the viewer's `img.data.matricula-online.eu/image/<base64 of th
 URL>` wrapper is not required. Registers carry their own name indexes
 (`06-Index-Taufe`, `04-Index-Taufe`), organised by letter and year, which turns a
 219-image register into a two-page lookup.
+
+### 2026-09-15 — follow-ons from the Matricula method, and two ÖStA additions
+
+**The mother's baptism is parked, not abandoned.** The baptismal entry gives
+Gabriele's own details precisely: *geb. 21/5 1879 zu Wien VII*, legitimate
+daughter of Felix Reichsgraf von Orsini und Rosenberg. So her own baptism is in a
+Neubau parish. Of the three, only **Altlerchenfeld** has an 1879 Taufbuch online
+(01-46, with a 14-page index); **St. Ulrich** and **Schottenfeld** cover the year
+in principle but no 1879 volume is listed. Altlerchenfeld is the poorer, western
+parish, so it is the less likely of the two for this family — worth a look at its
+index under O, and otherwise a question for the Erzdiözese.
+
+**ÖStA, two additions to the Partezettel picture.** The collection holds **35**
+Czernin von Chudenitz death notices. The one that matters and was missing from
+our order:
+
+> **AT-OeStA/HHStA SB Partezettelsammlung 17, ID 3380986** — *Partezettel Czernin
+> von und zu Chudenic, Paul Graf*, **17.01.1938**
+
+That is Alexander's father, and the date is his death date at Krásný Dvůr. With
+the marriage announcement of 22 April 1901 (3380985) already ordered, the two
+together carry the descent on paper. A short addendum to the 14 September order is
+drafted as Zimbra **463863**, not sent.
+
+Searched and absent: no Partezettel for Maria Gabriele (d. Salzburg 1951) and
+none for the other siblings — the collection is Vienna-centred, and they died
+elsewhere.
