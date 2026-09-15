@@ -46,6 +46,10 @@ def releaseVersion() {
  * A main build publishes :<commit> and moves :test, which is what the test stack runs. Only a
  * release moves :latest, so ":latest" means "the latest release" and production never picks up
  * an untagged commit merely because a build went green.
+ *
+ * Tag a commit that has already been built and nothing happens: Jenkins tracks builds by SHA, so
+ * the tag is not a new revision to poll for, no build starts, and the release quietly does not
+ * exist. Give every release its own commit — see CHANGELOG.md.
  */
 def tagsFor(prefix, service, isRelease, version, commit) {
     def tags = ["${prefix}/${service}:${commit}"]
