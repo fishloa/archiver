@@ -1,5 +1,5 @@
 **To:** hhsta@oesta.gv.at
-**Status:** drafted, not sent (Zimbra draft 463575)
+**Status:** sent 14 September 2026 (Zimbra message 463585)
 **Subject:** Bestellung von Reproduktionen — Partezettelsammlung und NL Nostitz-Rieneck (Czernin)
 
 Sehr geehrte Damen und Herren,

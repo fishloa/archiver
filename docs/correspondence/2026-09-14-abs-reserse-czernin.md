@@ -1,11 +1,12 @@
 **To:** badatelna.struha@abscr.cz
 **Cc:** ebadatelna@abscr.cz
 
-> The first attempt went to `badatelna@abscr.cz` and bounced — 550 User unknown.
+> The first attempt was SENT to `badatelna@abscr.cz` (Zimbra 463582) and bounced —
+> 550 User unknown.
 > That address is the Národní archiv's pattern, not ABS. ABS research rooms (both
 > Prague Na Struze and Brno-Kanice) are `badatelna.struha@abscr.cz`; `info@abscr.cz`
 > is the general submissions box and did receive the cc.
-**Status:** sent 14 September 2026 (Zimbra message 463590)
+**Status:** sent 14 September 2026 (Zimbra message 463590; first attempt 463582 bounced)
 **Subject:** Žádost o archivní rešerši — rodina Czernin (Černín z Chudenic), 1939–1945
 
 Vážená paní, vážený pane,
