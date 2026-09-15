@@ -444,3 +444,43 @@ Method, for reuse: `POST /containers/{id}/exec` then `/exec/{id}/start` through 
 Portainer dockerProxy; `bun -e` inside the frontend image can both fetch the file
 and multipart-POST it to `/api/ingest/records/{id}/text-pdf`. A `wget` against
 dspace from there takes minutes, so expect the exec call to be backgrounded.
+
+---
+
+## 2026-09-15 — findbuch.at swept properly for the first time
+
+The login works (the credentials note saying it was broken on their end is out of
+date). More importantly, `scraper-findbuch` was never reading past the first page:
+it built `/findbuch-search/searchterm/X/page/2`, which findbuch.at accepts and
+silently answers with page 1. Nothing failed, so nothing flagged it — the archive
+simply held 18 findbuch records and no one knew what was missing. Fixed in
+`f869993` (`?page=N`, plus `perPage/100`), with tests.
+
+A full `Czernin` sweep returns **122 records**. Of those, **9 carry a Czernin
+surname**; the other 113 are records of Jewish victims that merely mention the
+string — an address in Czerningasse (Wien 2), a Czerningarage, or a Czernin
+appearing as the acquirer of the property.
+
+The nine:
+
+| ID | Name | Holding |
+|----|------|---------|
+| 17830 | Czernin, Arthur (b. 14.11.1880) | Collection Agencies A and B — negative files, immovable property |
+| 353887 | Czernin-Chudenic, Otto | RK 385/1948 |
+| 287004 | Czernin-Chudenitz, Otto | Rückstellungskommission, LG Klagenfurt, RK 176/1949 |
+| 353888 / 353889 / 353890 | Czernin-Chudenitz, Otto | RK 250/1949, RK 251/1949, RK 252/1949 |
+| 248145 | Czernin-Dirkenau, Liselotte | Restitution files, Finanzlandesdirektion Wien/NÖ/Bgld, 21546 |
+| 248146 | Czernin-Morzin, Jaromir | Restitution files, FLD Wien/NÖ/Bgld, 19867 |
+| 301599 | Czernin-Morzin, Jaromir | C 105, Bezirk 1 |
+
+**Result for the case: negative.** Not one of the nine belongs to Alexander's line
+— no Paul, no Gabriele, no Alexander, Felix, Wolfgang, Anna, Franziska or Jan. The
+Otto Czernin-Chudenitz files are restitution proceedings in Carinthia in which he
+is the party being claimed against, which places them in the same category as the
+Peter/Melanie StaPo file: other branches, pointing the other way.
+
+The two Jaromír Czernin-Morzin files are the only ones with any bearing on the
+case, as background to the Vermeer forced sale. Not ingested — say the word.
+
+No bulk ingest was run. 113 of the 122 are other families' persecution records and
+do not belong in this archive.
