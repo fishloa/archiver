@@ -34,3 +34,15 @@ def test_sort_links_are_not_records():
     assert [r["detail_url"] for r in rows] == [
         "https://www.findbuch.at/detail-view/17830"
     ]
+
+
+def test_total_pages_reads_query_parameter_links():
+    from scraper_findbuch.parser import get_total_pages
+
+    html = """
+    <div class="pagination">
+      <a href="/findbuch-search/searchterm/Czernin?page=2">2</a>
+      <a href="/findbuch-search/searchterm/Czernin?page=13">13</a>
+    </div>
+    """
+    assert get_total_pages(html) == 13

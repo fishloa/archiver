@@ -123,20 +123,20 @@ def get_total_pages(html: str) -> int:
     """
     soup = BeautifulSoup(html, "html.parser")
 
-    # Look for pagination links like /page/N
+    # Pagination links are ?page=N. Older markup used a /page/N segment, which
+    # the site still accepts while ignoring it, so both are read here.
     max_page = 1
-    for link in soup.find_all("a", href=re.compile(r"/page/\d+")):
+    for link in soup.find_all("a", href=re.compile(r"[?&]page=\d+|/page/\d+")):
         href = link.get("href", "")
-        match = re.search(r"/page/(\d+)", href)
-        if match:
-            page_num = int(match.group(1))
-            max_page = max(max_page, page_num)
+        for match in re.finditer(r"(?:[?&]page=|/page/)(\d+)", href):
+            max_page = max(max_page, int(match.group(1)))
 
-    # Fallback: derive from result count text (e.g. "122 results", 11 per page)
+    # Fallback: derive from the result count. per_page matches what
+    # FindbuchSession.search_url asks for.
     if max_page == 1:
         count = get_result_count(html)
         if count > 0:
-            per_page = 11  # findbuch.at uses 11 results per page
+            per_page = 100
             max_page = (count + per_page - 1) // per_page
             log.debug("Derived %d pages from %d results", max_page, count)
 
