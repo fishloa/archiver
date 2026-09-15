@@ -65,6 +65,85 @@ public final class Markdown {
     return sb.toString().strip();
   }
 
+  /**
+   * Widens any table whose delimiter row is narrower than its body.
+   *
+   * <p>A GFM table's width is fixed by the delimiter row, and the renderer drops every cell beyond
+   * it without complaining. So a model that translates
+   *
+   * <pre>|  Věznice gestapa …  |   |
+   * | --- | --- |</pre>
+   *
+   * into a one-column header takes the values out of the document while leaving the labels in
+   * place, and the page reads as though the archive holds a list of empty fields. That happened to
+   * the Terezín prisoner cards: name, dates and destination all vanished from the English text.
+   *
+   * <p>Padding the delimiter row is the conservative repair — no cell is moved or rewritten, and a
+   * table that is already consistent is returned unchanged.
+   */
+  public static String repairTables(String markdown) {
+    if (markdown == null || markdown.isBlank() || !markdown.contains("|")) {
+      return markdown;
+    }
+    String[] lines = markdown.split("\n", -1);
+    boolean changed = false;
+    for (int i = 1; i < lines.length; i++) {
+      if (!isDelimiterRow(lines[i]) || !lines[i - 1].contains("|")) {
+        continue;
+      }
+      int width = cellCount(lines[i - 1]);
+      for (int j = i + 1; j < lines.length && lines[j].contains("|"); j++) {
+        width = Math.max(width, cellCount(lines[j]));
+      }
+      if (cellCount(lines[i]) >= width) {
+        continue;
+      }
+      lines[i] = pad(splitCells(lines[i]), width, "---");
+      lines[i - 1] = pad(splitCells(lines[i - 1]), width, "");
+      changed = true;
+    }
+    return changed ? String.join("\n", lines) : markdown;
+  }
+
+  /** A row of only dashes and alignment colons — the line that sets a table's width. */
+  private static boolean isDelimiterRow(String line) {
+    String trimmed = line.strip();
+    if (!trimmed.contains("-") || !trimmed.contains("|")) {
+      return false;
+    }
+    for (String cell : splitCells(line)) {
+      if (!cell.strip().matches(":?-+:?")) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  /** Cells of a row, split on unescaped pipes, ignoring the optional leading and trailing ones. */
+  private static String[] splitCells(String line) {
+    String body = line.strip();
+    if (body.startsWith("|")) {
+      body = body.substring(1);
+    }
+    if (body.endsWith("|") && !body.endsWith("\\|")) {
+      body = body.substring(0, body.length() - 1);
+    }
+    return body.split("(?<!\\\\)\\|", -1);
+  }
+
+  private static int cellCount(String line) {
+    return splitCells(line).length;
+  }
+
+  private static String pad(String[] cells, int width, String filler) {
+    StringBuilder sb = new StringBuilder("|");
+    for (int i = 0; i < width; i++) {
+      String cell = i < cells.length ? cells[i].strip() : filler;
+      sb.append(' ').append(cell.isEmpty() && !filler.isEmpty() ? filler : cell).append(" |");
+    }
+    return sb.toString();
+  }
+
   /** A block's own source text, verbatim, from the lines it was parsed from. */
   public static String sourceOf(Node node, String[] lines) {
     List<SourceSpan> spans = node.getSourceSpans();

@@ -163,10 +163,17 @@ public class TranslationService {
   // Writes
   // -------------------------------------------------------------------------
 
-  /** Records a model's translation and repoints the cache at whichever is now best. */
+  /**
+   * Records a model's translation and repoints the cache at whichever is now best.
+   *
+   * <p>Tables are repaired on the way in. A model asked to keep the markdown structure may still
+   * collapse a header cell, and a GFM table narrower in its delimiter row than in its body loses
+   * every cell past that width when rendered — silently, so the page shows a column of labels with
+   * no values beside them.
+   */
   public void record(Long pageId, String model, String textEn) {
     if (textEn != null && !textEn.isBlank()) {
-      translations.upsert(pageId, model, textEn);
+      translations.upsert(pageId, model, Markdown.repairTables(textEn));
     }
     refreshShown(pageId);
   }
