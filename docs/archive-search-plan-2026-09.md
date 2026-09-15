@@ -128,3 +128,49 @@ For each search:
 4. Flag anything mentioning Alexander, Felix, Wolfgang, or their mother Maria Gabriele
 
 Upload all downloaded files to the Czernin Archiver at archiver.icomb.place with descriptive titles.
+
+---
+
+## STATUS — as at 14 September 2026
+
+Full detail of the run is in `research-log.md` under *2026-09-14*. Correspondence
+texts are in `docs/correspondence/`. Short version:
+
+| Task | State | Where it stands |
+|------|-------|-----------------|
+| 1 — ebadatelna | **blocked** | OCR/fulltext search is gated on account verification, which needs Czech eID / bank ID / mojeID / I.CA. A nil result there means nothing: `Praha` also returns zero. Written rešerše sent to ABS instead, 14.9.2026 (Zimbra 463590, to `badatelna.struha@abscr.cz`, cc `ebadatelna@abscr.cz`). Awaiting reply. Note `badatelna@abscr.cz` does not exist — it bounces 550. |
+| 2 — ÚSTR PDFs | **done** | Hořejš was already held as **3519** (correct URL: `.../pamet-dejiny/pad1404/031-042.pdf` — issue 2014/**04**). Jelínková SI 18 ingested as **3803**. |
+| 3 — Czech theses | **mostly done** | Ingested **3804** (Kučerová, nobility declarations 1938-39) and **3805** (Vochozka, Schwarzenberg property 1938-50, quotes the Heydrich letter at fn. 57). Hazdra was already **3797**/**3495**. Jelínková's UPa dissertation is login-only (401). Knoflíčková has one Czernin mention — judged not worth ingesting. Blažková 2018 (post-war Lex Schwarzenberg) left out as out of period; PDF parked at `/tmp/b.pdf` in `archiver-test-frontend-test-1`. |
+| 4 — NA Praha | **already held** | 4c is **record 195** (sign. 110-4/59, Rudolf's trial). 4a is covered by **3791**, **3206**, **2915**, **1540**, **1563**; the 12 Feb 1942 order itself has not surfaced. 4b Národní soud is not digitised. Separately, NA has scanned the rest of sign. 114-3-17 and the file has gone to their accounts department — invoice expected. |
+| 5 — ÖStA | **identified, not digitised** | Seven records found, none with digital objects, so all need ordering. HHStA order sent 14.9.2026 (Zimbra 463585) for 3380985 (parents' 1901 marriage announcement), 7224625 and 7224646 (Felix's and Wolfgang's post-war letters to Georg Nostitz), plus three Partezettel as secondary. AdR order for 7187521 (Ferdinand) went 11.9.2026 (Zimbra 462922) and is unanswered; draft 463600 extends that name enquiry to Wolfgang and Maria Gabriele — unsent, send or bin. |
+
+Out of scope by decision: the StaPo file on Dr. Peter and Melanie Czernin
+(7187625, Aryanization of the Aichhof estate). Different branch — recorded so it
+is known about, not pursued.
+
+### To pick up next
+
+1. Replies: ABS rešerše, ÖStA AdR, ÖStA HHStA, NA invoice.
+2. Decide on draft 463600 (AdR name extension) and delete dead draft 463574.
+3. Optional: Blažková 2018; Knoflíčková 2015.
+4. Still unlocated: the forced-administration order of 12 February 1942, and the
+   original SD-Leitabschnitt Wien report PA 3852/41 on Alexander.
+
+### Working notes that will save time
+
+- **dspace.cuni.cz refuses this network** (429 / reset) but answers zelkova. Route
+  through a container: Portainer `dockerProxy` → `POST /containers/{id}/exec` then
+  `/exec/{id}/start`; `bun -e` in the frontend image can fetch the file and
+  multipart-POST it to `/api/ingest/records/{id}/text-pdf`. Expect the exec call to
+  be backgrounded — dspace takes minutes to answer.
+- **Ingest of a born-digital PDF**: `POST /api/ingest/records` → `POST
+  /api/ingest/records/{id}/text-pdf` → `POST /api/ingest/records/{id}/complete`,
+  with the processor token as bearer. `text-pdf` skips OCR and takes the embedded
+  text layer.
+- **theses.cz and is.muni.cz** answer the first request with a `<meta refresh>`
+  stub; do the cookie handshake first, then `https://is.muni.cz/th/<id>/` lists the
+  files.
+- **ÖStA** search is a plain POST to `/volltextsuche.aspx` with the three ViewState
+  fields plus `ctl00$cphMainArea$txtMitAllenWoertern`. Result paging is a Telerik
+  postback that did not reproduce with a plain form POST — narrow the query rather
+  than trying to page.
