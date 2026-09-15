@@ -701,3 +701,71 @@ these — it reads the index as **2330 A**, which fixes the session sequence
 English where the original is English, so the pipeline correctly skips
 translation and only OCR, PDF, embedding and person-matching run. Person matching
 found hits on record 3920 immediately.
+
+### 2026-09-15 — the Turkey thread, and where it goes next
+
+Felix's own diary (record 3507) gives the charge sheet of 28 March 1945, written
+down at Morzinplatz within days:
+
+> 1.) Im Aug. 1943 (vor Türkeireise) defaitist. Aussagen über Kriegslage gemacht zu haben.
+> 2.) erklärt zu haben, dass Falkenhausen an Stelle von H. kommen soll.
+> 3.) Beziehungen zu Falkenhausen Clique
+> 4.) Türkei Feindverbindung!
+> 5.) Überhaupt österr. Legitimist.
+> "Punkt 4 erscheint mir Bluff gewesen zu sein, alles andere ernst."
+
+Three points follow.
+
+**A Turkey journey actually happened.** "Vor Türkeireise" — the defeatist remarks
+are dated by reference to a trip he took, around August 1943. The Nuremberg
+account describes a later and different thing: the Pressburg posting under Major
+Bechtle of Abwehr I (Luft), six months spent trying to build an information centre
+on Russia via Turkey and Persia, with no contacts established. So there are
+probably two Turkey threads, and only the second is in the interrogations.
+
+**He rated the Turkey charge the weakest of the five.** In a private diary he
+calls point 4 a bluff and the rest serious — which reads as the Gestapo having
+material on the defeatism, the Falkenhausen connection and the legitimism, and
+fishing on Turkey.
+
+**Point 2 is the sharpest line in the file:** that Falkenhausen should take H.'s
+place. With point 3 that is not grumbling about the war; it is naming a successor
+to Hitler.
+
+The diary also shows he was held at the Rossauer Lände military prison rather than
+by the Gestapo — "ein Riesenglück, dass ich hier bin und nicht bei Gestapo" — his
+file never arrived, and he was released on 7 April 1945 as Vienna fell, after
+twelve days. Within a fortnight he is at the **O5 Präsidium** with Maasburg, Willi
+Taxis and Agathe Croy, and gets papers through the Swedish consulate. The
+legitimist charge corroborates itself from the other side.
+
+**Two lines opened, both by letter (neither sent).**
+
+*Transcripts.* We hold Verber's summaries only. The verbatim records are
+Staatsarchiv Nürnberg, KV-Anklage, Interrogations C 22, and NARA M-1019 Roll 12 —
+the roll being fixed from the M-1019 finding aid, where Czernin falls in the
+Cremer–Deutsch range. NARA's catalogue API needs a key and M-1019 is not freely
+digitised; the Bundesarchiv's published Nuremberg material (ALLPROZ) does not
+index him. So: `poststelle@stanu.bayern.de`, draft in
+`correspondence/2026-09-15-stanu-interrogations-c22.md`, Zimbra draft 463855.
+
+*Abwehr.* DDB indexes the Bundesarchiv finding aids, which name the fonds
+precisely. **RW 5** is Amt Ausland/Abwehr, and its Turkey series brackets his
+window: **RW 5/468** (politisch, März 1943 – April 1944), **RW 5/471**
+(militärisch, Okt. 1943 – Juli 1944), 469 and 470 (May–Sept 1944), 363 (June–Sept
+1943). Sharpest of all, **RW 5/36a and 36b**, *Devisenbereitstellung für
+Auslandstätigkeit im Abwehrinteresse*, 1935–1944 — foreign-currency provision for
+Abwehr work abroad, which is exactly what a banker travelling to Turkey on Abwehr
+business generates. The Vienna station is RW 49/67–69 but holds only 1938 and 1941
+material. None of it is digitised (checked: every IIIF manifest 404s). So:
+`militaerarchiv@bundesarchiv.de`, draft in
+`correspondence/2026-09-15-barch-ma-abwehr-tuerkei.md`, Zimbra draft 463856.
+
+**Context, not evidence.** Istanbul in 1943–44 was the main channel for German
+peace feelers, and the Abwehr station there is where Erich Vermehren defected to
+the British in February 1944 — which brought the Abwehr's dissolution into the
+RSHA and a purge aimed at exactly Felix's profile: Catholic, aristocratic,
+foreign-facing officers with Turkish connections. An RSHA arrest order in March
+1945 against a man with a 1943 Turkey trip and an Abwehr tasking toward Turkey
+sits naturally in that sequence. Nothing yet evidences a link and none should be
+asserted.
