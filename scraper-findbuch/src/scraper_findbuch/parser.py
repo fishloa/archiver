@@ -176,6 +176,67 @@ def parse_detail_page(html: str, detail_url: str = "") -> dict:
                 return field_name
         return None
 
+    # Strategy 0: the current findbuch layout, which is precise —
+    # <div class="field surname"><div class="label">Surname</div>
+    # <div class="value">Rakower</div></div>. The class name carries the field,
+    # so nothing depends on matching the visible label, and label and value
+    # cannot run together the way they do when the two divs are read as one
+    # blob ("File TypeRestitution files of the...").
+    class_map = {
+        "surname": "surname",
+        "firstname": "forename",
+        "dob": "dateOfBirth",
+        "street": "street",
+        "city": "city",
+        "district": "district",
+        "province": "province",
+        "country": "country",
+        "remarks": "remarks",
+        "profession": "profession",
+        "archive": "archive",
+        "holding": "holding",
+        "filetype": "file_type",
+        "filenumber": "file_number",
+        "signature": "signature",
+    }
+    ordered: list[tuple[str, str]] = []
+    for field_div in soup.select("div.field"):
+        label_el = field_div.find(class_="label")
+        value_el = field_div.find(class_="value")
+        if not label_el or not value_el:
+            continue
+        # Join with "" and collapse afterwards: a value is inline content, and
+        # the search term arrives wrapped in <span class="highlighted">, so a
+        # separator would split "Czerningasse" into "Czernin gasse" and the
+        # signature into "AT - OeStA / AdR".
+        label = (
+            re.sub(r"\s+", " ", label_el.get_text("", strip=True)).strip().rstrip(":")
+        )
+        value = re.sub(r"\s+", " ", value_el.get_text("", strip=True)).strip()
+        if not value:
+            continue
+        ordered.append((label, value))
+        for cls in field_div.get("class", []):
+            if cls in class_map:
+                metadata[class_map[cls]] = value
+                break
+        else:
+            field = match_field(label)
+            if field and not metadata.get(field):
+                metadata[field] = value
+
+    if ordered:
+        metadata["fields"] = ordered
+        street = metadata.get("street", "")
+        city = metadata.get("city", "")
+        district = metadata.get("district", "")
+        if street or city:
+            where = ", ".join(x for x in (street, city) if x)
+            if district:
+                where += f" ({district}. district)"
+            metadata.setdefault("address", where)
+        return metadata
+
     # Strategy 1: Definition lists (dt/dd)
     for dt in soup.find_all("dt"):
         label = dt.get_text(strip=True).rstrip(":")

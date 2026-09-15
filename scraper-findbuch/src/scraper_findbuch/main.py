@@ -33,6 +33,7 @@ def ingest_record(
     result: dict,
     known_statuses: dict[str, str],
     dry_run: bool = False,
+    refresh: bool = False,
 ) -> str:
     """Ingest a single record: fetch detail, parse metadata, create record.
 
@@ -41,7 +42,8 @@ def ingest_record(
         session: Findbuch session.
         result: Result dict from search (must have detail_url).
         known_statuses: Pre-fetched map of sourceRecordId -> status.
-        dry_run: If True, skip actual uploads.
+        dry_run: If True, parse and log the record but upload nothing.
+        refresh: If True, re-ingest records the backend already holds.
 
     Returns:
         "ok", "skipped", or "failed".
@@ -55,7 +57,7 @@ def ingest_record(
     source_record_id = detail_url.split("/")[-1] or detail_url
 
     # Check existing status from pre-fetched map
-    if not dry_run:
+    if not dry_run and not refresh:
         current_status = known_statuses.get(source_record_id)
         if current_status and current_status not in ("ingesting",):
             log.info("[SKIP] %s — already %s", title, current_status)
@@ -75,10 +77,6 @@ def ingest_record(
     log.info("[START] %s (%s)", title, source_record_id)
     detail_html = session.get_detail(detail_url)
 
-    if dry_run:
-        log.info("[DRY-RUN] %s", title)
-        return "ok"
-
     # Parse detail page
     detail_data = parse_detail_page(detail_html, detail_url)
 
@@ -91,7 +89,10 @@ def ingest_record(
             .rstrip(",")
             or title
         ),
-        "referenceCode": detail_data.get("file_number", ""),
+        # The signature is what an archive is quoted when copies are ordered;
+        # the bare file number is not enough on its own.
+        "referenceCode": detail_data.get("signature")
+        or detail_data.get("file_number", ""),
         "dateRangeText": detail_data.get("dateOfBirth", ""),
         "description": _build_description(detail_data),
         "sourceUrl": detail_url,
@@ -112,6 +113,20 @@ def ingest_record(
     # Store raw detail data as metadata
     metadata["rawDetail"] = detail_data
 
+    if dry_run:
+        # Print the record that would be written. A dry run that stops before
+        # parsing proves only that a page fetched — which is how 122 thin
+        # records got ingested without anyone seeing one first.
+        log.info(
+            "[DRY-RUN] %s\n  title: %s\n  ref:   %s\n  date:  %s\n  desc:  %s",
+            title,
+            metadata["title"],
+            metadata["referenceCode"],
+            metadata["dateRangeText"],
+            metadata["description"],
+        )
+        return "ok"
+
     # Create record in backend
     record_id = client.create_record(SOURCE_SYSTEM, source_record_id, metadata)
 
@@ -122,8 +137,25 @@ def ingest_record(
     return "ok"
 
 
+SKIP_IN_DESCRIPTION = {"Provenance", "Contact", "Dataset last edited on"}
+
+
 def _build_description(detail_data: dict) -> str:
-    """Build a description from detail data fields."""
+    """Build a description from detail data fields.
+
+    findbuch.at holds no scans, so this text is the whole record: what the
+    reader sees, what search matches on, and what gets embedded. It is built
+    from every label/value pair on the detail page, in page order, minus the
+    site's own boilerplate.
+    """
+    fields = detail_data.get("fields")
+    if fields:
+        return " | ".join(
+            f"{label}: {value}" if label else value
+            for label, value in fields
+            if not any(label.startswith(skip) for skip in SKIP_IN_DESCRIPTION if label)
+        )
+
     parts = []
     if detail_data.get("profession"):
         parts.append(f"Profession: {detail_data['profession']}")
@@ -152,6 +184,7 @@ def run_scrape(
     dry_run: bool,
     verbose: bool,
     scraper_id: str = "",
+    refresh: bool = False,
 ) -> tuple[int, int, int]:
     """Process a list of search results. Returns (success, failed, skipped)."""
     success, failed, skipped = 0, 0, 0
@@ -167,7 +200,12 @@ def run_scrape(
 
         try:
             result_status = ingest_record(
-                client, session, result, known_statuses, dry_run=dry_run
+                client,
+                session,
+                result,
+                known_statuses,
+                dry_run=dry_run,
+                refresh=refresh,
             )
             if result_status == "skipped":
                 skipped += 1
@@ -205,6 +243,11 @@ def main():
         "--delay",
         type=float,
         help="Delay between requests in seconds (overrides SCRAPER_DELAY env var)",
+    )
+    parser.add_argument(
+        "--refresh",
+        action="store_true",
+        help="Re-ingest records the backend already holds (updates their metadata)",
     )
     parser.add_argument(
         "--dry-run",
@@ -335,7 +378,12 @@ def main():
 
         # Process results
         s, f, sk = run_scrape(
-            all_results, session, client, known_statuses, args.dry_run, args.verbose,
+            all_results,
+            session,
+            client,
+            known_statuses,
+            args.dry_run,
+            args.verbose,
             scraper_id=scraper_id,
         )
         total_success += s
