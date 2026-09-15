@@ -902,3 +902,45 @@ Karel Viktor Rohan present: a Rohan search returns four records, all Emanuel
 Rohan b. 1914 Chrást or unrelated. So the two men convicted alongside Rudolf are
 absent from this database, while Rudolf himself is in it — worth asking the
 Memorial about, since it bears on how complete the Small Fortress coverage is.
+
+### 2026-09-15 — Heydrich's ten families, tested against the Small Fortress database
+
+Heydrich's letter to Bormann of 16 May 1942 names ten families whose estates were
+to be placed under forced administration — Kinský, Belcredi, Sternberg,
+Schwarzenberg, Lobkowicz, **Czernin**, Kolowrat, Strachwitz among them — and gives
+the reason as the nobility's declaration of loyalty to the Czechoslovak state.
+Each surname was run against the Terezín Memorial database:
+
+| Name | Result |
+|------|--------|
+| **Czernin** | **Rudolf, Malá pevnost** (record 3934) |
+| **Bořek-Dohalský** | **four cards, all Malá pevnost** (records 3940–3942) |
+| Lobkowicz | nil |
+| Belcredi | nil |
+| Kolowrat | 1, Ghetto Terezín (Wilhelmine Gisela, 1871) — not the Bohemian family |
+| Schwarzenberg | 8, all Ghetto Terezín, Jewish namesakes |
+| Sternberg | 149, overwhelmingly Jewish women recorded *née* Sternberg |
+| Kinský | 5 (records 3935–3939), none of them František Kinský of Kostelec |
+| Rohan | 4, none of them Karel Viktor Rohan |
+
+Two families from that circle are in the political prison, then: the Czernins and
+the Bořek-Dohalskýs. The Dohalský cards are worth having in their own right:
+
+- **František** (b. 5.10.1887, diplomat and writer) — transport to **Dachau**,
+  and his card carries the remark **"signatář Prohlášení české a moravské
+  šlechty"**. That is the Memorial's own record connecting imprisonment in the
+  Small Fortress to the nobility declaration — the causal link the case argues,
+  stated by the institution rather than inferred from literature.
+- **Antonín** (b. 23.10.1889, Msgr. ThDr., canon at St Vitus) — 29 June to 26
+  July 1942, then transport to **Auschwitz**.
+- **Zdeněk** (b. 10.5.1900, JUDr., editor of Lidové noviny) — brought from
+  Prag-Pankratz on 6 February 1945 and **executed on 7 February 1945**, cell EZ.
+
+Hořejš's study of Rudolf and Humprecht Czernin (record 3519) sets Humprecht
+beside precisely these two brothers. The database now supplies the primary
+records behind that comparison.
+
+A caution for anyone repeating the searches: most noble surnames return Jewish
+namesakes from the Ghetto database, because the surname field is "Příjmení
+(rozená)" and matches maiden names. Sternberg's 149 hits are almost entirely of
+that kind. The political-prison records are the ones with `mp-` and `pa-` slugs.
