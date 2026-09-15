@@ -769,3 +769,55 @@ foreign-facing officers with Turkish connections. An RSHA arrest order in March
 1945 against a man with a 1943 Turkey trip and an Abwehr tasking toward Turkey
 sits naturally in that sequence. Nothing yet evidences a link and none should be
 asserted.
+
+### 2026-09-15 — Alexander's baptismal entry found, and it cost nothing
+
+The Matricula archive stood at zero records because nobody knew which of Vienna's
+567 parishes to look in. The chain that solved it:
+
+1. **The TH Wien Lebenslauf** (record 3505) says Alexander was born "als Sohn des
+   Statthaltereirates … Paul Graf Czernin". A Habsburg official is listed in the
+   city directory.
+2. **Lehmann's Wiener Wohnungsanzeiger 1913** (Wienbibliothek digital, Band 2,
+   Namenverzeichnis, printed p. 177) gives: *"Czernin v. Chudenitz … Paul Gf.,
+   Bez.Kmsr. i. Minstm. d. Innern, IV. Alleeg. 20A."* The scans carry no text
+   layer, so the page was found by fetching images and OCR'ing the running heads
+   locally — the page images are open at
+   `digital.wienbibliothek.at/download/webcache/2000/<pageviewId>`, and printed
+   page ≈ pageview − 137478. The same page also places Eugen and Josefine Czernin
+   at Friedrich-Schmidt-Platz 4 and Rudolf Czernin-Morzin at Schwindgasse 4.
+3. Alleegasse 20A is Wieden, so three parishes were candidates. **Pfarre Wieden
+   (Paulanerkirche)** was eliminated from its own index — under C for 1913 it
+   lists only "Corsina Aldo". **St. Karl Borromäus** was the answer: its baptism
+   index (Taufbuch 01-29, 04-Index-Taufe, letter C, 1913) reads *"Graf Czernin
+   von Chudenic … 186"*.
+
+**Pfarre Wien IV, St. Karl Borromäus, Taufbuch 01-29 (1907–1914), Fol. 186,
+Reihezahl 21:**
+
+> Geboren am **30. April**, getauft am **6. Mai 1913**
+> Ort der Geburt: **Wien, IV. Bezirk, Allee-Gasse No 20a**
+> **Alexander Friedrich Josef Paul Maria Graf Czernin von Chudenic**
+
+Father: *Paul Friedrich Hubert Ottokar Maria Graf Czernin von Chudenic*, k.u.k.
+Kämmerer, Bezirkskommissär im Ministerium des Innern, Lt. d. Res. of Dragoon
+Regiment No. 14, born 1879 at **Dymokur, Bez. Poděbrad** in Bohemia. Mother:
+*Reichsgräfin Gabriele, geb. von Orsini und Rosenberg*, born 1879 in Vienna,
+legitimate daughter of Felix Reichsgraf von Orsini und Rosenberg, k.u.k.
+Kämmerer and Feldmarschall-Leutnant.
+
+A marginal note records that he married on **9 July 1949 at St Paul's Church,
+Haywards Heath**, England — the Vienna register being annotated from England
+thirty-six years later.
+
+Ingested as **record 3933** (archive 5, Matricula Online — previously empty):
+the folio spread and the index page that points to it. The birth address on the
+register and the address in Lehmann agree exactly, which is what ties the entry
+to this family beyond argument.
+
+Method note: Matricula's page images are served directly from
+`hosted-images.matricula-online.eu/images/matricula/NAS_Matricula_Online/<id>M/<register>/<file>.jpg`
+with no token — the viewer's `img.data.matricula-online.eu/image/<base64 of that
+URL>` wrapper is not required. Registers carry their own name indexes
+(`06-Index-Taufe`, `04-Index-Taufe`), organised by letter and year, which turns a
+219-image register into a two-page lookup.
