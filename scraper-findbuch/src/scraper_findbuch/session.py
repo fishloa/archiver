@@ -90,15 +90,27 @@ class FindbuchSession:
         self._logged_in = True
         log.info("Successfully logged in to findbuch.at as %s", cfg.findbuch_username)
 
+    @staticmethod
+    def search_url(term, page=1, per_page=100):
+        """Build a search URL.
+
+        The page number is a query parameter. A ``/page/N`` path segment is
+        accepted by the site and silently ignored, so getting this wrong does
+        not fail — it just returns page 1 for every page, which is how a
+        "Czernin" run came back with 10 records instead of 122.
+        """
+        url = f"/findbuch-search/searchterm/{term}/perPage/{per_page}"
+        if page > 1:
+            url += f"?page={page}"
+        return url
+
     def search(self, term, page=1):
         """Search findbuch.at. Returns raw HTML of results page.
 
         On the first call, detects and submits the search module's own
         Contao login form if results are hidden behind it.
         """
-        url = f"/findbuch-search/searchterm/{term}"
-        if page > 1:
-            url += f"/page/{page}"
+        url = self.search_url(term, page)
         resp = self._client.get(url)
         html = resp.text
 
