@@ -484,3 +484,46 @@ case, as background to the Vermeer forced sale. Not ingested — say the word.
 
 No bulk ingest was run. 113 of the 122 are other families' persecution records and
 do not belong in this archive.
+
+### 2026-09-15, later — the findbuch records were thin, and why
+
+The 122 went in and came out near-empty: `pageCount 0` and a description
+reading `"Archive: File TypeRestitution files of the Financial Directorates…"`.
+Two faults behind that.
+
+The first is in the parser. Detail pages are
+`<div class="field surname"><div class="label">Surname</div><div class="value">Rakower</div></div>`,
+and reading a field as one blob glues label to value. Parsing by the class name
+instead yields the whole record: name, date of birth, street, town, district,
+remarks, holding, file number, and the **signature** —
+`AT-OeStA/AdR/E-uReang/FLD 6822` — which is what an archive is quoted when
+copies are ordered. That signature is now the record's reference code.
+
+The second was in the verification, and it is the one that mattered. `--dry-run`
+returned *before* `parse_detail_page`, so a dry run proved only that a page had
+fetched. Five dry-run records looked fine and told us nothing; 122 records were
+then ingested, each firing a paid `translate_record` and `embed_record` job, and
+nobody had looked at a finished record. `--dry-run` now parses and prints the
+record it would write, and `--refresh` re-ingests records already held.
+
+One more thing worth knowing: **re-ingesting an existing record does not
+re-translate it.** The record returns to `complete` without re-queueing
+`translate_record`, so a refreshed record keeps its old `descriptionEn`. To
+correct stored text, delete and re-ingest.
+
+**What the archive now holds.** All 123 findbuch records were deleted (the 122
+plus the junk "Name" header record), and the nine Czernin-surname records were
+re-ingested fresh, each with one clean translate/embed pass:
+
+| Record | Name | Signature |
+|--------|------|-----------|
+| 3911–3919 | Czernin Arthur; Czernin-Chudenitz Otto ×4; Czernin-Chudenic Otto; Czernin-Dirkenau Liselotte; Czernin-Morzin Jaromir ×2 | AT-OeStA/AdR/E-uReang/… and AT-KLA/144-C-RK… |
+
+The 113 records of other families were not kept. They were other people's
+persecution files that merely contained the string Czernin — an address in
+Czerningasse, the Czerningarage, or a Czernin as acquirer — and the finding they
+support (that Alexander's line does not appear in findbuch at all) is recorded
+above and does not depend on holding them.
+
+Credential note corrected: the findbuch.at login works. The memory saying it was
+broken on their end dated from an earlier attempt.
