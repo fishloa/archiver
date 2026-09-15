@@ -878,3 +878,27 @@ parameters are ignored and the unfiltered page comes back, which looks exactly
 like a nil result. A control search for a common Czech surname exposed that. The
 form has to be filled and submitted in a browser; results then appear at
 `/vezen/<slug>`.
+
+**Kinský in the same database — all five, ingested as 3935–3939.** Searched on the
+stem "Kinsk" (8 hits; Lenkinska, Wickinsky and Wykinsky are substring noise):
+
+| Record | Person | What the card says |
+|--------|--------|--------------------|
+| 3935 | Bernhard Kinski, b. 30.7.1876 Bischofsburg | Transport **I/71, 4 Oct 1942, Berlin → Terezín**, no. 1021; transport number **8628**; **died 1.5.1945** |
+| 3936 | Martha Kinsky, née **Friedländer**, b. 5.6.1875 Wartenburg | Same transport I/71; transport number **8629** |
+| 3937 | Jaroslav Kinský, b. 15.9.1897, of Ostrava | Held at **AD-Ostrau** (Gestapo Ostrava) before Mauthausen; **died** there |
+| 3938 | Miloslav Kinský, b. 27.2.1896 Chlum | Mauthausen; **died 30.11.1941** |
+| 3939 | Václav Kinský, b. 9.6.1922 Sedletz | Flossenbürg, fitter, from Zwickau, arrived 28.3.1945, category Tsch.ZA, camp no. 89111 |
+
+Two groups, and they should not be run together. Bernhard and Martha were deported
+from **Berlin** on the same transport with consecutive numbers, both born in East
+Prussia — a married Jewish couple, with no established connection to the Bohemian
+Kinský family. Jaroslav, Miloslav and Václav are Czech, and two of the three died
+in Mauthausen.
+
+**None of them is František Kinský of Kostelec nad Orlicí**, who was convicted
+with Rudolf Czernin and Karel Viktor Rohan on 28 March 1944 and survived. Nor is
+Karel Viktor Rohan present: a Rohan search returns four records, all Emanuel
+Rohan b. 1914 Chrást or unrelated. So the two men convicted alongside Rudolf are
+absent from this database, while Rudolf himself is in it — worth asking the
+Memorial about, since it bears on how complete the Small Fortress coverage is.
