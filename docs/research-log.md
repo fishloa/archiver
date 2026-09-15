@@ -527,3 +527,44 @@ above and does not depend on holding them.
 
 Credential note corrected: the findbuch.at login works. The memory saying it was
 broken on their end dated from an earlier attempt.
+
+### 2026-09-15 — Bundesarchiv R 43-II/1326 read without spending anything
+
+The Zarnack memorandum was the reason for chasing R 43-II/1326 (Reichskanzlei,
+Protektorat Böhmen und Mähren). The earlier note proposed ingesting its 216 pages
+and letting our own OCR search them. That would have cost 216 Mistral OCR calls
+plus a `translate_page` LLM call per page. It was not necessary.
+
+The page images are open — no session, no auth:
+`invenio.bundesarchiv.de/invenio/invenio-viewer/lixe/files/41/82/<uuid>/R_43_II_1326_NNNN.jpg`.
+All 216 (533 MB) were downloaded and OCR'd locally with tesseract and the German
+model. Cost: nothing.
+
+**Result: negative, and the volume is the wrong one.** No `Zarnack`, no `Czernin`,
+and zero instances of Adel, Grundbesitz, Beschlagnahme, Zwangsverwaltung,
+Enteignung, Bodenamt or Denkschrift.
+
+The negative is trustworthy because the corpus is sound rather than empty:
+Protektorat on 39 pages, Reichsprotektor on 44, Böhmen and Mähren on 37 each,
+Heydrich on 11, 21,391 words in total. The first pass looked like a 58% OCR
+failure — 126 of 216 pages under 200 bytes — but measuring ink coverage showed
+**161 of the 216 pages are blank versos**. Only 7 pages carry ink without text,
+and 4 of those are covers. So the file is ~55 content pages, and they match its
+`Enthält` list exactly: German-Czech relations, Jewish armbands, Heydrich's
+teleprinter report, the Rudolfinum address, Wehrmacht jurisdiction. It is not a
+noble-property file.
+
+Not ingested. Nothing in it bears on the case.
+
+**Method worth reusing.** For any archive that serves page images openly, pull
+them, OCR locally, and decide relevance before paying for the pipeline. Triage
+blank leaves by dark-pixel fraction (below ~0.008 over the cropped page) so a
+wall of near-empty OCR output is not mistaken for a broken scrape — which is
+exactly what it looked like at first.
+
+**Still open: 1326a and 1326b.** Invenio's catalogue search is a JSF/PrimeFaces
+app. `/invenio/direktlink/<ve_uuid>/` needs no login but lands in the application
+shell rather than a parseable record, and driving "Suche ohne Anmeldung" in a
+browser fails on a stray `.ui-dialog-mask` that intercepts the click; removing it
+and firing the postback leaves the page where it was. A written enquiry to the
+Bundesarchiv will be cheaper than beating the app.
