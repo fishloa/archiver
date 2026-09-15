@@ -568,3 +568,51 @@ shell rather than a parseable record, and driving "Suche ohne Anmeldung" in a
 browser fails on a stray `.ui-dialog-mask` that intercepts the click; removing it
 and firing the postback leaves the page where it was. A written enquiry to the
 Bundesarchiv will be cheaper than beating the app.
+
+### 2026-09-15 — DDB: two primary sources on Felix and Humprecht
+
+DDB's Solr API is open, needs no key, and answers at
+`api.deutsche-digitale-bibliothek.de/search/index/search/select`.
+
+**`scraper-ddb` would have missed both of these.** Its query filters
+`type_fct:mediatype_003`, but archival *Akten* are `mediatype_007`. With that
+filter, "Czernin" returns 5 hits, all Landesarchiv Baden-Württemberg files about
+Ottokar Czernin, the WWI foreign minister — the wrong branch entirely. Dropping
+the filter and keeping `sector_fct:sec_01` returns **149**.
+
+**1. Humprecht's prison file — Brandenburgisches Landeshauptarchiv.**
+
+> *Czernin, Humprecht Ottokar Graf, 9.2.1909, verurteilt wegen unbefugten
+> Waffenbesitzes*
+> Rep. 29 Zuchthaus Brandenburg → Häftlingspersonalakten → Buchstabe C
+> **29 ZH Brdbg 3189 (760738)**, 1942–1944
+> *Enthält u. a.: Todesstrafe, zu lebenslänglichem Zuchthaus begnadigt.- Am
+> 14.9.1944 in ein Sanatorium bei Prag eingeliefert.*
+
+The date of birth matches exactly, and so does the charge. The abstract confirms
+from the prison's own file what we had only from secondary literature: death
+sentence, commuted to life, and transfer on 14 September 1944 to a sanatorium
+near Prague — he died at Sanatorium Pleš five days later, on 19 September 1944.
+This is the prison file the search plan asked for, beyond what Arolsen holds.
+
+**2. Felix interrogated at Nuremberg — Staatsarchiv Nürnberg.**
+
+> *Czernin, Felix Graf, geb. 07.03.1902 in Bluschitz/Böhmen, Dresdner Bank*
+> Nürnberger Prozesse, KV-Anklage, Interrogations **C 22**
+> Vern. Nr. 2330A/Verber, 6.11.1947 [7 Bl.]; 2330B, 7.11.1947 [8 Bl.];
+> 2330C, 10.11.1947 [6 Bl.]; 2330D, 19.11.1947 [4 Bl.]
+
+Alexander's own brother, questioned by the Nuremberg prosecution across four
+sessions in November 1947 — 25 sheets — in connection with the Dresdner Bank,
+which took over Czech banks in Bohemia after March 1939. For the question the
+case now turns on, what the siblings knew and said about the occupation, this is
+as direct as a source gets: Felix in his own words, under examination, two years
+after the war.
+
+Confirmed independently in the US National Archives finding aid for microfilm
+**M-1019** (Records of the US Nuremberg War Crimes Trials Interrogations,
+1946–1949), entry 527: *"Czernin, Felix, Nov. 6, 7, 10, and 19, 1947"*. The roll
+ranges put him in **Roll 12** (Cremer–Deutsch). So the interrogations can be
+ordered from Staatsarchiv Nürnberg or obtained from NARA M-1019 Roll 12.
+
+Neither is digitised; both are now precisely enough identified to order.
