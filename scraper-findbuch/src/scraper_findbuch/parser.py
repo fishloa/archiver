@@ -91,6 +91,11 @@ def parse_search_results(html: str) -> list[dict]:
                 "Results hidden behind login — FINDBUCH_USERNAME/PASSWORD required"
             )
 
+    # A record is a /detail-view/ link and nothing else. The results table's
+    # column headers are sort links, and one of them ("Name") otherwise came
+    # through as a record of its own.
+    results = [r for r in results if "/detail-view/" in r["detail_url"]]
+
     log.debug("Parsed %d search results from page", len(results))
     return results
 

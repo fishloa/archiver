@@ -19,3 +19,18 @@ def test_per_page_is_settable():
     assert FindbuchSession.search_url("Czernin", page=3, per_page=20).endswith(
         "/perPage/20?page=3"
     )
+
+
+def test_sort_links_are_not_records():
+    from scraper_findbuch.parser import parse_search_results
+
+    html = """
+    <div class="mod_metamodel_list">
+      <a href="findbuch-search/searchterm/Czernin/orderBy/surname/orderDir/ASC">Name</a>
+      <a href="https://www.findbuch.at/detail-view/17830">Czernin, Arthur, 14-11-1880</a>
+    </div>
+    """
+    rows = parse_search_results(html)
+    assert [r["detail_url"] for r in rows] == [
+        "https://www.findbuch.at/detail-view/17830"
+    ]
