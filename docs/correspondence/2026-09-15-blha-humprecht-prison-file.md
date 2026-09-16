@@ -1,6 +1,6 @@
 **To:** benutzerdienst@blha.brandenburg.de
 **Cc:** poststelle@blha.brandenburg.de
-**Status:** drafted, not sent (Zimbra draft 463864)
+**Status:** sent 16 September 2026 (Zimbra message 463870)
 **Subject:** Reproduktionsauftrag — Rep. 29 Zuchthaus Brandenburg, Häftlingspersonalakte 29 ZH Brdbg 3189 (Czernin)
 
 Requests Humprecht Czernin's prisoner personal file, 1942–1944, found through

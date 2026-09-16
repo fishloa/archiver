@@ -1,5 +1,5 @@
 **To:** hhsta@oesta.gv.at
-**Status:** sent 14 September 2026 (Zimbra message 463585)
+**Status:** sent 14 September 2026 (Zimbra message 463585); addendum sent 16 September 2026 (message 463869) adding Partezettelsammlung 17, ID 3380986 — Paul Czernin's death notice, 17 January 1938
 **Subject:** Bestellung von Reproduktionen — Partezettelsammlung und NL Nostitz-Rieneck (Czernin)
 
 Sehr geehrte Damen und Herren,

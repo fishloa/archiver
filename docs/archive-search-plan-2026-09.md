@@ -148,12 +148,36 @@ Out of scope by decision: the StaPo file on Dr. Peter and Melanie Czernin
 (7187625, Aryanization of the Aichhof estate). Different branch — recorded so it
 is known about, not pursued.
 
+## STATUS — as at 16 September 2026
+
+Everything drafted has now been sent, and nothing is waiting on a decision. What
+is outstanding is other people's replies.
+
+| Request | Sent | Reference |
+|---------|------|-----------|
+| ABS rešerše | 14.9. | Zimbra 463590 (`badatelna.struha@abscr.cz`) |
+| ÖStA AdR — Ferdinand | 11.9. | Zimbra 462922 |
+| ÖStA AdR — name extension | 14.9. | Zimbra 463719 |
+| ÖStA HHStA — reproductions | 14.9. | Zimbra 463585 |
+| ÖStA HHStA — addendum, Paul's Partezettel (ID 3380986) | 16.9. | Zimbra 463869 |
+| Staatsarchiv Nürnberg — C 22 interrogations | 15.9. | Zimbra 463857 |
+| BArch-MA Freiburg — Abwehr / Turkey | 15.9. | Zimbra 463859 (auto-ack: several weeks; do not chase) |
+| BLHA — Humprecht's Zuchthaus Brandenburg file 29 ZH Brdbg 3189 | 16.9. | Zimbra 463870 |
+| Arolsen Archives — T/D cases 1.314.605 and 709.023 | 15.9. | inquiry **2026-09-15-59916** (up to 13 months) |
+
+Also awaited: the Národní archiv invoice for the rest of sign. 114-3-17.
+
 ### To pick up next
 
-1. Replies: ABS rešerše, ÖStA AdR, ÖStA HHStA, NA invoice.
-2. Decide on draft 463600 (AdR name extension) and delete dead draft 463574.
-3. Optional: Blažková 2018; Knoflíčková 2015.
-4. Still unlocated: the forced-administration order of 12 February 1942, and the
+1. Chase nothing before the stated turnaround; answer replies as they land.
+2. Duplicate provenance records 3360 / 3798 — decide which to keep, then delete
+   the other.
+3. Optional: Blažková 2018; Knoflíčková 2015; Gabriele Orsini-Rosenberg's 1879
+   Vienna VII baptism; R 58 volumes (not digitised).
+4. A second Arolsen inquiry could ask whether ITS holds anything at all on
+   Humprecht (b. 9.2.1909) or Felix (b. 7.3.1902) — neither has a T/D case in the
+   online archive, so there is nothing specific to cite yet.
+5. Still unlocated: the forced-administration order of 12 February 1942, and the
    original SD-Leitabschnitt Wien report PA 3852/41 on Alexander.
 
 ### Working notes that will save time
