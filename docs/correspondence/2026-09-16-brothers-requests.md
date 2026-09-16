@@ -145,3 +145,18 @@ rather than trimmed afterwards.
 
 The ČNB enquiry about Felix's BEBCA branch was registered as **2026/159589/CNB**
 and accepted for processing, with a named officer to reply.
+
+### Replies received on the day of sending
+
+| From | Reply |
+|---|---|
+| GStA PK | auto-acknowledged (463898), will come back |
+| Landesarchiv Berlin | auto-acknowledged (463925); processing times published on their site |
+| ČNB | registered **2026/159589/CNB** and accepted for processing (463930); a named officer will answer |
+| WStLA | will not research by email — use the forms (463916, 463934); six applications filed instead |
+| Bundesarchiv Berlin | wrong address, needs the signed Benutzungsantrag (463966); sent the same day and acknowledged (463987), **no chasing** |
+| Salzburger Landesarchiv | asked only for a postal address for their file system (463991); supplied, with a request that the substantive answer come by email (463993) |
+
+The Salzburg exchange is worth remembering: an Austrian archive may hold up an
+answer purely because its records system needs a postal address, so give one in
+the first letter rather than only an email address.

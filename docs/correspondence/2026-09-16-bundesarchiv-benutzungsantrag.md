@@ -1,5 +1,5 @@
 **To:** berlin@bundesarchiv.de
-**Status:** sent 16 September 2026 (Zimbra 463985), with the signed Benutzungsantrag attached
+**Status:** sent 16 September 2026 (Zimbra 463985) with the signed Benutzungsantrag attached; receipt auto-acknowledged the same day (463987) — **do not chase**, they say they will notify on completion
 **Subject:** NSDAP-Mitgliederkartei and R 8119F, Felix / Wolfgang / Jan Czernin
 
 The Bundesarchiv will not search anything without a **hand-signed
