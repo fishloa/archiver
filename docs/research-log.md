@@ -1027,3 +1027,24 @@ quote.
 message 463868) confirms receipt of "your tracing inquiry 2026-09-15-59916" and
 says processing "may take several months" — one inquiry number covering both
 persons, so any chase quotes that number.
+
+### Duplicate provenance record resolved — 16 September 2026
+
+The Kunstrückgabebeirat decision of 18 March 2011 on the Czernin Vermeer was held
+twice, both in archive 7 and both complete with the same 34 pages and the same
+93,452 characters of OCR text:
+
+| | 3360 (ingested 1 March) | 3798 (10 September) |
+|---|---|---|
+| title | "Beiratsbeschluss Czernin/Vermeer" | full German title, with English |
+| description | 109 characters | 566 characters |
+| referenceCode | none | `Beschluss 18.03.2011` |
+| sourceUrl | the exact PDF | the site root |
+| English text | 83,452 characters | 87,690 characters |
+
+**3798 kept**, with 3360's exact source URL
+(`https://provenienzforschung.gv.at/beiratsbeschluesse/Czernin_Jaromir_2011-03-18.pdf`)
+copied onto it first — `POST /api/ingest/records` matches on sourceSystem +
+sourceRecordId and updates in place, so the title, description, date range and
+reference code were resent verbatim in the same call because that endpoint sets
+them unconditionally. **3360 deleted.** One record now answers the search.
