@@ -1048,3 +1048,161 @@ copied onto it first — `POST /api/ingest/records` matches on sourceSystem +
 sourceRecordId and updates in place, so the title, description, date range and
 reference code were resent verbatim in the same call because that endpoint sets
 them unconditionally. **3360 deleted.** One record now answers the search.
+
+## 16 September 2026 — Alexander's three brothers
+
+The family tree (person 296, code `.A3.B2.C6`) gives Paul Czernin six children.
+Three of them are Alexander's brothers:
+
+| | born | died | |
+|---|---|---|---|
+| **Felix** Theobald Paul Anton Maria | Hlušice 7.3.1902 | Wien 3.1.1968 | banker; m. Merano 19.9.1933 Anna Leopoldine Ceschi a Santa Croce (div. 1950) |
+| **Wolfgang** Otto Paul Dominikus Maria | Hlušice 4.8.1903 | Wien 10.10.1982 | Dipl.-Ing.; m. Berlin 6.5.1932 Alexandra von Maltitz |
+| **Jan (Johannes)** Felix Jaroslav Pavel Maria | Hodonín 8.3.1910 | Salzburg 24.5.1996 | Dr.; m. Wien 30.4.1940 Osterheldis Frn von der Lippe |
+
+The other three children were Anna (1907–1993), Franziska (1910–2000, married
+Johann Freiherr von Koblitz) and Alexander himself.
+
+**Correction to the tree.** Person 322 (Alexander) carries a death year of 1982.
+That is wrong: Alexander died in **2002 at Oxford**. The Arolsen inquiry sent the
+day before says "d. 5.4.2002 London", which has the year right and the place
+wrong. Both need fixing, and the death certificate is the authority.
+
+### Printed proof of descent — Wiener Salonblatt, 6 February 1938
+
+Found through ANNO's REST search (see working notes) and ingested as **record
+3943**: the *Todesfälle* column of the Wiener Salonblatt for 6 February 1938
+carries Paul's death notice and names every child.
+
+> "Auf Schloß Schönhof verschied der k. u. k. Km., StatthaltRat und Rittm. d.
+> Res. des k. u. k. DragRgts. Nr. 14 **Paul Graf Czernin** im 59. Lebensjahre,
+> tief betrauert von seiner Gemahlin Gräfin Gabriele geb. Gräfin v.
+> Orsini-Rosenberg und seinen Kindern Grafen **Felix** Czernin, vermählt mit
+> Gräfin Anna Leopoldine Ceschi, Grafen **Wolfgang** Czernin und seiner Gemahlin
+> Gräfin Alexandra geb. v. Maltitz, Gräfin **Anna** Czernin, Freifrau
+> **Franziska** (Johann) v. Koblitz sowie den Grafen **Johannes** und
+> **Alexander** Czernin."
+
+A contemporary printed source, dated three weeks after the death, naming
+Alexander as Paul's son. Independent of any register.
+
+### Felix — the banker
+
+- **Böhmische Escompte-Bank.** *Die Zeit* (the NSDAP organ for the Reichsgau
+  Sudetenland), 30 June 1938, under "Neue Filialdirektoren bei der Böhmischen
+  Eskomptebank und Unionbank": "Mit der Leitung der Filiale wurde Direktor
+  **Felix Czernin** (bisher Leiter der Filiale in **Hohenelbe**) betraut."
+  (record **3944**.) The BEB passed to the Dresdner Bank in 1939 — which is how
+  he came to be interrogated at Nuremberg four times in November 1947
+  (Staatsarchiv Nürnberg, KV-Anklage, Interrogations C 22; DDB indexes the file
+  as "Czernin, Felix Graf, geb. 07.03.1902 in Bluschitz/Böhmen, Dresdner Bank").
+- **Brussels.** The Vienna registration record already held as **3503** has him
+  arriving at Wohllebengasse 9 in 1943 *from Brussels* — the posting the
+  Nuremberg interrogations are about (Falkenhausen, the Continentale Bank).
+- **Marriage.** Innsbrucker Nachrichten, 21 September 1933: "In Meran fand am 20.
+  d. M. die Trauung des Grafen Felix Czernin, **eines Neffen des verstorbenen
+  österreichischen Ministerpräsidenten Ottokar Czernin**, mit Gräfin Anna
+  Leopoldine Ceschi a Santa Croce statt." (record **3945**.)
+- **Post-war Vienna.** Four Handelsregister notices in the Wiener Zeitung trace
+  his career back up: Gesamtprokurist of Sroubek & Co., Wien I (7.10.1948,
+  record **3946**); Geschäftsführer of a chemicals GmbH (15.1.1950, **3947**);
+  "Felix Czernin, **Bankdirektor**, Wien I., als Vorsitzer" of a supervisory board
+  (9.12.1951, **3948**); and in 1955 on a board beside two Princes Liechtenstein
+  and two Zurich directors (11.5.1955, **3949**). His ÖStA Partezettel records him
+  as *Aufsichtsratsvorsitzender der Vianova Kunstharz AG*, died 3.1.1968 aged 65,
+  buried at the Hietzinger Friedhof.
+
+### Wolfgang — Berlin, 1932 to 1943
+
+The Berliner Adreßbücher, digitised with full text by the Zentral- und
+Landesbibliothek Berlin, track him year by year (new archive 15):
+
+| year | entry | record |
+|------|-------|--------|
+| 1936 | "Czernin Graf Wolfgang Dipl Ing Friedenau **Cosimaplatz 2** T" (name part); the street part shows him as a tenant, the house owner being H. Maier-Piccard, Bankier | **3952**, **3954** |
+| 1937 | "Czernin Graf Wolfgang Dipl Ing W30 **Bamberger Str 29**" | **3955** |
+| 1940 | "240 E Czernin, W., Graf" — E = Eigentümer | **3956** |
+| 1941 | same entry, S. 2105 | — |
+| 1942 | same entry, S. 2129 | — |
+| 1943 | "240 E Czernin, W., Graf, Dipl. Ing. T." | **3953** |
+
+The street is not printed at the head of those columns; it is fixed by the
+neighbours — the Berliner Bürgerbräu A.G. at nos. 164/166 and the Jacht-Club
+Müggelsee at 72/74, with the cross-streets Zur Fähre, Hahn's Mühle, Nauener Weg
+and Spreestraße — as the **Müggelseedamm** in Berlin-Friedrichshagen. So Wolfgang
+lived in Berlin from his 1932 marriage there and **owned the house Müggelseedamm
+240 from at least 1940 to 1943**, through the war.
+
+**A Prussian naturalisation file exists.** The Geheimes Staatsarchiv
+Preußischer Kulturbesitz finding aid for *I. HA Rep. 77, Nr. 7192*
+("Einbürgerungen, Einzelfälle, Buchstabe C", 1929–1930) names, among eighteen
+individual cases, **"Czernin, Wolfgang, geb. 4.8.1903"** — his exact date of
+birth. A naturalisation case opened three years before his Berlin marriage
+speaks directly to the family's citizenship position before 1938. Requested
+16.9.2026 (Zimbra 463896).
+
+His Partezettel (AT-OeStA/HHStA SB Partezettelsammlung 17-309, already on the
+14 September order) gives "Dipl.Ing., Dr e.h., Dr. hc", died Vienna 10.10.1982
+aged 79, buried at Bad Aussee.
+
+### Jan — Salzburg
+
+- Salzburger Nachrichten, 19 March 1952: a stolen jeep, whose owner is "**Dr.
+  Johannes Czernin, Salzburg, Höfelgasse 24**" (record **3950**). Residence and
+  doctorate, seven years after the war.
+- **AT-OeStA/HHStA SB Familienarchiv Clary 48-144** — "Gedenkbild von Johannes
+  Graf Czernin von Chudenitz", 24.5.1996, born 08.03.1910. His memorial card,
+  matching both dates exactly. Its protection period runs to 31.12.2026, so a
+  Bewilligung may be needed; requested with that question on 16.9.2026 (Zimbra
+  463901), together with the 1967 marriage announcement of his daughter Maria
+  Christina.
+
+### Negatives worth recording
+
+- **Arolsen holds nothing on any of the three.** All 108 persons its name search
+  returns for "Czernin" and its phonetic variants were listed and checked: no
+  Felix, no Wolfgang, no Johannes or Jan. (Humprecht is there, already held as
+  record 3410.) They were not registered as victims of persecution by the ITS.
+- **findbuch.at is a dead end for the name.** Its "Czernin" hits are almost all
+  addresses in the Vienna *Czerningasse* and *Czerninplatz*, which is why 113 of
+  the 122 records pulled from it on 15 September were deleted.
+- **Pater Wolfgang Czernin OSB is a different man** — a Benedictine of Beuron who
+  appears in the Reichspost (26.4.1938, professing nuns in Copenhagen), in the
+  Salzburger Kirchenblatt and in the 1935 Salonblatt wedding photograph, and who
+  died at Uberaba, Brazil, on 22.10.1954 (AT-OeStA/HHStA SB NL Nostitz-Rieneck
+  26-2-56). Every "Wolfgang Czernin" in a Catholic paper is him, not the brother.
+
+### An open question: Kochstraße 28/29
+
+The 1933 Berlin street directory (record **3957**) records the houses
+**Kochstraße 28/29** — in the middle of Berlin's newspaper quarter — as
+"E Czernin, Graf, Eigentüm. (**Wien**). V. Böschke, Verwalt. (Wilmersdf.)", with
+"**The New York Times**, Redaktion" and "The New York Times G.m.b.H., Wide World
+Photos" among the tenants. Which Czernin is meant is unresolved: Wolfgang was
+himself in Berlin and listed separately, and Paul lived at Krásný Dvůr. Worth
+settling, because Berlin property in Czernin hands in 1933 has an obvious
+follow-on question about what happened to it after 1938.
+
+### Working notes
+
+- **ANNO (Austrian newspapers) has an undocumented REST search**, which the
+  Angular app calls: `https://anno.onb.ac.at/anno-suche/rest/search/simple?query="Felix Czernin"&from=1`,
+  paging with `from`. It returns `totalHits` and a `documents` array of `docId`s
+  like `ANNO_wsb19380206`.
+- **The page text is free, and does not need the OCR pipeline.** The legacy
+  `cgi-content/anno` and `annoshow` endpoints are behind Cloudflare Turnstile, but
+  `https://api.onb.ac.at/iiif/presentation/v3/manifest/<docId>` answers plainly
+  and each canvas carries a `seeAlso` OCR text file. `scratchpad/annotext.py`
+  fetches a whole issue and prints the context around a name, so relevance is
+  decided before anything is paid for.
+- **The ZLB's Berlin address books work the same way.** POST to
+  `https://digital.zlb.de/viewer/api/v1/index/query` with
+  `{"query":"FULLTEXT:Czernin AND PI_TOPSTRUCT:34115495_1936","count":40}` lists
+  the pages; `…/records/<pi>/pages/<order>/text/` returns word-level annotations
+  with `xywh` boxes. `scratchpad/zlb_sweep.py` does a whole run of years.
+- **Do not ingest a whole address-book page.** Mistral OCR turned the full Fraktur
+  page 387 into Hungarian-looking nonsense ("Győzárnő Szabóház …") — the word
+  boxes let you crop the actual column through IIIF
+  (`…/files/images/00000392.png/700,2250,800,500/full/0/default.jpg`), and the crop
+  reads perfectly. Records 3952–3954 were repaired this way with
+  `POST /repair` → `PUT /pages/1` → `POST /complete`.
