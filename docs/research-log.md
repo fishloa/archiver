@@ -1206,3 +1206,57 @@ follow-on question about what happened to it after 1938.
   (`…/files/images/00000392.png/700,2250,800,500/full/0/default.jpg`), and the crop
   reads perfectly. Records 3952–3954 were repaired this way with
   `POST /repair` → `PUT /pages/1` → `POST /complete`.
+
+### Corrections and additions, later the same day
+
+**Felix's 1938 posting was Aussig, not an unnamed branch.** The first OCR pass
+over the whole Fraktur page of *Die Zeit* produced nonsense, and my reading of the
+library's own OCR had the sentence broken across columns. Cropped to the article
+(record **3944**), it reads:
+
+> "Neue Filialdirektoren bei **Bebca** und Unionbank. Prag. Wir entnehmen dem
+> Prager „Börsencourier“: Der bisherige Leiter der Filiale **Aussig** der Böhm.
+> Eskomptebank Direktor Leo Reiner tritt in den Ruhestand. Mit der Leitung der
+> Filiale wurde Direktor **Felix Czernin** (bisher Leiter der Filiale in
+> **Hohenelbe**) betraut. Die Leitung der Filiale in Hohenelbe übernimmt Direktor
+> Weizsaecker, bisher Prokurist der Filiale Aussig. Der bisherige Leiter der
+> Filiale in Reichenberg Direktor Otto Winternitz wurde in die Zentrale berufen."
+
+"Bebca" is the Böhmische Escompte-Bank und Credit-Anstalt. So from the summer of
+1938 Felix ran its **Aussig (Ústí nad Labem)** branch — in the Sudetenland, three
+months before the annexation and a year before the bank passed to the Dresdner
+Bank.
+
+**A tree defect, not a data error.** The tree gave Alexander a death year of 1982
+because the parser read the `+` inside his wife's parenthesised dates:
+
+```
+D6. Alexander Friedrich Josef Paul Maria, *Wien 30.4.1913; m. Haywards Heath
+9.7.1949 Diana Zannick Hutton/Hulton (*London 12.12.1922, +Iver Heath, Bucks 30.8.1982)
+```
+
+Diana died in 1982; Alexander died at Oxford on 5 April 2002, and the line
+recorded no death for him at all. `FamilyTreeService` now masks parenthesised
+text before reading birth and death — birth had the same flaw for anyone whose
+own birth is unrecorded — and the genealogy file carries his death. Four tests in
+`FamilyTreeParseTest`; full suite 363 tests, no failures. The place was also wrong
+in `archive-research-plan.md` ("London") and in the Arolsen inquiry text.
+
+**Bundesarchiv asked the unflattering question.** A request went to the
+NSDAP-Mitgliederkartei (Sammlung BDC) for all three brothers, and for holdings in
+R 8119F (Dresdner Bank) and the Bankenkommissar Belgien files naming Felix
+(Zimbra 463919). The letter says in terms that an adverse answer is wanted: a
+bank director in the Sudetenland from 1938 and a Berlin property owner through
+the war are exactly the facts that have to be established rather than avoided.
+
+**ANNO is now exhausted for these names.** Its simple search ORs unquoted terms —
+"Czernin Aussig Filiale" returns 10,702 hits, nearly all Ottokar Czernin in 1918 —
+so only exact phrases are usable, and the phrases for all three brothers have been
+run.
+
+**Two records carry a stale English title.** 3953 and 3954 were translated before
+their German metadata was corrected, and a re-ingest does not re-translate, so
+their `titleEn` still reads from the earlier version ("second Czernin hit (control
+page)"). Re-running metadata translation needs `POST /api/admin/records/reset-pipeline`
+with `targetStage: translating`, which sits behind the admin login rather than the
+processor token.
