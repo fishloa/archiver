@@ -1260,3 +1260,73 @@ their `titleEn` still reads from the earlier version ("second Czernin hit (contr
 page)"). Re-running metadata translation needs `POST /api/admin/records/reset-pipeline`
 with `targetStage: translating`, which sits behind the admin login rather than the
 processor token.
+
+### The Dropbox Austria folder, and what MA 35 has actually said
+
+`/Volumes/External/Dropbox/Alex&Val/Alex/Austria` holds the working papers of the
+application. Two things in it change the shape of the work.
+
+**1. MA 35 has already refused twice on the merits.** The thread with Referat
+8.2.3 (Uros Sarafinović) shows the historian's conclusion, restated on 21 July and
+again on 25 August 2026:
+
+> "the historian concludes that the newly submitted documents do not provide
+> evidence that Alexander Czernin faced, or had reason to fear, persecution by the
+> Nazi regime. The documents mainly concern the persecution of his cousins
+> Humprecht and Rudolf Czernin. However, no connection has been established
+> between their persecution and any threat to Alexander Czernin. His own files
+> from 1941/42 also indicate that the Nazi authorities raised no concerns about
+> him. His appointment at the Vienna University of Technology was approved, and he
+> was even described as having a good reputation."
+
+MA 35 then offered either a Bescheid or withdrawal. The case as put to them rests
+on **well-founded fear** rather than persecution in fact, and its two strongest
+family planks both involve the brothers researched today:
+
+- **Wolfgang** visited Humprecht in Brandenburg-Görden prison on **11 April 1943**
+  and applied to visit again that September (Arolsen doc. 12120657, pp. 32–33).
+  That is the immediate family knowing, at first hand and at the time, what had
+  happened to a cousin sentenced to death. Today's address-book run explains how:
+  he lived in Berlin, at Müggelseedamm 240 — an hour from Brandenburg.
+- **Felix** was arrested by the Gestapo in Vienna on RSHA orders on **28 March
+  1945** (his diary, record 3507).
+
+So the brothers are not background to this application; they are the part of it
+that answers the historian's objection, and corroborating those two events in
+official records is the most valuable thing left to do.
+
+**2. Alexander's death certificate — ingested as record 3958.** GRO certified copy
+QBDAD 058371: died **5 April 2002 at Greengates, 2 Hernes Road, Oxford**,
+registration district Oxfordshire, entry 33; occupation "Engineer (retired)";
+informant his daughter Alexandra Gabriella Maria Czernin-Fishlock of 3 Bainton
+Road, Oxford; registered 8 April 2002. This settles the date and place.
+
+**A discrepancy to be aware of:** the death entry gives his date of birth as
+**18 April 1913**, not 30 April 1913. The Austrian birth, baptism and registration
+records all say 30 April, so the error is in the English death entry — but MA 35
+may compare the two, so it is recorded on the record itself.
+
+**3. The FCDO neither confirms nor denies — record 3959.** A 2025 FOI request
+asked for UK records about Alexander: an Austrian citizen who worked for the
+Wehrmacht as an aircraft engineer and tipjet/helicopter specialist, who on 14
+January 1947 was collected by two British officers from Braunschweig in the
+British zone and flown by Viking to Farnborough, landing the evening of 17 January
+1947. It also asked for "any evidence or suspicions that the UK gov had that he or
+any of his siblings were active resistance members … in Austria", July 1945 to
+July 1950. The FCDO answered (5 September 2025) that it can **neither confirm nor
+deny** holding anything, under the absolute exemption in **section 23(5) FOIA** —
+information supplied by or relating to the security bodies — and the internal
+review of 3 November 2025 upheld that, on the ground that s. 23(5) bites whenever
+the subject matter falls within the ambit of those bodies' operations. So the
+question of the family's resistance activity met a security-service exemption
+rather than a "we hold nothing".
+
+**Still in that folder, not yet in the archive** (listed so the choice is
+deliberate rather than forgotten): the Bundesarchiv Lichterfelde first reply of
+23 December 2025 (DR 4 – 2023/0002#0185#0001, which requires a signed
+Benutzungsantrag before any search, and offers ten files a year digitised free);
+Phil Tomaselli's photographs of a National Archives file on **Ferdinand Czernin's
+refused UK visa** (13 images); `FO 1020/2610` and `AIR 78/56/10` downloads;
+Alexander's own 1987 family history and the 1966 Ossiach family-reunion speeches,
+including Felix's; the ÖStA and Národní archiv research letters of 2023; and the
+Vienna Technical University file already held as record 3505.
