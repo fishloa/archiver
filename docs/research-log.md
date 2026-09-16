@@ -1023,5 +1023,7 @@ holds anything on them at all, but it would sit behind the same 13-month queue
 and is better sent once this one has produced an answer and a case reference to
 quote.
 
-No confirmation email had arrived at the time of writing — watch for one, since
-it is the only place a reference number is likely to appear.
+**Reference: 2026-09-15-59916.** The acknowledgement (`no-reply@arolsen-archives.org`,
+message 463868) confirms receipt of "your tracing inquiry 2026-09-15-59916" and
+says processing "may take several months" — one inquiry number covering both
+persons, so any chase quotes that number.
