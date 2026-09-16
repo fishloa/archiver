@@ -1404,8 +1404,10 @@ Kolowrat-Krakowský family, and a commoner of that name is the likelier reading.
 ### Leads from the signatory list itself
 
 The Drocár list gives each signatory's age at death, which flags those who died
-during the occupation and are worth checking individually: **Zikmund Schlik**
-(1917 Vokšice – 1942 Jičíněves, aged 25), **Josef Lobkowicz** (1918 – 1946 Mělník,
+during the occupation and are worth checking individually: **Ondřej Schlik**
+(1917 Vokšice – 1942 Jičíněves, aged 25 — *not* Zikmund, as first written here;
+the list sets names and dates in separate columns and they are easy to mis-pair),
+**Josef Lobkowicz** (1918 – 1946 Mělník,
 aged 28), **Mořic Lobkowicz** (1890 – 1944 Telč), **Jindřich Dobrzenský** (1892 –
 1945 Potštejn), **Zdeněk Kolowrat** (1881 – 1941 Rychnov), **Jeroným
 Colloredo-Mansfeld** (1870 – 1942 Praha) and **Weikhard Colloredo-Mansfeld**
