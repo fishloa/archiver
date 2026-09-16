@@ -993,3 +993,35 @@ What to ask for: the complete T/D case files **1.314.605** (Czernin, Rudolf, b.
 §58c proceedings, and asking in the same request whether ITS holds a case or any
 documents for **Humprecht Ottokar Czernin (b. 09.02.1909)** beyond the Brandenburg
 material already held as record 3410, and for **Felix Czernin (b. 07.03.1902)**.
+
+### Arolsen inquiry submitted — 16 September 2026
+
+Submitted through the guest form
+(`https://arolsenarchives.my.site.com/guest/s/?language=en_US`), which is a
+Salesforce flow: two person screens, then a general screen, then Send. The
+acknowledgement reads *"Thank you for your Inquiry!"* and no reference number is
+shown on screen. **The form warns that a reply may take up to 13 months.**
+
+Submitted as: Mr Alex Fishlock, United Kingdom, `alex.fishlock@racingjag.com`,
+external file number **MA 35 Wien, Zl. 2026-0.068.068**, inquiry type "Documents
+on a Person" → "On a family member".
+
+| Person | Details given | Asked for |
+|--------|---------------|-----------|
+| **Rudolf Theobald Czernin** | male, b. 25.08.1904 Dymokury (Bohemia), exact year, married, Czechoslovak | complete T/D case **1.314.605** (ITS ref 06030302.1.314.605, 1990–1992, 8 documents) |
+| **Vera von Schuschnigg, née Czernin** | female, b. 04.06.1904, exact year, married, Austrian, d. 18.09.1959 Kirkwood, Missouri | complete T/D case **709.023** (6 documents), plus anything on her and her daughter in Sachsenhausen, Flossenbürg and Dachau |
+
+Both persecution texts cite the §58c proceedings before MA 35 Vienna and state
+the family relationship to Alexander Czernin von Chudenic (b. 30.4.1913 Vienna).
+"Already searched the online archive" = Yes on both, with the collections search
+link and the case numbers.
+
+**Not included:** Humprecht Ottokar Czernin (b. 09.02.1909) and Felix Czernin
+(b. 07.03.1902). The online archive lists no T/D case for either, so there is
+nothing specific to request; a second inquiry can be filed asking whether ITS
+holds anything on them at all, but it would sit behind the same 13-month queue
+and is better sent once this one has produced an answer and a case reference to
+quote.
+
+No confirmation email had arrived at the time of writing — watch for one, since
+it is the only place a reference number is likely to appear.
