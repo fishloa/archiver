@@ -52,11 +52,20 @@
 - Transferred with Schuschnigg through Flossenbürg, Dachau, liberated May 1945
 - Died Kirkwood, Missouri, 18 September 1959
 
-### 1.4 The Heydrich–Bormann Letter (16 May 1942)
-- **Not yet located online** — user knows of this letter from Reinhard Heydrich to Martin Bormann describing the Czernin family as enemies of the Reich
+### 1.4 The Heydrich–Bormann Letter (16 May 1942) — **FOUND, held as record 3796**
+- **The German original is in the archive.** Národní archiv Praha, sign. **114-3-17**, folios 62–99,
+  supplied by the NA reading room in August 2026 (NA-4608-2/06-2026) and held as **record 3796**:
+  Heydrich's Schnellbrief marked *Geheime Reichssache*, Prague 16 May 1942, to Bormann at the
+  Führerhauptquartier, transmitting the **20th situation report** with eight annexes.
+- The nobility passage is on **folio 66**, under the heading *"Enteignung des tschechischen Adels"*.
+  Quote this, not the Abschrift: it says **35,000 ha** (not 50,000), calls the families
+  *"nachrichtendienstliche, politisch sehr gefährliche Faktoren"* (not "Spionage"), speaks of
+  *"deutsche Unterwanderung und Besiedlung"*, and names the reason as the *Treueerklärung* of 17.9.1938
+  — while keeping the phrase that matters here, *"ins Reich und in die Ostmark sowie nach Ungarn"*.
 - Date is significant: Heydrich was assassinated 27 May 1942, died 4 June 1942 — this was among his final documents
-- His last report to Bormann about the Protectorate was dated **18 May 1942**
-- Likely location: **Bundesarchiv R 58 (RSHA)** or **Czech National Archives Fond 1488/212 (Reichsprotektor office)**
+- The transcriptions held as 3506 (Czech, dated 18 May by Drocár) and 3514 (German Abschrift) are copies,
+  and the 18 May date in 3506 is wrong.
+- **Do not ask any archive to search for the original again.**
 - Academic reference: "Heydrich im Protektorat Böhmen und Mähren" (1979, Institut für Zeitgeschichte München)
 
 ### 1.5 Property confiscation (all branches)
