@@ -1628,3 +1628,33 @@ Two follow-ups this opens:
   Mensdorf-Pouilly** — so FO 371/47178, Count **Arthur** Mensdorff-Pouilly asking British help
   "releasing his family from imprisonment" in 1945, concerns the family of two signatories.
   Arthur's exact kinship to Alfons Karel and Edmund is not yet established.
+
+### Manfred Czernin, RAF and SOE, was Alexander's first cousin
+
+The Kew search returned a second Czernin cluster which the genealogy places very close indeed:
+
+> D4. **Manfred Maria Edmund**, assumed surname Beckett, \*Berlin 18.1.1913, †London 6.10.1962;
+> m. London 4.11.1939 (div. 1947) Maud Sarah Hamilton — CZERNIN 3, .A3.B2.C4.D4
+
+His father **Otto Rudolf Diepold Ottokar Maria Czernin** (\*Dymokury 27.8.1875, †Salzburg
+14.6.1962), who married the Hon. Lucy Katherine Beckett in London in 1903, was the brother of
+Alexander's father Pavel. Both were sons of Děpolt "Theobald". Manfred is therefore Alexander's
+**first cousin**, and the two were born three months apart in 1913.
+
+At Kew he appears as:
+
+- **HS 9/386/6** — SOE personnel file, "Count Manfred Beckett CZERNIN — born 18.01.1913", 1939–46
+- **AIR 50/9/54, /55, /63, /64, /85, /91, /92, /96** — combat reports, **17 Squadron**, 1940,
+  including 12 July, 21 and 25 August, 5 and 11 September and 17 November
+- **AIR 50/36/179** — combat report, 85 Squadron, 20 May 1940
+- **AIR 84/2871, /10795** — service records, registered numbers 537930/36 and 621205/37
+- His mother's naturalisation of 25 April 1922 names him: **HO 144/1727/276525** and
+  **HO 334/117/478**, "Czernin, Manfred Marie Edward Ralph. Child of Lucy Katherine Czernin"
+
+Set against record 3504 — Alexander deregistered in Vienna on 12 February 1940 "**als zum
+Militär**", conscripted into the Wehrmacht — the two cousins were on opposite sides from the
+first months of the war: one flying Hurricanes against the Luftwaffe through the Battle of
+Britain and later parachuting for SOE, the other called up by the Wehrmacht from an address in
+the fourth district of Vienna.
+
+This is context, not persecution evidence, and should be offered as such.
