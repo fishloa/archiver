@@ -1331,3 +1331,98 @@ refused UK visa** (13 images); `FO 1020/2610` and `AIR 78/56/10` downloads;
 Alexander's own 1987 family history and the 1966 Ossiach family-reunion speeches,
 including Felix's; the ÖStA and Národní archiv research letters of 2023; and the
 Vienna Technical University file already held as record 3505.
+
+## 16 September 2026 — hunting persecuted relatives of the declaration signatories
+
+The MA 35 historian's objection is that the persecution of Humprecht and Rudolf
+establishes nothing about Alexander. The answer to that lies in the wording of
+Heydrich's own letter, which designates **families**, not men:
+
+> "The above-mentioned gentlemen belong to those intellectual agitators who, **in
+> the Reich and in the Ostmark**, exploit their German names and noble connections
+> for subversive activities, particularly espionage" — naming Kinský, Belcredi,
+> Sternberg, Schwarzenberg, Lobkowicz, **Czernin**, Kolowrat, Strachwitz.
+
+Alexander was a Czernin living in the Ostmark. So what has to be shown is that
+relatives of signatories — people who did not sign anything — were persecuted too.
+
+### A proven case: the three Bořek-Dohalský brothers
+
+| | Signed? | What happened |
+|---|---|---|
+| **František**, b. 5.10.1887 Přívozec | **Yes** — signatory no. 28 of the 85 (record 3497) | Gestapo prison in the Small Fortress from 30.6.1942, card annotated *"signatář Prohlášení české a moravské šlechty"*, then **transport to Dachau**: prisoner **34390**, Schutzhäftling, arrived 14.8.1942, **liberated 29.4.1945** |
+| **Antonín** | No | chancellor to the Archbishop of Prague; transport to Auschwitz, **died 3.9.1942** |
+| **Zdeněk**, b. 10.5.1900 Přívozec | No | JUDr., political commentator on *Lidové noviny*; in the Small Fortress from 27.6.1942, **executed at Terezín 7.2.1945** |
+
+Two brothers of a signatory died in camps; the signatory himself survived nearly
+three years in Dachau. Hazdra's dissertation (record 3797, p. 211) states the
+relationship and the fates in terms. Ingested today:
+
+- **3960** — the Dachau database card for František (Terezín Memorial).
+- **3961** — a second Small Fortress card for Zdeněk, indexed under "Z_", which
+  carries the birth data and profession the first card lacks.
+- **3962** — the **Dachau entry register** page from the Arolsen Archives
+  (collection 1.1.6.1): "FRANZ DOHALSKY, b. 5.10.1887 Privosten, Roman Catholic,
+  CZECH, Ministerialrat, last residence Prague, prisoner 34390". The camp
+  administration's own register.
+- **3963** — his Dachau office card (Arolsen 1.1.6.7).
+
+Arolsen holds **22 documents** on him altogether; the remaining eighteen are
+cashier statements from 1.1.6.12 and were left where they are.
+
+### The sweep, and what it did not find
+
+The Terezín Memorial's databases were searched for **29 signatory surnames** in
+both German and Czech spellings. Method: the search only answers a real top-level
+form submission — a constructed URL, a `fetch()` POST and an iframe POST all come
+back as the unfiltered landing page, which looks exactly like a nil result. The
+working method is to set `s1` on the second form, click `searchBasic`, and read the
+`/vezen/<slug>` links off the page; chaining it through `sessionStorage` lets one
+call per surname harvest the previous surname's hits.
+
+Nil in the databases: Belcredi, Bubna, Dobrzenský, Hildprandt, Lobkowicz (and
+Lobkovic), Šternberk, Strachwitz, Nádherný, Pálffy, Wratislav (and Vratislav, bar
+one Vratislavský), Podstatzký, Mladota, Dačický, Dlauhoweský, Korff-Kerssenbrock,
+Kálnoky, Parish, Sereny.
+
+**Namesakes, kept separate rather than claimed.** Searching "Sternberg" returns
+fifty Terezín ghetto prisoners of that name, "Schwarzenberg" eight, "Schönborn"
+three — Jewish deportees, not the noble houses. "Battaglia" returns Francesco
+Battaglia, an Italian. And a Kolowrat hit in Arolsen's "Deportations from the
+Gestapo area Vienna" turned out, on opening the document, to be entry 480 of a
+Vienna Jewish deportation list — every name on the page marked *Isr.* or *S.* It
+would be wrong to use that page as evidence about the nobility, and it is recorded
+here so the mistake is not made later.
+
+Two further Terezín hits were checked and set aside: "Friedrich Westfried
+Colloredo Mels", b. 1880 Brünn, nationality recorded as *Jude*, died 1.6.1942 —
+not the Colloredo-Mannsfeld family on the evidence available; and Bohumil Kolovrat,
+b. 1902 Moravská Ostrava, Mauthausen prisoner 5998, who died on 3.9.1943 —
+the card reads *"zemřel – roztrhán psy"* — but nothing links him to the
+Kolowrat-Krakowský family, and a commoner of that name is the likelier reading.
+
+### Leads from the signatory list itself
+
+The Drocár list gives each signatory's age at death, which flags those who died
+during the occupation and are worth checking individually: **Zikmund Schlik**
+(1917 Vokšice – 1942 Jičíněves, aged 25), **Josef Lobkowicz** (1918 – 1946 Mělník,
+aged 28), **Mořic Lobkowicz** (1890 – 1944 Telč), **Jindřich Dobrzenský** (1892 –
+1945 Potštejn), **Zdeněk Kolowrat** (1881 – 1941 Rychnov), **Jeroným
+Colloredo-Mansfeld** (1870 – 1942 Praha) and **Weikhard Colloredo-Mansfeld**
+(1914 – 1946 St. Lary, aged 32). None of them appears in the Terezín databases,
+so if they were persecuted the record lies elsewhere.
+
+### Two enquiries sent
+
+- **Terezín Memorial** (Zimbra 464185, to `archiv@`, copy to `databaze@`): asks
+  which members of the signatory families appear in their databases, whether any
+  other card carries a declaration annotation like František Bořek-Dohalský's, and
+  whether they hold further archival material on Rudolf Czernin or the Dohalský
+  brothers beyond the database. The letter lists the namesakes I am *not* claiming.
+- **ÚSTR** (Zimbra 464191, for the attention of Dr Zdeněk Hazdra): asks whether
+  his research documents reprisals against non-signing family members of the
+  families Heydrich named; whether any SD, Gestapo, Land Office or Vermögensamt
+  document shows the authorities treating membership of a family as such as the
+  ground; whether anything is known about those measures reaching family members
+  living in Austria, as the letter's "Ostmark" implies; and whether the German
+  original of the Heydrich letter has been located anywhere.
