@@ -339,7 +339,34 @@ public class FamilyTreeService {
     return n;
   }
 
-  private Person parsePerson(String line, String section, int depth, int id) {
+  /**
+   * Blanks out everything inside parentheses, keeping the string's length.
+   *
+   * <p>A genealogy line carries the spouse's own dates in brackets, and those brackets contain a
+   * {@code +}: "D6. Alexander Friedrich Josef Paul Maria, *Wien 30.4.1913; m. Haywards Heath
+   * 9.7.1949 Diana Zannick Hutton/Hulton (*London 12.12.1922, +Iver Heath, Bucks 30.8.1982)". The
+   * death pattern found that {@code +} and gave Alexander his wife's death year, so the tree said
+   * he died in 1982 when he died at Oxford in 2002 — and the line records no death for him at all.
+   * Masking rather than deleting keeps every other offset in the line intact.
+   */
+  static String maskParenthesised(String text) {
+    char[] out = text.toCharArray();
+    int depth = 0;
+    for (int i = 0; i < out.length; i++) {
+      if (out[i] == '(') {
+        depth++;
+        out[i] = ' ';
+      } else if (out[i] == ')') {
+        if (depth > 0) depth--;
+        out[i] = ' ';
+      } else if (depth > 0) {
+        out[i] = ' ';
+      }
+    }
+    return new String(out);
+  }
+
+  Person parsePerson(String line, String section, int depth, int id) {
     Person p = new Person();
     p.id = id;
     p.section = section;
@@ -383,24 +410,21 @@ public class FamilyTreeService {
       p.name = p.name.substring(0, contIdx).trim();
     }
 
-    // Parse birth
-    Matcher bm = BIRTH_PATTERN.matcher(rest);
+    // Parse birth and death from this person's own text only: a spouse's dates live inside
+    // parentheses and carry their own * and +.
+    String own = maskParenthesised(rest);
+
+    Matcher bm = BIRTH_PATTERN.matcher(own);
     if (bm.find()) {
       String birthInfo = bm.group(1).trim();
-      // Remove parenthesized spouse birth info
-      if (!birthInfo.startsWith("(")) {
-        p.birthYear = extractYear(birthInfo);
-        p.birthPlace = extractPlace(birthInfo);
-      }
+      p.birthYear = extractYear(birthInfo);
+      p.birthPlace = extractPlace(birthInfo);
     }
 
-    // Parse death
-    Matcher dm = DEATH_PATTERN.matcher(rest);
+    Matcher dm = DEATH_PATTERN.matcher(own);
     if (dm.find()) {
       String deathInfo = dm.group(1).trim();
-      if (!deathInfo.startsWith("(")) {
-        p.deathYear = extractYear(deathInfo);
-      }
+      p.deathYear = extractYear(deathInfo);
     }
 
     // Parse spouses — simple: find text after "m. " or "Nm:" patterns

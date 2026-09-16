@@ -2,7 +2,7 @@
 
 ## Applicant: Alexander Friedrich Josef Paul Maria Czernin
 - Born: Wien, 30 April 1913
-- Died: London, 5 April 2002
+- Died: Oxford, 5 April 2002
 - Branch: CZERNIN 3 (Vinař), line C6 → D6
 - Father: Pavel/Paul Czernin (*Dymokury 1879, +Krásný Dvůr 17.1.1938)
 - Mother: Maria Gabriele Gfn von Orsini-Rosenberg (*Wien 1879, +Salzburg 1951)
@@ -15,7 +15,7 @@
 | D3 | Anna Maria Franziska | Brno 26.5.1907 | Altaussee 25.10.1993 | |
 | D4 | Franziska Paula | Hodonín 8.3.1910 | Salzburg 10.4.2000 | Twin with D5 |
 | D5 | Jan Felix Jaroslav | Hodonín 8.3.1910 | Salzburg 24.5.1996 | Twin with D4 |
-| D6 | **Alexander Friedrich** | **Wien 30.4.1913** | London 5.4.2002 | **Applicant** |
+| D6 | **Alexander Friedrich** | **Wien 30.4.1913** | Oxford 5.4.2002 | **Applicant** |
 
 ### Key relatives for persecution evidence:
 | Person | Relation to Alexander | Persecution |
