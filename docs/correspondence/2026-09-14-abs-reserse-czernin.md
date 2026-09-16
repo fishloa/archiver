@@ -150,3 +150,42 @@ Consequences:
 - Which reading room holds the ABS files needs asking first: the reply came from
   the operational-files and investigation-files department, and the files may be at
   Siwiecova rather than Na Struze. Turning up at the wrong one wastes the only day.
+
+
+### The thing actually worth doing on 29 October: get the eBadatelna account verified
+
+The blocked account is **ABS eBadatelna** — `alex.fishlock@racingjag.com`, ID
+**25429**. Unverified, its full-text and OCR search returns nil for every query,
+control searches included, which is why a nil Czernin result there has never meant
+anything.
+
+eBadatelna accepts **two** verification methods:
+
+1. **In person at a reading room** — staff check a national ID card or **passport**
+   in Prague or Brno and activate remote access on the spot.
+2. **Electronically via identitaobcana.cz** — needs a Czech ID card with an
+   activated chip (issued after 1 July 2018) or a NIA account. This is the route
+   that has been blocked since February 2026: no Czech bank identity, no Czech
+   eID. ABS were pursuing NIA ID through a datová schránka in July and have not
+   come back.
+
+**A British passport satisfies route 1.** That converts the single available day —
+Thursday 29 October, ABS Na Struze, 9:00–16:00 — from "collect whatever ABS-S
+8452/2026 has produced" into "get verified, permanently".
+
+What verification then gives, for a year, renewable:
+
+- viewing digitised archival material remotely
+- full-text search across descriptions and index entries
+- **OCR search inside scanned documents**
+- downloading and exporting individual pages or whole inventories as PDF
+- access to all available digital reproductions without restriction
+
+That ends the in-person collection problem for everything after it, and it makes
+the searches that have so far returned nil actually meaningful. It is worth more
+than the rešerše itself, and it does not depend on ABS-S 8452/2026 having reported
+by then.
+
+Louise can collect copies, but she cannot verify him — identity verification is
+personal. So the division is: **he verifies on the 29th; she collects whenever
+material is ready.**
