@@ -1470,3 +1470,109 @@ deportation or war-victim collections for **Lobkowicz** (28 persons indexed),
 **Schlik** returns 6,683 persons because Arolsen's matcher is phonetic and pulls in
 Szulim, Scholem and Schulem; **Kinsky** returns 542, almost all Kinas, and nothing
 of the Bohemian family.
+
+## 17 September 2026 — The National Archives, Kew: a systematic sweep
+
+### How the TNA files in Dropbox were obtained, and what they actually are
+
+The eleven PDFs in the shared Dropbox folder are the **watermarked preview images** from
+Discovery's image viewer, not purchased downloads. That matters in two ways: the images are
+the archive's full-resolution scans (verified — FO 371/65328/3 page 1 is 2,648 × 4,158 both
+in the Dropbox PDF and freshly downloaded), and paying £3.50 buys only the removal of the
+watermark, not better resolution. Ingested as records 3968–3978, archive 6.
+
+One correction to what I first wrote. **FO 371/65328/3 is not about the family archive.** It
+concerns the archives of the Czechoslovak Ministry of Foreign Affairs, housed in the Czernin
+Palace in Prague. The Germans removed material; by 1947 the originals could not be found, but
+about **1,400 German translations of Czech diplomatic documents** existed, made by a German
+commission under Professor **Wilhelm Wostry** working in "Zimmer 500 Cernin-Palais". The
+Czechoslovak Chargé d'Affaires wrote to Bevin on 16 October 1947 asking for their return; the
+British view was that "as original German documents (albeit translations) these are not
+subject to restitution". Do not cite this file as evidence about the family.
+
+The four art files are all in the folder for one reason: **the Czernin Vermeer**. FO 1020/2766/1
+records, among the Alt Aussee recoveries, "the Vermeer: Self Portrait originally in the Czernin
+collection of Vienna and latterly the private property of Hitler", alongside the Ghent
+Adoration of the Lamb and the Bruges Madonna. T 209/29/15's supplement carries "information in
+particular on the acquisition of the Czernin Vermeer". FO 1046/763/2 has prisoners' testimony
+on purchases for the Führermuseum "including the Vermeer from the Czernin collection". This is
+the Vienna line; the relationship to Alexander's branch is not established.
+
+AIR 78/56/10 (three parts, 264 pages) is the index to airmen and airwomen for the name range
+**Fleming W – Forsyth**. No Czernin in it. It appears to have been downloaded in error.
+
+KV 2/3543 is **Raoul Maria Johann Ottokar Karl Haefner, alias Hafner** — Austrian, interned
+several months in 1940, "nothing was found against him", then naturalised for his special
+skills, filed under German Intelligence Agents and Suspected Agents, 1937–1956. It was pulled
+because Alexander is "aircraft designer" on the 1951 birth certificate. **No connection between
+Hafner and Alexander is established, and none should be asserted.**
+
+### The London Czernins — a confirmed identification
+
+Discovery's 42 "Czernin" hits include a naturalisation cluster that resolves against the tree:
+
+- **HO 405/9351** — "CZERNIN, W, Date of Birth: 10.09.1897", 1964–65, closure status **D** (closed)
+- **HO 334/1115/85718** — certificate BNA85718, 9 June 1965, "Wilhelmine Czernin, alias **Minne**",
+  from Czechoslovakia, resident London
+
+The tree has **Wilhelmine Clanner von Engelshofen, \*Hoštakov 10.9.1894, †London 5.8.1974**,
+married Prague 24.9.1917 to **František Josef Theodor Ottokar Maria Czernin, \*Praha 24.5.1878,
+†London 17.10.1963** (CZERNIN 3, .A3.B5.C1) — Alexander's **first cousin once removed**, the lines
+diverging at Otakar Evžen. Same day and month of birth, three years out on the year, same
+country of origin, same city. She naturalised two years after her husband died in London.
+
+Their son is **Josef Vincenc Vojtěch Maria Czernin, b. 1924** — the subject of HO 405/9132 and
+HO 334/395/40167, already held as record 3509. So that naturalisation file, obtained earlier,
+belongs to Alexander's first cousin once removed's son, and the whole household was in London.
+HO 405/9351 (the mother's file) is **closed** and would need an FOI request.
+
+Also in the Czernin hits, not the same branch: Count **Manfred Beckett Czernin** (b. 18.1.1913),
+SOE personnel file HS 9/386/6, nine AIR 50 combat reports with 17 and 85 Squadrons in 1940, and
+AIR 84 records; his mother **Lucy Katherine Czernin** naturalised in 1922 (HO 144/1727/276525,
+HO 334/117/478) with him named as her child. Count **Ferdinand Czernin** leased Pine Cay in the
+Turks and Caicos (FCO 141/5447), and appears in a Venona decrypt of 24–25 July 1944 alongside
+Papánek (HW 15/24/48).
+
+### Signatory families at Kew — 117 war-period candidates
+
+A 76-query sweep over the declaration surnames returned 117 records dated 1935–1955 in KV, HS,
+WO, FO, HO, T, CAB and AIR. The ones that bear on "relatives of signatories were persecuted":
+
+- **FO 371/47178** (1945) — "Request by Count **Arthur Mensdorff-Pouilly** for assistance in
+  releasing his family". Mensdorff is a signatory surname. Highest priority of the lot.
+- **KV 2/3424** (1945–49) — MI5 file, "Ferdinand **THUN-HOHENSTEIN**, alias Ferdinando de TONO:
+  Czechoslovakian / German". Thun-Hohenstein is a signatory surname.
+- **WO 416/72/248** and **WO 416/73/337** — German record cards for "[Count] Franz Ferdinand
+  **Colloredo-Mansfeld**". WO 416 is the German card index of British and Commonwealth prisoners
+  of war and internees. Colloredo-Mansfeld produced four signatories.
+- **HO 294** — Czechoslovak Refugee Trust Fund case files, i.e. people who got out:
+  **Sidonie Nadherny** b. 1885, d. 30 September 1950 (HO 294/591/9457); **Robert Hildprandt**
+  b. 1893 (HO 294/592/9583); **Otto and Hedwig Lazansky** (HO 294/281, HO 294/553/5727);
+  and a large Dubsky group.
+- **AIR 50/173/21** and **/152** (Jan and Feb 1943) — combat reports of a Flight Lieutenant
+  **Colloredo-Mansfeld**, 611 Squadron.
+- **FO 370/1315** (1946) — German looting of works of art, reached via Lobkowicz and Schwarzenberg.
+- **T 209/28/1**, **T 209/29/17** — repositories of works of art and archives in Germany;
+  Fuehrerbau register excerpts.
+
+None of these is asserted to be a signatory's relative yet: the surnames match, the kinship does
+not follow from a surname, and each has to be run against the signatory list and the genealogy
+before it can be used.
+
+### Mechanics worth keeping
+
+Discovery's undocumented routes, all needing a browser-issued `aws-waf-token` cookie and a
+matching User-Agent:
+
+- `GET /API/search/records?sps.searchQuery=<q>&sps.resultsPageSize=<n>` — JSON search, returns
+  the full catalogue `description`, `context`, `coveringDates`, `closureStatus` and an `id`.
+- `GET /API/records/v1/details/<iaid>` — has the **`digitised`** boolean.
+- `GET /image/getthumbnail/<iaid>` — despite the name, returns a **JSON array of every page** of
+  a digitised record: `id` is `<repo>/<series>/<piece>/<GUID>_thb.jpg`. Strip `_thb` for the
+  full-size filename.
+- `GET /image/getimage?iaid=<iaid>&filename=<path>` — the full-resolution watermarked page.
+
+The HTML pages are behind an AWS WAF challenge (HTTP 202, empty body) and cannot be scraped;
+the token has to come from a real browser session. Sustained calls to
+`/API/records/v1/details` and `/image/*` earn **HTTP 429** quickly — throttle to a few seconds
+between requests, and expect to refresh the token.
