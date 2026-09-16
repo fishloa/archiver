@@ -1,9 +1,9 @@
 **To:** archiv@pamatnik-terezin.cz, cc databaze@pamatnik-terezin.cz
-**Status:** DRAFT — NOT SENT. Awaiting the applicant's approval.
+**Status:** sent 16 September 2026 (Zimbra 464229), on the applicant's express approval
 **Replaces:** the malformed question in the letter of 16 September 2026 (Zimbra 464185)
 **No attachment** — the signatory list is set out in the body, so nothing has to be opened.
 
-### What changed and why
+### What changed and why (and it went out only once approved)
 
 The letter already sent asked which members of the signatory families appear in
 their databases. The Memorial cannot answer that: they hold prisoner cards and
