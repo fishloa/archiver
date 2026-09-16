@@ -1576,3 +1576,55 @@ The HTML pages are behind an AWS WAF challenge (HTTP 202, empty body) and cannot
 the token has to come from a real browser session. Sustained calls to
 `/API/records/v1/details` and `/image/*` earn **HTTP 429** quickly — throttle to a few seconds
 between requests, and expect to refresh the token.
+
+### A signatory inside Alexander's own kin — and his son taken for forced labour
+
+Reading the typed signatory list (record 3517, page 3) against the genealogy produces a link
+that had not been drawn before. Among the September 1939 signatures:
+
+> Jan Pálffy jménem svým **a za hr. Františka Josefa Czernina**
+> — "Jan Pálffy in his own name and on behalf of Count František Josef Czernin"
+
+**František Josef Czernin** is, on the genealogy, **František Josef Theodor Ottokar Maria
+Czernin, \*Praha 24.5.1878, †London 17.10.1963** (CZERNIN 3, .A3.B5.C1) — Alexander's **first
+cousin once removed**, the lines diverging at Otakar Evžen. He signed by proxy; his name is on
+the declaration.
+
+His household is the one the Kew search turned up:
+
+| person | evidence |
+|---|---|
+| František Josef Czernin, b. 1878 | signatory by proxy, Sept 1939; died London 1963 |
+| Wilhelmine, née Clanner von Engelshofen, b. 10.9.1894 | HO 405/9351 ("10.09.1897", closed); naturalised 9.6.1965, HO 334/1115/85718, "alias Minne" |
+| **Josef Vincenc Vojtěch Maria, b. 9.8.1924** | HO 405/9132 = **record 3509**; cert. BNA40167, HO 334/395/40167 |
+| Monika Anna Maria Flavia, b. 1925 | the "sister Monica George" of the Post Report, married to Major George of the Military Mission to Prague |
+
+And record 3509, the Home Office Post Report of 26 March 1953, says of the son:
+
+> "At school and college in Prague until 1944. **Taken off for forced labour in spring of 1944.**
+> Returned to Czechoslovakia with German Labour force. Released by Russians and internal
+> resistance May 1945."
+
+So a signatory's son was taken for forced labour, and the record saying so is a British
+government document already in the archive, obtained for an unrelated reason.
+
+**The caveat, and it is a serious one.** Josef was born in 1924, and the 1924 cohort
+(*ročník 1924*) was conscripted *en masse* for labour in the Reich under the Totaleinsatz from
+the spring of 1944. On the present evidence his deployment is at least as likely to be that
+general measure as a reprisal against his father's family, and the Post Report gives no reason
+for it. It must not be presented to MA 35 as persecution for the declaration unless a document
+ties the two together. What it does establish, cleanly, is the kinship: a declaration signatory
+is Alexander's first cousin once removed, and that family left Czechoslovakia for London in
+1947–48. This is the same trap as the Kolowrat Arolsen entry: the coincidence is not the case.
+
+Two follow-ups this opens:
+
+- **HO 405/9351** (Wilhelmine's naturalisation file) has closure status **D** — closed. An FOI
+  request to the Home Office would be needed, and after seventy years it would probably succeed.
+- The signatory list contains surnames the first sweep never tested, because I had guessed the
+  list rather than read it: **Battaglia, Bubna z Litic, Dlouhoveský, Daczický z Heslowa, Hrubý z
+  Jelení, Kerssenbrock, Paar, Pálffy, Schönborn, Kálnoky, Serényi, Mladota, Rieger,
+  Baillet-Latour**. Also on it, and relevant to the Kew hit above: **Alfons Karel and Edmund
+  Mensdorf-Pouilly** — so FO 371/47178, Count **Arthur** Mensdorff-Pouilly asking British help
+  "releasing his family from imprisonment" in 1945, concerns the family of two signatories.
+  Arthur's exact kinship to Alfons Karel and Edmund is not yet established.
