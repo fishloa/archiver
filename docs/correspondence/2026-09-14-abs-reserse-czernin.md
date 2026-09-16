@@ -6,7 +6,7 @@
 > That address is the Národní archiv's pattern, not ABS. ABS research rooms (both
 > Prague Na Struze and Brno-Kanice) are `badatelna.struha@abscr.cz`; `info@abscr.cz`
 > is the general submissions box and did receive the cc.
-**Status:** sent 14 September 2026 (Zimbra message 463590; first attempt 463582 bounced)
+**Status:** sent 14 September 2026 (Zimbra 463590; first attempt 463582 bounced). **Registered 16 September 2026 as ABS-S 8452/2026** and passed for processing — reply by email, "several weeks" (Mgr. Helena Houzarová, Oddělení archivních fondů operativních svazků a vyšetřovacích spisů, helena.houzarova@abscr.cz, +420 221 008 286; message 464257)
 **Subject:** Žádost o archivní rešerši — rodina Czernin (Černín z Chudenic), 1939–1945
 
 Vážená paní, vážený pane,
@@ -72,3 +72,26 @@ Předem děkuji za Vaši pomoc.
 S pozdravem,
 Alex Fishlock
 alex.fishlock@racingjag.com
+
+
+## Their reply, 16 September 2026 — and a catch worth planning for
+
+Registered as **ABS-S 8452/2026**. The search itself will be done and the result
+emailed. But the copies cannot be:
+
+> "kopie (ať už v elektronické nebo v papírové podobě) musí v jedné z našich
+> badatelen převzít konkrétní osoba, která zde prokáže svou totožnost, a kopie na
+> místě uhradí dle platného ceníku."
+
+So **copies — electronic ones included — must be collected in person** at an ABS
+reading room by someone who proves their identity and pays there. A named third
+party may do it: **no power of attorney is needed**, it is enough to tell ABS by
+phone, email or letter who will collect. Alternatively, anyone in the reading room
+may photograph the files themselves **free of charge**.
+
+That means the moment the rešerše lands, someone in Prague is needed. Two people
+already connected with this work are there or nearby: **Jan Drocár** (Chamber of
+Deputies, who supplied the declaration material), and the Kinský family contact
+the applicant is already in touch with. ABS say the practical question is best
+settled once they report what they have found and in what condition, so nothing
+needs deciding yet — but nothing will arrive by email either.
