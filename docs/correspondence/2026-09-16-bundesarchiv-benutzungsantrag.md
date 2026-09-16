@@ -1,5 +1,5 @@
-**To:** berlin@bundesarchiv.de (once signed)
-**Status:** BLOCKED — awaiting the applicant's signature
+**To:** berlin@bundesarchiv.de
+**Status:** sent 16 September 2026 (Zimbra 463985), with the signed Benutzungsantrag attached
 **Subject:** NSDAP-Mitgliederkartei and R 8119F, Felix / Wolfgang / Jan Czernin
 
 The Bundesarchiv will not search anything without a **hand-signed
@@ -26,7 +26,7 @@ completed as far as it can be without the applicant:
 |---|---|
 | 1. Vor- und Zuname | Alexander Hannibal Czernin Fishlock |
 | 2. Adresse | Icomb Place, GL54 1JL, Icomb, Cheltenham, Großbritannien |
-| 3. **Beruf** | **left blank — needs the applicant** |
+| 3. Beruf | Company Director |
 | 4. Staatsangehörigkeit | britisch |
 | 5. E-Mail | alex.fishlock@racingjag.com |
 | 6. Benutzungsthema | Familienforschung Czernin von Chudenic 1938–1950: NSDAP-Mitgliederkartei (BDC) for Felix (7.3.1902), Wolfgang (4.8.1903) and Jan (8.3.1910); R 8119F Dresdner Bank and Bankenkommissar Belgien for Felix; earlier file DR 3.02 – 2023/0002#0185#0001 |
@@ -36,11 +36,22 @@ completed as far as it can be without the applicant:
 | 13. Newsletter | nein |
 | Ort / Datum | Icomb, Cheltenham, Großbritannien / 16.09.2026 |
 
-Saved as `Benutzungsantrag_Bundesarchiv_2026-09-16_UNSIGNIERT.pdf` in the Dropbox
-Austria folder and sent to the applicant. **Next step: he fills in Beruf, signs it
-by hand, and returns a scan; then it goes to berlin@bundesarchiv.de with the
-research request, quoting DR 3.02 – 2023/0002#0185#0001 and asking for the ten
-free Digitalisierung-on-Demand files.**
+The applicant added his occupation and signature to the same file in the Dropbox
+Austria folder, and it went to `berlin@bundesarchiv.de` the same day (Zimbra
+463985). The covering letter quotes DR 3.02 – 2023/0002#0185#0001, asks the
+Mitgliederkartei question for all three brothers with the identifying detail for
+each, asks about R 8119F, the Reichswirtschaftsministerium and the
+Bankenkommissar Belgien for Felix, claims the **ten free Digitalisierung-on-Demand
+files** the December letter offered, and caps costs at EUR 200 with prior notice
+above that. It says in terms that an adverse answer is wanted.
+
+**Sending a signed form needs the local CLI.** The cloud Zimbra tool cannot attach
+a local file — it takes base64 or a reference to another message's attachment, and
+a 936 KB PDF is 1.3 million base64 characters, far too large to pass through a
+tool call. `zimba email send` (see the Zimba CLI note in memory) takes file paths;
+it accepts a JSON payload on stdin with `to`, `subject`, `body` and `attachments`.
+The attachment went out under the working filename `ba_signed.pdf`, which should
+have been renamed to something descriptive first.
 
 Filling this form programmatically: pypdf's `update_page_form_field_values` sets
 text fields but leaves radio groups unmarked, because a radio's mark lives on the
