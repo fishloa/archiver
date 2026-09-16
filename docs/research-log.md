@@ -1304,7 +1304,8 @@ Road, Oxford; registered 8 April 2002. This settles the date and place.
 **A discrepancy to be aware of:** the death entry gives his date of birth as
 **18 April 1913**, not 30 April 1913. The Austrian birth, baptism and registration
 records all say 30 April, so the error is in the English death entry — but MA 35
-may compare the two, so it is recorded on the record itself.
+may compare the two, so it is recorded on the record itself. Why the wrong day was
+given is not known; the record says so rather than guessing.
 
 **3. The FCDO neither confirms nor denies — record 3959.** A 2025 FOI request
 asked for UK records about Alexander: an Austrian citizen who worked for the
