@@ -95,3 +95,30 @@ Deputies, who supplied the declaration material), and the Kinský family contact
 the applicant is already in touch with. ABS say the practical question is best
 settled once they report what they have found and in what condition, so nothing
 needs deciding yet — but nothing will arrive by email either.
+
+
+### Collection plan, as at 16 September 2026
+
+Two people can reach an ABS reading room: **Louise**, who is in Prague most of the
+time, and the applicant himself, who is there on **28 October 2026**.
+
+**But 28 October is a Czech state holiday** — Den vzniku samostatného
+československého státu. ABS, the Národní archiv and the Terezín Memorial are all
+closed that day. A visit has to be on the 27th or the 29th, or it achieves
+nothing.
+
+Points to settle when ABS reports (expected mid-to-late October, which lines up
+with the trip):
+
+- Whether to nominate **Louise** so she can collect whenever the answer lands,
+  rather than waiting for the trip. ABS need no power of attorney — a phone call,
+  email or letter naming her is enough.
+- **Photograph rather than buy copies.** Self-photography in the reading room is
+  free; purchased copies are charged by their tariff and must still be collected
+  in person. Photographs also come back as files we can ingest directly.
+- Which reading room: correspondence so far has gone to `badatelna.struha@abscr.cz`
+  (Na Struze, Praha 1). Their reply came from the operational-files department,
+  so the files may sit elsewhere — worth asking which room before travelling.
+- The same trip could cover the **Národní archiv**, where the rest of sign.
+  114-3-17 is scanned and awaiting an invoice, and where self-photography would
+  avoid the reproduction charge entirely.
