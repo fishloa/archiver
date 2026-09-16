@@ -122,3 +122,31 @@ with the trip):
 - The same trip could cover the **Národní archiv**, where the rest of sign.
   114-3-17 is scanned and awaiting an invoice, and where self-photography would
   avoid the reproduction charge entirely.
+
+
+### The Prague window, worked out (arrival evening of Tuesday 27 October 2026)
+
+| Date | Day | Open? |
+|---|---|---|
+| Tue 27 Oct | Tuesday | arrival in the evening — nothing usable |
+| **Wed 28 Oct** | Wednesday | **state holiday**, Den vzniku samostatného československého státu — everything closed, and it is the one day ABS Na Struze would otherwise run late (to 18:00) |
+| **Thu 29 Oct** | Thursday | **the day to use.** ABS Na Struze 9:00–16:00. Národní archiv reading room **closed** (Mon and Wed 9:00–17:30, Tue 9:00–13:00 only) |
+| Fri 30 Oct | Friday | ABS reading rooms closed; NA closed |
+
+So the trip yields **one working day, Thursday 29 October, and only at ABS**.
+
+Consequences:
+
+- **Booking is compulsory at ABS** — "každý badatel se musí předem objednat na
+  konkrétní termín studia", by email only, `badatelna.struha@abscr.cz` (Na Struze,
+  Praha 1, +420 221 008 133) or `badatelna.siwiecova@abscr.cz` (Siwiecova 2,
+  Praha 3, +420 221 008 210). The date must be confirmed by the staff, so it needs
+  arranging well before the 29th — and the answer to ABS-S 8452/2026 may not have
+  arrived by then.
+- **The Národní archiv cannot be done on this trip at all.** Its reading room runs
+  Monday and Wednesday to 17:30 and Tuesday to 13:00; the 28th is the holiday.
+  The outstanding part of sign. 114-3-17 therefore stays with **Louise** or with
+  the invoice.
+- Which reading room holds the ABS files needs asking first: the reply came from
+  the operational-files and investigation-files department, and the files may be at
+  Siwiecova rather than Na Struze. Turning up at the wrong one wastes the only day.
