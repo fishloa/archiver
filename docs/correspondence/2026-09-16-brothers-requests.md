@@ -59,3 +59,55 @@ unbekannt ausgezogen" and a fresh registration on 5.11.1945 coming from
 likely buy a nil answer for EUR 140, so the Vienna request for him went instead to
 the Opferfürsorgeakten, where a claim — or a refused claim — would be the official
 record of his arrest on 28 March 1945.
+
+### The sisters, and the five WStLA applications in full
+
+The six children of Paul Czernin are now all covered. Five applications went in
+through the WStLA online form on 16 September 2026, each accepting a research fee
+of up to EUR 140, each asking for the deregistration note, co-registered spouse,
+co-registered children, religion and **citizenship**:
+
+| Eingangsnummer | Person | born | period asked |
+|---|---|---|---|
+| 2026-1609104348194 | Wolfgang Czernin | 4.8.1903 | 1938–1946 |
+| 2026-1609104710078 | Jan (Johannes) Czernin | 8.3.1910 | 1938–1950 |
+| 2026-1609105840418 | **Anna** Czernin | 26.5.1907 | 1935–1950 |
+| 2026-1609110010121 | **Franziska** Koblitz von Willmburg, née Czernin | 8.3.1910 | 1935–1950 |
+| 2026-1609110159140 | **Alexander** Czernin | 30.4.1913 | 1940–1950 |
+
+Felix was not re-applied for: B-MER-1144261-2023 already covers him from August
+1943, and the years before that would almost certainly come back empty because he
+was at Hohenelbe, then Aussig, then Brussels.
+
+Why each sister is worth the fee:
+
+- **Anna** was unmarried until December 1948, so Vienna would index her under
+  Czernin, and she died at **Altaussee** — the village Alexander's own record
+  shows him deregistering to in 1939 and where he moved in 1943. If her card
+  carries the same destination, the family's refuge there stops being an anecdote.
+- **Franziska** married in June 1934 and would be indexed as **Koblitz von
+  Willmburg**, not Czernin: a search under the family name would have missed her
+  entirely. Her husband died in Japanese captivity at Bondowoso, Java, in December
+  1944, which is nothing to do with Nazi persecution but explains why she appears
+  in the Salzburg records afterwards.
+
+**Alexander's own application is the one with evidential weight.** The 2023
+answer stops at the deregistration of 12 February 1940, "als zum Militär". The
+TH Wien personnel file gives his address as Wien III, Metternichgasse 10 for
+1939–1943 — an address that appears nowhere in that answer — and his move to
+Alt-Aussee in 1943 currently rests on his own letter of 4 August 1943. These
+records do capture such moves: his 1939 entry already reads "Abgemeldet:
+Alt-Aussee". A 1943 deregistration in the same form would make the move an
+official Vienna record rather than a family assertion.
+
+A covering note (Zimbra 463938) lists all five numbers, adds both sisters to the
+Opferfürsorge enquiry so that all six siblings are checked, and tells them a
+staggered answer is fine given their five-at-a-time rule.
+
+**Form quirks worth keeping.** The date fields reject a scripted value and must be
+typed character by character. The conditional *Begründung* field only appears
+after a server round trip, so the sequence is: fill, press Weiter, let it complain,
+then fill the Begründung. "Bei Frauen Mädchenname bzw. weitere Namen" is capped at
+**70 characters** and fails validation silently past that.
+
+Family nicknames (Nana, Lucki and so on) were deliberately kept off the forms.
