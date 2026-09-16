@@ -1428,3 +1428,45 @@ so if they were persecuted the record lies elsewhere.
   ground; whether anything is known about those measures reaching family members
   living in Austria, as the letter's "Ostmark" implies; and whether the German
   original of the Heydrich letter has been located anywhere.
+
+### An Austrian aristocrat in Buchenwald for being a Legitimist — record 3964
+
+Sweeping the Arolsen person index for the signatory surnames, keeping only hits in
+the camp, Gestapo-deportation and war-victim collections, turned up **Rudolf
+Colloredo-Mansfeld, Buchenwald Häftling Nr. 20018**. His
+Häftlings-Personal-Karte reads, field by field:
+
+> Familienname **Colloredo-Mansfeld**; Vorname **Rudolf**; geb. am **16.8.76 in
+> Sierndorf**; Beruf **Gutsbesitzer**; Religion kath.; Staat D; verheiratet —
+> "Frau Johanna C-M., **WIEN 1, Schwarzenbergplatz 2**"; Kinder 2; Häftling Nr.
+> 20018; **"Schutzhaft angeordnet: am 5.8.38 durch (Behörde): WIEN"**; bisherige
+> Parteizugehörigkeit **keine**; Vorstrafen **keine**; **"Grund: war
+> Legitimist"**; eingeliefert **25.9.38**; entlassen **18.10.38 nachm.**
+
+An Austrian Catholic landowner of an old family, living in Vienna's first
+district, with no party membership and no convictions, ordered into protective
+custody by the **Vienna** authority five months after the Anschluss and sent to a
+concentration camp — the only ground the SS recorded being that he was a Habsburg
+monarchist. Ingested as **3964** with the personal card, its reverse and the
+Buchenwald index card.
+
+**What it does not show, stated plainly on the record.** The arrest of August and
+September 1938 predates the first declaration (17.9.1938), the second (24.1.1939),
+the third (September 1939) and Heydrich's letter (16.5.1942). It is therefore not
+a reprisal for signing, and must not be offered as one. Its value is different and
+arguably closer to the point MA 35 disputes: it shows what being an Austrian
+aristocrat of that milieu, in Vienna, was worth to the authorities of the Ostmark
+in 1938 — a camp, on no other stated ground than political allegiance.
+
+His kinship to the four Colloredo-Mansfeld signatories (Jeroným 1870, Jeroným
+1912, Josef 1910, Weikhard 1914) is unverified and is not claimed; Sierndorf in
+Lower Austria is the family's Austrian seat, which makes a connection likely but
+not proven.
+
+**Negatives from the same sweep**, which are worth having: nothing in the camp,
+deportation or war-victim collections for **Lobkowicz** (28 persons indexed),
+**Belcredi** (24), **Strachwitz** (28), **Sternberk** (4), **Nádherný** (5),
+**Dobrzenský** (24) or **Hildprandt** (3). Two searches are unusable as run:
+**Schlik** returns 6,683 persons because Arolsen's matcher is phonetic and pulls in
+Szulim, Scholem and Schulem; **Kinsky** returns 542, almost all Kinas, and nothing
+of the Bohemian family.
