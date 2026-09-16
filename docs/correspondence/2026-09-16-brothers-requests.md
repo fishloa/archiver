@@ -111,3 +111,37 @@ then fill the Begründung. "Bei Frauen Mädchenname bzw. weitere Namen" is cappe
 **70 characters** and fails validation silently past that.
 
 Family nicknames (Nana, Lucki and so on) were deliberately kept off the forms.
+
+### WStLA: the Opferfürsorge question went in on the right form too
+
+The email to `post@archiv.wien.gv.at` got the same answer as the first one: they do
+not research by email. Their reply (Zimbra 463934) sets out the tariff, which is
+worth recording because it explains the numbers on every form:
+
+- reading room, consultation and self-research: **free**
+- written information about *which holdings exist*: **free**
+- **vertiefte Recherche** in the holdings: **EUR 35 per started half hour, two
+  hours maximum** — which is where the EUR 140 cap comes from — and **fruitless
+  searches are billed at the same rate**
+- digitisation is billed separately and has its own form
+- they refuse family trees, literature searches and anything outside their own
+  holdings
+
+So the enquiry was resubmitted on the *Auskunft aus Beständen* form
+(`wien.gv.at/amtswege/auskunft-wiener-stadt-landesarchiv`) — **Eingangsnummer
+2026-1609131617490**. It sets out all six siblings with dates, Felix's arrest of
+28 March 1945 and Wolfgang's prison visit of 11 April 1943, and asks whether the
+archive holds anything on them in: the **Opferfürsorgeakten** (M.Abt. 208, A37),
+including refused or withdrawn applications; the **Volksgerichtsakten**, as
+witness, victim or subject; the **Vermögensverkehrsstelle** and **Rückstellungs**
+files; and any other NS-era holding. The research order is placed expressly up to
+the two-hour maximum, with a nil result accepted and paid for, and adverse results
+expressly wanted.
+
+**Field limits on this form:** the *Genaue Darstellung* box takes about 2,000
+characters, *Frage* and *Mitteilungen* **500 each**, and the MA 8 file-number field
+only **30** — all of which truncate silently, so text has to be written to fit
+rather than trimmed afterwards.
+
+The ČNB enquiry about Felix's BEBCA branch was registered as **2026/159589/CNB**
+and accepted for processing, with a named officer to reply.
