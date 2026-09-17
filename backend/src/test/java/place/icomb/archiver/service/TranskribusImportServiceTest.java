@@ -80,6 +80,35 @@ class TranskribusImportServiceTest {
   }
 
   @Test
+  void wordLevelTranscriptionsDoNotDuplicateTheLine() {
+    // PAGE XML repeats a line's text word by word under <Word>. Descending blindly would return
+    // every line twice — once as the line, once as its words strung together.
+    String xml =
+        """
+        <PcGts xmlns="http://schema.primaresearch.org/PAGE/gts/pagecontent/2013-07-15">
+        <Page><TextRegion><TextLine id="l1">
+          <TextEquiv><Unicode>Alexander Czernin</Unicode></TextEquiv>
+          <Word id="w1"><TextEquiv><Unicode>Alexander</Unicode></TextEquiv></Word>
+          <Word id="w2"><TextEquiv><Unicode>Czernin</Unicode></TextEquiv></Word>
+        </TextLine></TextRegion></Page></PcGts>
+        """;
+
+    assertThat(TranskribusTrpClient.textFromPageXml(xml)).isEqualTo("Alexander Czernin");
+  }
+
+  @Test
+  void aDoctypeIsRefusedRatherThanResolved() {
+    // The XML arrives from an outside service, so entity resolution and DOCTYPEs stay off.
+    String xml =
+        "<?xml version=\"1.0\"?><!DOCTYPE foo [<!ENTITY x SYSTEM \"file:///etc/passwd\">]>"
+            + "<PcGts><TextLine><Unicode>&x;</Unicode></TextLine></PcGts>";
+
+    org.assertj.core.api.Assertions.assertThatThrownBy(
+            () -> TranskribusTrpClient.textFromPageXml(xml))
+        .isInstanceOf(TranskribusClient.TranskribusException.class);
+  }
+
+  @Test
   void anXmlEntityInTheTranscriptionSurvivesAsItsCharacter() {
     String xml =
         "<PcGts><TextLine><Unicode>Sch&amp;ouml; &lt;Rektorat&gt; &amp;amp;</Unicode></TextLine></PcGts>";

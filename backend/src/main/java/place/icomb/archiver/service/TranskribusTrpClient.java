@@ -17,8 +17,14 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import javax.xml.parsers.DocumentBuilder;
+import javax.xml.parsers.DocumentBuilderFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.w3c.dom.Document;
+import org.w3c.dom.Element;
+import org.w3c.dom.Node;
+import org.w3c.dom.NodeList;
 import place.icomb.archiver.ai.TranskribusConfig;
 
 /**
@@ -51,8 +57,7 @@ public class TranskribusTrpClient implements HtrEngine {
   private static final Logger log = LoggerFactory.getLogger(TranskribusTrpClient.class);
 
   private static final Duration EXPIRY_MARGIN = Duration.ofSeconds(60);
-  private static final Pattern TEXT_LINE =
-      Pattern.compile("<TextLine[^>]*>.*?<Unicode>(.*?)</Unicode>", Pattern.DOTALL);
+  private static final Pattern MODEL_ID = Pattern.compile("model_id=(\\d+)");
 
   private final TranskribusConfig config;
   private final HttpClient httpClient;
@@ -339,58 +344,98 @@ public class TranskribusTrpClient implements HtrEngine {
   }
 
   /**
-   * The model that produced a PAGE XML, read out of its own Creator string.
+   * Line text in reading order, one line per {@code TextLine}.
+   *
+   * <p>Parsed, not pattern-matched. PAGE XML is namespaced, entity-encoded and nested — a {@code
+   * TextLine} holds its own {@code TextEquiv/Unicode} and may also hold one per {@code Word} — so a
+   * regex either drops characters or reads each word twice. It also arrives from an outside
+   * service, which is the other reason to hand it to a parser with entity resolution and DOCTYPEs
+   * switched off rather than to unescape it by hand.
+   */
+  static String textFromPageXml(String pageXml) {
+    Document document;
+    try {
+      document =
+          secureDocumentBuilder()
+              .parse(new org.xml.sax.InputSource(new java.io.StringReader(pageXml)));
+    } catch (Exception e) {
+      throw new TranskribusClient.TranskribusException(
+          "Could not parse the PAGE XML: " + e.getMessage());
+    }
+
+    var out = new StringBuilder();
+    NodeList lines = document.getElementsByTagNameNS("*", "TextLine");
+    for (int i = 0; i < lines.getLength(); i++) {
+      lineText((Element) lines.item(i))
+          .filter(text -> !text.isBlank())
+          .ifPresent(text -> out.append(text.strip()).append('\n'));
+    }
+    return out.toString().strip();
+  }
+
+  /**
+   * One line's text: the {@code Unicode} belonging to the line itself.
+   *
+   * <p>Only a direct child is taken. A {@code Word}'s own {@code Unicode} repeats the same text
+   * word by word, and descending blindly would return every line twice over.
+   */
+  private static java.util.Optional<String> lineText(Element line) {
+    for (Node child = line.getFirstChild(); child != null; child = child.getNextSibling()) {
+      if (child.getNodeType() != Node.ELEMENT_NODE) {
+        continue;
+      }
+      String name = child.getLocalName() != null ? child.getLocalName() : child.getNodeName();
+      if ("TextEquiv".equals(name)) {
+        for (Node grand = child.getFirstChild(); grand != null; grand = grand.getNextSibling()) {
+          String gname = grand.getLocalName() != null ? grand.getLocalName() : grand.getNodeName();
+          if (grand.getNodeType() == Node.ELEMENT_NODE && "Unicode".equals(gname)) {
+            return java.util.Optional.of(grand.getTextContent());
+          }
+        }
+      } else if ("Unicode".equals(name)) {
+        // Not what Transkribus writes, but a PAGE file from elsewhere may put Unicode directly
+        // under the line.
+        return java.util.Optional.of(child.getTextContent());
+      }
+    }
+    return java.util.Optional.empty();
+  }
+
+  /**
+   * The model that produced a PAGE XML, from its own Creator element.
    *
    * <p>{@code prov=READ-COOP:name=TrHtr:version=2.51.0:model_id=579509:date=17_09_2026}. Taken from
    * the artefact rather than from what we think was run, so a transcription carries the provenance
    * of the model that actually made it.
    */
   public static int modelIdFromPageXml(String pageXml) {
-    Matcher m = Pattern.compile("model_id=(\\d+)").matcher(pageXml);
+    Matcher m = MODEL_ID.matcher(creator(pageXml));
     return m.find() ? Integer.parseInt(m.group(1)) : 0;
   }
 
-  /** Line text in reading order, one line per {@code TextLine}. */
-  static String textFromPageXml(String pageXml) {
-    var out = new StringBuilder();
-    Matcher m = TEXT_LINE.matcher(pageXml);
-    while (m.find()) {
-      String line = m.group(1).trim();
-      if (!line.isEmpty()) {
-        out.append(unescape(line)).append('\n');
-      }
+  private static String creator(String pageXml) {
+    try {
+      Document document =
+          secureDocumentBuilder()
+              .parse(new org.xml.sax.InputSource(new java.io.StringReader(pageXml)));
+      NodeList creators = document.getElementsByTagNameNS("*", "Creator");
+      return creators.getLength() > 0 ? creators.item(0).getTextContent() : "";
+    } catch (Exception e) {
+      return "";
     }
-    return out.toString().trim();
   }
 
-  private static final Pattern NUMERIC_ENTITY = Pattern.compile("&#(x?)([0-9A-Fa-f]+);");
-
-  /**
-   * XML entities back to their characters.
-   *
-   * <p>Numeric entities as well as named ones. Transkribus writes literal UTF-8 in practice, but a
-   * single {@code &#228;} left unresolved would put "verl&#228;ngert" into a transcription that is
-   * meant to be quotable, and the point of this archive is that the stored text is what the engine
-   * actually said.
-   *
-   * <p>{@code &amp;} is resolved last, so an escaped ampersand cannot be re-read as the start of
-   * another entity.
-   */
-  static String unescape(String s) {
-    Matcher m = NUMERIC_ENTITY.matcher(s);
-    var sb = new StringBuilder();
-    while (m.find()) {
-      int code = Integer.parseInt(m.group(2), m.group(1).isEmpty() ? 10 : 16);
-      m.appendReplacement(sb, Matcher.quoteReplacement(Character.toString(code)));
-    }
-    m.appendTail(sb);
-
-    return sb.toString()
-        .replace("&lt;", "<")
-        .replace("&gt;", ">")
-        .replace("&quot;", "\"")
-        .replace("&apos;", "'")
-        .replace("&amp;", "&");
+  /** A parser that will not resolve entities or fetch anything: this XML comes from outside. */
+  private static DocumentBuilder secureDocumentBuilder() throws Exception {
+    DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
+    factory.setFeature(javax.xml.XMLConstants.FEATURE_SECURE_PROCESSING, true);
+    factory.setFeature("http://apache.org/xml/features/disallow-doctype-decl", true);
+    factory.setAttribute(javax.xml.XMLConstants.ACCESS_EXTERNAL_DTD, "");
+    factory.setAttribute(javax.xml.XMLConstants.ACCESS_EXTERNAL_SCHEMA, "");
+    factory.setXIncludeAware(false);
+    factory.setExpandEntityReferences(false);
+    factory.setNamespaceAware(true);
+    return factory.newDocumentBuilder();
   }
 
   /**
