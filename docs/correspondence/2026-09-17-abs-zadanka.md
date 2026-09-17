@@ -1,9 +1,8 @@
-# DRAFT (held) — ABS, žádost o informace z archivních fondů
+# ABS — žádost o informace z archivních fondů
 
-**To:** `info@abscr.cz` · **Zimbra draft 464473** · written 17 September 2026 · **NOT SENT**
+**To:** `info@abscr.cz` · **sent 17 September 2026, Zimbra 464488**
 
-Lodged only when the user says so. This is the request eBadatelna itself cannot
-answer: ABS deliberately withholds from the application any fonds whose
+This is the request eBadatelna itself cannot answer: ABS deliberately withholds from the application any fonds whose
 description is inadequate or whose digitisation is unreliable, so a nil result
 in eBadatelna is not a nil result at ABS.
 
