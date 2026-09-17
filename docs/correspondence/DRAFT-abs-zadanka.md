@@ -10,9 +10,18 @@ in eBadatelna is not a nil result at ABS.
 ## What it asks for
 
 1. **A lustrace** — a check of their own registries, card indexes and svazková
-   evidence, including undigitised and unpublished fonds — on six people:
-   Humprecht, Rudolf Děpold, Marie née Kinská, Ida née Lobkowicz, Alexander and
-   Felix, each with the identifying dates we can actually support.
+   evidence, including undigitised and unpublished fonds — on seven people:
+   **Pavel** (Alexander's father), Humprecht, Rudolf Děpold, Marie née Kinská,
+   Maria Ida née Lobkowicz, Alexander and Felix, each with the identifying dates
+   the family tree supports.
+
+   Pavel Bedřich Děpolt Otto Ottokar Maria Czernin, b. Dymokury 4.6.1879, d.
+   Krásný Dvůr **17.1.1938**, married Prague 22.4.1901 to Maria Gabriele von
+   Orsini-Rosenberg (b. Vienna 21.5.1879, d. Salzburg 4.5.1951). He died before
+   the occupation, so the letter says why he is included anyway: he owned the
+   Dymokury estate, to which both his son Humprecht's arrest and the post-1945
+   confiscation proceedings attach, and the question is whether his name appears
+   in the study and documentation material on the estate and the family.
 2. **Two named documents** that the nephew's 1972 testimony (325-113-2) says were
    in Marie Czerninová's estate in 1952: the certified copy of 20 September 1949
    from the Na Pleši sanatorium concerning Humprecht's death, and the
