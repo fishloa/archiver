@@ -2127,6 +2127,13 @@ Deleted: records **3976–3978**, AIR 78/56/10, 264 pages of the RAF airmen inde
 range Fleming–Forsyth, downloaded in error during the Kew sweep and of no relevance to anyone in
 this case.
 
-Still on watermarked previews, deliberately: **KV 2/3543** (record 3969, Raoul Hafner — no link to
-Alexander was ever established) and **KV 2/3424** (record 3998, Thun-Hohenstein, Abwehr, flagged
-*do not cite*). Both are kept as the record of a checked negative, not as evidence.
+Also deleted, on the same decision: **KV 2/3543** (record 3969, Raoul Hafner, 84 pages) and
+**KV 2/3424** (record 3998, Thun-Hohenstein, 63 pages). Neither was ever going to be cited —
+Hafner's supposed link to Alexander was never established, and Thun-Hohenstein was an Abwehr
+recruit whose file was flagged *do not cite* — and both existed only as watermarked previews
+whose OCR is unusable. The checked negative survives in this log, which is where it belongs:
+**MI5 held nothing connecting Alexander Czernin to Raoul Hafner**, and the Thun-Hohenstein file
+concerns a different man of a different family. Do not re-order either.
+
+Archive 6 (UK Government) therefore now holds **29 records**, all of them clean copies apart from
+record 2558, which came from another route.
