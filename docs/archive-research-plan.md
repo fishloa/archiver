@@ -74,6 +74,35 @@
 - Post-war confiscation under **Beneš decrees** (1945-1948)
 - Partial restitution after 1989 (Dymokury returned, Hlušice contested)
 
+### 1.6 The signatories are the applicant's own first cousins — established 17 September 2026
+
+The declaration of September 1939 was not signed by distant members of a shared surname. Reading
+the autograph page (record 3512) and the typed list (record 3517) against the genealogy places
+**five signatories inside Alexander Czernin's immediate kin**:
+
+| signatory | relation to Alexander | documented fate |
+|---|---|---|
+| **Rudolf** "Rudobald" Czernin, \*Dymokury 25.8.1904, †Wien 1984 | **1st cousin** | convicted 28.3.1944 for foreign broadcasts; Kolín → Pankrác → Terezín Small Fortress → Gollnow (records 3934, 3519) |
+| **Humprecht** Czernin, \*Dymokury 9.2.1909, †Pleš u Prahy 19.9.1944 | **1st cousin** | death sentence, Petschek Palace, 30.6.1942, commuted to life; Brandenburg; died in 1944 (records 3518, 3519) |
+| **Jan Děpold** Czernin, \*Dymokury 26.7.1915, †Wien 1967, Premonstratensian | **1st cousin** | not yet researched |
+| **Edmund** Czernin, \*Sofia 31.5.1907, †Salzburg 1994 | **1st cousin** | not yet researched |
+| **František Josef** Czernin, \*Praha 24.5.1878, †London 1963 (signed by proxy through Jan Pálffy) | **1st cousin once removed** | left Czechoslovakia for London 1947–48; son taken for forced labour 1944 (record 3509) |
+
+Rudolf, Humprecht and Jan Děpold are brothers, sons of Děpolt Josef Ottokar (.A3.B2.C1); Edmund is
+a son of Otto Rudolf Diepold Ottokar (.A3.B2.C4); Alexander descends through Pavel (.A3.B2.C6).
+The three fathers were brothers.
+
+**Why this matters to the §58c submission.** Heydrich's letter of 16 May 1942 (record 3796) names
+the Czernins among the ten families whose estates were placed under forced administration, and
+gives the *Treueerklärung* as the reason. The link from that instrument of persecution to the
+applicant is no longer a family name in common: two of the men who signed it were the applicant's
+grandfather's first cousins, and both were tried and imprisoned.
+
+**Still to verify.** The identifications rest on forename matching against the genealogy held in
+the archive. No other Czernin of these names appears on the tree as living in 1939, but the tree
+is not exhaustive. Jan Drocár, who supplied both the signature page and the typed list, should be
+asked to confirm before this is put to MA 35.
+
 ---
 
 ## 2. ARCHIVES INVESTIGATED
