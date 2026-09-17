@@ -1771,3 +1771,33 @@ minute sheet of FO 1020/2766/1 transcribes down to the file-reference numbers.
 
 Practical rule: harvest the free preview for handwritten and light material, and buy the £3.50
 copy for anything dark or typewritten that the case actually relies on.
+
+### What the Kew session added to the archive
+
+| record | reference | pages | what it is |
+|---|---|---|---|
+| 3968 | FO 371/65328/3 | 6 | archives removed from the **Czernin Palace**, Prague; Wostry's 1,400 German translations |
+| 3969 | KV 2/3543 | 84 | MI5 on Raoul Hafner — **no link to Alexander established** |
+| 3970 | FO 1020/2610/2 | 47 | Croft-Murray's survey of Vienna's monuments and collections, April 1946 |
+| 3971 | FO 1020/2766/1 | 41 | Alt Aussee deposits — **the Czernin Vermeer**, "latterly the private property of Hitler" |
+| 3972 | FO 1046/763/2 | 36 | Göring's and Hitler's looting agents; the Vermeer "from the Czernin collection" |
+| 3973–3974 | T 209/29/15 | 118 | ALIU report on Linz + supplement, "the acquisition of the Czernin Vermeer" |
+| 3975 | T 209/29/16 | 75 | the 88 attachments: Hitler's order to Posse, Bormann on Viennese collections |
+| 3976–3978 | AIR 78/56/10 | 264 | airmen index, Fleming–Forsyth — **wrong range, downloaded in error** |
+| 3979–3987 | AIR 50/9, 50/36 | 39 | **Manfred Czernin's combat reports**, 17 and 85 Squadrons, 1940 |
+| 3988 | FO 370/1315 | 17 | Foreign Office material on German looting |
+| 3989–3990 | FO 371/36371, /36372 | 22 | Trading with the Enemy; letter from Ambassador Maximilian Lobkowicz |
+| 3991 | T 209/28/1 | 50 | SHAEF's index of art repositories, 4th edition, June 1945 |
+| 3992–3993 | AIR 50/173 | 17 | Colloredo-Mansfeld's combat reports, 611 Squadron, 1943 |
+| 3994–3996 | CAB 24 | 20 | First World War Cabinet papers on Ottokar Czernin |
+| 3997 | FO 1057/219 | 157 of 183 | the British hunt for the **looted Czech property in Heydrich's houses**, 1948–49 |
+| 3998 | KV 2/3424 | 63 | Thun-Hohenstein, **Abwehr — do not cite** |
+
+Not retrieved: T 209/29/17 (104 pages, the later Linz attachments) and the last 26 pages of
+FO 1057/219 — both defeated by rate limiting rather than by access restrictions, and both
+recoverable later.
+
+Not digitised, so not retrievable remotely at all: **FO 371/47178** (Mensdorff-Pouilly's request
+to free his family), **FO 817/7** (the British Embassy's own file on the attack on Heydrich and
+the German reprisals — the weeks in which Humprecht Czernin was condemned), **HS 9/386/6**
+(Manfred Czernin's SOE personnel file), **HO 396/14/370**, and the whole HO 294 refugee series.
