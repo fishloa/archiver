@@ -1801,3 +1801,47 @@ Not digitised, so not retrievable remotely at all: **FO 371/47178** (Mensdorff-P
 to free his family), **FO 817/7** (the British Embassy's own file on the attack on Heydrich and
 the German reprisals — the weeks in which Humprecht Czernin was condemned), **HS 9/386/6**
 (Manfred Czernin's SOE personnel file), **HO 396/14/370**, and the whole HO 294 refugee series.
+
+## 17 September 2026 — Felix Czernin's NS-registration Meldeblatt: the Gestapo arrest and the party card on one page
+
+Hubertus Trauttenberg's dossier on Felix (record **4006**, 36 pages, sent 8 June 2026, Zimbra
+446698, scanned 2015) had been ingested with broken images — the PDF stores each page as several
+bilevel TIFF fragments and my extractor uploaded one fragment per page in the wrong container, so
+the pages rendered blank. Re-rasterised whole pages at 600 dpi. On reading page 2 properly:
+
+It is Felix's **Meldeblatt zur Registrierung der Nationalsozialisten** under Article II of the
+Verfassungsgesetz of 8 May 1945 — the Verbotsgesetz registration form — Gemeinde Wien, Fortl.
+Nr. 3315, signed by him at Vienna on **6 November 1945**, struck through diagonally, with
+"1 Gesuch mit 2 Beilagen" recorded for *Abstandnahme von der Registrierung*.
+
+**What it gives the case.** In his own hand, under *Allfällige Bemerkungen*: conscripted into the
+Wehrmacht from early 1944 until 20 March 1945, and
+
+> "ist in Wien am 27. März 1945 von der Gestapo wegen **Hochverrat und Wehrkraftzersetzung**
+> verhaftet worden"
+
+— arrested in Vienna by the Gestapo for high treason and undermining military morale. The charge,
+named, in a sworn Austrian official form seven months after the event. Also on the form: address
+4., Wohllebengasse 9/10 since July 1943 (matching the Meldeunterlagen at record 3503), and earlier
+addresses since 1 July 1933 in Bohemia, Aussig an der Elbe and Brussels.
+
+**What it gives the other side.** The same page records **"Mitglied der NSDAP von Dezember 1938
+bis 1945"**, party card c. 6,900,000, and NSKK membership early 1939 to early 1941 as
+"NSKK-Mann (Flugzeuglehrer)", with no NSDAP function. The form exists *because* he was a
+registrable National Socialist.
+
+This has to be handled whole. A submission that quotes the Gestapo arrest from this page must be
+able to answer the party membership on the same page, and it is far better that we found it than
+that MA 35's historian does. The two are not in contradiction — a party member arrested for high
+treason and Wehrkraftzersetzung in the last weeks of the war is a man the regime turned on, which
+is the question §58c asks — but presenting one without the other would be indefensible, and would
+cost the credibility the file has been built on.
+
+**A date to resolve.** This form says the arrest was **27 March 1945**. The archive has elsewhere
+recorded 28 March 1945, including in the enquiry sent to Staatsarchiv Nürnberg this morning. Felix's
+own diary (record 3507) covers 26 March to 6 May 1945 and should settle it; until then, cite the
+Meldeblatt date with the diary as the check.
+
+The remaining 34 pages have not been read. They are the family's own dossier on the resistance work
+behind the arrest, and they bear directly on what the four 1947 Nuremberg interrogations
+(KV-Anklage Interrogations C 22, requested today) will say.
