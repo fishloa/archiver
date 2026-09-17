@@ -1691,3 +1691,38 @@ The identifications rest on forename matching against the genealogy. No other Cz
 names appears on the tree as living in 1939, but the tree is not exhaustive and the point should
 be put to Jan Drocár, who supplied both the signature page and the typed list, before it is
 relied on in the submission.
+
+### HO 294 — the Czechoslovak Refugee Trust, and why its two halves mean opposite things
+
+The Czechoslovak Refugee Trust case papers at Kew are split by the catalogue into groups, and the
+group a file sits in decides whether it is evidence of **Nazi** persecution or of flight from the
+**communists** eight years later. Confusing the two would be a serious error in the submission.
+
+**'Old' Refugees — people who got out in 1938–39, i.e. from the Germans:**
+
+| reference | person | note |
+|---|---|---|
+| HO 294/494/452 | **Bedřich Mels-Colloredo-Wesztfried**, b. 1884 | case papers 431–498; Colloredo is a declaration family, though Mels-Colloredo is a distinct branch |
+| HO 294/553/5727, /5727A | **Dr Josef Lažanský**, b. 1899, and **Ella Lažanská**, b. 1904 | case papers 5707–5750 |
+| HO 294/281 | **Otto Lažanský**, b. 1904, and **Hedwig Lažanská**, b. 1906 | personal file, 1939–1950; his naturalisation is HO 405/33767 (closed) and HO 334/318/1891 |
+| HO 294/506/1288, /531/2873 etc. | a large **Dubský** group | see the caution below |
+
+**'Post War' Refugees — people who got out after 1948, i.e. from the communists:**
+
+| reference | person |
+|---|---|
+| HO 294/591/9457 | **Sidonie Nádherná**, b. 1885, d. 30 September 1950 |
+| HO 294/592/9583 | **Robert Hildprandt**, b. 1893 (closed) |
+| HO 294/593/9655 | **Anna Bořek-Dohalská**, b. 1911 (closed) |
+| HO 294/606/X3086 | **Jindřich Thun-Hohenstein** (closed; "Refugees with Restricted Choice of Employment", 1950–68) |
+
+Those four are from declaration families and their files will be worth having for the family
+history, but they are **not** evidence of Nazi persecution and must not be offered as such.
+
+**A caution on namesakes.** Several surname matches are plainly not the noble families. The
+Sternberg hits in HO 294 and HO 396 — Gittalina b. 1872, Abraham b. 1899, Albert b. 1921 — and
+the Schwarzenberger internees (Hannchen Sara, Ilse Sara, Salomon) are Jewish refugees from
+Germany and Austria, recorded under the Nazi-imposed middle names "Sara" and "Israel". The
+Vienna-born Dubský group in HO 396/17 has the same character. They are other people's tragedies
+and have nothing to do with the Bohemian nobility of those names. The same discipline that
+caught the Kolowrat deportation-list entry applies here.
