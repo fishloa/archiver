@@ -2096,3 +2096,37 @@ a state one — worth asking the family before asking an archive. Jaroslav Holý
 valet and driver is cited by Hořejš from this same investigation and should be in one of the two
 volumes. And 325-121-1, Feustel's own file (record 4011, 215 scans), carries his testimony at first
 hand.
+
+### 17 September 2026 — the last watermarked previews replaced
+
+The free download allowance covered the rest of the watermarked set. Twelve records had their page
+images swapped in place — same record IDs, same descriptions, 334 pages — and are back through OCR:
+
+| record | reference | pages |
+|---|---|---|
+| 3973 + 3974 | T 209/29/15 (ALIU Linz report + the January 1946 supplement) | 58 + 60 |
+| 3975 | T 209/29/16 (the 88 attachments) | 75 |
+| 3971 | FO 1020/2766/1 (Alt Aussee deposits, the Czernin Vermeer) | 41 |
+| 3972 | FO 1046/763/2 (Göring's and Hitler's looting agents) | 36 |
+| 3970 | FO 1020/2610/2 (Croft-Murray on Vienna) | 47 |
+| 3968 | FO 371/65328/3 (archives removed from the Czernin Palace) | 6 |
+| 3980, 3981, 3982, 3984, 3986 | AIR 50/9/54, /55, /63, /85, /92 (Manfred's combat reports) | 11 |
+
+T 209/29/15 is the one that mattered: as a watermarked preview its OCR returned nothing but "The
+National Archives" repeated down the page, and it carries the account of the acquisition of the
+Czernin Vermeer.
+
+**A resolution surprise worth recording.** TNA's purchased PDF of T 209/29/15 delivers pages at
+**842 × 1191 px**, well below the 2648 × 4158 of a watermarked preview image. Checked before
+uploading, because a swap that lowered resolution would have been a downgrade: the typescript is
+completely legible and, being clean, OCRs — which the larger watermarked version did not. So
+the purchased file is not always the bigger file, and "clean beats big" for typescript. The other
+files came down at 1200–5260 px wide.
+
+Deleted: records **3976–3978**, AIR 78/56/10, 264 pages of the RAF airmen index for the name
+range Fleming–Forsyth, downloaded in error during the Kew sweep and of no relevance to anyone in
+this case.
+
+Still on watermarked previews, deliberately: **KV 2/3543** (record 3969, Raoul Hafner — no link to
+Alexander was ever established) and **KV 2/3424** (record 3998, Thun-Hohenstein, Abwehr, flagged
+*do not cite*). Both are kept as the record of a checked negative, not as evidence.
