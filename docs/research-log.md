@@ -2137,3 +2137,34 @@ concerns a different man of a different family. Do not re-order either.
 
 Archive 6 (UK Government) therefore now holds **29 records**, all of them clean copies apart from
 record 2558, which came from another route.
+
+### What the clean T 209/29/15 gave up immediately
+
+The page that had been unreadable is the one that mattered. In the ALIU's supplement of 15 January
+1946 (record 3973, page 5), under *Page 35 (2), bottom, The CZERNIN Vermeer*:
+
+> A thick folder of correspondence in the Reichskanzlei files concerning the purchase of Vermeer's
+> *The Artist in His Studio* casts doubt on the possibility that the sale was forced. It should be
+> kept in mind, however, that (1) the CZERNIN family still maintain that the contract was closed
+> under duress, (2) **any suggestion of forced sale would naturally be eliminated from official
+> correspondence**, and (3) **HITLER blocked at least two attempts to dispose of the painting to
+> other collections, once at a higher figure than he ultimately paid for it**.
+
+That is the Allied investigators' own reasoning, in 1946, and it is more careful than either side of
+the later restitution argument. It concedes the documentary record looks like a sale while naming
+the reason the record would look that way, and it identifies the fact that does not depend on the
+correspondence at all: the owner was not free to sell elsewhere. The same page records that Count
+**Jaromir Czernin-Morzin of Marschendorf** was willing to sell the Vermeer to the Hamburg dealer
+Reemtsma for **1,800,000 RM**, that Göring supported the proposal, and that on **29 December 1939**
+Lammers wrote that Hitler had ordered the picture to remain in the Czernin collection and not be
+moved without his explicit consent — against the **1,650,000 RM** Hitler paid in 1940.
+
+Record 3975 (T 209/29/16) now also yields Attachment 57 in full: Bormann to Posse, Berlin,
+26 September 1940, "Der Führer will das Bild zu diesem Preise kaufen und wuenscht, dass Sie umgehend
+zwecks Abschluss des Kaufvertrags nach Wien fahren", with Schirach instructed to supply an official
+for the signing. It sits directly against the Kunstrückgabebeirat's 2011 refusal (record 3798), which
+works from the same Reichskanzlei file.
+
+**Scope caution.** The Vermeer was Jaromir Czernin-Morzin's, not Alexander's line. This belongs in
+the archive and in the account of what was done to the family, not in the §58c submission as if it
+were the applicant's own loss.
