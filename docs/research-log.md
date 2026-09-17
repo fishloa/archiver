@@ -1658,3 +1658,36 @@ Britain and later parachuting for SOE, the other called up by the Wehrmacht from
 the fourth district of Vienna.
 
 This is context, not persecution evidence, and should be offered as such.
+
+### The four Czernin signatories are all Alexander's first cousins
+
+Record 3512 (the autograph page from Český Šternberk) has always named four Czernin signatures —
+Rudolf, Edmund, Humprecht and Jan Dypold. Running those forenames against the genealogy pins
+each of them, and the answer is the same in every case: **first cousin of Alexander Czernin**,
+their fathers being brothers, all sons of Děpolt "Theobald".
+
+| signatory | dates | line | what is known of his fate |
+|---|---|---|---|
+| **Rudolf** Děpolt Maria Josef Ludvík, "Rudobald" | \*Dymokury 25.8.1904, †Wien 16.5.1984 | .A3.B2.C1.D1 | convicted 28.3.1944, foreign broadcasts; Kolín → Prague-Pankrác → Terezín Small Fortress → Gollnow (record 3934) |
+| **Humprecht** Ottokar Paul Theobald Rudolf … | \*Dymokury 9.2.1909, †sanatorium Pleš u Prahy 19.9.1944 | .A3.B2.C1.D4 | death sentence, Petschek Palace summary court 30.6.1942, commuted to life, Brandenburg (records 3518, 3519) |
+| **Jan** Nepomuk Děpold Rudolf Ferdinand, Premonstratensian Páter Václav | \*Dymokury 26.7.1915, †Wien 27.9.1967 | .A3.B2.C1.D7 | brother of the two above; nothing yet |
+| **Edmund** Diepold Douglas Friedrich Ferdinand | \*Sofia 31.5.1907, †Salzburg 13.10.1994 | .A3.B2.C4.D3 | brother of Manfred, the RAF/SOE cousin; nothing yet |
+
+Alexander's own line is .A3.B2.C6.D6 through his father Pavel. Rudolf, Humprecht and Jan are
+three brothers, sons of Děpolt Josef Ottokar Otto Maria (.A3.B2.C1); Edmund is a son of Otto
+Rudolf Diepold Ottokar Maria (.A3.B2.C4).
+
+And a fifth Czernin signed without appearing on the autograph page: the typed list (record 3517)
+has "Jan Pálffy jménem svým **a za hr. Františka Josefa Czernina**" — **František Josef Czernin**,
+\*Praha 24.5.1878, †London 17.10.1963, Alexander's first cousin once removed.
+
+This reframes the §58c argument. It is no longer only that the applicant's family belonged to a
+persecuted class, nor only that unrelated signatories suffered: **five signatories of the
+September 1939 declaration were Alexander's own first cousins or first cousin once removed, and
+two of those five were tried and imprisoned** — one under a commuted death sentence who died in
+custody-related circumstances in 1944, the other in the Terezín Small Fortress and Gollnow.
+
+The identifications rest on forename matching against the genealogy. No other Czernin of these
+names appears on the tree as living in 1939, but the tree is not exhaustive and the point should
+be put to Jan Drocár, who supplied both the signature page and the typed list, before it is
+relied on in the submission.
