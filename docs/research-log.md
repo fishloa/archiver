@@ -1750,3 +1750,24 @@ This is a negative, and it should be stated as one. HO 334 is a series of duplic
 described at item level by name, and HO 405 retains only a selection of the personal files, so
 absence from both is strong but not conclusive. If it matters to MA 35, the definitive answer
 would come from a Home Office nationality-records check rather than from Discovery.
+
+### What the watermark actually costs, measured
+
+The damage is not uniform, and it is worth recording precisely because it decides whether a free
+preview is worth harvesting at all.
+
+- **FO 371/36372/35** (record 3990) — a dark photostat of a Foreign Office jacket. The OCR
+  returned *nothing but the words "The National Archives" repeated*, fifty times a page. Useless
+  for search.
+- **T 209/28/1** (record 3991) — a lighter typescript list. The OCR worked well enough that a
+  search for "Hohenfurth", a place name that appears only in the body and not in the catalogue
+  description, finds the record.
+- **AIR 50** combat reports (records 3979–3987, 3992–3993) — handwritten on light paper. The OCR
+  is good: "1 Me. 110 destroyed by F/O. Czernin D.F.C.", "Me.110 destroyed… over Redhill area".
+
+So: handwriting on pale paper survives the watermark, light typescript mostly survives, and dark
+photostats do not survive at all. The clean copies in Dropbox OCR perfectly by comparison — the
+minute sheet of FO 1020/2766/1 transcribes down to the file-reference numbers.
+
+Practical rule: harvest the free preview for handwritten and light material, and buy the £3.50
+copy for anything dark or typewritten that the case actually relies on.
