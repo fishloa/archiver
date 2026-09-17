@@ -1726,3 +1726,27 @@ Germany and Austria, recorded under the Nazi-imposed middle names "Sara" and "Is
 Vienna-born Dubský group in HO 396/17 has the same character. They are other people's tragedies
 and have nothing to do with the Bohemian nobility of those names. The same discipline that
 caught the Kolowrat deportation-list entry applies here.
+
+### A negative finding: no British naturalisation for Alexander
+
+Discovery returns 42 records for "Czernin". Nine concern British nationality, and Alexander is in
+none of them:
+
+| reference | person |
+|---|---|
+| HO 144/1727/276525, HO 334/117/478 | Lucy Katherine Czernin, from Austria, naturalised 25 April 1922, with her son Manfred named |
+| HO 334/395/40167, HO 405/9132 | Josef Vincenc Vojtěch Maria Vilém Roman Czernin, certificate 17 January 1956 |
+| HO 334/1115/85718, HO 405/9351 | Wilhelmine Czernin, "alias Minne", certificate 9 June 1965 (file closed) |
+| HO 396/14/370 | Mary Czernin, b. 5.5.1920 Beinum, internee index card |
+| FCO 141/5447 | Count Ferdinand Czernin, lease of Pine Cay |
+
+The word "Alexander" appears nowhere in the 42 records. He lived in England from at least 1949 —
+married at Haywards Heath on 9 July 1949, daughter born in Hammersmith in March 1951 (record
+3967), died at Oxford on 5 April 2002 (record 3958) — so the absence of any naturalisation
+certificate or Home Office file is itself informative: **on the evidence at Kew he never became a
+British subject**, and there is nothing to suggest he gave up Austrian nationality.
+
+This is a negative, and it should be stated as one. HO 334 is a series of duplicate certificates
+described at item level by name, and HO 405 retains only a selection of the personal files, so
+absence from both is strong but not conclusive. If it matters to MA 35, the definitive answer
+would come from a Home Office nationality-records check rather than from Discovery.
