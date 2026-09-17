@@ -44,10 +44,13 @@ ALTER TABLE job ADD CONSTRAINT job_kind_check CHECK (
 --
 -- Switching tier is enabling the other row.
 --
--- Both rows sit below rank 1, which is Mistral, so anything asking for "the best OCR engine"
--- still gets Mistral and the credits are not spent by the ordinary pipeline. Each row is inert
--- until TRANSKRIBUS_PASSWORD exists in the deployment, because AiRegistry treats an enabled row
--- with no credential as unconfigured rather than as on.
+-- Both rows rank far below Mistral at rank 1, so anything asking for "the best OCR engine" still
+-- gets Mistral and the credits are not spent by the ordinary pipeline. The ranks are 20 and 21
+-- rather than 2 and 3 because ai_implementation is UNIQUE on (capability, rank): the low numbers
+-- are where an operator or a test puts a row it is comparing against Mistral, and a manual engine
+-- has no business occupying them. Each row is inert until TRANSKRIBUS_PASSWORD exists in the
+-- deployment, because AiRegistry treats an enabled row with no credential as unconfigured rather
+-- than as on.
 --
 -- Every htrId below was read from Transkribus's own public model catalogue
 -- (GET https://transkribus.eu/TrpServer/rest/models/text, no authentication required), not from
@@ -63,7 +66,7 @@ INSERT INTO ai_implementation (
     'transkribus:free-supermodels',
     'OCR', 'transkribus', 'Transkribus super models (per language)',
     'https://transkribus.eu/processing/v1', '/processes',
-    'TRANSKRIBUS_PASSWORD', 1, 2, true,
+    'TRANSKRIBUS_PASSWORD', 1, 20, true,
     jsonb_build_object(
       'jobKind', 'ocr_page_transkribus',
       -- de: German Genius, a German-only super model, 21.1M words.
@@ -98,7 +101,7 @@ INSERT INTO ai_implementation (
     'transkribus:text-titan-ii',
     'OCR', 'transkribus', 'Text Titan II',
     'https://transkribus.eu/processing/v1', '/processes',
-    'TRANSKRIBUS_PASSWORD', 1, 3, false,
+    'TRANSKRIBUS_PASSWORD', 1, 21, false,
     jsonb_build_object(
       'jobKind', 'ocr_page_transkribus',
       -- Text Titan II: eng, deu, ita, lat, fra, fin, swe, nld, por, dan, spa, nor. CER 0.043 on
