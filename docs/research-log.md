@@ -1845,3 +1845,107 @@ Meldeblatt date with the diary as the check.
 The remaining 34 pages have not been read. They are the family's own dossier on the resistance work
 behind the arrest, and they bear directly on what the four 1947 Nuremberg interrogations
 (KV-Anklage Interrogations C 22, requested today) will say.
+
+### Record 4006 read in full: Felix Czernin's §27 Verbotsgesetz file, and the O5 resistance
+
+The 36 pages are not a scrapbook. They are Felix's complete **Nachsichtsgesuch** — his application
+under §27 of the Verbotsgesetz to be excused registration as a National Socialist — lodged through
+his lawyer Dr Karl Trauttmansdorff, with sworn witness statements and the Austrian authorities'
+decisions on it. Magistrat file number **3315**, 4th/5th district.
+
+**How the party membership came about, in his own account (pages 8–9).** He was a banker with the
+Böhmische Escompte-Bank. "Mit 13. März 1938 wurde ich automatisch reichsdeutscher Staatsbürger."
+His promised appointment as director of the Reichenberg branch was blocked in July 1938 by
+prominent Reichenberg industrialists who called him **"politisch untragbar"** — politically
+untenable. In August 1938 he was made director of the Aussig branch, which the **Dresdner Bank**
+then took over, sharply increasing the pressure on him to join. At the end of 1938 the Aussig
+Ortsgruppe sent former Austrians a form offering them the chance to apply; he and Hans von
+Reiterer-Schaller signed it, he says, **expecting to be refused**, because not signing "hätte als
+eine feindliche Demonstration ausgelegt werden können". He received a provisional party card in
+March 1939 and was thereafter a **Parteianwärter** — a candidate, not a full member — took no part
+in party activity, and instructed occasionally as a glider pilot with the NSFK.
+
+That matters against the Meldeblatt, which records flatly "Mitglied der NSDAP von Dezember 1938
+bis 1945". The authorities worked from the Anwärter characterisation.
+
+**The resistance work (pages 9–10, 13, 26).** From early 1941 he led the Continentale Bank in
+Brussels, Deutsche Bank's sister company, and belonged to "dem kleinen Kreise um General von
+Falkenhausen", drawing the open enmity of the Rexists and the Flemish VNV; denunciations to the
+Gestapo began then and later formed part of the basis of his arrest. From **1943 he belonged to
+Wilhelm Thurn und Taxis's resistance group in the General Secretariat of O5**. Thurn und Taxis
+swore on 28 August 1945 that Czernin was deployed by him **for intelligence-gathering from abroad**,
+"eine Aufgabe, der er sich mit Geschick und wertvollen Ergebnissen unterzogen hat", and that on his
+instructions Czernin made contact in autumn 1943 with the **Austrian resistance group in Turkey** —
+"was dann letzten Endes dazu geführt hat, dass der Genannte Anfang 1945 von der Gestapo in Wien
+verhaftet wurde". After the liberation Czernin rejoined him and sat on a delegation of the Austrian
+resistance movement.
+
+In Turkey in the second half of 1943 he dealt with the Austrian colony, and was close to the
+Kleczkowskis and Willy Hamburger, **who went over to the Allies in January 1944**. **Fred Herok**,
+director of Semperit-Kautschuk in Istanbul, later head of the "Freies Österreich in der Türkei"
+movement and **himself a political prisoner of the Volksgerichtshof in Berlin for high treason**,
+swore on 20 October 1945 that Czernin held a clear Austrian position and had **intervened on behalf
+of a racially persecuted Jew living in Istanbul, Baron Verdor (Goldwurm)**.
+
+Conscripted as a private in 1944, which he says he welcomed as some protection from the Gestapo; he
+remained a private and received no decoration.
+
+**The arrest and the charges (pages 11, 27).** Ordered from his unit to Vienna on 24 March 1945, he
+was told the Gestapo were already looking for him, and was arrested and taken to Gestapo
+headquarters on the **Morzinplatz** for a **five-hour interrogation by Kriminalsekretär Sorger**.
+The four charges put to him:
+
+1. State-hostile utterances in Belgium in 1942 and 1943, and collaboration with **General von
+   Falkenhausen** — by then himself arrested and in a concentration camp — "vor allem deshalb, weil
+   ich mich wiederholt dahin äusserte, dass **General Falkenhausen an Stelle Hitlers gehöre**", and
+   that he had been fully informed of Falkenhausen's plans against the regime and was his collaborator;
+2. that the Belgian Rexists and Flemish National Socialists had denounced him as a reactionary
+   working abroad against the Reich's interests;
+3. that through Turkey he had made contact with the Allies via friends since arrested or fled to
+   Syria — the one charge he denies outright as untrue;
+4. that he was raising his son in an anti-National-Socialist spirit and **had forbidden him to wear
+   the Hitler Youth uniform**.
+
+He was transferred to the prison in **Tower IV of the Rossauer Kaserne** and held without further
+interrogation or trial. On **7 April 1945** the prisoners were told that all those not under
+sentence of more than ten years would go to the **Strafkompanie at the Wilhelmskaserne** to be used
+in the defence of Vienna; he **deserted immediately** and hid until the Soviet army took the inner
+city. His own submission notes that of his fellow prisoners, those not released "am vorletzten und
+letzten Tage noch erschossen wurden" — were shot in the last days.
+
+Two fellow prisoners swore to it: **Herbert F. Erdmann** (15 May 1945) — they were held together
+after Czernin's transfer from the Morzinplatz, "des Hoch- und Landesverrates beschuldigt", and fled
+together on 7 April; and **Dr Friedrich Roth** (27 April 1945) — Czernin was put in his cell on 27
+March 1945 on a charge of high treason, released 7 April, deserted, and hid at Wien I,
+Schwarzenbergstraße 3.
+
+**The state's own conclusions.** He was recorded as a **victim of Nazi terror in Austria by the
+Zentralregistrierung under No. 38.885** (page 28). The district Begutachtungskommission recommended
+granting the application on **5 December 1945**. Verwaltungsgruppe VII/2 of the Vienna Magistrat
+supported it on **5 January 1946** because "der erforderliche Nachweis voll erbracht ist". The
+Aktenvermerk of **17 August 1946** withheld his entry in the list of National Socialists pending the
+government's decision, finding the proof that he had "die Zugehörigkeit zur NSDAP… niemals
+mißbraucht" and was positively disposed to an independent Austria **fully furnished**. By 1 September
+1947 the Zentralregistrierungskataster and the Interior Ministry recorded **no entries against him**.
+An assessor's note (page 33) records that "aus den vorgelegten Unterlagen geht hervor, dass F.C.
+durch die Verfolgungen und seine Inhaftierung weitgehende Schädigungen materieller wie physischer
+Natur erlitten hat".
+
+**Why this is the strongest Felix material we hold.** It is not family testimony. It is a contested
+official proceeding in which Felix had every incentive to overstate his resistance and the Austrian
+state, examining his claims through a commission including Communist, Socialist and People's Party
+members, **accepted them** — and separately registered him as a victim of Nazi terror. The charge of
+**Hoch- und Landesverrat** is attested by two fellow prisoners and by the resistance organisation
+that ran him.
+
+**The arrest date, now three-way.** His June 1945 submission says **28 March** (page 11); his later
+detailed account says he was arrested on **26 March** (page 27); Roth's statement and the Meldeblatt
+say **27 March**. Until the diary (record 3507) is read against these, cite the arrest as **26–28
+March 1945** and note the discrepancy rather than picking one.
+
+**What to ask for next, now that the file names it.** The Vienna file 3315 itself, with its
+enclosures 1–6 including the Zentralregistrierung entry No. 38.885; the Gestapo interrogation record
+by Kriminalsekretär Sorger, if anything survives at the DÖW or in the Vienna Gestapo card index;
+and the O5 material on Thurn und Taxis's group. The WStLA holdings enquiry already lodged
+(Eingangsnummer 2026-1609131617490) covers Opferfürsorge and Volksgericht but not the NS-registration
+file by number — that should be added.
