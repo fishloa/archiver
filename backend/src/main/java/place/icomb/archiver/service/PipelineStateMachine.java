@@ -560,6 +560,41 @@ public class PipelineStateMachine {
     logPipelineEvent(recordId, "translation", "started", translateCount + " page jobs enqueued");
   }
 
+  /**
+   * Carries one freshly re-transcribed page through the rest of the pipeline.
+   *
+   * <p>For a page that was re-read on a different engine — handwriting sent to Transkribus, say —
+   * where re-running the record would be wrong: {@link #autoAdvance} enqueues OCR for every page
+   * that has no text and translation for every page that has any, so a record-level pass would
+   * re-translate a hundred pages to fix one. This translates the page that changed, rebuilds the
+   * record's searchable PDF because its text layer is now stale, and re-embeds the record because
+   * its chunks include this page's text.
+   *
+   * <p>Deliberately not a state transition: the record is already complete and stays complete.
+   */
+  public void advanceSinglePage(Long recordId, Long pageId) {
+    String contentLang = new RecordContext(recordId, jdbcTemplate).contentLang();
+
+    if ("en".equals(contentLang)) {
+      // English needs no translation; the pipeline's convention is to copy the transcription over.
+      jdbcTemplate.update("UPDATE page_text SET text_en = text_raw WHERE page_id = ?", pageId);
+    } else {
+      String quality =
+          jdbcTemplate.queryForObject(
+              "SELECT translation_quality FROM record WHERE id = ?", String.class, recordId);
+      // Drop any existing translation first: translate_page writes a new row, and the stale one
+      // would otherwise stay alongside it and could win on retrieval.
+      jdbcTemplate.update("DELETE FROM page_translation WHERE page_id = ?", pageId);
+      jobService.enqueueJob(TranslationModels.jobKindFor(quality), recordId, pageId, null);
+    }
+
+    jobService.enqueueJob("build_searchable_pdf", recordId, null, null);
+    jobService.enqueueJob("embed_record", recordId, null, null);
+
+    logPipelineEvent(recordId, "ocr", "page_retranscribed", "page " + pageId);
+    log.info("Record {} page {}: re-transcribed, downstream jobs enqueued", recordId, pageId);
+  }
+
   private void enqueueEmbedJob(Long recordId) {
     jobService.enqueueJob("embed_record", recordId, null, null);
     logPipelineEvent(recordId, "embedding", "started", null);

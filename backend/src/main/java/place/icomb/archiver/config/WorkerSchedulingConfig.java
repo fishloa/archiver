@@ -54,6 +54,8 @@ public class WorkerSchedulingConfig implements SchedulingConfigurer {
   private final place.icomb.archiver.service.TranslationService translationService;
   private final place.icomb.archiver.service.PdfExportService pdfExportService;
   private final org.springframework.jdbc.core.JdbcTemplate jdbcTemplate;
+  private final org.springframework.core.env.Environment environment;
+  private final place.icomb.archiver.service.PipelineStateMachine pipelineStateMachine;
 
   private final boolean qwenEnabled;
   private final String qwenBaseUrl;
@@ -99,6 +101,8 @@ public class WorkerSchedulingConfig implements SchedulingConfigurer {
       place.icomb.archiver.service.TranslationService translationService,
       place.icomb.archiver.service.PdfExportService pdfExportService,
       org.springframework.jdbc.core.JdbcTemplate jdbcTemplate,
+      org.springframework.core.env.Environment environment,
+      place.icomb.archiver.service.PipelineStateMachine pipelineStateMachine,
       @Value("${archiver.ocr.qwen.enabled:false}") boolean qwenEnabled,
       @Value("${archiver.ocr.qwen.base-url:}") String qwenBaseUrl,
       @Value("${archiver.ocr.qwen.api-key:}") String qwenApiKey,
@@ -131,6 +135,8 @@ public class WorkerSchedulingConfig implements SchedulingConfigurer {
     this.pageTranslationRepository = pageTranslationRepository;
     this.personMatchService = personMatchService;
     this.jdbcTemplate = jdbcTemplate;
+    this.environment = environment;
+    this.pipelineStateMachine = pipelineStateMachine;
     this.qwenEnabled = qwenEnabled;
     this.qwenBaseUrl = qwenBaseUrl;
     this.qwenApiKey = qwenApiKey;
@@ -200,6 +206,51 @@ public class WorkerSchedulingConfig implements SchedulingConfigurer {
    * <p>Before this, every row was submitted through Mistral's batch API whatever its provider said,
    * so a row pointing anywhere else failed every job it claimed.
    */
+  /**
+   * Handwriting recognition, when a Transkribus row is registered and has its credential.
+   *
+   * <p>One worker instance only: the account is metered in credits per month, and a second thread
+   * would race the first for the same small allowance while doubling the chance of overspending it.
+   * Throughput is not the constraint here — the quota is.
+   */
+  private void registerTranskribus(ScheduledTaskRegistrar registrar) {
+    var row =
+        aiRegistry.forCapability(place.icomb.archiver.ai.AiCapability.OCR).stream()
+            .filter(r -> "transkribus".equals(r.provider()))
+            .findFirst();
+    if (row.isEmpty()) {
+      return;
+    }
+
+    var config = new place.icomb.archiver.ai.TranskribusConfig(row.get(), environment);
+    if (!config.isConfigured()) {
+      log.info(
+          "Transkribus row {} is enabled but has no credential; handwriting OCR is off",
+          config.id());
+      return;
+    }
+
+    var worker =
+        new place.icomb.archiver.service.TranskribusOcrWorker(
+            "transkribus-ocr-0",
+            jobService,
+            jobEventService,
+            pageRepository,
+            attachmentRepository,
+            storageService,
+            pageTextRepository,
+            jdbcTemplate,
+            config,
+            new place.icomb.archiver.service.TranskribusClient(config),
+            pipelineStateMachine);
+    registrar.addFixedDelayTask(worker::pollAndProcess, Duration.ofMillis(config.tickIntervalMs()));
+    log.info(
+        "Registered Transkribus OCR worker (model={}, credits/month={}, poll={}ms)",
+        config.model(),
+        config.monthlyCredits(),
+        config.tickIntervalMs());
+  }
+
   private void registerTranslation(ScheduledTaskRegistrar registrar, String model, String jobKind) {
     var registration =
         aiRegistry.forModel(place.icomb.archiver.ai.AiCapability.TRANSLATION, model).stream()
@@ -304,6 +355,8 @@ public class WorkerSchedulingConfig implements SchedulingConfigurer {
           qwenModel,
           qwenPollInterval);
     }
+
+    registerTranskribus(registrar);
 
     if (registryOcr.isConfigured()) {
       var client = new MistralBatchClient(registryOcr.apiKey(), registryOcr.baseUrl());

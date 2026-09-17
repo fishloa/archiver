@@ -23,6 +23,8 @@ public class AdminPipelineController {
   private final JobService jobService;
   private final place.icomb.archiver.ai.AiRegistry aiRegistry;
   private final String defaultOcrEngine;
+  private final org.springframework.core.env.Environment environment;
+  private final place.icomb.archiver.service.TranskribusImportService transkribusImport;
 
   public AdminPipelineController(
       JdbcTemplate jdbcTemplate,
@@ -30,11 +32,264 @@ public class AdminPipelineController {
       place.icomb.archiver.ai.AiRegistry aiRegistry,
       @org.springframework.beans.factory.annotation.Value(
               "${archiver.ocr.default-engine:ocr_page_mistral}")
-          String defaultOcrEngine) {
+          String defaultOcrEngine,
+      org.springframework.core.env.Environment environment,
+      place.icomb.archiver.service.TranskribusImportService transkribusImport) {
     this.jdbcTemplate = jdbcTemplate;
     this.jobService = jobService;
     this.aiRegistry = aiRegistry;
     this.defaultOcrEngine = defaultOcrEngine;
+    this.environment = environment;
+    this.transkribusImport = transkribusImport;
+  }
+
+  /** The Transkribus row and its credentials, or empty when none is configured. */
+  private java.util.Optional<place.icomb.archiver.ai.TranskribusConfig> transkribusConfig() {
+    return aiRegistry.forCapability(place.icomb.archiver.ai.AiCapability.OCR).stream()
+        .filter(r -> "transkribus".equals(r.provider()))
+        .map(r -> new place.icomb.archiver.ai.TranskribusConfig(r, environment))
+        .filter(place.icomb.archiver.ai.TranskribusConfig::isConfigured)
+        .findFirst();
+  }
+
+  /**
+   * Imports transcriptions made in the Transkribus web app.
+   *
+   * <p>The super models cannot be started through the API — it answers "You are not allowed for
+   * TrHtr Recognition!" even on a paid plan — but what they produce can be read. So a handwritten
+   * page is uploaded by machine, transcribed by a person pressing Run, and collected here.
+   *
+   * <p>Give a {@code docId} to import one document, or nothing to sweep every document in the
+   * collection. Pages are matched to the archive by the file name they were uploaded under, {@code
+   * rec<recordId>_seq<pageSeq>.jpg}, which Transkribus preserves in the PAGE XML.
+   *
+   * <p>Each imported page is then carried through translation, the record's searchable PDF and
+   * re-embedding on its own, unless {@code advance=false}.
+   */
+  @PostMapping("/import-transkribus")
+  public ResponseEntity<?> importTranskribus(
+      @RequestParam(required = false) Integer collId,
+      @RequestParam(required = false) Long docId,
+      @RequestParam(defaultValue = "true") boolean advance) {
+
+    var config = transkribusConfig();
+    if (config.isEmpty()) {
+      return ResponseEntity.status(409)
+          .body(
+              Map.of(
+                  "error",
+                  "no configured Transkribus row",
+                  "hint",
+                  "TRANSKRIBUS_USERNAME and TRANSKRIBUS_PASSWORD must be set in the deployment"));
+    }
+
+    var client = new place.icomb.archiver.service.TranskribusTrpClient(config.get());
+    try {
+      int collection = collId != null ? collId : client.collectionId();
+      var docIds = new java.util.ArrayList<Long>();
+      if (docId != null) {
+        docIds.add(docId);
+      } else {
+        for (var doc : client.listDocuments(collection)) {
+          docIds.add(doc.path("docId").asLong());
+        }
+      }
+
+      var results = new java.util.LinkedHashMap<String, Object>();
+      int imported = 0;
+      for (Long id : docIds) {
+        var outcomes = transkribusImport.importDocument(client, collection, id, advance);
+        results.put(String.valueOf(id), outcomes);
+        imported += (int) outcomes.stream().filter(o -> "imported".equals(o.outcome())).count();
+      }
+
+      log.info(
+          "Transkribus import: collection={} documents={} pages imported={}",
+          collection,
+          docIds.size(),
+          imported);
+      return ResponseEntity.ok(
+          Map.of(
+              "collection",
+              collection,
+              "documents",
+              docIds,
+              "imported",
+              imported,
+              "detail",
+              results));
+    } catch (Exception e) {
+      log.error("Transkribus import failed: {}", e.getMessage(), e);
+      return ResponseEntity.status(502).body(Map.of("error", String.valueOf(e.getMessage())));
+    }
+  }
+
+  /**
+   * Re-transcribes one page on a chosen engine, and carries that page alone onward.
+   *
+   * <p>The case this exists for: a reader sees a page whose transcription is wrong — handwriting
+   * that the default engine answered with fluent, plausible nonsense — and asks for that page to be
+   * read again by a model that can read it. Re-running the record is the wrong instrument, because
+   * it re-transcribes every other page on the default engine and re-translates all of them.
+   *
+   * <p>Addressed by {@code recordId} plus {@code seq}, which is what a reader can see, or by {@code
+   * pageId} directly. {@code engine} takes {@code transkribus} (the default here, since the default
+   * engine is what produced the bad page) or any other registered OCR job kind. {@code htrId}
+   * overrides the model for this one page, so any model in Transkribus's catalogue can be tried
+   * without touching configuration; {@code pageClass=print} sends a typescript to the typewriter
+   * model instead of the handwriting one.
+   *
+   * <p>The existing transcription is deleted, which the {@code page_ocr_history} trigger preserves,
+   * so the engine that got it wrong stays on the record.
+   */
+  @PostMapping("/reocr-page")
+  public ResponseEntity<Map<String, Object>> reocrPage(
+      @RequestParam(required = false) Long recordId,
+      @RequestParam(required = false) Integer seq,
+      @RequestParam(required = false) Long pageId,
+      @RequestParam(defaultValue = "transkribus") String engine,
+      @RequestParam(required = false) Integer htrId,
+      @RequestParam(required = false) String pageClass,
+      @RequestParam(defaultValue = "full") String andThen) {
+
+    Long resolvedPageId = pageId;
+    if (resolvedPageId == null) {
+      if (recordId == null || seq == null) {
+        return ResponseEntity.badRequest()
+            .body(Map.of("error", "give either pageId, or recordId and seq"));
+      }
+      resolvedPageId =
+          jdbcTemplate
+              .query(
+                  "SELECT id FROM page WHERE record_id = ? AND seq = ?",
+                  (rs, i) -> rs.getLong(1),
+                  recordId,
+                  seq)
+              .stream()
+              .findFirst()
+              .orElse(null);
+      if (resolvedPageId == null) {
+        return ResponseEntity.status(404)
+            .body(Map.of("error", "no page %d in record %d".formatted(seq, recordId)));
+      }
+    }
+
+    Long resolvedRecordId =
+        jdbcTemplate.queryForObject(
+            "SELECT record_id FROM page WHERE id = ?", Long.class, resolvedPageId);
+    if (resolvedRecordId == null) {
+      return ResponseEntity.status(404).body(Map.of("error", "no page " + resolvedPageId));
+    }
+
+    String jobKind =
+        "transkribus".equalsIgnoreCase(engine)
+            ? place.icomb.archiver.ai.TranskribusConfig.JOB_KIND
+            : (engine.startsWith("ocr_page_") ? engine : "ocr_page_" + engine);
+
+    // Refuse an engine nothing can claim, rather than parking a job forever. The Transkribus rows
+    // carry their job kind in settings; the batch engines are named by their own job kind.
+    boolean claimable =
+        aiRegistry.configured(place.icomb.archiver.ai.AiCapability.OCR).stream()
+            .anyMatch(r -> jobKind.equals(r.setting("jobKind", defaultOcrEngine)));
+    if (!claimable) {
+      return ResponseEntity.status(409)
+          .body(
+              Map.of(
+                  "error",
+                  "no configured OCR engine claims " + jobKind,
+                  "hint",
+                  "check the ai_implementation rows and the engine's credential"));
+    }
+
+    String lang =
+        jdbcTemplate.queryForObject(
+            "SELECT lang FROM record WHERE id = ?", String.class, resolvedRecordId);
+
+    var payload = new java.util.LinkedHashMap<String, Object>();
+    if (lang != null) {
+      payload.put("lang", lang);
+    }
+    if (htrId != null) {
+      payload.put("htrId", htrId);
+    }
+    if (pageClass != null) {
+      payload.put("pageClass", pageClass);
+    }
+    payload.put("andThen", andThen);
+
+    String payloadJson;
+    try {
+      payloadJson = new com.fasterxml.jackson.databind.ObjectMapper().writeValueAsString(payload);
+    } catch (Exception e) {
+      return ResponseEntity.status(500).body(Map.of("error", "could not build payload"));
+    }
+
+    jdbcTemplate.update("DELETE FROM page_text WHERE page_id = ?", resolvedPageId);
+    jobService.enqueueJob(jobKind, resolvedRecordId, resolvedPageId, payloadJson);
+    jdbcTemplate.execute("NOTIFY ocr_jobs");
+
+    log.info(
+        "Re-OCR queued: record={} page={} kind={} htrId={} pageClass={}",
+        resolvedRecordId,
+        resolvedPageId,
+        jobKind,
+        htrId,
+        pageClass);
+
+    return ResponseEntity.ok(
+        Map.of(
+            "recordId", resolvedRecordId,
+            "pageId", resolvedPageId,
+            "jobKind", jobKind,
+            "payload", payload));
+  }
+
+  /**
+   * Transkribus's public model catalogue: every model's id, name, languages and error rate.
+   *
+   * <p>Needs no Transkribus credential, so a model can be chosen and checked before one exists.
+   * {@code lang} filters by ISO 639-3 code as Transkribus uses them ({@code deu}, {@code ces},
+   * {@code eng}) and {@code docType} by {@code handwritten} or {@code print}.
+   */
+  @GetMapping("/transkribus/models")
+  public ResponseEntity<?> transkribusModels(
+      @RequestParam(required = false) String lang,
+      @RequestParam(required = false) String docType,
+      @RequestParam(defaultValue = "25") int limit) {
+    try {
+      var models =
+          place.icomb.archiver.service.TranskribusClient.publicModels(
+              java.net.http.HttpClient.newHttpClient());
+      var out = new java.util.ArrayList<Map<String, Object>>();
+      for (var m : models) {
+        if (lang != null) {
+          boolean match = false;
+          for (var l : m.path("isoLanguages")) {
+            match |= lang.equalsIgnoreCase(l.asText());
+          }
+          if (!match) {
+            continue;
+          }
+        }
+        if (docType != null && !docType.equalsIgnoreCase(m.path("docType").asText())) {
+          continue;
+        }
+        var row = new java.util.LinkedHashMap<String, Object>();
+        row.put("htrId", m.path("modelId").asInt());
+        row.put("name", m.path("name").asText());
+        row.put("docType", m.path("docType").asText());
+        row.put("cer", m.path("finalCer").isMissingNode() ? null : m.path("finalCer").asDouble());
+        row.put("trainWords", m.path("nrOfWords").asLong());
+        row.put("featured", m.path("featured").asBoolean(false));
+        out.add(row);
+        if (out.size() >= limit) {
+          break;
+        }
+      }
+      return ResponseEntity.ok(out);
+    } catch (Exception e) {
+      return ResponseEntity.status(502).body(Map.of("error", e.getMessage()));
+    }
   }
 
   /**
