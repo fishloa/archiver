@@ -1949,3 +1949,76 @@ by Kriminalsekretär Sorger, if anything survives at the DÖW or in the Vienna G
 and the O5 material on Thurn und Taxis's group. The WStLA holdings enquiry already lodged
 (Eingangsnummer 2026-1609131617490) covers Opferfürsorge and Volksgericht but not the NS-registration
 file by number — that should be added.
+
+## 17 September 2026 — eBadatelna went live, and it holds a file on Humprecht's death
+
+The ABS account was activated this morning (Mgr Ilona Hypšová, Oddělení archivních fondů FMV;
+Zimbra 464413, *"s opravou technických problémů máte účet již aktivní"*, with the system
+confirmation at 464411). Activation lasts one year, so it lapses around 17 September 2027 and
+renewal needs an in-person visit — which is now the only remaining reason to go to Na Struze 3.
+
+**The verification trap, confirmed from the other side.** Before activation every OCR query
+returned zero rows, `Praha` included. The same search for `Czernin` now returns **82 inventory
+units**. Any nil result recorded here before today is worthless as evidence of absence and should
+be re-run.
+
+### The find: ABS 325-113-1 and 325-113-2
+
+Fond **325, Stíhání nacistických válečných zločinců Státní bezpečností** (the StB's prosecution of
+Nazi war criminals), series *Svazky ke konfidentům Gestapo a osobám podezřelým ze spolupráce*.
+Two volumes on **Ing. František Dvořák (b. 10.12.1912), a forestry engineer on the Šternberg and
+Czernin estates recruited by Gestapo Kolín** — the Gestapo office covering Dymokury. Original
+volume K-79.
+
+The catalogue description of 325-113-1 says in terms:
+
+> Součástí svazku jsou **důkazní dokumentace o úmrtí Humprechta Czernina z Chudenic (nar. 1909)**,
+> protokoly o výslechu bývalého velitele Gestapo Kolín Paula Feustela (nar. 1899), úředně ověřené
+> fotokopie německých materiálů z let 1942–1943, získané z Německé demokratické republiky, a jejich
+> české překlady…
+
+So: **evidentiary documentation on the death of Humprecht Czernin of Chudenice (b. 1909)** —
+Alexander's first cousin — held inside a post-war Czechoslovak war-crimes investigation, alongside
+the interrogation of the Gestapo Kolín commander and certified photocopies of the German 1942–43
+originals obtained from the GDR. This is the first state-held file we have found that addresses
+Humprecht's death directly, rather than the family's own account of it.
+
+Hit distribution for "Humprecht" (scan numbers, from the per-unit OCR hit list):
+
+| Unit | Scans | Humprecht hits | On scans |
+|---|---|---|---|
+| 325-113-1 | 214 | 26 | 29, 30, 34, 44, 46, 47, 52, 58, 61, 67, 69, 75, 128, 129, 149, 150, 153, 193, 200, 202 |
+| 325-113-2 | 291 | 18 | 5, 22, 23, 30, 38–41, 44–46, 86, 93 |
+| 325-121-1 (Feustel's own file) | 215 | 2 | 18, 139 |
+| 325-164-6 (StB investigators' final reports, 1970–79) | 227 | 2 | 72 |
+| 325-121-4 | 31 | 1 | 28 |
+
+All five are ingested: **325-113-1 is record 4008**, the others followed in the same run.
+
+### Other Czernin material in ABS worth noting
+
+- **TS-810254 MV — "Czernín, Josef (28.11.1943)"**, an StB collaborator volume on a Czernín born
+  1943. Not our line on dates, but it should be identified before anyone else raises it.
+- **H-172 „BÝVALÁ ŠLECHTA"** (151 scans) and **H-23 / H-108 / H-4 „Bývalí lidé"** — StB files on
+  the former nobility, with 12 and 8 Czernin hits respectively. Context for how the family was
+  treated after 1948, not evidence of wartime persecution.
+- **H-450, Akce StB „TAXIS": THURN-TAXIS Franc, b. 15.4.1915** (45 scans). Felix's O5 handler was
+  Wilhelm Thurn und Taxis; whether this is the same family circle needs checking before it is
+  cited. **KR-707964 MV** (Thurn-Taxis, Hugo, b. 21.9.1916) and **KR-45291 MV** (Thurn Taxis, Hans,
+  b. 28.6.1908) are the same question.
+- **325-60-6**, *Germanizace a perzekuce v letech 1938–1945*, carries the only Trauttmansdorff hit.
+
+Not ingested yet, pending a decision on cost: H-172, H-450, 325-61-11 (the Protectorate's own
+telephone directory from the Černín Palace, 70 Czernin hits — but those are the palace, not the
+family).
+
+### What the search is and is not
+
+It is stemmed, loose, and reads catalogue metadata as well as scan OCR. `Černín` returns 576 units,
+mostly `Čermín` and `Černý`. Multi-word input is treated as a phrase, so `Felix Czernin` returns
+nothing at all while `Czernin` returns 82 — one surname at a time, then filter. `Dymokury` returns
+208 units ranked by an unrelated 1950s file. Treat the hit counts as a ranking, not a finding.
+
+The scraper was rewritten to match the verified API (commit `7c0f8a6`); every endpoint it had used
+before was wrong, which is why it had never fetched a scan. Maximum scan resolution is 992×1402 px
+and `GetImageSnippet` only upscales, so these are legible but not high-resolution images.
