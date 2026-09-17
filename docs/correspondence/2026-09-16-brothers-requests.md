@@ -160,3 +160,33 @@ and accepted for processing, with a named officer to reply.
 The Salzburg exchange is worth remembering: an Austrian archive may hold up an
 answer purely because its records system needs a postal address, so give one in
 the first letter rather than only an email address.
+
+### 17 September 2026 — WStLA billed three of the five, and they were paid
+
+MA 8 issued three Zahlungsanweisungen on 17 September, each for **EUR 35,00** —
+half an hour of research apiece, not the EUR 140 cap — and each saying in terms
+that *"after receiving the amount we will send you the results of our
+research"*. Neither the covering emails nor the PDFs name the person each one
+covers; the B-MEP numbers are new and map to nothing else we hold, so which
+three of the five Meldeanfragen these are is still unknown.
+
+| Email | Zahlungsanweisung | Geschäftszahl | Amount | Due |
+|---|---|---|---|---|
+| Zimbra 464379 | 000234786882 | MA 8 - 1294932-2026-2 | EUR 35,00 | 22.10.2026 |
+| Zimbra 464380 | 000234786827 | MA 8 - 1295012-2026-2 | EUR 35,00 | 22.10.2026 |
+| Zimbra 464381 | 000234786508 | MA 8 - 1295074-2026-2 | EUR 35,00 | 22.10.2026 |
+
+Paid the same day as **one** transfer of EUR 105,00 (debited GBP 90,36) to
+Stadt Wien, IBAN AT16 1200 0006 9621 2729, Zusatzinfo MA 6-BA 40, with all
+three references in the single reference field.
+
+Because one payment against three Zahlungsanweisungen will probably not match
+automatically, a confirmation went to `post@archiv.wien.gv.at`, cc
+`post@ma08.wien.gv.at` — **sent, Zimbra 464465** — attaching the bank receipt,
+breaking the EUR 105 down against each Zahlungsanweisung and Geschäftszahl,
+asking for manual allocation, asking for any further Zahlungsanweisung from the
+16 September batch, and asking for the results. Own file: this section.
+
+Note for the next one: **file-relevant mail belongs at `post@archiv.wien.gv.at`**,
+not `post@ma08.wien.gv.at` — their own footer says so, and the earlier exchange
+(463916, 463934) turned on the same point.
