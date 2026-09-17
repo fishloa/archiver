@@ -2168,3 +2168,42 @@ works from the same Reichskanzlei file.
 **Scope caution.** The Vermeer was Jaromir Czernin-Morzin's, not Alexander's line. This belongs in
 the archive and in the account of what was done to the family, not in the §58c submission as if it
 were the applicant's own loss.
+
+### The men who framed Humprecht, now named
+
+The second tier of ABS units is in — records **4013–4018**, 841 scans, taking archive 2 to eleven
+records and 1,818 pages. They were ordered to put identities to the Gestapo Kolín officers who
+appear in the Dvořák file as bare surnames, and they did.
+
+| In the testimony | Identified as | Born | After 1945 |
+|---|---|---|---|
+| "MAYER", who supplied the pistol that was then "found" on Dvořák | **Heinrich Meier / Meyer** | 1908 | photograph held in 325-113-2 |
+| "WITTINGER", who recorded and interpreted the confrontation at Kolín | **Franz Wittiger** | 14.11.1896 | **imprisoned in Czechoslovakia** |
+| "HORN", whose handwritten notes are in 325-113-1 | **Josef Horn** | 1.9.1906 | **imprisoned in Czechoslovakia** |
+
+The list of those imprisoned comes from a Berlin document of **27 December 1971**, *"Ehemalige
+Gestapoangehörige die nach 1945 in der CSSR inhaftiert waren"* (record 4016, page 116), which also
+names Ladislav Bambas (Gestapo agent in Kolín and Benešov), Josef Möhlwald, Julius Müller-Riedel,
+Jan Odradovec (Gestapo agent in Kolín), Alfred Rziha and Franz Schorn.
+
+Record 4008 page 110 carries a post-war Czech list of the Kolín outstation's *"zvláště hrubí
+úředníci"* — its particularly brutal officials — which puts **Heinrich Meier** and **Emil Laufka**
+in the same short list as Müller-Riedel, Schindelář, Fleischer, Schulte and Schorn. Laufka has his
+own file, now held as record 4015.
+
+Feustel's driver **Josef Möhlwald** (b. 17.11.1896), interrogated 9 March 1972, gives the office's
+shape from the inside: the Oberlandrat occupied the ground floor of the same Kolín building and the
+Gestapo the first floor, where he waited with the drivers; Feustel's deputy was **Dewesse**, and the
+staff he could name were Neumann, Mayer, Schorn and the Czech employees Otradovec and Říha
+(record 4009, page 57).
+
+Also identified, and worth noting for any future request: **Miloslava Vachová**, the Kolín
+Gestapo's long-serving typist, born 1922 at Horusice and living at Veltruby 1 in 1946, examined as
+a witness on 8 November 1946 — the German investigators' own note says she "müßte daher in der Lage
+sein" to speak to the individual cases (record 4011, page 205).
+
+**Why this matters to the case.** The frame-up is no longer a conclusion drawn from one accused
+man's account. The officer who supplied the planted pistol is identified by name, date of birth and
+photograph; two of the three men in the room are recorded as having been imprisoned for what they
+did; and the Czech authorities independently listed the same men among the worst of that office. It
+is a corroborated state record of a Gestapo operation against the applicant's first cousin.
