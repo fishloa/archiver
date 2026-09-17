@@ -2022,3 +2022,77 @@ nothing at all while `Czernin` returns 82 — one surname at a time, then filter
 The scraper was rewritten to match the verified API (commit `7c0f8a6`); every endpoint it had used
 before was wrong, which is why it had never fetched a scan. Maximum scan resolution is 992×1402 px
 and `GetImageSnippet` only upscales, so these are legible but not high-resolution images.
+
+### What 4008, 4009 and 4012 actually say — the state's own finding of an attempted murder
+
+The five units are OCR'd and embedded. They are the **primary sources behind Hořejš's 2014
+article** (record 3519), which we had been citing as secondary literature; we now hold the
+investigation files themselves.
+
+**The StB investigators' final report** (record 4008 page 126, repeated in the 1970–79 report
+series at record 4012 page 70) states the conclusion in terms:
+
+> Dle výpovědi Pavla FEUSTELA byl s MAYEREM projednán celkový postup k zatčení hraběte CZERNÍNA.
+> […] Obv. DVOŘÁK […] převzal od gestapa návrh, že hraběti CZERNÍNOVI **bude podvržena pistole a
+> tím vytvořeny podmínky pro jeho likvidaci**. Obviněný DVOŘÁK v této době znal, že svým jednáním
+> ohrozí život svého zaměstnavatele. Pokud jde o jeho osobu, byl gestapem seznámen, že bude i on
+> odsouzen k trestu smrti, ale to jen „na oko" a že bude brzo propuštěn. S těmito podmínkami
+> DVOŘÁK souhlasil a stal se tak **přímým spolupachatelem na tomto pokusu vraždy**.
+
+So a Czechoslovak state investigation found that the pistol was **planted on Count Czernin by the
+Gestapo to create the conditions for his liquidation**, and that his own forestry manager took part
+knowing it would endanger his employer's life, on a Gestapo promise that his own death sentence
+would be "for show". Humprecht was not caught with an unlicensed weapon; he was framed. The same
+report notes the Gestapo's own instruction, quoted by Hořejš from Feustel, that Czernin **was not to
+be shot at Pardubice — his disappearance had to look "legal and lawful"**.
+
+**Dvořák's own account** (4008 page 149) adds the part Hořejš could only infer: he says Humprecht's
+arrest followed from his statement that the pistol was Czernin's, *"což na mně bylo vynuceno v
+nějaké úřadovně v Novém Bydžově"* — forced out of him in an office at Nový Bydžov. He puts
+Humprecht's arrest on the evening of **9 June 1942**, on the train or at Nový Bydžov station,
+returning from Prague, and describes being confronted with him at Gestapo Kolín about ten days
+later, around 20 June, by the Gestapo men **Blum** (interrogating) and **Wittinger** (recording and
+interpreting). He denied the collaboration throughout; the file records that he was later acquitted.
+
+**The estate witness** (4008 page 193) says Humprecht showed no sign of lung disease before his
+arrest: *"činil na mne dojem naprosto zdravého člověka, který se nevyhýbal fysické i těžké práci"*.
+
+**Anna Chládková's testimony** (4009 page 45) is the fullest account of the death we have from any
+source. After a permitted visit to Brandenburg — arranged by a relative of the family who was a
+Reich German, and made by Humprecht's wife, his sister Marie and probably his mother — they reported
+that he was in a wretched state with severe tuberculosis *"která mu byla pravděpodobně
+naočkována"*, **which had probably been inoculated into him**. He was brought to the lung sanatorium
+**Na Pleši** near Mníšek pod Brdy on **14 September 1944**, accompanied by a nurse who came directly
+from Brandenburg; his wife **Ida Czerninová née Lobkowicz** stayed with him until he died of
+pulmonary tuberculosis on **19 September 1944**. The family asked the Prague Gestapo to let him be
+buried in the family tomb at Dymokury.
+
+That request was refused — which answers a question left open by the nephew's own 1972 testimony
+(4009 page 41), where he says he attended the funeral at **Břevnov cemetery** in Prague, that the
+grave is still there, and that he never knew why his uncle was not laid in the family tomb. The same
+nephew — six years old in 1942, so born about 1936 — records that when he wound up his grandmother
+Marie Czerninová née Kinská's estate in 1952 at Praha 1, Provaznická 1, he found **an officially
+certified copy of 20 September 1949 from the Na Pleši sanatorium concerning the death**, and a
+German-language document of 16 June 1945 signed **Dr Josef Morávek, Praha II, Vodičkova ("Lucerna")**.
+
+**Handle the inoculation allegation carefully.** It is what the family was told after a prison
+visit, recorded thirty years later by a servant; it is testimony about a belief, not a finding.
+The state's finding is the framing and the intended liquidation, and that is what should be cited.
+Deliberate infection should be given as what the family believed and reported, with the source
+named.
+
+**What this adds to the §58c case.** The persecution of Alexander's first cousin is no longer
+established only from published scholarship and family papers: it rests on a Czechoslovak criminal
+investigation that interrogated the responsible Gestapo commander and concluded the arrest was a
+staged murder attempt. Arolsen already holds Humprecht's Brandenburg-Görden admission record
+(record 3406, DOB 9 February 1909), and the Terezín Memorial holds Rudolf's prisoner record
+(3934). The chain for the Dymokury brothers is now: framing (ABS 325-113-1/2), sentence
+(Standgericht, 30 June 1942), imprisonment (Brandenburg-Görden, Arolsen), death (Na Pleši, 19
+September 1944) and the refusal of a family burial.
+
+**Follow-ups this opens.** The certified 1949 Na Pleši copy and the Morávek document of 16 June
+1945 were in the grandmother's papers in 1952 and may be in the Dymokury family archive rather than
+a state one — worth asking the family before asking an archive. Jaroslav Holý's 1973 statement as
+valet and driver is cited by Hořejš from this same investigation and should be in one of the two
+volumes. And 325-121-1, Feustel's own file (record 4011, 215 scans), carries his testimony at first
+hand.
