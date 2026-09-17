@@ -1,6 +1,6 @@
-# DRAFT — Staatsarchiv Nürnberg: postal address for the Felix Czernin interrogations
+# Staatsarchiv Nürnberg: postal address for the Felix Czernin interrogations
 
-**Status: DRAFT, NOT SENT.**
+**Status: SENT 17 September 2026, Zimbra 464361, in reply to 464354.**
 
 **To:** poststelle@stanu.bayern.de (Elke Löffler, Kanzlei)
 **Reply to:** Zimbra 464354
