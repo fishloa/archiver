@@ -187,6 +187,29 @@ breaking the EUR 105 down against each Zahlungsanweisung and Geschäftszahl,
 asking for manual allocation, asking for any further Zahlungsanweisung from the
 16 September batch, and asking for the results. Own file: this section.
 
+**The remaining two arrived the same afternoon and were paid at once.** All five
+Meldeanfragen from 16 September are now billed and settled, EUR 175 in total:
+
+| Email | Zahlungsanweisung | Geschäftszahl | Amount |
+|---|---|---|---|
+| Zimbra 464379 | 000234786882 | MA 8 - 1294932-2026-2 | EUR 35,00 |
+| Zimbra 464380 | 000234786827 | MA 8 - 1295012-2026-2 | EUR 35,00 |
+| Zimbra 464381 | 000234786508 | MA 8 - 1295074-2026-2 | EUR 35,00 |
+| Zimbra 464481 | 000234799170 | MA 8 - 1295047-2026-2 | EUR 35,00 |
+| Zimbra 464483 | 000234799796 | MA 8 - 1291761-2026-2 | EUR 35,00 |
+
+Each was half an hour of research, so none came near the EUR 140 cap, and each
+email says the results follow receipt of payment rather than accompanying the
+invoice.
+
+**Which person each number covers is still unknown.** The B-MEP numbers appear in
+no other document we hold and the emails name nobody, so the five invoices cannot
+yet be matched to Wolfgang, Jan, Anna, Franziska and Alexander. The answers will
+say. The one that matters most for § 58c is **Alexander, 1940–1950**
+(Eingangsnummer 2026-1609110159140): the 2023 answer stops at his deregistration
+of 12 February 1940 "als zum Militär", and it is the deregistration after the war
+— when he left Austria, and for where — that the claim still lacks.
+
 Note for the next one: **file-relevant mail belongs at `post@archiv.wien.gv.at`**,
 not `post@ma08.wien.gv.at` — their own footer says so, and the earlier exchange
 (463916, 463934) turned on the same point.
