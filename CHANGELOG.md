@@ -9,6 +9,20 @@ new revision, no build is triggered, and the release silently never happens —
 which is exactly what v1.0.0 did on its first attempt. Add the entry below,
 commit, then tag that commit.
 
+## v1.1.1 — 18 September 2026
+
+- **A re-transcribed page can now reach the rest of the pipeline.**
+  `advanceSinglePage` logged a `pipeline_event` of "page_retranscribed", which
+  reads perfectly well and which the CHECK constraint on that column rejects.
+  The insert threw, aborting the import that called it: of 27 pages transcribed
+  in Transkribus at a credit each, the first was written and the rest were left
+  untouched. The event now uses values the schema accepts and the page identity
+  goes in the free-text detail column, where it belongs.
+
+  Covered by four tests against a real database, because the constraint lives in
+  the schema and no unit test could have caught this — which is exactly how it
+  reached production.
+
 ## v1.1.0 — 17 September 2026
 
 Handwriting. The archive's OCR could not read it and did not say so.

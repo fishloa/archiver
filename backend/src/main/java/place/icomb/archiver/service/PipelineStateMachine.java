@@ -591,7 +591,13 @@ public class PipelineStateMachine {
     jobService.enqueueJob("build_searchable_pdf", recordId, null, null);
     jobService.enqueueJob("embed_record", recordId, null, null);
 
-    logPipelineEvent(recordId, "ocr", "page_retranscribed", "page " + pageId);
+    // pipeline_event.event is CHECK-constrained to started/completed/failed/admin_reset/
+    // replace_started/repair_started. A descriptive value such as "page_retranscribed" is
+    // rejected by the database, and the insert aborts the import that is calling this — which is
+    // exactly what happened to 27 imported pages before it was caught. The page identity belongs
+    // in the detail column, which is free text.
+    logPipelineEvent(recordId, "ocr", "completed", "page " + pageId + " re-transcribed");
+    logPipelineEvent(recordId, "pdf_build", "started", "page " + pageId + " re-transcribed");
     log.info("Record {} page {}: re-transcribed, downstream jobs enqueued", recordId, pageId);
   }
 
