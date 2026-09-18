@@ -91,13 +91,12 @@ Digitalisate dieser Akten wird ersucht.
 **Mitteilungen**
 
 ```
-Der Rechercheauftrag wird bis zum Hoechstbetrag von EUR 140,- erteilt. Die
-Digitalisierung wird im Voraus beauftragt; die Kosten hierfuer uebernehme ich
-bis EUR 200,-. Sollte der Umfang diesen Betrag uebersteigen, ersuche ich um
-einen Kostenvoranschlag und nicht um eine Teillieferung. Ein negatives
-Ergebnis wird angenommen und bezahlt und moege schriftlich mitgeteilt werden.
-Postanschrift: Alex Fishlock, Icomb Place, Icomb, Cheltenham GL54 1JL,
-Grossbritannien. Um Antwort per E-Mail wird gebeten.
+Der Rechercheauftrag wird bis EUR 140,- erteilt. Die Digitalisierung wird im
+Voraus beauftragt; die Kosten hierfuer uebernehme ich bis EUR 200,-. Sollte der
+Umfang diesen Betrag uebersteigen, ersuche ich um einen Kostenvoranschlag und
+nicht um eine Teillieferung. Ein negatives Ergebnis wird angenommen, bezahlt und
+moege schriftlich mitgeteilt werden. Postanschrift: Alex Fishlock, Icomb Place,
+Icomb, Cheltenham GL54 1JL, Grossbritannien. Um Antwort per E-Mail wird gebeten.
 ```
 
 > **Why the references and not a name search.** A name search buys the extract we
