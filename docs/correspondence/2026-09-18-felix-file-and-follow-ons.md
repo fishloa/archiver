@@ -217,18 +217,20 @@ Icomb Place, Icomb, Cheltenham GL54 1JL, Grossbritannien
 
 ---
 
-## Held from earlier, still held
+## AdR — sent 18 September 2026 (Zimbra 464799)
 
-**AdR draft, Zimbra 464669** — *Zweiter Nachtrag zur Namensanfrage (Czernin)*, to
-`adr@oesta.gv.at`, a name search on Alexander in four Bestände. Two of the four
-breach the disclosure rules against the body that shares a state with the
-deciding authority:
+The held draft 464669 went out with two changes and the draft was deleted.
 
-- **Punkt 4, "Staatsbürgerschaftsangelegenheiten"** — asking a Bundeskanzleramt
-  archive about Alexander's *citizenship* files says what the enquiry is for.
-- **Punkte 1 and 2, Ausreise/Auswanderung 1945–1955** — naming the emigration
-  years as the object of the search announces exactly which gap the case has.
+| Original Punkt | Sent as |
+|---|---|
+| 1. Bundespolizeidirektion Wien — Pass- und Reisepassakten sowie **Ausreise- und Auswanderungsangelegenheiten, Zeitraum 1945 bis 1955** | 1. Bundespolizeidirektion Wien — Personen-, Pass- und Meldeakten |
+| 2. BMI — **Auswanderung, Ausreise- und Devisenbewilligungen desselben Zeitraums** | 2. Bundesministerium für Inneres, Staatspolizei — Personenakten |
+| 3. Opferfürsorge und Wiedergutmachung, Hilfsfonds, Abgeltungsfonds | unchanged |
+| 4. **Staatsbürgerschaftsangelegenheiten** | struck |
 
-Punkt 3 (Opferfürsorge and Wiedergutmachung) is unobjectionable on its own.
-Recommendation stands: strike 4, drop the date range from 1 and 2 or drop them
-entirely, then send.
+Punkt 4 asked a Bundeskanzleramt archive about Alexander's citizenship files,
+which is the application itself, stated to the state that decides it. The date
+range on 1 and 2 named 1945-1955 as the years of interest, which points at the
+gap the case has. The Bestände named still reach the passport and emigration
+papers if they exist — an archivist searching a person searches the whole file,
+not a slice of it — without saying which years we care about or why.
