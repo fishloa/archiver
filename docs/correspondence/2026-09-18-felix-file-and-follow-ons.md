@@ -235,38 +235,25 @@ alex.fishlock@racingjag.com
 
 ## D. DÖW — one question, not a repeat
 
-DÖW returned nil on Felix twice, in February and June 2026. This asks nothing
-they have answered. Record 4006 page 4 is a sworn statement of 10 May 1945 by
-**Wilhelm Prinz von Thurn und Taxis**, signing as *Leiter der Geschäftsstelle im
-Generalsekretariat O 5*. Those papers went somewhere.
+**To:** `ursula.schwarz@doew.at`, cc `collections@doew.at` · **sent 18 September
+2026, Zimbra 464805**, threaded onto her February reply (427665).
 
-**To:** `office@doew.at` — *address not verified against our own correspondence;
-check before sending.*
+DÖW returned nil on Felix and Alexander twice — Dr. Ursula Schwarz, Collections,
+in February 2026 (427665) and again in June (446988). This asks nothing they have
+answered. Record 4006 page 4 is a sworn statement of 10 May 1945 by **Wilhelm
+Prinz von Thurn und Taxis**, signing as *Leiter der Geschäftsstelle im
+Generalsekretariat O 5*; the letter asks only where those records are now and
+whether the DÖW holds anything of that office.
 
-```
-Sehr geehrte Damen und Herren,
+Neither Felix nor Alexander is named. Both names have already been searched and
+returned nothing; naming them again buys the same nil. A records-provenance
+question is what a collections archivist can answer from knowledge.
 
-ich ersuche um Auskunft zu zwei eng begrenzten Fragen:
-
-1. Wo befinden sich heute die Unterlagen des Generalsekretariats der
-   Widerstandsbewegung O 5, insbesondere jene der von Wilhelm Prinz von
-   Thurn und Taxis geleiteten Geschaeftsstelle? Verwahrt das DOeW hierzu
-   Bestaende oder Teilnachlaesse, und wenn nicht, welchem Archiv sind sie
-   zugegangen?
-
-2. Verwahrt das DOeW Unterlagen zu Wilhelm Prinz von Thurn und Taxis in
-   seiner Funktion als Leiter dieser Geschaeftsstelle, namentlich
-   Bestaetigungen und Zeugnisse, die er im Mai 1945 ausgestellt hat?
-
-Sollte nichts vorhanden sein, ersuche ich um eine kurze schriftliche
-Mitteilung. Allfaellige Kosten uebernehme ich.
-
-Mit freundlichen Gruessen
-Alex Fishlock
-Icomb Place, Icomb, Cheltenham GL54 1JL, Grossbritannien
-```
-
----
+**Not repeated, and not to be repeated anywhere.** Our own letter of 23 February
+2026 told the DÖW that the Gestapo charges included "connections with Turkey (via
+Lucki)". *"Via Lucki" appears neither in Felix's diary nor in the § 27 file* — it
+was our error. It is not worth a correction in a letter she will read as
+unrelated, but it must not survive into anything else.
 
 ## AdR — sent 18 September 2026 (Zimbra 464799)
 
