@@ -1,5 +1,5 @@
 **To:** podatelna@ustrcr.cz (for Dr Zdeněk Hazdra)
-**Status:** DRAFT — NOT SENT. Awaiting the applicant's approval.
+**Status:** SENT 18 September 2026, Zimbra 464810, threaded onto 464191. No reply to the original letter had arrived, so the correction reached them before any search was made.
 **Purpose:** withdraw one wrong question from the letter of 16 September 2026 (Zimbra 464191)
 
 ### Why
