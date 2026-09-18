@@ -1,10 +1,12 @@
-# DRAFTS (held) — 18 September 2026
+# HHStA order, and the AdR letter that was not sent — 18 September 2026
 
-Both written after the HHStA reply arrived. **Neither sent.**
+The HHStA reply was **sent (Zimbra 464744)**. The AdR letter is **held, and on
+present advice should stay held** — see the reasoning at the end.
 
 ## 1. Reply to HHStA — accept six of the nine scans
 
-**To:** `hhsta@oesta.gv.at` · reply to Zimbra 464658 · **Zimbra draft 464667**
+**To:** `hhsta@oesta.gv.at` · reply to Zimbra 464658 · **sent 18 September 2026,
+Zimbra 464744**
 
 HHStA answered the 14/16 September orders under **GZ 2026-0.768.798** (Mag.
 Maria Röhsner, signed by Archivdirektor Just): they will digitise seven items,
@@ -32,7 +34,7 @@ question raised on 16 September.
 
 ## 2. Second Nachtrag to the AdR — why Alexander left Austria
 
-**To:** `adr@oesta.gv.at` · **Zimbra draft 464669**
+**To:** `adr@oesta.gv.at` · **Zimbra draft 464669 — NOT SENT**
 
 Follows the 11 September reproduction order (StaPo Kzl 32.961-2/47) and the 14
 September Nachtrag, **both still unanswered**.
@@ -65,3 +67,31 @@ EUR 200 cost undertaking.
 The same principle was applied to the HHStA reply: the sentences explaining that
 Paul was the applicant's great-grandfather and that the 1901 announcement mattered
 for proving descent are gone. It now simply orders the six scans.
+
+
+## Why the AdR letter is being held
+
+Asking this particular question of this particular body is not neutral. The
+Archiv der Republik is a department of the Österreichisches Staatsarchiv, which
+is part of the **Bundeskanzleramt**; the authority deciding the application is
+also an organ of the Austrian state, and the archive's own data-protection
+notice contemplates forwarding an enquirer's data to other federal ministries.
+
+The letter asks an Austrian government body to search for the answer to the one
+question on which the claim is weakest. Whatever it finds is then in an Austrian
+file, created at our request and kept for a ten-year Skartierungsfrist. If a
+passport application shows he left to marry or to take work, that answer exists
+inside the state because we asked for it.
+
+Stripping the purpose and the known facts from the text — which was done — makes
+the letter say less. It does not change who does the looking or where the answer
+is filed.
+
+**Order of enquiry, therefore: the sources that are not the Austrian state
+first.** The family's own papers at Icomb; the British side, where a record of
+entry dates the departure without asking Vienna anything; and the WStLA
+Meldeanfrage for Alexander 1940–1950, already paid for and in flight, which is a
+registration record rather than an enquiry into motive. If all three are silent,
+the AdR letter is the right next step, sent in the knowledge of the trade.
+
+See `DISCLOSURE-rules-for-austrian-bodies.md`.
