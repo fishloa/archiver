@@ -28,10 +28,19 @@ Beständen*. They will not research by email. **Field limits, all silent
 truncation:** Genaue Darstellung ~2 000 characters, Frage 500, Mitteilungen 500,
 MA 8 file-number field 30. Date fields reject a pasted value and must be typed.
 
+**Why this form asks for identification and not for copies.** Their own tariff
+(reply 463934) separates three things: written information about *which holdings
+exist* is free, *vertiefte Recherche* is EUR 35 per started half hour to a
+two-hour cap, and **digitisation is billed separately and has its own form**.
+Asking this form for scans invites a redirect. So this asks them to identify the
+files, give the signatures and the folio counts, and list the six enclosures —
+and says the digitisation order follows on their own form once the signatures are
+known.
+
 **Genaue Darstellung**
 
 ```
-Gesucht wird der vollstaendige Akt zu
+Gesucht werden die Akten zu
 
   Felix Theobald Paul Anton Maria Czernin, geb. 7.3.1902 in Hlusice,
   Wien IV., Wohllebengasse 9/10, spaeter Wien I., Loewelstrasse 12.
@@ -46,47 +55,48 @@ Bekannte Geschaeftszahlen:
    Abteilung 2 - Nachsichtsgesuch gemaess Par. 27 Verbotsgesetz,
    Zl. 13.413-2 N/1945; Vorlage der Staatskanzlei 9.8.1945,
    Begutachtungskommission 5.12.1945, Entscheidung 5.1.1946.
+   Bezug: Erlass vom 7.7.1945, Zl. 5099-2 N/1945, Punkt 4 f.
 
 3. Antrag vom 25. Mai 1947 gemaess Par. 4 Abs. 5 Z. 3 VG 1947,
    eingebracht durch Rechtsanwalt Dr. Anton Leithner, Wien I.,
-   Freyung 6, mit 1 Vollmacht und 6 Beilagen.
-
-4. Zentralregistrierung des Magistrats der Stadt Wien, Erfassung als
-   Opfer des Naziterrors, Nr. 38.835 (moeglicherweise 38.885).
+   Freyung 6, mit 1 Vollmacht und 6 Beilagen. Beilage 6 ist die
+   Bestaetigung der Erfassung als Opfer des Naziterrors durch die
+   Zentralregistrierung des Magistrats der Stadt Wien.
 
 Erbeten wird:
 
-- vollstaendige Kopie der Akten zu 1. bis 3. samt saemtlichen Beilagen,
-  insbesondere der 6 Beilagen zum Antrag vom 25. Mai 1947;
-- Angabe des Blattumfanges je Akt;
-- ein Verzeichnis dieser 6 Beilagen;
-- Inhalt und genaues Datum der Eintragung zu 4.;
-- die abschliessenden Entscheidungen zu 2. und 3.
+- die Feststellung, welche Akten zu diesen Geschaeftszahlen im Archiv
+  vorhanden sind, mit Angabe der Bestandsbezeichnung und Signatur;
+- der Blattumfang je Akt;
+- ein Verzeichnis der Aktenstuecke, insbesondere ein Verzeichnis der
+  6 Beilagen zum Antrag vom 25. Mai 1947;
+- die abschliessenden Entscheidungen zu 2. und 3. mit Datum und Zahl.
+
+Die Bestellung der Digitalisate erfolgt nach Vorliegen der Signaturen
+gesondert ueber das dafuer vorgesehene Formular.
 ```
 
 **Frage**
 
 ```
-Welche Unterlagen liegen zu den angefuehrten Geschaeftszahlen vor, welchen
-Blattumfang haben sie, welche Schriftstuecke bilden die 6 Beilagen zum Antrag
-vom 25. Mai 1947, und wie lauten Inhalt und Datum der Eintragung in der
-Zentralregistrierung?
+Welche Akten zu den angefuehrten Geschaeftszahlen sind im Archiv vorhanden,
+unter welcher Signatur, welchen Blattumfang haben sie, welche Schriftstuecke
+bilden die 6 Beilagen zum Antrag vom 25. Mai 1947, und wie lauten die
+abschliessenden Entscheidungen zu den Antraegen von 1945 und 1947?
 ```
 
 **Mitteilungen**
 
 ```
-Der Rechercheauftrag wird bis zum Hoechstbetrag von EUR 140,- erteilt; die
-Kosten fuer die Digitalisierung werden gesondert uebernommen. Ein negatives
-Ergebnis wird angenommen und bezahlt und moege schriftlich mitgeteilt werden.
+Der Rechercheauftrag wird bis zum Hoechstbetrag von EUR 140,- erteilt. Ein
+negatives Ergebnis wird angenommen und bezahlt und moege schriftlich
+mitgeteilt werden. Die Digitalisierung wird gesondert beauftragt.
 Postanschrift: Alex Fishlock, Icomb Place, Icomb, Cheltenham GL54 1JL,
 Grossbritannien. Um Antwort per E-Mail wird gebeten.
 ```
 
 > **Why the references and not a name search.** A name search buys the extract we
 > already have. The Geschäftszahlen buy the file.
-
----
 
 ## B. WStLA — chase 2026-1609131617490, and add one register
 
