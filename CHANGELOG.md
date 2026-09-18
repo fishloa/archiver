@@ -9,6 +9,18 @@ new revision, no build is triggered, and the release silently never happens —
 which is exactly what v1.0.0 did on its first attempt. Add the entry below,
 commit, then tag that commit.
 
+## v1.1.2 — 18 September 2026
+
+- **A record's PDF and embedding are queued once, not once per page.**
+  `advanceSinglePage` enqueued `build_searchable_pdf` and `embed_record` for
+  every page it advanced, so importing 27 re-transcribed pages queued 27 of each
+  against the same three records. Both jobs cover the whole record, and embedding
+  is charged per record: nine extra embeddings and three extra PDF builds had
+  already run before the duplicates were deleted. A record-level job is now
+  skipped when one of that kind is already pending — but not when one is merely
+  claimed, since that worker may have read the record before this page was
+  written.
+
 ## v1.1.1 — 18 September 2026
 
 - **A re-transcribed page can now reach the rest of the pipeline.**
