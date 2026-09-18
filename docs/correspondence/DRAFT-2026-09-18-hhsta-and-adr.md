@@ -37,24 +37,31 @@ question raised on 16 September.
 Follows the 11 September reproduction order (StaPo Kzl 32.961-2/47) and the 14
 September Nachtrag, **both still unanswered**.
 
-This one asks a single narrow question, because it is the one the § 58c claim
-actually turns on: **when and why did Alexander leave Austria?** Citizenship and
-Austrian residence are documented; the departure is not.
+It asks only what we want to know, and deliberately says nothing about why.
 
-The letter sets out what can be proved — deregistration 12.2.1940 "als zum
-Militär", transfer to the Luftwaffe 25.11.1942, seconded to the Wiener
-Neustädter Flugzeugwerke from 7.1.1943, his own declaration of 4.8.1943 giving
-Alt Aussee as permanent residence and "Nichtmitglied der NSDAP oder einer
-Gliederung", Wien III Metternichgasse 10 from October 1943, married at Haywards
-Heath 9.7.1949 — and then asks the AdR to search:
+The earlier version set out the § 58c proceeding, the MA 35 file number, the
+applicant's relationship, and the whole evidence chain — deregistration in 1940,
+the Luftwaffe transfer, the Wiener Neustadt secondment, the 1943 declaration,
+the 1949 marriage. All of that came out on instruction, and the instruction is
+right: telling an archivist what you already hold invites them to skip it, and
+telling them what you are trying to prove invites them to answer the case rather
+than the question. A name, a date of birth and a list of Bestände is what a
+searcher actually needs.
 
-1. Bundespolizeidirektion Wien — passport and emigration files, 1945–1950
-2. BMI — emigration, currency and exit permits of the same period
-3. Opferfürsorge and Wiedergutmachung, including Hilfsfonds and Abgeltungsfonds,
-   for Alexander **and** for Felix (arrested 28.3.1945, Rossauer Kaserne Turm
-   IV, Zentralregistrierung 38.885)
-4. Staatsbürgerschaft — whether any file underlies the 1967 Nachweis 153/67
+What it now asks: whether the Archiv der Republik holds anything on **Alexander**
+(b. 30.4.1913 Vienna, d. 5.4.2002 Oxford) or **Felix** (b. 7.3.1902 Hlušice,
+d. 2.1.1968 Vienna), in
 
-It asks expressly for a **written nil return** if there is nothing, because a
-documented absence is itself worth having before MA 35, and repeats the EUR 200
-cost undertaking and the standing request that unfavourable material be included.
+1. Bundespolizeidirektion Wien — passport, exit and emigration files, 1945–1955
+2. BMI — emigration, exit and currency permits, same period
+3. Opferfürsorge and Wiedergutmachung, including Hilfsfonds and Abgeltungsfonds
+4. Staatsbürgerschaft, including retention and reacquisition
+
+with one sentence noting particular interest in whether the records show the
+date and occasion of Alexander's departure from Austria, a request for a short
+written notice if there is nothing, the four spelling variants, and the standing
+EUR 200 cost undertaking.
+
+The same principle was applied to the HHStA reply: the sentences explaining that
+Paul was the applicant's great-grandfather and that the 1901 announcement mattered
+for proving descent are gone. It now simply orders the six scans.
