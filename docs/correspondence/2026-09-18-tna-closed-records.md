@@ -1,6 +1,23 @@
 # DRAFT — The National Archives: applications to open closed records
 
-**Status: DRAFT, NOT SENT.** Nothing here goes to Kew without explicit approval.
+**Status: three FOI applications SUBMITTED 18 September 2026.** All three were
+filed through Discovery's own form at `/foirequest?reference=<ref>` — name, email
+and a free-text box, no account needed. TNA acknowledges each with a reference.
+
+| Record | Closure | TNA reference |
+|---|---|---|
+| HO 405/9351 — CZERNIN, W | closed to 1 Jan 2066 | **TNA1789757167K67** |
+| HO 294/593/9655 — Anna Borek-Dohalska | closed | **TNA1789757182J32** |
+| HO 294/592/9583 — Robert Hildprandt | closed | **TNA1789757194A53** |
+
+**HO 405/33767 (Lažanský) was dropped** — he appears on no signatory list we have
+read, so the application would rest on nothing.
+
+Each application states the subject's death or presumed death (so section 40
+cannot rest on a living person's data), the family's documented persecution, the
+§ 58c purpose, and an offer to accept redaction of living third parties. Naming
+§ 58c is safe here: TNA is a British archive and no part of the deciding state,
+and a stated legal purpose is what makes an FOI review more than curiosity.
 
 Four records found on 17 September 2026 carry closure status **D** (closed). Each would be
 opened by a free "request a closed record to be opened" application under the Freedom of
@@ -49,7 +66,7 @@ into the Abwehr in 1942 and worked against Italian resistance groups. Although A
 Thun-Hohenstein signed the declaration, this file helps the other side of the argument and
 should not be put in front of MA 35.
 
-## Separately — a copy order, not an FOI request
+## Separately — a copy order, not an FOI request *(PARKED 18 September 2026)*
 
 **FO 371/47178** (1945, open, not digitised) — "Request by Count Arthur Mensdorff-Pouilly for
 assistance in releasing his family from imprisonment", Foreign Office Political: Northern:
