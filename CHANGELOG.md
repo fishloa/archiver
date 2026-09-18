@@ -9,6 +9,19 @@ new revision, no build is triggered, and the release silently never happens —
 which is exactly what v1.0.0 did on its first attempt. Add the entry below,
 commit, then tag that commit.
 
+## v1.1.3 — 18 September 2026
+
+- **A page re-read on demand is carried onward whichever engine reads it.**
+  `POST /api/admin/reocr-page` puts `andThen` in the job payload, and only the
+  Transkribus worker honoured it. A page sent back to Mistral was therefore
+  re-transcribed and then left holding the translation of the text it had just
+  replaced: record 4006 page 28 displayed an English "Unable to translate…" over
+  3,406 characters of perfectly legible German, because that English had been
+  made from the transcription the re-read discarded. The batch OCR stage now
+  carries such a page through translation, the record's PDF and its embedding,
+  while an ordinary first-pass page — which has no `andThen` — still leaves the
+  record to the state machine.
+
 ## v1.1.2 — 18 September 2026
 
 - **A record's PDF and embedding are queued once, not once per page.**

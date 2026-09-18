@@ -381,7 +381,8 @@ public class WorkerSchedulingConfig implements SchedulingConfigurer {
                 return storageService.getPath(attachment);
               },
               pageTextRepository,
-              jobService);
+              jobService,
+              pipelineStateMachine);
       var ocr =
           new BatchOrchestrator(
               "mistral-batch-ocr",

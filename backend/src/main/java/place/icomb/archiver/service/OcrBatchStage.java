@@ -11,6 +11,9 @@ import place.icomb.archiver.repository.PageTextRepository;
 /** OCR through the provider's batch API: a page image in, markdown and block coordinates out. */
 public class OcrBatchStage implements BatchStage {
 
+  private static final org.slf4j.Logger log =
+      org.slf4j.LoggerFactory.getLogger(OcrBatchStage.class);
+
   /** Resolves a page to its image on disk. */
   public interface PageImages {
     Path imagePathFor(long pageId);
@@ -20,13 +23,19 @@ public class OcrBatchStage implements BatchStage {
   private final PageImages images;
   private final PageTextRepository pageTexts;
   private final JobService jobService;
+  private final PipelineStateMachine stateMachine;
 
   public OcrBatchStage(
-      String model, PageImages images, PageTextRepository pageTexts, JobService jobService) {
+      String model,
+      PageImages images,
+      PageTextRepository pageTexts,
+      JobService jobService,
+      PipelineStateMachine stateMachine) {
     this.model = model;
     this.images = images;
     this.pageTexts = pageTexts;
     this.jobService = jobService;
+    this.stateMachine = stateMachine;
   }
 
   @Override
@@ -76,6 +85,41 @@ public class OcrBatchStage implements BatchStage {
         extractText(body),
         OcrContentType.MARKDOWN,
         body.toString());
+
+    carryPageOnward(job);
+  }
+
+  /**
+   * Carries a single re-read page through translation, the record's PDF and its embedding.
+   *
+   * <p>Only for a job that asks for it. A record being OCR'd for the first time enqueues hundreds
+   * of these jobs and the state machine advances the record once they have all finished; firing per
+   * page there would translate and re-embed the record hundreds of times.
+   *
+   * <p>{@code andThen} is set by {@code POST /api/admin/reocr-page}, which re-reads one page on a
+   * chosen engine. It was honoured only by the Transkribus worker, so a page sent back to this
+   * engine was re-transcribed and then left with the translation of the text it had just replaced —
+   * record 4006 page 28 showed an English "Unable to translate…" over perfectly good German for
+   * that reason.
+   */
+  private void carryPageOnward(Job job) {
+    if (job.getPayload() == null || job.getPageId() == null || job.getRecordId() == null) {
+      return;
+    }
+    try {
+      JsonNode payload =
+          new com.fasterxml.jackson.databind.ObjectMapper().readTree(job.getPayload());
+      String andThen = payload.path("andThen").asText("");
+      if (andThen.isBlank() || "none".equalsIgnoreCase(andThen)) {
+        return;
+      }
+      stateMachine.advanceSinglePage(job.getRecordId(), job.getPageId());
+    } catch (Exception e) {
+      // The transcription is saved; failing to queue the follow-on work must not fail the job and
+      // have the page read again at cost.
+      log.warn(
+          "Page {} re-read but could not be carried onward: {}", job.getPageId(), e.getMessage());
+    }
   }
 
   /**
