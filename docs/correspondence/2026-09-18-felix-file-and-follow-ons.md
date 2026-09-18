@@ -180,7 +180,7 @@ alex.fishlock@racingjag.com
 
 ## C. Bundesarchiv — Volksgerichtshof and Oberreichsanwalt
 
-**To:** `berlin@bundesarchiv.de` · **status: awaiting approval**
+**To:** `berlin@bundesarchiv.de` · **sent 18 September 2026, Zimbra 464803**
 
 They search nothing without a hand-signed **Benutzungsantrag**. One is on file
 from 16 September (Zimbra 463985, acknowledged 463987) under the Benutzungsthema
