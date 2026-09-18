@@ -21,21 +21,22 @@ Wohllebengasse 9/10, later Wien I., Löwelstraße 12.
 
 ---
 
-## A. WStLA — Felix's complete file *(online form, not email)*
+## A. WStLA — Felix's complete file *(online form)*
 
 `wien.gv.at/amtswege/auskunft-wiener-stadt-landesarchiv` — *Auskunft aus
 Beständen*. They will not research by email. **Field limits, all silent
 truncation:** Genaue Darstellung ~2 000 characters, Frage 500, Mitteilungen 500,
-MA 8 file-number field 30. Date fields reject a pasted value and must be typed.
+MA 8 file-number field 30. Date fields reject a pasted value and must be typed
+character by character — Playwright's per-character typing handles this.
 
-**Why this form asks for identification and not for copies.** Their own tariff
-(reply 463934) separates three things: written information about *which holdings
-exist* is free, *vertiefte Recherche* is EUR 35 per started half hour to a
-two-hour cap, and **digitisation is billed separately and has its own form**.
-Asking this form for scans invites a redirect. So this asks them to identify the
-files, give the signatures and the folio counts, and list the six enclosures —
-and says the digitisation order follows on their own form once the signatures are
-known.
+**One submission, not two.** Their tariff (reply 463934) bills research at EUR 35
+per started half hour to a EUR 140 cap and digitisation separately on its own
+form. The only reason that forces a second round trip is that they cannot price
+scans before they know the extent — so the digitisation is **ordered in advance
+with a EUR 200 ceiling**, and a quotation is asked for rather than a partial
+delivery if it would be exceeded. The folio count and the list of enclosures are
+still asked for explicitly: they are what shows whether what arrives is the file
+or another extract of it.
 
 **Genaue Darstellung**
 
@@ -65,32 +66,36 @@ Bekannte Geschaeftszahlen:
 
 Erbeten wird:
 
-- die Feststellung, welche Akten zu diesen Geschaeftszahlen im Archiv
-  vorhanden sind, mit Angabe der Bestandsbezeichnung und Signatur;
+- die Feststellung, welche Akten zu diesen Geschaeftszahlen vorhanden
+  sind, mit Bestandsbezeichnung und Signatur;
 - der Blattumfang je Akt;
 - ein Verzeichnis der Aktenstuecke, insbesondere ein Verzeichnis der
   6 Beilagen zum Antrag vom 25. Mai 1947;
-- die abschliessenden Entscheidungen zu 2. und 3. mit Datum und Zahl.
+- die abschliessenden Entscheidungen zu 2. und 3. mit Datum und Zahl;
+- die vollstaendige Digitalisierung dieser Akten samt aller Beilagen.
 
-Die Bestellung der Digitalisate erfolgt nach Vorliegen der Signaturen
-gesondert ueber das dafuer vorgesehene Formular.
+Die Digitalisierung wird hiermit im Voraus beauftragt, damit keine
+Rueckfrage noetig ist.
 ```
 
 **Frage**
 
 ```
-Welche Akten zu den angefuehrten Geschaeftszahlen sind im Archiv vorhanden,
-unter welcher Signatur, welchen Blattumfang haben sie, welche Schriftstuecke
-bilden die 6 Beilagen zum Antrag vom 25. Mai 1947, und wie lauten die
-abschliessenden Entscheidungen zu den Antraegen von 1945 und 1947?
+Welche Akten zu den angefuehrten Geschaeftszahlen sind vorhanden, unter
+welcher Signatur, welchen Blattumfang haben sie, welche Schriftstuecke bilden
+die 6 Beilagen zum Antrag vom 25. Mai 1947, und wie lauten die abschliessenden
+Entscheidungen zu den Antraegen von 1945 und 1947? Um vollstaendige
+Digitalisate dieser Akten wird ersucht.
 ```
 
 **Mitteilungen**
 
 ```
-Der Rechercheauftrag wird bis zum Hoechstbetrag von EUR 140,- erteilt. Ein
-negatives Ergebnis wird angenommen und bezahlt und moege schriftlich
-mitgeteilt werden. Die Digitalisierung wird gesondert beauftragt.
+Der Rechercheauftrag wird bis zum Hoechstbetrag von EUR 140,- erteilt. Die
+Digitalisierung wird im Voraus beauftragt; die Kosten hierfuer uebernehme ich
+bis EUR 200,-. Sollte der Umfang diesen Betrag uebersteigen, ersuche ich um
+einen Kostenvoranschlag und nicht um eine Teillieferung. Ein negatives
+Ergebnis wird angenommen und bezahlt und moege schriftlich mitgeteilt werden.
 Postanschrift: Alex Fishlock, Icomb Place, Icomb, Cheltenham GL54 1JL,
 Grossbritannien. Um Antwort per E-Mail wird gebeten.
 ```
