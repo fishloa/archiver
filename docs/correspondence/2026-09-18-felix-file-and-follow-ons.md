@@ -23,11 +23,18 @@ Wohllebengasse 9/10, later Wien I., Löwelstraße 12.
 
 ## A. WStLA — Felix's complete file *(online form)*
 
+**Submitted 18 September 2026, Eingangsnummer 2026-1809203348262.** Stated
+turnaround two months to an answer or a progress note. Committed: up to EUR 140
+research plus up to EUR 200 digitisation.
+
 `wien.gv.at/amtswege/auskunft-wiener-stadt-landesarchiv` — *Auskunft aus
 Beständen*. They will not research by email. **Field limits, all silent
 truncation:** Genaue Darstellung ~2 000 characters, Frage 500, Mitteilungen 500,
 MA 8 file-number field 30. Date fields reject a pasted value and must be typed
-character by character — Playwright's per-character typing handles this.
+character by character — Playwright's per-character typing handles this. The
+*Kenntnisnahme* checkbox is `sr-only` and cannot be clicked directly; click its
+visible "Ich stimme zu." label instead. Field counters showed 554 / 170 / 29
+characters left, so nothing was truncated.
 
 **One submission, not two.** Their tariff (reply 463934) bills research at EUR 35
 per started half hour to a EUR 140 cap and digitisation separately on its own
