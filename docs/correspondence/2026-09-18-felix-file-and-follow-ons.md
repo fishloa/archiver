@@ -91,40 +91,62 @@ Grossbritannien. Um Antwort per E-Mail wird gebeten.
 ## B. WStLA — chase 2026-1609131617490, and add one register
 
 **To:** `post@archiv.wien.gv.at` · **Subject:** `Auskunft aus Beständen —
-Eingangsnummer 2026-1609131617490`
+Eingangsnummer 2026-1609131617490` · **status: awaiting approval**
 
 The 16 September enquiry covers Opferfürsorge (M.Abt. 208, A37), Volksgericht,
 Vermögensverkehrsstelle and Rückstellung for all six children of Paul Czernin. It
 has never been acknowledged or billed. The **Zentralregistrierung der Opfer des
 Naziterrors** is a separate register and was not named in it.
 
+Record 4006 page 28 is asked for as a **quotation, not an enclosure**. It is the
+archive's own document, so sending it would tell them nothing they do not hold —
+but it would show them how much of the file we already have, and an archivist who
+believes you have something skips it. One sentence carries the reference without
+that. The page is also Felix arguing his own case about his party candidacy and
+the length of his detention, which is not something to put in front of a Vienna
+municipal authority unasked.
+
+**Identified from that sentence:** *Beilage 6* of the 25 May 1947 application is
+the confirmation of the victim registration. One of the six enclosures is now
+known — carried into A.
+
 ```
 Sehr geehrte Damen und Herren,
 
 zu meiner Anfrage vom 16. September 2026, Eingangsnummer
-2026-1609131617490, ersuche ich um eine kurze Mitteilung ueber den Stand
+2026-1609131617490, ersuche ich um eine kurze Mitteilung über den Stand
 der Bearbeitung.
 
-Ergaenzend ersuche ich, in dieselbe Anfrage auch die Zentralregistrierung
-der Opfer des Naziterrors beim Magistrat der Stadt Wien einzubeziehen und
-zu pruefen, ob zu den nachstehenden Personen dort Eintragungen bestehen:
+Ergänzend ersuche ich, in dieselbe Anfrage auch die Zentralregistrierung
+der Opfer des Naziterrors beim Magistrat der Stadt Wien einzubeziehen.
 
-  Felix Czernin,      geb.  7.3.1902
+In einer am 25. Mai 1947 beim Magistrat eingebrachten Eingabe in der
+Sache Felix Czernin, geb. 7.3.1902, wird ausgeführt, dass dieser von der
+Zentralregistrierung des Magistrats der Stadt Wien als Opfer des
+Naziterrors zu Nr. 38.835 erfasst worden sei — die Zahl kann auch
+38.885 lauten — und es wird als Beilage 6 die Bestätigung dieser
+Erfassung angeführt. Das dort genannte Datum kann nicht zutreffen.
+
+Ich ersuche daher um Nummer, Datum und Inhalt dieser Eintragung, wie sie
+das Register selbst ausweist, samt einer Kopie.
+
+Für die nachstehenden Personen ersuche ich um Prüfung, ob dort überhaupt
+eine Eintragung besteht:
+
   Wolfgang Czernin,   geb.  4.8.1903
   Anna Czernin,       geb. 26.5.1907
   Jan Czernin,        geb.  8.3.1910
   Franziska Koblitz von Willmburg, geb. Czernin, geb. 8.3.1910
   Alexander Czernin,  geb. 30.4.1913
 
-Erbeten werden Nummer, Datum und Inhalt allfaelliger Eintragungen sowie
-eine Kopie. Ein negatives Ergebnis wird angenommen und bezahlt und moege
-schriftlich mitgeteilt werden.
+Ein negatives Ergebnis wird angenommen und bezahlt und möge schriftlich
+mitgeteilt werden. Die Kostenübernahme aus der ursprünglichen Anfrage
+gilt auch hierfür.
 
-Die Kostenuebernahme aus der urspruenglichen Anfrage gilt auch hierfuer.
-
-Mit freundlichen Gruessen
+Mit freundlichen Grüßen
 Alex Fishlock
-Icomb Place, Icomb, Cheltenham GL54 1JL, Grossbritannien
+Icomb Place, Icomb, Cheltenham GL54 1JL, Großbritannien
+alex.fishlock@racingjag.com
 ```
 
 > **Held out of this letter on purpose.** The siblings' **NS-Registrierungsakten**
@@ -134,8 +156,6 @@ Icomb Place, Icomb, Cheltenham GL54 1JL, Grossbritannien
 > unprompted. It waits for the Bundesarchiv answer on NSDAP membership. Felix's own
 > registration is asked for in A only because his extract is already in our hands
 > and the outcome — the 1945 and 1947 applications — is favourable.
-
----
 
 ## C. Bundesarchiv — Volksgerichtshof and Oberreichsanwalt
 
