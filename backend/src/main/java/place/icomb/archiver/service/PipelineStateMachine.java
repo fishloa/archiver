@@ -588,8 +588,12 @@ public class PipelineStateMachine {
       jobService.enqueueJob(TranslationModels.jobKindFor(quality), recordId, pageId, null);
     }
 
-    jobService.enqueueJob("build_searchable_pdf", recordId, null, null);
-    jobService.enqueueJob("embed_record", recordId, null, null);
+    // Record-level work, queued at most once no matter how many pages are re-transcribed. Without
+    // this guard a 27-page import enqueued 27 PDF rebuilds and 27 re-embeddings of the same three
+    // records: the PDF and the embedding cover the whole record, so the second is pure waste and
+    // embedding is charged per record.
+    enqueueRecordJobUnlessPending("build_searchable_pdf", recordId);
+    enqueueRecordJobUnlessPending("embed_record", recordId);
 
     // pipeline_event.event is CHECK-constrained to started/completed/failed/admin_reset/
     // replace_started/repair_started. A descriptive value such as "page_retranscribed" is
@@ -599,6 +603,26 @@ public class PipelineStateMachine {
     logPipelineEvent(recordId, "ocr", "completed", "page " + pageId + " re-transcribed");
     logPipelineEvent(recordId, "pdf_build", "started", "page " + pageId + " re-transcribed");
     log.info("Record {} page {}: re-transcribed, downstream jobs enqueued", recordId, pageId);
+  }
+
+  /**
+   * Queues a record-level job unless one of that kind is already waiting for this record.
+   *
+   * <p>Only skips a {@code pending} job. One already claimed is being worked on and may have read
+   * the record before this page changed, so that case still needs a fresh job.
+   */
+  private void enqueueRecordJobUnlessPending(String kind, Long recordId) {
+    Integer waiting =
+        jdbcTemplate.queryForObject(
+            "SELECT count(*) FROM job WHERE record_id = ? AND kind = ? AND status = 'pending'",
+            Integer.class,
+            recordId,
+            kind);
+    if (waiting != null && waiting > 0) {
+      log.debug("Record {}: {} already queued, not queuing again", recordId, kind);
+      return;
+    }
+    jobService.enqueueJob(kind, recordId, null, null);
   }
 
   private void enqueueEmbedJob(Long recordId) {

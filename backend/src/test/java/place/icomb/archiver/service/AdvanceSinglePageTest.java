@@ -152,6 +152,55 @@ class AdvanceSinglePageTest {
   }
 
   @Test
+  void manyPagesOfOneRecordQueueTheRecordLevelWorkOnce() {
+    // A 27-page import enqueued 27 PDF rebuilds and 27 re-embeddings of the same records before
+    // this guard existed. Both jobs cover the whole record, and embedding is charged per record.
+    long[] first = seedRecord("de");
+    long recordId = first[0];
+    Long attachmentId =
+        jdbc.sql(
+                "INSERT INTO attachment (record_id, role, path, mime)"
+                    + " VALUES (?, 'page', 'test/p2.jpg', 'image/jpeg') RETURNING id")
+            .params(recordId)
+            .query(Long.class)
+            .single();
+    Long secondPage =
+        jdbc.sql("INSERT INTO page (record_id, seq, attachment_id) VALUES (?, 2, ?) RETURNING id")
+            .params(recordId, attachmentId)
+            .query(Long.class)
+            .single();
+    jdbc.sql(
+            "INSERT INTO page_text (page_id, engine, text_raw, content_type)"
+                + " VALUES (?, 'transkribus:579509', 'zweite Seite', 'text/plain')")
+        .params(secondPage)
+        .update();
+
+    stateMachine.advanceSinglePage(recordId, first[1]);
+    stateMachine.advanceSinglePage(recordId, secondPage);
+
+    Long pdfJobs =
+        jdbc.sql("SELECT count(*) FROM job WHERE record_id = ? AND kind = 'build_searchable_pdf'")
+            .params(recordId)
+            .query(Long.class)
+            .single();
+    Long embedJobs =
+        jdbc.sql("SELECT count(*) FROM job WHERE record_id = ? AND kind = 'embed_record'")
+            .params(recordId)
+            .query(Long.class)
+            .single();
+    Long translateJobs =
+        jdbc.sql("SELECT count(*) FROM job WHERE record_id = ? AND kind = 'translate_page'")
+            .params(recordId)
+            .query(Long.class)
+            .single();
+
+    assertThat(pdfJobs).isEqualTo(1);
+    assertThat(embedJobs).isEqualTo(1);
+    // Translation is per page, so both pages are queued.
+    assertThat(translateJobs).isEqualTo(2);
+  }
+
+  @Test
   void aStaleTranslationIsRemovedBeforeTheNewOneIsQueued() {
     long[] ids = seedRecord("de");
     jdbc.sql(
