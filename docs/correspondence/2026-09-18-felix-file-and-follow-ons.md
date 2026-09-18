@@ -91,7 +91,7 @@ Grossbritannien. Um Antwort per E-Mail wird gebeten.
 ## B. WStLA — chase 2026-1609131617490, and add one register
 
 **To:** `post@archiv.wien.gv.at` · **Subject:** `Auskunft aus Beständen —
-Eingangsnummer 2026-1609131617490` · **status: awaiting approval**
+Eingangsnummer 2026-1609131617490` · **sent 18 September 2026, Zimbra 464801**
 
 The 16 September enquiry covers Opferfürsorge (M.Abt. 208, A37), Volksgericht,
 Vermögensverkehrsstelle and Rückstellung for all six children of Paul Czernin. It
