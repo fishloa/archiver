@@ -180,48 +180,58 @@ alex.fishlock@racingjag.com
 
 ## C. Bundesarchiv — Volksgerichtshof and Oberreichsanwalt
 
-**To:** `berlin@bundesarchiv.de` · a **hand-signed Benutzungsantrag** is required
-for anything they search; the one sent 16 September (463985, acknowledged 463987)
-should be referenced rather than re-sent. **Do not chase afterwards.**
+**To:** `berlin@bundesarchiv.de` · **status: awaiting approval**
 
-Felix was arrested by the Gestapo on 28 March 1945 on charges including *Hoch-
-und Landesverrat*. He was never tried — Vienna was liberated first — so the trial
-series **R 3017** may hold nothing, and the investigation files of the
-**Oberreichsanwalt beim Volksgerichtshof, R 3018**, are the more likely place. Ask
-both, plus **R 58** (RSHA) and the Vienna Gestapo material.
+They search nothing without a hand-signed **Benutzungsantrag**. One is on file
+from 16 September (Zimbra 463985, acknowledged 463987) under the Benutzungsthema
+*"Familienforschung Czernin von Chudenic 1938–1950"*, which covers this. The
+letter says so and offers a supplementary form rather than assuming. **Do not
+chase afterwards** — they answer on completion.
+
+Felix was arrested by the Gestapo in Vienna on 28 March 1945 on charges including
+*Hoch- und Landesverrat*. He was never tried, so the trial series **R 3017** may
+hold nothing and the investigation files of the **Oberreichsanwalt beim
+Volksgerichtshof, R 3018**, are the likelier place. **R 58** is asked for as well,
+though the Vienna Gestapo's own records largely did not survive.
 
 ```
 Sehr geehrte Damen und Herren,
 
 unter Bezugnahme auf meinen Benutzungsantrag vom 16. September 2026
-ersuche ich um Pruefung, ob zu
+(Benutzungsthema "Familienforschung Czernin von Chudenic 1938-1950")
+ersuche ich um Prüfung, ob zu
 
-  Felix Czernin, geb. 7.3.1902 in Hlusice, wohnhaft Wien IV.,
-  Wohllebengasse 9/10, verhaftet in Wien am 28. Maerz 1945,
+  Felix Theobald Paul Anton Maria Czernin, geb. 7.3.1902 in Hlusice,
+  wohnhaft Wien IV., Wohllebengasse 9/10, am 28. März 1945 in Wien
+  von der Gestapo verhaftet,
 
 Unterlagen vorhanden sind, insbesondere in
 
   R 3017  Volksgerichtshof
   R 3018  Oberreichsanwalt beim Volksgerichtshof
-  R 58    Reichssicherheitshauptamt, einschliesslich der Vorgaenge der
-          Geheimen Staatspolizei, Staatspolizeileitstelle Wien
+  R 58    Reichssicherheitshauptamt, einschließlich der Vorgänge der
+          Staatspolizeileitstelle Wien
 
-Der Vorwurf lautete auf Hoch- und Landesverrat; zu einer Hauptverhandlung
-ist es nicht mehr gekommen, sodass auch Ermittlungs- und J-Akten von
-Interesse sind.
+Der Vorwurf lautete unter anderem auf Hoch- und Landesverrat. Zu einer
+Hauptverhandlung ist es nicht mehr gekommen, sodass auch Ermittlungs-
+und J-Akten sowie Haftunterlagen von Interesse sind.
 
-Um Beruecksichtigung der Schreibweisen Czernin von Chudenic, Czernin von
+Um Berücksichtigung der Schreibweisen Czernin von Chudenic, Czernin von
 und zu Chudenitz, Czerning und Chernin wird gebeten.
 
-Sollte nichts vorhanden sein, ersuche ich um eine kurze schriftliche
-Mitteilung. Allfaellige Kosten uebernehme ich bis EUR 200,-.
+Sollte zu diesem Vorgang ein gesonderter Benutzungsantrag erforderlich
+sein, ersuche ich um kurze Mitteilung; ich reiche ihn dann unterschrieben
+nach.
 
-Mit freundlichen Gruessen
+Ein negatives Ergebnis ist ebenso von Interesse und möge schriftlich
+mitgeteilt werden. Allfällige Kosten übernehme ich bis EUR 200,-; darüber
+hinaus ersuche ich um vorherige Verständigung.
+
+Mit freundlichen Grüßen
 Alex Fishlock
-Icomb Place, Icomb, Cheltenham GL54 1JL, Grossbritannien
+Icomb Place, Icomb, Cheltenham GL54 1JL, Großbritannien
+alex.fishlock@racingjag.com
 ```
-
----
 
 ## D. DÖW — one question, not a repeat
 
