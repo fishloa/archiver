@@ -15,14 +15,20 @@ public interface JobRepository extends CrudRepository<Job, Long> {
   /**
    * Atomically claims the next pending job of the given kind. Uses FOR UPDATE SKIP LOCKED to allow
    * concurrent workers to claim different jobs without blocking each other.
+   *
+   * <p>Jobs belonging to a record on AI hold are passed over. They stay pending and run when the
+   * hold is lifted — the same shape as a paused stage, and for the same reason: a record can be in
+   * a state where every further call spends money on a document known to be broken.
    */
   @Query(
       """
       UPDATE job SET status = 'claimed', attempts = attempts + 1, started_at = now()
       WHERE id = (
-          SELECT id FROM job
-          WHERE kind = :kind AND status = 'pending'
-          ORDER BY created_at ASC
+          SELECT j.id FROM job j
+          WHERE j.kind = :kind AND j.status = 'pending'
+            AND NOT EXISTS (SELECT 1 FROM record r
+                             WHERE r.id = j.record_id AND r.ai_held_at IS NOT NULL)
+          ORDER BY j.created_at ASC
           FOR UPDATE SKIP LOCKED
           LIMIT 1
       )
@@ -56,6 +62,8 @@ public interface JobRepository extends CrudRepository<Job, Long> {
               JOIN page p ON p.id = j.page_id
               JOIN attachment a ON a.id = p.attachment_id
               WHERE j.kind = :kind AND j.status = 'pending' AND j.batch_id IS NULL
+                AND NOT EXISTS (SELECT 1 FROM record r
+                                 WHERE r.id = j.record_id AND r.ai_held_at IS NOT NULL)
               ORDER BY j.id
               LIMIT :maxRows
           ) sized
@@ -80,9 +88,11 @@ public interface JobRepository extends CrudRepository<Job, Long> {
       UPDATE job SET status = 'claimed', attempts = attempts + 1, started_at = now(),
                      batch_id = :batchId
       WHERE id IN (
-          SELECT id FROM job
-          WHERE kind = :kind AND status = 'pending' AND batch_id IS NULL
-          ORDER BY id
+          SELECT j.id FROM job j
+          WHERE j.kind = :kind AND j.status = 'pending' AND j.batch_id IS NULL
+            AND NOT EXISTS (SELECT 1 FROM record r
+                             WHERE r.id = j.record_id AND r.ai_held_at IS NOT NULL)
+          ORDER BY j.id
           LIMIT :maxRows)
         AND status = 'pending'
       RETURNING *

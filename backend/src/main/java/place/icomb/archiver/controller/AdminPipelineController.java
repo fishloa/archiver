@@ -7,6 +7,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.http.ResponseEntity;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -155,6 +156,52 @@ public class AdminPipelineController {
    * <p>The existing transcription is deleted, which the {@code page_ocr_history} trigger preserves,
    * so the engine that got it wrong stays on the record.
    */
+  /**
+   * Freezes a record's AI processing, or lifts the freeze.
+   *
+   * <p>Its queued jobs are left pending and are not claimed until the hold is lifted, so nothing is
+   * lost and nothing is charged for while a broken record is put right. {@code reason} is stored
+   * and shown, because a hold with no reason is indistinguishable from a stuck record.
+   */
+  @PostMapping("/records/{recordId}/ai-hold")
+  public ResponseEntity<Map<String, Object>> holdRecord(
+      @PathVariable Long recordId,
+      @RequestParam(required = false) String reason,
+      @RequestParam(defaultValue = "true") boolean hold) {
+
+    int updated =
+        hold
+            ? jdbcTemplate.update(
+                "UPDATE record SET ai_held_at = now(), ai_hold_reason = ? WHERE id = ?",
+                reason,
+                recordId)
+            : jdbcTemplate.update(
+                "UPDATE record SET ai_held_at = NULL, ai_hold_reason = NULL WHERE id = ?",
+                recordId);
+
+    if (updated == 0) {
+      return ResponseEntity.status(404).body(Map.of("error", "no record " + recordId));
+    }
+
+    Long queued =
+        jdbcTemplate.queryForObject(
+            "SELECT count(*) FROM job WHERE record_id = ? AND status IN ('pending', 'claimed')",
+            Long.class,
+            recordId);
+
+    log.info("Record {} AI hold {}: {}", recordId, hold ? "set" : "lifted", reason);
+    return ResponseEntity.ok(
+        Map.of(
+            "recordId",
+            recordId,
+            "held",
+            hold,
+            "reason",
+            String.valueOf(reason),
+            "jobsWaiting",
+            queued == null ? 0 : queued));
+  }
+
   /**
    * Stops queued work: one job, or everything still queued for one record.
    *
