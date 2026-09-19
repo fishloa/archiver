@@ -9,6 +9,17 @@ new revision, no build is triggered, and the release silently never happens —
 which is exactly what v1.0.0 did on its first attempt. Add the entry below,
 commit, then tag that commit.
 
+## v1.1.9 — 19 September 2026
+
+**Page images are named by digest, not by sequence alone.** The sequence is not
+unique: inserting a page renumbers the ones after it, so two live pages could
+compute the same file name and the second write destroyed the first. Splitting
+seven sheets of one record left seven pages showing their neighbour's image.
+
+Images now store as `p{seq}-{sha8}.jpg`. Existing paths are untouched.
+
+439 tests, 0 failures.
+
 ## v1.1.8 — 19 September 2026
 
 **Pages can be inserted and deleted.** Until now a page could be replaced by
