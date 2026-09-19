@@ -9,6 +9,34 @@ new revision, no build is triggered, and the release silently never happens —
 which is exactly what v1.0.0 did on its first attempt. Add the entry below,
 commit, then tag that commit.
 
+## v1.1.4 — 19 September 2026
+
+**The Transkribus import can no longer lose work.** A collection holds every
+document ever uploaded, so importing one whole puts each document back over
+whatever the archive holds now.
+
+- `POST /api/admin/import-transkribus` needs a `docId`, or an explicit
+  `all=true`, before it will sweep a collection.
+- A **shorter** transcript from a **different** engine is refused unless
+  `overwrite=true`. `page_ocr_history` keeps the engine name and a character
+  count, never the text, so a transcription replaced by a worse one is gone.
+- A transcript identical to the stored text is skipped rather than rewritten.
+  Advancing an unchanged page re-translates it, rebuilds the record's PDF and
+  re-embeds the record — charged for, and producing what was already there.
+
+**`reocr-page` no longer deletes `page_text` at enqueue time.** Both writers
+delete immediately before inserting their own row, so deleting early bought
+nothing and cost the page its text whenever the job then failed.
+
+**New: `POST /api/admin/cancel-jobs`.** Pending and claimed jobs only, never a
+finished one, and it refuses to run without a `kind` or a `recordId`.
+
+**V14 carries the Transkribus collection id as data.** The setting defaulted to
+0, documented as "the account's first collection"; TrpServer answers that with
+*"Bad or no collection ID"* and every recognition job fails.
+
+404 tests, 0 failures.
+
 ## v1.1.3 — 18 September 2026
 
 - **A page re-read on demand is carried onward whichever engine reads it.**
