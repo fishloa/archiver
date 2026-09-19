@@ -1,10 +1,18 @@
 # Two drafts — 19 September 2026
 
-**Both sent 19 September 2026** — Bundesarchiv Abt. PA as Zimbra **464913**, ÖStA Archiv der Republik as Zimbra **464915**.
+**Both sent 19 September 2026** — ÖStA Archiv der Republik as Zimbra **464915**;
+Bundesarchiv Abt. PA as Zimbra **464925** after the first attempt (464913)
+bounced.
+
+**The address.** `pa@bundesarchiv.de` does not exist — *"550 5.7.1 Recipient
+address rejected: User unknown"* from mx2.bund.de. The working address is
+**`poststelle-pa@bundesarchiv.de`**. The department also moved in May 2022 from
+Eichborndamm 179 to **Am Borsigturm 130, Berlin-Tegel**, so the old postal
+address on any published page is stale.
 
 ## A. Bundesarchiv Abteilung PA — Alexander's Wehrstammkarte
 
-**To:** `pa@bundesarchiv.de` — Bundesarchiv, Abteilung PA, Eichborndamm 179, 13403 Berlin, the former Deutsche Dienststelle/WASt. The letter points at the signed Benutzungsantrag of 16 September and offers a separate one if this matter needs it.
+**To:** `poststelle-pa@bundesarchiv.de` — Bundesarchiv, Abteilung PA (the former Deutsche Dienststelle/WASt), Am Borsigturm 130, Berlin-Tegel. The letter points at the signed Benutzungsantrag of 16 September and offers a separate one if this matter needs it.
 
 Prompted by Hubertus Trauttenberg, 19 September: *"One had to find his
 Wehrstammkarte which might be in some archive in the country where he was living
