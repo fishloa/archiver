@@ -89,33 +89,24 @@ The diary, 30 April 1945 (attachment 2, page 11):
 
 > "**Lucki's birthday. I hope he is at Aussee with Mami.**"
 
-Vienna had fallen on 13 April and Felix was at liberty. So this is not a hope
-that his brother survived the fighting; it is a hope about **where he was**. On
-his brother's birthday Felix did not know where Alexander was, and the outcome he
-hoped for was that he had reached the family's refuge at Altaussee rather than
-being wherever he was supposed to be. He hoped Alexander was safe, which is to
-say he had reason to think he might not be.
+Vienna had fallen on 13 April and Felix was at liberty, so this is not a hope
+that his brother survived the fighting. It is a hope about **where he was**:
+Felix did not know, and the outcome he hoped for was that Alexander had reached
+the family's refuge at Altaussee rather than being wherever he was meant to be.
+He hoped his brother was safe, which is to say he had reason to think he might
+not be.
 
 **Alexander is the only sibling named in the diary.** Felix had three brothers
-and two sisters. Across the whole diary — 26 March to 6 May — Wolfgang is never
+and two sisters. Across the whole of it — 26 March to 6 May — Wolfgang is never
 mentioned, Jan is never mentioned, neither sister is mentioned. Only Lucki, and
 only in this hope about his whereabouts. The diary is otherwise full of named
-people: Lippes, Karl Trauttmansdorff, Franzi Thurn und Taxis, Peter Habig,
-Hansi Dumreicher. The silence about the other four is not a silence about family.
+people: Lippes, Karl Trauttmansdorff, Franzi Thurn und Taxis, Peter Habig, Hansi
+Dumreicher. The silence about the other four is not a silence about family.
 
-**The counter-reading, which the authority's historian will reach for:** that
-30 April was Alexander's birthday, which is why he appears in that day's entry at
-all, and that in the last weeks of the war everyone worried about everyone. The
-answer to it is what Felix actually wrote when prompted by the birthday — not a
-greeting, but a hope about **where** his brother was; and that Vienna had fallen
-on 13 April, so the danger he was hoping his brother had escaped was not the
-fighting.
-
-One comparison from the same diary, 20 April: *"Thought a great deal about
-**Ferschnitz** with fervent wishes for God's protection."* Ferschnitz, Edla 18 in
-the Melk district, is where Felix himself re-registered from in November 1945.
-The diary shows him anxious about two places — Ferschnitz, and Aussee, where he
-hoped Alexander was.
+The same diary, 20 April: *"Thought a great deal about **Ferschnitz** with
+fervent wishes for God's protection."* Ferschnitz, Edla 18 in the Melk district,
+is where Felix himself re-registered from in November 1945. He was anxious about
+two places — Ferschnitz, and Aussee, where he hoped Alexander was.
 
 What the line establishes on its face is that the brothers' situations were
 linked in the family's own contemporaneous understanding, and that Alexander was
