@@ -9,6 +9,36 @@ new revision, no build is triggered, and the release silently never happens —
 which is exactly what v1.0.0 did on its first attempt. Add the entry below,
 commit, then tag that commit.
 
+## v1.1.6 — 19 September 2026
+
+**A record can be frozen.** `record.ai_held_at` is a condition in all three claim
+queries, so no worker — single or batch — will claim a held record's jobs. Held
+like a paused stage rather than a cancelled one: the work waits and runs when the
+hold lifts. Translation, embedding and matching are charged per call, and this is
+what stops a broken record spending money while it is being put right.
+
+```
+POST /api/admin/records/{id}/ai-hold?reason=&cancelQueued=
+POST /api/admin/records/{id}/ai-hold?hold=false
+```
+
+**`cancel-jobs` drops its `recordId` filter.** A record's queued work is stopped
+by holding the record, which also stops more being queued; cancelling without
+holding only invites the state machine to enqueue it again.
+
+**New: `GET /api/admin/jobs`.** An id-only cancel is useless without a way to find
+ids, and the alternative was a database session.
+
+**MCP gains four tools:** `list_jobs`, `hold_record`, `cancel_job`, `reocr_page`.
+The three writing tools require `ROLE_ADMIN` and **fail closed** — no provable
+admin authority, no action — so an ordinary MCP user cannot reach them even if
+the security context never arrives at the tool. `reocr_page` refuses a record on
+hold rather than queueing work that would run the moment the hold lifts.
+
+`.claude/skills/archiver-api` documents the whole interface, MCP first.
+
+425 tests, 0 failures.
+
 ## v1.1.5 — 19 September 2026
 
 **`POST /api/admin/cancel-jobs` addresses a job or a record, never a pattern.**
