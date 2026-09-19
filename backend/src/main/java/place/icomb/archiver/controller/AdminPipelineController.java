@@ -139,6 +139,157 @@ public class AdminPipelineController {
   }
 
   /**
+   * Freezes a record's AI processing, or lifts the freeze.
+   *
+   * <p>Its queued jobs are left pending and are not claimed until the hold is lifted, so nothing is
+   * lost and nothing is charged for while a broken record is put right. {@code reason} is stored
+   * and shown, because a hold with no reason is indistinguishable from a stuck record.
+   */
+  @PostMapping("/records/{recordId}/ai-hold")
+  public ResponseEntity<Map<String, Object>> holdRecord(
+      @PathVariable Long recordId,
+      @RequestParam(required = false) String reason,
+      @RequestParam(defaultValue = "true") boolean hold,
+      @RequestParam(defaultValue = "false") boolean cancelQueued) {
+
+    int updated =
+        hold
+            ? jdbcTemplate.update(
+                "UPDATE record SET ai_held_at = now(), ai_hold_reason = ? WHERE id = ?",
+                reason,
+                recordId)
+            : jdbcTemplate.update(
+                "UPDATE record SET ai_held_at = NULL, ai_hold_reason = NULL WHERE id = ?",
+                recordId);
+
+    if (updated == 0) {
+      return ResponseEntity.status(404).body(Map.of("error", "no record " + recordId));
+    }
+
+    int cancelled = 0;
+    if (hold && cancelQueued) {
+      // A hold alone leaves the queued work in place, which is usually what is wanted: the record
+      // resumes where it stopped. When that queued work is itself the problem, it goes here rather
+      // than through a second call, so the brake is applied in one step.
+      cancelled =
+          jdbcTemplate.update(
+              """
+              UPDATE job
+                 SET status = 'failed', error = ?, finished_at = now()
+               WHERE record_id = ? AND status IN ('pending', 'claimed')
+              """,
+              "cancelled with AI hold on record " + recordId,
+              recordId);
+    }
+
+    Long queued =
+        jdbcTemplate.queryForObject(
+            "SELECT count(*) FROM job WHERE record_id = ? AND status IN ('pending', 'claimed')",
+            Long.class,
+            recordId);
+
+    log.info(
+        "Record {} AI hold {} (cancelled {}): {}",
+        recordId,
+        hold ? "set" : "lifted",
+        cancelled,
+        reason);
+    return ResponseEntity.ok(
+        Map.of(
+            "recordId",
+            recordId,
+            "held",
+            hold,
+            "reason",
+            String.valueOf(reason),
+            "cancelled",
+            cancelled,
+            "jobsWaiting",
+            queued == null ? 0 : queued));
+  }
+
+  /**
+   * Lists jobs, so the id a cancel needs can be found.
+   *
+   * <p>Without this the only way to see the queue was to open a database session, which is not an
+   * operation this system offers. Filters narrow; none of them is required, but the result is
+   * capped either way.
+   */
+  @GetMapping("/jobs")
+  public ResponseEntity<List<Map<String, Object>>> listJobs(
+      @RequestParam(required = false) Long recordId,
+      @RequestParam(required = false) Long pageId,
+      @RequestParam(required = false) String kind,
+      @RequestParam(required = false) String status,
+      @RequestParam(defaultValue = "50") int limit) {
+
+    int capped = Math.max(1, Math.min(limit, 500));
+    return ResponseEntity.ok(
+        jdbcTemplate.queryForList(
+            """
+            SELECT id, kind, status,
+                   record_id  AS "recordId",
+                   page_id    AS "pageId",
+                   batch_id   AS "batchId",
+                   attempts,
+                   created_at AS "createdAt",
+                   started_at AS "startedAt",
+                   finished_at AS "finishedAt",
+                   left(error, 300) AS error
+              FROM job
+             WHERE (?::bigint IS NULL OR record_id = ?::bigint)
+               AND (?::bigint IS NULL OR page_id   = ?::bigint)
+               AND (?::text   IS NULL OR kind      = ?::text)
+               AND (?::text   IS NULL OR status    = ?::text)
+             ORDER BY id DESC
+             LIMIT ?
+            """,
+            recordId,
+            recordId,
+            pageId,
+            pageId,
+            kind,
+            kind,
+            status,
+            status,
+            capped));
+  }
+
+  /**
+   * Stops queued work: one job, or everything still queued for one record.
+   *
+   * <p>One job, by id. Everything a whole record has queued is stopped through its AI hold instead,
+   * which also prevents the pipeline from queueing more — cancelling a record's jobs without
+   * holding it just invites the state machine to enqueue them again.
+   *
+   * <p>Only {@code pending} and {@code claimed} jobs are touched; a finished job is left alone.
+   */
+  @PostMapping("/cancel-jobs")
+  public ResponseEntity<Map<String, Object>> cancelJobs(
+      @RequestParam(required = false) Long jobId, @RequestParam(required = false) String reason) {
+
+    if (jobId == null) {
+      return ResponseEntity.badRequest()
+          .body(Map.of("error", "give jobId — find it with GET /api/admin/jobs"));
+    }
+
+    List<Map<String, Object>> stopped =
+        jdbcTemplate.queryForList(
+            """
+            UPDATE job
+               SET status = 'failed', error = ?, finished_at = now()
+             WHERE id = ? AND status IN ('pending', 'claimed')
+            RETURNING id, kind, record_id, page_id
+            """,
+            "cancelled via /api/admin/cancel-jobs"
+                + (reason == null || reason.isBlank() ? "" : ": " + reason),
+            jobId);
+
+    log.info("Cancelled {} job(s): jobId={}", stopped.size(), jobId);
+    return ResponseEntity.ok(Map.of("cancelled", stopped.size(), "jobs", stopped));
+  }
+
+  /**
    * Re-transcribes one page on a chosen engine, and carries that page alone onward.
    *
    * <p>The case this exists for: a reader sees a page whose transcription is wrong — handwriting
@@ -156,104 +307,6 @@ public class AdminPipelineController {
    * <p>The existing transcription is deleted, which the {@code page_ocr_history} trigger preserves,
    * so the engine that got it wrong stays on the record.
    */
-  /**
-   * Freezes a record's AI processing, or lifts the freeze.
-   *
-   * <p>Its queued jobs are left pending and are not claimed until the hold is lifted, so nothing is
-   * lost and nothing is charged for while a broken record is put right. {@code reason} is stored
-   * and shown, because a hold with no reason is indistinguishable from a stuck record.
-   */
-  @PostMapping("/records/{recordId}/ai-hold")
-  public ResponseEntity<Map<String, Object>> holdRecord(
-      @PathVariable Long recordId,
-      @RequestParam(required = false) String reason,
-      @RequestParam(defaultValue = "true") boolean hold) {
-
-    int updated =
-        hold
-            ? jdbcTemplate.update(
-                "UPDATE record SET ai_held_at = now(), ai_hold_reason = ? WHERE id = ?",
-                reason,
-                recordId)
-            : jdbcTemplate.update(
-                "UPDATE record SET ai_held_at = NULL, ai_hold_reason = NULL WHERE id = ?",
-                recordId);
-
-    if (updated == 0) {
-      return ResponseEntity.status(404).body(Map.of("error", "no record " + recordId));
-    }
-
-    Long queued =
-        jdbcTemplate.queryForObject(
-            "SELECT count(*) FROM job WHERE record_id = ? AND status IN ('pending', 'claimed')",
-            Long.class,
-            recordId);
-
-    log.info("Record {} AI hold {}: {}", recordId, hold ? "set" : "lifted", reason);
-    return ResponseEntity.ok(
-        Map.of(
-            "recordId",
-            recordId,
-            "held",
-            hold,
-            "reason",
-            String.valueOf(reason),
-            "jobsWaiting",
-            queued == null ? 0 : queued));
-  }
-
-  /**
-   * Stops queued work: one job, or everything still queued for one record.
-   *
-   * <p>Addressed by identity, never by pattern. A kind-and-time filter cancels whatever happens to
-   * match at the moment it runs, including work queued by something else that is going along fine.
-   *
-   * <p>Only {@code pending} and {@code claimed} jobs are touched; a finished job is left alone.
-   */
-  @PostMapping("/cancel-jobs")
-  public ResponseEntity<Map<String, Object>> cancelJobs(
-      @RequestParam(required = false) Long jobId,
-      @RequestParam(required = false) Long recordId,
-      @RequestParam(required = false) String reason) {
-
-    if ((jobId == null) == (recordId == null)) {
-      return ResponseEntity.badRequest()
-          .body(Map.of("error", "give exactly one of jobId or recordId"));
-    }
-
-    String note =
-        "cancelled via /api/admin/cancel-jobs"
-            + (reason == null || reason.isBlank() ? "" : ": " + reason);
-
-    List<Map<String, Object>> stopped;
-    if (jobId != null) {
-      stopped =
-          jdbcTemplate.queryForList(
-              """
-              UPDATE job
-                 SET status = 'failed', error = ?, finished_at = now()
-               WHERE id = ? AND status IN ('pending', 'claimed')
-              RETURNING id, kind, record_id, page_id
-              """,
-              note,
-              jobId);
-    } else {
-      stopped =
-          jdbcTemplate.queryForList(
-              """
-              UPDATE job
-                 SET status = 'failed', error = ?, finished_at = now()
-               WHERE record_id = ? AND status IN ('pending', 'claimed')
-              RETURNING id, kind, record_id, page_id
-              """,
-              note,
-              recordId);
-    }
-
-    log.info("Cancelled {} job(s): jobId={} record={}", stopped.size(), jobId, recordId);
-    return ResponseEntity.ok(Map.of("cancelled", stopped.size(), "jobs", stopped));
-  }
-
   @PostMapping("/reocr-page")
   public ResponseEntity<Map<String, Object>> reocrPage(
       @RequestParam(required = false) Long recordId,

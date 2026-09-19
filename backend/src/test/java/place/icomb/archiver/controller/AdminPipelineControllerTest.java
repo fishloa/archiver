@@ -7,6 +7,7 @@ import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -36,6 +37,7 @@ class AdminPipelineControllerTest {
 
   @LocalServerPort private int port;
   @Autowired private JdbcClient jdbc;
+  @Autowired private place.icomb.archiver.service.JobService jobService;
 
   private final HttpClient http = HttpClient.newHttpClient();
   private final ObjectMapper mapper = new ObjectMapper();
@@ -306,19 +308,95 @@ class AdminPipelineControllerTest {
         .single();
   }
 
+  private HttpResponse<String> hold(long recordId, String query) throws Exception {
+    var req =
+        HttpRequest.newBuilder(
+                URI.create(url("/api/admin/records/" + recordId + "/ai-hold" + query)))
+            .header("X-Auth-Email", ADMIN_EMAIL)
+            .POST(HttpRequest.BodyPublishers.noBody())
+            .build();
+    return http.send(req, HttpResponse.BodyHandlers.ofString());
+  }
+
   @Test
-  void cancellingARecordStopsOnlyWhatIsStillQueued() throws Exception {
+  void aHeldRecordKeepsItsQueuedWork() throws Exception {
     long recordId = seedJobs();
 
-    var resp = cancel("?recordId=" + recordId + "&reason=test");
+    var resp = hold(recordId, "?reason=bad+re-OCR");
 
     assertThat(resp.statusCode()).isEqualTo(200);
+    @SuppressWarnings("unchecked")
+    Map<String, Object> body = mapper.readValue(resp.body(), Map.class);
+    assertThat(body).containsEntry("held", true).containsEntry("cancelled", 0);
+    // Held like a paused stage, not a cancelled one: the work waits for the hold to lift.
+    assertThat(countStatus(recordId, "pending")).isEqualTo(1);
+    assertThat(countStatus(recordId, "claimed")).isEqualTo(1);
+    assertThat(
+            jdbc.sql("SELECT ai_hold_reason FROM record WHERE id = ?")
+                .params(recordId)
+                .query(String.class)
+                .single())
+        .isEqualTo("bad re-OCR");
+  }
+
+  @Test
+  void aHoldCanThrowAwayTheQueuedWorkWithIt() throws Exception {
+    long recordId = seedJobs();
+
+    var resp = hold(recordId, "?cancelQueued=true");
+
     @SuppressWarnings("unchecked")
     Map<String, Object> body = mapper.readValue(resp.body(), Map.class);
     assertThat(body).containsEntry("cancelled", 2);
     // The finished job is left exactly as it was: cancelling is not rewriting history.
     assertThat(countStatus(recordId, "completed")).isEqualTo(1);
     assertThat(countStatus(recordId, "failed")).isEqualTo(2);
+  }
+
+  @Test
+  void liftingTheHoldClearsTheReason() throws Exception {
+    long recordId = seedJobs();
+    hold(recordId, "?reason=temporary");
+
+    hold(recordId, "?hold=false");
+
+    assertThat(
+            jdbc.sql("SELECT count(*) FROM record WHERE id = ? AND ai_held_at IS NULL")
+                .params(recordId)
+                .query(Long.class)
+                .single())
+        .isEqualTo(1);
+  }
+
+  @Test
+  void holdingARecordThatDoesNotExistIs404() throws Exception {
+    assertThat(hold(-1L, "").statusCode()).isEqualTo(404);
+  }
+
+  @Test
+  void aHeldRecordsJobsAreNotClaimed() {
+    long recordId = seedJobs();
+    jdbc.sql("UPDATE record SET ai_held_at = now() WHERE id = ?").params(recordId).update();
+
+    // The claim query is the gate: a worker asking for translate_page work sees nothing of this
+    // record, so a broken document cannot spend money while it is being put right.
+    var claimed = jobService.claimJob("translate_page");
+
+    assertThat(claimed).isEmpty();
+  }
+
+  @Test
+  void liftingTheHoldLetsTheWorkThrough() {
+    long recordId = seedJobs();
+    jdbc.sql("UPDATE record SET ai_held_at = now() WHERE id = ?").params(recordId).update();
+    assertThat(jobService.claimJob("translate_page")).isEmpty();
+
+    jdbc.sql("UPDATE record SET ai_held_at = NULL WHERE id = ?").params(recordId).update();
+
+    assertThat(jobService.claimJob("translate_page"))
+        .get()
+        .extracting(place.icomb.archiver.model.Job::getRecordId)
+        .isEqualTo(recordId);
   }
 
   @Test
@@ -340,10 +418,9 @@ class AdminPipelineControllerTest {
   }
 
   @Test
-  void aCancelMustNameOneTargetOrTheOther() throws Exception {
-    // Neither, and both, are refused: the endpoint exists to stop a known thing, not to sweep.
+  void aCancelMustNameTheJob() throws Exception {
+    // A record's queued work is stopped through its AI hold, which also stops more being queued.
     assertThat(cancel("").statusCode()).isEqualTo(400);
-    assertThat(cancel("?jobId=1&recordId=2").statusCode()).isEqualTo(400);
   }
 
   @Test
@@ -361,5 +438,40 @@ class AdminPipelineControllerTest {
     Map<String, Object> body = mapper.readValue(resp.body(), Map.class);
     assertThat(body).containsEntry("cancelled", 0);
     assertThat(countStatus(recordId, "completed")).isEqualTo(1);
+  }
+
+  @Test
+  void jobsCanBeListedSoACancelHasAnIdToUse() throws Exception {
+    long recordId = seedJobs();
+
+    var req =
+        HttpRequest.newBuilder(URI.create(url("/api/admin/jobs?recordId=" + recordId)))
+            .header("X-Auth-Email", ADMIN_EMAIL)
+            .GET()
+            .build();
+    var resp = http.send(req, HttpResponse.BodyHandlers.ofString());
+
+    assertThat(resp.statusCode()).isEqualTo(200);
+    @SuppressWarnings("unchecked")
+    List<Map<String, Object>> jobs = mapper.readValue(resp.body(), List.class);
+    assertThat(jobs).hasSize(3);
+    assertThat(jobs.get(0)).containsKeys("id", "kind", "status", "recordId");
+  }
+
+  @Test
+  void theJobListingNarrowsToOneStatus() throws Exception {
+    long recordId = seedJobs();
+
+    var req =
+        HttpRequest.newBuilder(
+                URI.create(url("/api/admin/jobs?recordId=" + recordId + "&status=pending")))
+            .header("X-Auth-Email", ADMIN_EMAIL)
+            .GET()
+            .build();
+    var resp = http.send(req, HttpResponse.BodyHandlers.ofString());
+
+    @SuppressWarnings("unchecked")
+    List<Map<String, Object>> jobs = mapper.readValue(resp.body(), List.class);
+    assertThat(jobs).singleElement().extracting("kind").isEqualTo("translate_page");
   }
 }

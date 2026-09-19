@@ -261,6 +261,13 @@ docker build -f scraper-cz/Dockerfile -t dockerregistry.icomb.place/archiver/scr
 - Python linting: `ruff` (line-length 100, target py314)
 - Java formatting: `spotlessApply` (Google Java Format)
 
+## Driving the running system
+
+`.claude/skills/archiver-api/SKILL.md` documents the admin and read API, and the
+bearer-token recipe for calling it from the command line. **Use it rather than
+opening psql** — the production database is not an interface, and an endpoint
+that is missing is a reason to write one.
+
 ## Machine-Readable API (`/api/v1/`)
 
 Designed for LLM tool use — returns self-contained JSON with full text content and links.

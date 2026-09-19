@@ -23,18 +23,47 @@ public class ArchiverMcpTools {
   private final FamilyTreeService familyTreeService;
   private final PersonMatchService personMatchService;
   private final JdbcTemplate jdbcTemplate;
+  private final place.icomb.archiver.service.JobService jobService;
 
   public ArchiverMcpTools(
       ApiController apiController,
       SemanticSearchController semanticSearchController,
       FamilyTreeService familyTreeService,
       PersonMatchService personMatchService,
-      JdbcTemplate jdbcTemplate) {
+      JdbcTemplate jdbcTemplate,
+      place.icomb.archiver.service.JobService jobService) {
     this.apiController = apiController;
     this.semanticSearchController = semanticSearchController;
     this.familyTreeService = familyTreeService;
     this.personMatchService = personMatchService;
     this.jdbcTemplate = jdbcTemplate;
+    this.jobService = jobService;
+  }
+
+  /**
+   * Refuses anything but an administrator, and refuses when it cannot tell.
+   *
+   * <p>The MCP session filter grants {@code ROLE_ADMIN} to an administrator, so the caller's role
+   * is knowable here. It fails closed: if no authenticated context reaches the tool invocation the
+   * answer is no, which at worst makes a tool unusable and never leaves it unguarded.
+   */
+  private boolean isHeld(long recordId) {
+    return Boolean.TRUE.equals(
+        jdbcTemplate.queryForObject(
+            "SELECT ai_held_at IS NOT NULL FROM record WHERE id = ?", Boolean.class, recordId));
+  }
+
+  private void requireAdmin() {
+    var auth =
+        org.springframework.security.core.context.SecurityContextHolder.getContext()
+            .getAuthentication();
+    boolean admin =
+        auth != null
+            && auth.isAuthenticated()
+            && auth.getAuthorities().stream().anyMatch(a -> "ROLE_ADMIN".equals(a.getAuthority()));
+    if (!admin) {
+      throw new IllegalStateException("this tool is available to administrators only");
+    }
   }
 
   @McpTool(
@@ -272,6 +301,228 @@ public class ArchiverMcpTools {
       entry.put("pageCount", m.pageSeqs().size());
       out.add(entry);
     }
+    return out;
+  }
+
+  @McpTool(
+      name = "list_jobs",
+      title = "List Pipeline Jobs",
+      description =
+          "List processing jobs, newest first. Filter by record, page, kind or status "
+              + "(pending, claimed, completed, failed). This is how a job's id is found. "
+              + "Kinds include ocr_page_mistral, ocr_page_transkribus, translate_page, "
+              + "translate_record, build_searchable_pdf, embed_record, match_persons.",
+      annotations =
+          @McpTool.McpAnnotations(
+              title = "List Pipeline Jobs",
+              readOnlyHint = true,
+              destructiveHint = false))
+  public List<Map<String, Object>> listJobs(
+      @McpToolParam(description = "Filter by record id", required = false) Long recordId,
+      @McpToolParam(description = "Filter by page id", required = false) Long pageId,
+      @McpToolParam(description = "Filter by job kind", required = false) String kind,
+      @McpToolParam(description = "Filter by status", required = false) String status,
+      @McpToolParam(description = "Max rows, default 50, capped at 500", required = false)
+          Integer limit) {
+    int capped = limit == null ? 50 : Math.max(1, Math.min(limit, 500));
+    return jdbcTemplate.queryForList(
+        """
+        SELECT id, kind, status,
+               record_id  AS "recordId",
+               page_id    AS "pageId",
+               attempts,
+               created_at AS "createdAt",
+               finished_at AS "finishedAt",
+               left(error, 300) AS error
+          FROM job
+         WHERE (?::bigint IS NULL OR record_id = ?::bigint)
+           AND (?::bigint IS NULL OR page_id   = ?::bigint)
+           AND (?::text   IS NULL OR kind      = ?::text)
+           AND (?::text   IS NULL OR status    = ?::text)
+         ORDER BY id DESC
+         LIMIT ?
+        """,
+        recordId,
+        recordId,
+        pageId,
+        pageId,
+        kind,
+        kind,
+        status,
+        status,
+        capped);
+  }
+
+  /**
+   * The panic button, and the only writing tool exposed over MCP.
+   *
+   * <p>It is here because it is the one action worth taking immediately and from anywhere: a record
+   * left in a bad state — a transcription overwritten, a page emptied — otherwise goes on being
+   * translated, embedded and matched at cost per call. Holding it stops that without destroying
+   * anything: the queued jobs stay pending and run when the hold is lifted.
+   *
+   * <p>Everything that spends money or throws work away — re-OCR, cancelling jobs, importing a
+   * Transkribus collection — stays behind the admin token and off this interface.
+   */
+  @McpTool(
+      name = "hold_record",
+      title = "Hold or Release a Record's AI Processing",
+      description =
+          "Stop all AI processing for a record (OCR, translation, embedding, person matching), "
+              + "or lift a hold. Queued jobs are not cancelled: they wait and run when the hold "
+              + "is lifted. Use when a record is in a broken state and further processing would "
+              + "cost money reproducing the fault. Pass hold=false to release. Always give a "
+              + "reason: a hold without one is indistinguishable from a stuck record.",
+      annotations =
+          @McpTool.McpAnnotations(
+              title = "Hold or Release a Record's AI Processing",
+              readOnlyHint = false,
+              destructiveHint = false,
+              idempotentHint = true))
+  public Map<String, Object> holdRecord(
+      @McpToolParam(description = "Record id") Long recordId,
+      @McpToolParam(description = "Why it is being held") String reason,
+      @McpToolParam(description = "true to hold (default), false to release", required = false)
+          Boolean hold) {
+
+    requireAdmin();
+
+    boolean holding = hold == null || hold;
+    int updated =
+        holding
+            ? jdbcTemplate.update(
+                "UPDATE record SET ai_held_at = now(), ai_hold_reason = ? WHERE id = ?",
+                reason,
+                recordId)
+            : jdbcTemplate.update(
+                "UPDATE record SET ai_held_at = NULL, ai_hold_reason = NULL WHERE id = ?",
+                recordId);
+
+    if (updated == 0) {
+      return Map.of("error", "no record " + recordId);
+    }
+
+    Long waiting =
+        jdbcTemplate.queryForObject(
+            "SELECT count(*) FROM job WHERE record_id = ? AND status IN ('pending', 'claimed')",
+            Long.class,
+            recordId);
+
+    Map<String, Object> out = new LinkedHashMap<>();
+    out.put("recordId", recordId);
+    out.put("held", holding);
+    out.put("reason", reason);
+    out.put("jobsWaiting", waiting == null ? 0 : waiting);
+    return out;
+  }
+
+  @McpTool(
+      name = "cancel_job",
+      title = "Cancel One Queued Job",
+      description =
+          "Cancel a single pending or claimed job by its id — find the id with list_jobs. A "
+              + "finished job is left alone. To stop everything a record has queued, hold the "
+              + "record instead: cancelling its jobs without holding it only invites the "
+              + "pipeline to enqueue them again. Administrators only.",
+      annotations =
+          @McpTool.McpAnnotations(
+              title = "Cancel One Queued Job",
+              readOnlyHint = false,
+              destructiveHint = true))
+  public Map<String, Object> cancelJob(
+      @McpToolParam(description = "Job id, from list_jobs") Long jobId,
+      @McpToolParam(description = "Why it is being cancelled", required = false) String reason) {
+    requireAdmin();
+
+    List<Map<String, Object>> stopped =
+        jdbcTemplate.queryForList(
+            """
+            UPDATE job
+               SET status = 'failed', error = ?, finished_at = now()
+             WHERE id = ? AND status IN ('pending', 'claimed')
+            RETURNING id, kind, status, record_id AS "recordId", page_id AS "pageId"
+            """,
+            "cancelled via MCP" + (reason == null || reason.isBlank() ? "" : ": " + reason),
+            jobId);
+
+    return Map.of("cancelled", stopped.size(), "jobs", stopped);
+  }
+
+  @McpTool(
+      name = "reocr_page",
+      title = "Re-transcribe One Page",
+      description =
+          "Read one page again on a chosen engine and carry that page through translation, the "
+              + "record's PDF and re-embedding. Address it by recordId and seq, or by pageId. "
+              + "Choose the engine by what the page is: 'mistral' for print and typescript, "
+              + "where it reads several times more text than a handwriting model; 'transkribus' "
+              + "for handwriting. This costs money per call. Administrators only.",
+      annotations =
+          @McpTool.McpAnnotations(
+              title = "Re-transcribe One Page",
+              readOnlyHint = false,
+              destructiveHint = false))
+  public Map<String, Object> reocrPage(
+      @McpToolParam(description = "Record id, with seq", required = false) Long recordId,
+      @McpToolParam(description = "Page sequence within the record", required = false) Integer seq,
+      @McpToolParam(description = "Page id, instead of recordId and seq", required = false)
+          Long pageId,
+      @McpToolParam(description = "'mistral' for print, 'transkribus' for handwriting")
+          String engine) {
+    requireAdmin();
+
+    // The hold is checked before anything else that can fail, so a held record answers "held"
+    // rather than some incidental complaint about the page number.
+    if (recordId != null && isHeld(recordId)) {
+      return Map.of("error", "record " + recordId + " is on AI hold; release it first");
+    }
+
+    Long resolved = pageId;
+    if (resolved == null) {
+      if (recordId == null || seq == null) {
+        return Map.of("error", "give either pageId, or recordId and seq");
+      }
+      resolved =
+          jdbcTemplate
+              .query(
+                  "SELECT id FROM page WHERE record_id = ? AND seq = ?",
+                  (rs, i) -> rs.getLong(1),
+                  recordId,
+                  seq)
+              .stream()
+              .findFirst()
+              .orElse(null);
+      if (resolved == null) {
+        return Map.of("error", "no page %d in record %d".formatted(seq, recordId));
+      }
+    }
+
+    Long owner =
+        jdbcTemplate.queryForObject(
+            "SELECT record_id FROM page WHERE id = ?", Long.class, resolved);
+    if (owner == null) {
+      return Map.of("error", "no page " + resolved);
+    }
+    if (isHeld(owner)) {
+      // Queueing work for a held record would sit pending until the hold lifts, then run — which
+      // is exactly what the hold was put on to prevent.
+      return Map.of("error", "record " + owner + " is on AI hold; release it first");
+    }
+
+    String kind =
+        "transkribus".equalsIgnoreCase(engine)
+            ? "ocr_page_transkribus"
+            : (engine != null && engine.startsWith("ocr_page_") ? engine : "ocr_page_mistral");
+    String lang =
+        jdbcTemplate.queryForObject("SELECT lang FROM record WHERE id = ?", String.class, owner);
+
+    jobService.enqueueJob(
+        kind, owner, resolved, "{\"lang\":\"%s\",\"andThen\":\"full\"}".formatted(lang));
+
+    Map<String, Object> out = new LinkedHashMap<>();
+    out.put("recordId", owner);
+    out.put("pageId", resolved);
+    out.put("jobKind", kind);
     return out;
   }
 }
