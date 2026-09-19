@@ -64,11 +64,24 @@ public class TranskribusImportService {
   /**
    * Imports every transcript in a Transkribus document.
    *
+   * <p>Two refusals, because a transcription lost cannot be recovered from {@code
+   * page_ocr_history}, which keeps the engine and a character count but never the text:
+   *
+   * <ul>
+   *   <li>a <em>shorter</em> transcript from a different engine — usually a model meeting a page
+   *       type it suits badly — needs {@code overwrite};
+   *   <li>a transcript identical to the stored text is not rewritten, since advancing the page
+   *       would re-translate, rebuild and re-embed at cost for no change.
+   * </ul>
+   *
    * @param advance whether each imported page should then be re-translated, have the record's PDF
    *     rebuilt and the record re-embedded
+   * @param overwrite allow a shorter transcription from a different engine to replace the stored
+   *     one
    */
   public List<PageOutcome> importDocument(
-      TranskribusTrpClient client, int collId, long docId, boolean advance) throws Exception {
+      TranskribusTrpClient client, int collId, long docId, boolean advance, boolean overwrite)
+      throws Exception {
 
     var outcomes = new ArrayList<PageOutcome>();
 
@@ -123,6 +136,36 @@ public class TranskribusImportService {
         continue;
       }
 
+      String engine = modelId > 0 ? "transkribus:" + modelId : "transkribus";
+      var existing = pageTextRepository.findCurrentByPageId(pageId).orElse(null);
+      if (existing != null) {
+        String stored = existing.getTextRaw() == null ? "" : existing.getTextRaw();
+        if (text.equals(stored)) {
+          outcomes.add(
+              new PageOutcome(
+                  ref.imageFileName(),
+                  recordId,
+                  seq,
+                  modelId,
+                  text.length(),
+                  "skipped: already stored, unchanged"));
+          continue;
+        }
+        boolean differentEngine = !engine.equals(existing.getEngine());
+        if (differentEngine && text.length() < stored.length() && !overwrite) {
+          outcomes.add(
+              new PageOutcome(
+                  ref.imageFileName(),
+                  recordId,
+                  seq,
+                  modelId,
+                  text.length(),
+                  "skipped: %s holds %d characters, this transcript has %d — pass overwrite=true"
+                      .formatted(existing.getEngine(), stored.length(), text.length())));
+          continue;
+        }
+      }
+
       // Replace rather than append: page_text is UNIQUE on page_id, and the history trigger copies
       // the outgoing transcription into page_ocr_history, so the engine that got it wrong stays on
       // the record even though its text does not.
@@ -132,7 +175,7 @@ public class TranskribusImportService {
       pt.setPageId(pageId);
       // The model is part of the provenance: a free community model and a paid super model are not
       // the same evidence, and this one comes from the XML rather than from what we assume ran.
-      pt.setEngine(modelId > 0 ? "transkribus:" + modelId : "transkribus");
+      pt.setEngine(engine);
       pt.setContentType(OcrContentType.PLAIN);
       pt.setTextRaw(text);
       pt.setHocr(pageXml);

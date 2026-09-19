@@ -70,7 +70,9 @@ public class AdminPipelineController {
   public ResponseEntity<?> importTranskribus(
       @RequestParam(required = false) Integer collId,
       @RequestParam(required = false) Long docId,
-      @RequestParam(defaultValue = "true") boolean advance) {
+      @RequestParam(defaultValue = "true") boolean advance,
+      @RequestParam(defaultValue = "false") boolean all,
+      @RequestParam(defaultValue = "false") boolean overwrite) {
 
     var config = transkribusConfig();
     if (config.isEmpty()) {
@@ -89,16 +91,27 @@ public class AdminPipelineController {
       var docIds = new java.util.ArrayList<Long>();
       if (docId != null) {
         docIds.add(docId);
-      } else {
+      } else if (all) {
         for (var doc : client.listDocuments(collection)) {
           docIds.add(doc.path("docId").asLong());
         }
+      } else {
+        // The collection accumulates every document ever uploaded, so importing it whole puts
+        // each one back over whatever the archive holds now. A sweep has to be asked for.
+        return ResponseEntity.badRequest()
+            .body(
+                Map.of(
+                    "error",
+                    "give docId, or pass all=true to import the whole collection",
+                    "hint",
+                    "the collection holds every document ever uploaded, including models run on"
+                        + " page types they suit badly"));
       }
 
       var results = new java.util.LinkedHashMap<String, Object>();
       int imported = 0;
       for (Long id : docIds) {
-        var outcomes = transkribusImport.importDocument(client, collection, id, advance);
+        var outcomes = transkribusImport.importDocument(client, collection, id, advance, overwrite);
         results.put(String.valueOf(id), outcomes);
         imported += (int) outcomes.stream().filter(o -> "imported".equals(o.outcome())).count();
       }
@@ -142,6 +155,67 @@ public class AdminPipelineController {
    * <p>The existing transcription is deleted, which the {@code page_ocr_history} trigger preserves,
    * so the engine that got it wrong stays on the record.
    */
+  /**
+   * Cancels queued work.
+   *
+   * <p>Only {@code pending} and {@code claimed} jobs are touched, never a finished one, and the
+   * call must name what it is cancelling: a kind, a record, or both. "Everything recent" is too
+   * blunt to be offered.
+   */
+  @PostMapping("/cancel-jobs")
+  public ResponseEntity<Map<String, Object>> cancelJobs(
+      @RequestParam(required = false) String kind,
+      @RequestParam(required = false) Long recordId,
+      @RequestParam(defaultValue = "60") int withinMinutes,
+      @RequestParam(required = false) String reason) {
+
+    if (kind == null && recordId == null) {
+      return ResponseEntity.badRequest()
+          .body(Map.of("error", "name what to cancel: kind, recordId, or both"));
+    }
+    if (withinMinutes < 1 || withinMinutes > 1440) {
+      return ResponseEntity.badRequest().body(Map.of("error", "withinMinutes must be 1..1440"));
+    }
+
+    String note =
+        "cancelled via /api/admin/cancel-jobs"
+            + (reason == null || reason.isBlank() ? "" : ": " + reason);
+
+    int cancelled =
+        jdbcTemplate.update(
+            """
+            UPDATE job
+               SET status = 'failed', error = ?, finished_at = now()
+             WHERE status IN ('pending', 'claimed')
+               AND created_at > now() - make_interval(mins => ?)
+               AND (? IS NULL OR kind = ?)
+               AND (?::bigint IS NULL OR record_id = ?::bigint)
+            """,
+            note,
+            withinMinutes,
+            kind,
+            kind,
+            recordId,
+            recordId);
+
+    log.info(
+        "Cancelled {} job(s): kind={} record={} within={}min",
+        cancelled,
+        kind,
+        recordId,
+        withinMinutes);
+    return ResponseEntity.ok(
+        Map.of(
+            "cancelled",
+            cancelled,
+            "kind",
+            String.valueOf(kind),
+            "recordId",
+            String.valueOf(recordId),
+            "withinMinutes",
+            withinMinutes));
+  }
+
   @PostMapping("/reocr-page")
   public ResponseEntity<Map<String, Object>> reocrPage(
       @RequestParam(required = false) Long recordId,
@@ -224,7 +298,9 @@ public class AdminPipelineController {
       return ResponseEntity.status(500).body(Map.of("error", "could not build payload"));
     }
 
-    jdbcTemplate.update("DELETE FROM page_text WHERE page_id = ?", resolvedPageId);
+    // The existing transcription stays until a new one arrives. Both writers delete the page's row
+    // immediately before inserting their own, so deleting here buys nothing and costs the page its
+    // text whenever the job then fails.
     jobService.enqueueJob(jobKind, resolvedRecordId, resolvedPageId, payloadJson);
     jdbcTemplate.execute("NOTIFY ocr_jobs");
 
