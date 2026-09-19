@@ -2207,3 +2207,31 @@ man's account. The officer who supplied the planted pistol is identified by name
 photograph; two of the three men in the room are recorded as having been imprisoned for what they
 did; and the Czech authorities independently listed the same men among the worst of that office. It
 is a corroborated state record of a Gestapo operation against the applicant's first cousin.
+
+### 19 September 2026 — what the Felix pack was turned into, and what is deliberately not being chased
+
+Record 4006 came from Hubertus Trauttenberg, who says he had the copies from the
+DÖW around 2015 and holds nothing further (Zimbra 464752). Reading it in full on
+18 September produced four requests, each aimed at where the document class
+should be held now rather than at the pack itself:
+
+| What the pack shows | Asked of | Reference |
+|---|---|---|
+| Meldeblatt and Begutachtungskommission, M.Nr. 3315/IV. Bez. | WStLA | form **2026-1809203348262** |
+| § 27 Nachsichtsgesuch, Zl. 13.413-2 N/1945, decided 5.1.1946 | WStLA | same form |
+| 1947 Leithner application, its **6 Beilagen** and the decision | WStLA | same form, enclosure list and folio counts asked for by name |
+| Zentralregistrierung as victim of Nazi terror, Nr. 38.835 (MA 62) | WStLA | Zimbra **464801**, added to 2026-1609131617490, all six siblings |
+| The Hoch- und Landesverrat charge, never tried | Bundesarchiv R 3017, **R 3018**, R 58 | Zimbra **464803** |
+| Thurn und Taxis as Leiter der Geschäftsstelle im Generalsekretariat O 5 | DÖW | Zimbra **464805** |
+
+The WStLA form orders the digitisation of the whole file in advance to EUR 200,
+so it returns in one pass instead of after a quotation.
+
+**Ruled out, 19 September:** the Semperit company archive behind Fred Herok's
+statement (page 14), and the practice files of the two lawyers, Dr Karl
+Trauttmansdorff and Dr Anton Leithner. Not to be proposed again.
+
+**Still open as leads:** the *Vereinigung ehemaliger österreichischer
+Widerstandsbewegungen* (page 3), whose attestation says what was certified about
+Felix and on whose word; and Rossauer Kaserne detention records for March-April
+1945 (page 6).
