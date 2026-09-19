@@ -26,20 +26,30 @@ wanted is the card.
 ```
 Sehr geehrte Damen und Herren,
 
-ich ersuche um Auskunft über die Wehrstammkarte und sonstige
-personenbezogenen Unterlagen zu
+ich ersuche um Auskunft über die Wehrstammkarten und sonstigen
+personenbezogenen Unterlagen zu den sechs Kindern des Paul Graf Czernin
+von Chudenic:
 
-  Alexander Friedrich Josef Paul Maria Graf Czernin von Chudenic,
-  geb. 30. April 1913 in Wien,
-  Diplomingenieur, zuletzt gemeldet Wien III., Metternichgasse 10,
-  Abmeldung in Wien am 12. Februar 1940 "als zum Militär".
+  Felix Theobald Paul Anton Maria, geb.  7.3.1902 in Hlusice
+  Wolfgang,                        geb.  4.8.1903
+  Anna,                            geb. 26.5.1907
+  Jan (Johannes),                  geb.  8.3.1910
+  Franziska, verehel. Koblitz von Willmburg, geb. 8.3.1910
+  Alexander Friedrich Josef Paul Maria, geb. 30.4.1913 in Wien
 
-Aus einem Schreiben vom 22. Februar 1942 führt er sich selbst als
+Zu Alexander liegen die genauesten Angaben vor: Diplomingenieur, zuletzt
+gemeldet Wien III., Metternichgasse 10, Abmeldung in Wien am
+12. Februar 1940 "als zum Militär". Aus einem Schreiben vom
+22. Februar 1942 führt er sich selbst als
 "Dipl.Ing. Alexander Graf Czernin, Truppen-Ingenieur" mit der Nummer
 17 578. Ich vermute, dass es sich dabei um die Feldpostnummer handelt,
 und ersuche gegebenenfalls um Mitteilung der zugehörigen Einheit.
 
-Erbeten wird insbesondere:
+Bei den beiden Schwestern ersuche ich um Prüfung nur insoweit, als
+Unterlagen über einen Einsatz als Wehrmachthelferin oder im
+Reichsarbeitsdienst vorliegen.
+
+Erbeten wird zu jeder Person insbesondere:
 
 - die Wehrstammkarte bzw. das Wehrstammbuch und die Erkennungsmarken-
   bzw. Kriegsstammrollenauszüge;
