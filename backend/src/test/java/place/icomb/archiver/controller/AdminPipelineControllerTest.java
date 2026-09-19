@@ -474,4 +474,81 @@ class AdminPipelineControllerTest {
     List<Map<String, Object>> jobs = mapper.readValue(resp.body(), List.class);
     assertThat(jobs).singleElement().extracting("kind").isEqualTo("translate_page");
   }
+
+  // --- catalogue ---------------------------------------------------------------------------
+
+  // Titles here keep the "ReOCR" prefix: setUp() cleans this suite's records by title, and a
+  // record renamed out of that pattern survives and blocks the archive delete behind it.
+  private HttpResponse<String> catalogue(long recordId, String query) throws Exception {
+    var req =
+        HttpRequest.newBuilder(
+                URI.create(url("/api/admin/records/" + recordId + "/catalogue" + query)))
+            .header("X-Auth-Email", ADMIN_EMAIL)
+            .POST(HttpRequest.BodyPublishers.noBody())
+            .build();
+    return http.send(req, HttpResponse.BodyHandlers.ofString());
+  }
+
+  @Test
+  void aTitleCanBeCorrected() throws Exception {
+    long recordId = seedJobs();
+
+    var resp = catalogue(recordId, "?title=ReOCR+Felix+Czernin+%E2%80%94+Akt+M.Nr.+3315");
+
+    assertThat(resp.statusCode()).isEqualTo(200);
+    assertThat(
+            jdbc.sql("SELECT title FROM record WHERE id = ?")
+                .params(recordId)
+                .query(String.class)
+                .single())
+        .isEqualTo("ReOCR Felix Czernin — Akt M.Nr. 3315");
+  }
+
+  @Test
+  void whatIsNotGivenIsLeftAlone() throws Exception {
+    long recordId = seedJobs();
+    jdbc.sql("UPDATE record SET description = 'original description' WHERE id = ?")
+        .params(recordId)
+        .update();
+
+    catalogue(recordId, "?title=ReOCR+new+title");
+
+    assertThat(
+            jdbc.sql("SELECT description FROM record WHERE id = ?")
+                .params(recordId)
+                .query(String.class)
+                .single())
+        .isEqualTo("original description");
+  }
+
+  @Test
+  void theEnglishIsClearedSoItCannotDescribeTheOldText() throws Exception {
+    long recordId = seedJobs();
+    jdbc.sql("UPDATE record SET title_en = 'stale english title' WHERE id = ?")
+        .params(recordId)
+        .update();
+
+    catalogue(recordId, "?title=ReOCR+corrected");
+
+    assertThat(
+            jdbc.sql("SELECT count(*) FROM record WHERE id = ? AND title_en IS NULL")
+                .params(recordId)
+                .query(Long.class)
+                .single())
+        .isEqualTo(1);
+    // ...and re-translated, rather than left blank.
+    assertThat(
+            jdbc.sql("SELECT count(*) FROM job WHERE record_id = ? AND kind = 'translate_record'")
+                .params(recordId)
+                .query(Long.class)
+                .single())
+        .isEqualTo(1);
+  }
+
+  @Test
+  void aCatalogueCallMustChangeSomething() throws Exception {
+    long recordId = seedJobs();
+
+    assertThat(catalogue(recordId, "").statusCode()).isEqualTo(400);
+  }
 }

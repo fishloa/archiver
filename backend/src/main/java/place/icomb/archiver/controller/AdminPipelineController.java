@@ -209,6 +209,63 @@ public class AdminPipelineController {
   }
 
   /**
+   * Corrects a record's catalogue entry.
+   *
+   * <p>Title and description are not notes. They head every PDF this archive exports, so anything
+   * editorial written into them travels with the document to whoever it is sent — where an argument
+   * about the contents has no business being. Findings belong in the research log; the catalogue
+   * says what the thing is.
+   *
+   * <p>Only the fields given are changed; the rest are left alone.
+   */
+  @PostMapping("/records/{recordId}/catalogue")
+  public ResponseEntity<Map<String, Object>> updateCatalogue(
+      @PathVariable Long recordId,
+      @RequestParam(required = false) String title,
+      @RequestParam(required = false) String description,
+      @RequestParam(required = false) String referenceCode) {
+
+    if (title == null && description == null && referenceCode == null) {
+      return ResponseEntity.badRequest()
+          .body(Map.of("error", "give at least one of title, description, referenceCode"));
+    }
+
+    int updated =
+        jdbcTemplate.update(
+            """
+            UPDATE record
+               SET title          = coalesce(?, title),
+                   description    = coalesce(?, description),
+                   reference_code = coalesce(?, reference_code),
+                   updated_at     = now()
+             WHERE id = ?
+            """,
+            title,
+            description,
+            referenceCode,
+            recordId);
+
+    if (updated == 0) {
+      return ResponseEntity.status(404).body(Map.of("error", "no record " + recordId));
+    }
+
+    // The English title and description are translations of what has just changed, so they are
+    // cleared rather than left describing the old text; translate_record writes them again.
+    jdbcTemplate.update(
+        "UPDATE record SET title_en = NULL, description_en = NULL WHERE id = ?", recordId);
+    jobService.enqueueJob("translate_record", recordId, null, null);
+
+    log.info("Catalogue updated for record {}", recordId);
+    return ResponseEntity.ok(
+        jdbcTemplate.queryForMap(
+            """
+            SELECT id, title, description, reference_code AS "referenceCode"
+              FROM record WHERE id = ?
+            """,
+            recordId));
+  }
+
+  /**
    * Lists jobs, so the id a cancel needs can be found.
    *
    * <p>Without this the only way to see the queue was to open a database session, which is not an
