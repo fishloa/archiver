@@ -9,6 +9,17 @@ new revision, no build is triggered, and the release silently never happens —
 which is exactly what v1.0.0 did on its first attempt. Add the entry below,
 commit, then tag that commit.
 
+## v1.1.5 — 19 September 2026
+
+**`POST /api/admin/cancel-jobs` addresses a job or a record, never a pattern.**
+The `kind` and `withinMinutes` filter shipped in v1.1.4 cancels whatever happens
+to match at the moment it runs, including work queued by something else that is
+going along fine. It now takes exactly one of `jobId` or `recordId`, refuses
+neither-or-both, and returns the jobs it stopped. Pending and claimed only; a
+finished job is left as it was.
+
+408 tests, 0 failures.
+
 ## v1.1.4 — 19 September 2026
 
 **The Transkribus import can no longer lose work.** A collection holds every
