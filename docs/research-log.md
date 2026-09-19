@@ -2261,3 +2261,34 @@ it as arrival 26th, first Gestapo visit 27th, arrest 28th.
 
 **Still open as a lead:** Rossauer Kaserne detention records for March-April 1945
 (page 6), which no outstanding request would return.
+
+### 19 September 2026 — two gaps closed, and one question deliberately left unasked
+
+**Alexander's military record had never been asked for.** The Militärarchiv letter
+of 15 September concerns Felix and the Abwehr. Hubertus Trauttenberg supplied the
+missing idea — *"one had to find his Wehrstammkarte"* — and record 3505 page 30
+supplies the handle: his own letter of 22 February 1942 heads itself *"Dipl.Ing.
+Alexander Graf Czernin, Truppen-Ingenieur, 17 578"*, which reads as a
+Feldpostnummer and would identify the unit. Sent to Bundesarchiv Abteilung PA,
+the former Deutsche Dienststelle (Zimbra **464913**), for all six siblings, asking
+among other things for *"allfällige gerichtliche oder disziplinarrechtliche
+Vorgänge sowie Vermerke über Fahndungen"*. Desertion appears there without the
+word being used: an archive asked a leading question answers the question.
+
+**The Staatskanzlei's own § 27 file was never asked for either.** The WStLA
+request of 18 September buys the Magistrat's side. The submission was lodged with
+the Staatsamt für Inneres (record 4006 page 7) and the Staatskanzlei referred it
+onward under **Zl. 13.413-2 N/1945** (page 12) — a different authority's file,
+which should hold the submission as lodged and the Staatsregierung's decision.
+Sent to the Archiv der Republik, Zimbra **464915**.
+
+**Not asked, and the reasoning is worth keeping.** Whether § 27 files exist for
+the other five siblings, Alexander included. Such a file exists only because the
+applicant fell under the registration duty, which attached to membership or
+candidacy in the NSDAP, SS, SA, NSKK or NSFK — so the question asks an Austrian
+federal archive, in writing, whether these people were National Socialists. A nil
+proves little, since AdR holds the Staatskanzlei's side and not the municipal
+registration lists; a hit would be handed to the state that decides the
+application, unprompted. MA 35 has no reason today to think Alexander was a
+member. The applicant's judgement, and it is right: *"why risk being told
+otherwise, its only downside, by asking"*.

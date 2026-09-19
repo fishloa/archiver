@@ -1,12 +1,10 @@
 # Two drafts — 19 September 2026
 
-**Status: DRAFTS, NOT SENT.**
+**Both sent 19 September 2026** — Bundesarchiv Abt. PA as Zimbra **464913**, ÖStA Archiv der Republik as Zimbra **464915**.
 
 ## A. Bundesarchiv Abteilung PA — Alexander's Wehrstammkarte
 
-**To:** `pa@bundesarchiv.de` *(Bundesarchiv, Abteilung PA, Eichborndamm 179,
-13403 Berlin — the former Deutsche Dienststelle/WASt; address to be confirmed
-before sending)*
+**To:** `pa@bundesarchiv.de` — Bundesarchiv, Abteilung PA, Eichborndamm 179, 13403 Berlin, the former Deutsche Dienststelle/WASt. The letter points at the signed Benutzungsantrag of 16 September and offers a separate one if this matter needs it.
 
 Prompted by Hubertus Trauttenberg, 19 September: *"One had to find his
 Wehrstammkarte which might be in some archive in the country where he was living
