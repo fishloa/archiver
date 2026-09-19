@@ -258,4 +258,108 @@ class AdminPipelineControllerTest {
     // May be 0 or more depending on pre-existing data, but should not error
     assertThat(body).containsKey("jobsEnqueued");
   }
+
+  // --- cancel-jobs -------------------------------------------------------------------------
+
+  /** A record with three jobs on it: two still queued, one already finished. */
+  private long seedJobs() {
+    Long archiveId =
+        jdbc.sql("INSERT INTO archive (name) VALUES ('ReOCR TestArchive') RETURNING id")
+            .query(Long.class)
+            .single();
+    Long recordId =
+        jdbc.sql(
+                """
+                INSERT INTO record (archive_id, source_system, source_record_id, title, status,
+                                    lang, metadata_lang)
+                VALUES (?, 'test', ?, 'ReOCR cancel', 'ocr_pending', 'de', 'de')
+                RETURNING id
+                """)
+            .params(archiveId, "cancel-" + System.nanoTime())
+            .query(Long.class)
+            .single();
+    jdbc.sql("INSERT INTO job (kind, record_id, status) VALUES ('translate_page', ?, 'pending')")
+        .params(recordId)
+        .update();
+    jdbc.sql("INSERT INTO job (kind, record_id, status) VALUES ('embed_record', ?, 'claimed')")
+        .params(recordId)
+        .update();
+    jdbc.sql("INSERT INTO job (kind, record_id, status) VALUES ('embed_record', ?, 'completed')")
+        .params(recordId)
+        .update();
+    return recordId;
+  }
+
+  private HttpResponse<String> cancel(String query) throws Exception {
+    var req =
+        HttpRequest.newBuilder(URI.create(url("/api/admin/cancel-jobs" + query)))
+            .header("X-Auth-Email", ADMIN_EMAIL)
+            .POST(HttpRequest.BodyPublishers.noBody())
+            .build();
+    return http.send(req, HttpResponse.BodyHandlers.ofString());
+  }
+
+  private long countStatus(long recordId, String status) {
+    return jdbc.sql("SELECT count(*) FROM job WHERE record_id = ? AND status = ?")
+        .params(recordId, status)
+        .query(Long.class)
+        .single();
+  }
+
+  @Test
+  void cancellingARecordStopsOnlyWhatIsStillQueued() throws Exception {
+    long recordId = seedJobs();
+
+    var resp = cancel("?recordId=" + recordId + "&reason=test");
+
+    assertThat(resp.statusCode()).isEqualTo(200);
+    @SuppressWarnings("unchecked")
+    Map<String, Object> body = mapper.readValue(resp.body(), Map.class);
+    assertThat(body).containsEntry("cancelled", 2);
+    // The finished job is left exactly as it was: cancelling is not rewriting history.
+    assertThat(countStatus(recordId, "completed")).isEqualTo(1);
+    assertThat(countStatus(recordId, "failed")).isEqualTo(2);
+  }
+
+  @Test
+  void cancellingOneJobLeavesTheRecordsOtherWorkAlone() throws Exception {
+    long recordId = seedJobs();
+    Long jobId =
+        jdbc.sql("SELECT id FROM job WHERE record_id = ? AND kind = 'translate_page'")
+            .params(recordId)
+            .query(Long.class)
+            .single();
+
+    var resp = cancel("?jobId=" + jobId);
+
+    assertThat(resp.statusCode()).isEqualTo(200);
+    @SuppressWarnings("unchecked")
+    Map<String, Object> body = mapper.readValue(resp.body(), Map.class);
+    assertThat(body).containsEntry("cancelled", 1);
+    assertThat(countStatus(recordId, "claimed")).isEqualTo(1);
+  }
+
+  @Test
+  void aCancelMustNameOneTargetOrTheOther() throws Exception {
+    // Neither, and both, are refused: the endpoint exists to stop a known thing, not to sweep.
+    assertThat(cancel("").statusCode()).isEqualTo(400);
+    assertThat(cancel("?jobId=1&recordId=2").statusCode()).isEqualTo(400);
+  }
+
+  @Test
+  void cancellingSomethingAlreadyFinishedChangesNothing() throws Exception {
+    long recordId = seedJobs();
+    Long done =
+        jdbc.sql("SELECT id FROM job WHERE record_id = ? AND status = 'completed'")
+            .params(recordId)
+            .query(Long.class)
+            .single();
+
+    var resp = cancel("?jobId=" + done);
+
+    @SuppressWarnings("unchecked")
+    Map<String, Object> body = mapper.readValue(resp.body(), Map.class);
+    assertThat(body).containsEntry("cancelled", 0);
+    assertThat(countStatus(recordId, "completed")).isEqualTo(1);
+  }
 }
