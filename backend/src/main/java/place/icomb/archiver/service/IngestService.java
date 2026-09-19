@@ -134,8 +134,8 @@ public class IngestService {
             .findById(recordId)
             .orElseThrow(() -> new IllegalArgumentException("Record not found: " + recordId));
 
-    String path = storageService.storePageImage(recordId, seq, imageBytes);
     String sha256 = sha256(imageBytes);
+    String path = storageService.storePageImage(recordId, seq, imageBytes, sha256);
 
     Attachment attachment = new Attachment();
     attachment.setRecordId(recordId);
@@ -457,8 +457,8 @@ public class IngestService {
         }
 
         // Store image
-        String path = storageService.storePageImage(recordId, seq, imageBytes);
         String sha = sha256(imageBytes);
+        String path = storageService.storePageImage(recordId, seq, imageBytes, sha);
 
         Attachment attachment = new Attachment();
         attachment.setRecordId(recordId);

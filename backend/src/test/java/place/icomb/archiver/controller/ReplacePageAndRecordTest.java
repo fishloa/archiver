@@ -464,4 +464,41 @@ class ReplacePageAndRecordTest {
     assertThat(delete.statusCode()).isIn(401, 403);
     assertThat(seqs(recordId)).containsExactly(1, 2);
   }
+
+  @Test
+  void aninsertedPageDoesNotOverwriteTheFileOfThePageItDisplaces() throws Exception {
+    // The sequence is not a unique file name: inserting renumbers the pages after it, so two live
+    // pages could compute the same path and the second write destroyed the first. Seven pages of
+    // one record ended up showing their neighbour's image that way.
+    long recordId = recordWithPages(3);
+
+    insertPage(recordId, 2, "the inserted page".getBytes(StandardCharsets.UTF_8));
+
+    java.util.List<String> paths =
+        jdbc.sql(
+                "SELECT a.path FROM page p JOIN attachment a ON a.id = p.attachment_id"
+                    + " WHERE p.record_id = :rid ORDER BY p.seq")
+            .param("rid", recordId)
+            .query(String.class)
+            .list();
+
+    assertThat(paths).hasSize(4).doesNotHaveDuplicates();
+  }
+
+  @Test
+  void replacingAPageDoesNotCollideWithAnyOtherPagesFile() throws Exception {
+    long recordId = recordWithPages(3);
+
+    replacePage(recordId, 2, "replacement bytes".getBytes(StandardCharsets.UTF_8));
+
+    java.util.List<String> paths =
+        jdbc.sql(
+                "SELECT a.path FROM page p JOIN attachment a ON a.id = p.attachment_id"
+                    + " WHERE p.record_id = :rid ORDER BY p.seq")
+            .param("rid", recordId)
+            .query(String.class)
+            .list();
+
+    assertThat(paths).hasSize(3).doesNotHaveDuplicates();
+  }
 }

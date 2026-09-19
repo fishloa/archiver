@@ -51,7 +51,7 @@ class StorageServiceTest {
       throws Exception {
     StorageService service = new StorageService(writable, archive);
 
-    String stored = service.storePageImage(7L, 1, "new".getBytes());
+    String stored = service.storePageImage(7L, 1, "new".getBytes(), "abcdef1234567890");
 
     assertThat(writable.resolve(stored)).exists();
     assertThat(archive.resolve(stored)).doesNotExist();
@@ -72,5 +72,19 @@ class StorageServiceTest {
 
     assertThat(service.getPath(at("records/9/missing.jpg")))
         .isEqualTo(writable.resolve("records/9/missing.jpg"));
+  }
+
+  @Test
+  void twoPagesOfOneRecordNeverShareAFile(@TempDir Path writable) {
+    // The sequence is not unique across an insert, which renumbers the pages after it. The digest
+    // is what keeps one page's image from being written over another's.
+    StorageService service = new StorageService(writable, (Path) null);
+
+    String first = service.storePageImage(4006L, 12, "left half".getBytes(), "aaaaaaaa1111");
+    String second = service.storePageImage(4006L, 12, "right half".getBytes(), "bbbbbbbb2222");
+
+    assertThat(first).isNotEqualTo(second);
+    assertThat(writable.resolve(first)).exists();
+    assertThat(writable.resolve(second)).exists();
   }
 }

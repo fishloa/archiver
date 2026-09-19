@@ -60,8 +60,15 @@ public class StorageService {
    * Stores a page image and returns the relative path from the storage root. Path format:
    * records/{recordId}/attachments/pages/p{seq:04d}.jpg
    */
-  public String storePageImage(Long recordId, int seq, byte[] imageBytes) {
-    String relativePath = String.format("records/%d/attachments/pages/p%04d.jpg", recordId, seq);
+  public String storePageImage(Long recordId, int seq, byte[] imageBytes, String sha256) {
+    // The sequence alone is not a unique name. Inserting a page renumbers the ones after it, so
+    // two live pages can compute the same file and the second write destroys the first — which is
+    // what happened to record 4006 on 19 September 2026: seven pages ended up showing their
+    // neighbour's image. The digest makes the name unique to the bytes; the sequence stays in it
+    // so a directory listing is still readable.
+    String suffix = sha256 == null || sha256.length() < 8 ? "" : "-" + sha256.substring(0, 8);
+    String relativePath =
+        String.format("records/%d/attachments/pages/p%04d%s.jpg", recordId, seq, suffix);
     writeFile(relativePath, imageBytes);
     return relativePath;
   }
