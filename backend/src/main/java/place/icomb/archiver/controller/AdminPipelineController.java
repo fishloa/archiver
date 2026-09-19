@@ -156,64 +156,55 @@ public class AdminPipelineController {
    * so the engine that got it wrong stays on the record.
    */
   /**
-   * Cancels queued work.
+   * Stops queued work: one job, or everything still queued for one record.
    *
-   * <p>Only {@code pending} and {@code claimed} jobs are touched, never a finished one, and the
-   * call must name what it is cancelling: a kind, a record, or both. "Everything recent" is too
-   * blunt to be offered.
+   * <p>Addressed by identity, never by pattern. A kind-and-time filter cancels whatever happens to
+   * match at the moment it runs, including work queued by something else that is going along fine.
+   *
+   * <p>Only {@code pending} and {@code claimed} jobs are touched; a finished job is left alone.
    */
   @PostMapping("/cancel-jobs")
   public ResponseEntity<Map<String, Object>> cancelJobs(
-      @RequestParam(required = false) String kind,
+      @RequestParam(required = false) Long jobId,
       @RequestParam(required = false) Long recordId,
-      @RequestParam(defaultValue = "60") int withinMinutes,
       @RequestParam(required = false) String reason) {
 
-    if (kind == null && recordId == null) {
+    if ((jobId == null) == (recordId == null)) {
       return ResponseEntity.badRequest()
-          .body(Map.of("error", "name what to cancel: kind, recordId, or both"));
-    }
-    if (withinMinutes < 1 || withinMinutes > 1440) {
-      return ResponseEntity.badRequest().body(Map.of("error", "withinMinutes must be 1..1440"));
+          .body(Map.of("error", "give exactly one of jobId or recordId"));
     }
 
     String note =
         "cancelled via /api/admin/cancel-jobs"
             + (reason == null || reason.isBlank() ? "" : ": " + reason);
 
-    int cancelled =
-        jdbcTemplate.update(
-            """
-            UPDATE job
-               SET status = 'failed', error = ?, finished_at = now()
-             WHERE status IN ('pending', 'claimed')
-               AND created_at > now() - make_interval(mins => ?)
-               AND (? IS NULL OR kind = ?)
-               AND (?::bigint IS NULL OR record_id = ?::bigint)
-            """,
-            note,
-            withinMinutes,
-            kind,
-            kind,
-            recordId,
-            recordId);
+    List<Map<String, Object>> stopped;
+    if (jobId != null) {
+      stopped =
+          jdbcTemplate.queryForList(
+              """
+              UPDATE job
+                 SET status = 'failed', error = ?, finished_at = now()
+               WHERE id = ? AND status IN ('pending', 'claimed')
+              RETURNING id, kind, record_id, page_id
+              """,
+              note,
+              jobId);
+    } else {
+      stopped =
+          jdbcTemplate.queryForList(
+              """
+              UPDATE job
+                 SET status = 'failed', error = ?, finished_at = now()
+               WHERE record_id = ? AND status IN ('pending', 'claimed')
+              RETURNING id, kind, record_id, page_id
+              """,
+              note,
+              recordId);
+    }
 
-    log.info(
-        "Cancelled {} job(s): kind={} record={} within={}min",
-        cancelled,
-        kind,
-        recordId,
-        withinMinutes);
-    return ResponseEntity.ok(
-        Map.of(
-            "cancelled",
-            cancelled,
-            "kind",
-            String.valueOf(kind),
-            "recordId",
-            String.valueOf(recordId),
-            "withinMinutes",
-            withinMinutes));
+    log.info("Cancelled {} job(s): jobId={} record={}", stopped.size(), jobId, recordId);
+    return ResponseEntity.ok(Map.of("cancelled", stopped.size(), "jobs", stopped));
   }
 
   @PostMapping("/reocr-page")

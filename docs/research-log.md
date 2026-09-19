@@ -2231,7 +2231,33 @@ so it returns in one pass instead of after a quotation.
 statement (page 14), and the practice files of the two lawyers, Dr Karl
 Trauttmansdorff and Dr Anton Leithner. Not to be proposed again.
 
-**Still open as leads:** the *Vereinigung ehemaliger österreichischer
-Widerstandsbewegungen* (page 3), whose attestation says what was certified about
-Felix and on whose word; and Rossauer Kaserne detention records for March-April
-1945 (page 6).
+**Not a lead — already covered.** The attestation by the *Vereinigung ehemaliger
+österreichischer Widerstandsbewegungen* (page 3) is an incoming document in the
+Zentralregistrierstelle's own file, which Zimbra 464801 and the WStLA form
+already order. Asking a third party for a copy of something ordered from the body
+that holds the original is not a new enquiry.
+
+**What page 3 gives as evidence.** Two documents on one sheet:
+
+1. A letter of **5 March 1946** from the Vereinigung, Wien I., Dominikanerbastei
+   6/4, on ÖVP (IV. Bezirk) letterhead, to the **Zentralregistrierstelle der
+   Opfer des Naziterrors**, Neues Rathaus, 2. Stock, Zimmer 11, asking that Felix
+   be registered, since he was held *"vom 27.3.1945 bis zur Befreiung durch die
+   russische Armee wegen Hoch- und Landesverrat"*. **This is the origin of
+   registration Nr. 38.835, and it dates it: the application went in on 5 March
+   1946, so the "16.3.1945" read on page 28 is 16.3.1946.**
+
+2. An attestation signed **Fritz Janich**: arrested by the Gestapo on **28 March
+   1945**, held in the **Rossauer Kaserne until 7 April**, when the Red Army's
+   advance caused all remaining prisoners to be released with orders to report at
+   once to the **Wilhelmskaserne** Alarm-Kompanie. *"Czernin hat diese Weisung
+   nicht befolgt, sondern sich bis 10. April... versteckt gehalten."*
+
+The second is a third act, distinct from the arrest and the detention: a refusal
+of a military order in the last week of the war, attested by a third party in an
+official submission made ten months later. The same sheet carries both the 27 and
+the 28 March dates, which is where that discrepancy comes from; the diary settles
+it as arrival 26th, first Gestapo visit 27th, arrest 28th.
+
+**Still open as a lead:** Rossauer Kaserne detention records for March-April 1945
+(page 6), which no outstanding request would return.
