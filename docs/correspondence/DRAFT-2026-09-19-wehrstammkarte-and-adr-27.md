@@ -84,6 +84,19 @@ the Magistrat on 9 August 1945 under **Zl. 13.413-2 N/1945** (page 12). That is 
 different authority's file, and it should hold the submission as lodged and the
 Staatsregierung's own decision, neither of which the municipal file need contain.
 
+**Felix alone, by file number — deliberately not extended to the siblings.** A
+§ 27 application exists because the applicant fell under the registration duty,
+which attached to membership or candidacy in the NSDAP, SS, SA, NSKK or NSFK. So
+asking an Austrian federal archive whether such files exist for six people asks,
+in writing, whether those people were National Socialists. A nil proves little —
+AdR holds the Staatskanzlei's side, not the municipal registration lists — while
+a hit would be handed to the state that decides the application, by us, unasked.
+MA 35 has no reason today to think Alexander was a member; the question is all
+downside.
+
+Felix by number adds no disclosure at all: the whole § 27 file was already
+ordered from WStLA on 18 September.
+
 Disclosure rules applied: the file number and the person, nothing about why.
 
 ```
