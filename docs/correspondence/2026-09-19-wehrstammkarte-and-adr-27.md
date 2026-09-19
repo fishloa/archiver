@@ -4,6 +4,12 @@
 Bundesarchiv Abt. PA as Zimbra **464925** after the first attempt (464913)
 bounced.
 
+**Acknowledged the same day** by *DR Tegel* (Zimbra 464928), which confirms the
+address reaches Abteilung PA. Their terms: several months, and — in terms —
+**do not chase**: *"Nachfragen zum Sachstand führen nicht zu einer schnelleren
+Bearbeitung, sondern verzögern diese unter Umständen sogar."* They notify on
+completion. Same rule as Bundesarchiv Berlin.
+
 **The address.** `pa@bundesarchiv.de` does not exist — *"550 5.7.1 Recipient
 address rejected: User unknown"* from mx2.bund.de. The working address is
 **`poststelle-pa@bundesarchiv.de`**. The department also moved in May 2022 from
