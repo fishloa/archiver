@@ -6,6 +6,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.ResponseEntity;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -26,6 +27,7 @@ public class AdminPipelineController {
   private final String defaultOcrEngine;
   private final org.springframework.core.env.Environment environment;
   private final place.icomb.archiver.service.TranskribusImportService transkribusImport;
+  private final place.icomb.archiver.service.IngestService ingestService;
 
   public AdminPipelineController(
       JdbcTemplate jdbcTemplate,
@@ -35,13 +37,15 @@ public class AdminPipelineController {
               "${archiver.ocr.default-engine:ocr_page_mistral}")
           String defaultOcrEngine,
       org.springframework.core.env.Environment environment,
-      place.icomb.archiver.service.TranskribusImportService transkribusImport) {
+      place.icomb.archiver.service.TranskribusImportService transkribusImport,
+      place.icomb.archiver.service.IngestService ingestService) {
     this.jdbcTemplate = jdbcTemplate;
     this.jobService = jobService;
     this.aiRegistry = aiRegistry;
     this.defaultOcrEngine = defaultOcrEngine;
     this.environment = environment;
     this.transkribusImport = transkribusImport;
+    this.ingestService = ingestService;
   }
 
   /** The Transkribus row and its credentials, or empty when none is configured. */
@@ -206,6 +210,55 @@ public class AdminPipelineController {
             cancelled,
             "jobsWaiting",
             queued == null ? 0 : queued));
+  }
+
+  /**
+   * Removes one page; the pages after it move down to close the gap.
+   *
+   * <p>Under {@code /api/admin} because it destroys a page and everything derived from it. Rotating
+   * and cutting images happens outside this system; what it offers is the plumbing — replace,
+   * insert, delete — so a corrected scan can go back in without re-ingesting the record.
+   */
+  @DeleteMapping("/records/{recordId}/pages/{seq}")
+  public ResponseEntity<Map<String, Object>> deletePage(
+      @PathVariable Long recordId, @PathVariable int seq) {
+    try {
+      var record = ingestService.deletePage(recordId, seq);
+      return ResponseEntity.ok(
+          Map.of("recordId", recordId, "removed", seq, "pageCount", record.getPageCount()));
+    } catch (IllegalArgumentException e) {
+      return ResponseEntity.badRequest().body(Map.of("error", String.valueOf(e.getMessage())));
+    }
+  }
+
+  /**
+   * Inserts a page at {@code seq}; that page and everything after it move up by one.
+   *
+   * <p>With the existing replace, this turns one sheet holding two documents into two pages: the
+   * left half replaces the page, the right half is inserted behind it.
+   */
+  @PostMapping(
+      value = "/records/{recordId}/pages/{seq}/insert",
+      consumes = org.springframework.http.MediaType.MULTIPART_FORM_DATA_VALUE)
+  public ResponseEntity<Map<String, Object>> insertPage(
+      @PathVariable Long recordId,
+      @PathVariable int seq,
+      @org.springframework.web.bind.annotation.RequestPart("image")
+          org.springframework.web.multipart.MultipartFile image,
+      @org.springframework.web.bind.annotation.RequestPart(value = "metadata", required = false)
+          place.icomb.archiver.dto.PageMetadata metadata)
+      throws java.io.IOException {
+    try {
+      var page = ingestService.insertPage(recordId, seq, image.getBytes(), metadata);
+      return ResponseEntity.ok(
+          Map.of(
+              "recordId", recordId,
+              "pageId", page.getId(),
+              "seq", page.getSeq(),
+              "attachmentId", page.getAttachmentId()));
+    } catch (IllegalArgumentException e) {
+      return ResponseEntity.badRequest().body(Map.of("error", String.valueOf(e.getMessage())));
+    }
   }
 
   /**

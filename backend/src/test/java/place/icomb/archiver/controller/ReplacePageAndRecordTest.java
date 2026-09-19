@@ -53,9 +53,25 @@ class ReplacePageAndRecordTest {
     registry.add("spring.datasource.password", postgres::getPassword);
   }
 
+  private static final String ADMIN_EMAIL = "page-edit-admin@example.com";
+
   @BeforeEach
   void setUp() {
     base = "http://localhost:" + port + "/api";
+
+    // Insert and delete live under /api/admin, so this suite needs an administrator.
+    jdbc.sql("DELETE FROM app_user_email WHERE email = :e").param("e", ADMIN_EMAIL).update();
+    jdbc.sql("DELETE FROM app_user WHERE display_name = 'PageEditAdmin'").update();
+    Long adminId =
+        jdbc.sql(
+                "INSERT INTO app_user (display_name, role) VALUES ('PageEditAdmin', 'admin')"
+                    + " RETURNING id")
+            .query(Long.class)
+            .single();
+    jdbc.sql("INSERT INTO app_user_email (user_id, email) VALUES (:uid, :e)")
+        .param("uid", adminId)
+        .param("e", ADMIN_EMAIL)
+        .update();
   }
 
   private long createRecord(long archiveId, String sourceRecordId) throws Exception {
@@ -289,5 +305,163 @@ class ReplacePageAndRecordTest {
     out.writeBytes(fileBytes);
     out.writeBytes(footer.getBytes(StandardCharsets.UTF_8));
     return out.toByteArray();
+  }
+
+  // --- insert and delete -------------------------------------------------------------------
+
+  private HttpResponse<String> insertPage(long recordId, int seq, byte[] imageBytes)
+      throws Exception {
+    String boundary = "----TestBoundary" + System.nanoTime();
+    byte[] body = buildMultipart(boundary, "image", "page.jpg", imageBytes);
+    return http.send(
+        HttpRequest.newBuilder()
+            .uri(URI.create(base + "/admin/records/" + recordId + "/pages/" + seq + "/insert"))
+            .header("Content-Type", "multipart/form-data; boundary=" + boundary)
+            .header("X-Auth-Email", ADMIN_EMAIL)
+            .POST(HttpRequest.BodyPublishers.ofByteArray(body))
+            .build(),
+        HttpResponse.BodyHandlers.ofString());
+  }
+
+  private HttpResponse<String> deletePage(long recordId, int seq) throws Exception {
+    return http.send(
+        HttpRequest.newBuilder()
+            .uri(URI.create(base + "/admin/records/" + recordId + "/pages/" + seq))
+            .header("X-Auth-Email", ADMIN_EMAIL)
+            .DELETE()
+            .build(),
+        HttpResponse.BodyHandlers.ofString());
+  }
+
+  /** A record of `n` pages whose image bytes name their own position. */
+  private long recordWithPages(int n) throws Exception {
+    Long archiveId =
+        jdbc.sql("INSERT INTO archive (name, country) VALUES (:name, 'AT') RETURNING id")
+            .param("name", "Page-Edit Archive " + UUID.randomUUID())
+            .query(Long.class)
+            .single();
+    long recordId = createRecord(archiveId, "page-edit-" + UUID.randomUUID());
+    for (int i = 1; i <= n; i++) {
+      assertThat(
+              uploadPage(recordId, i, ("page " + i).getBytes(StandardCharsets.UTF_8)).statusCode())
+          .isEqualTo(201);
+    }
+    return recordId;
+  }
+
+  private java.util.List<Integer> seqs(long recordId) {
+    return jdbc.sql("SELECT seq FROM page WHERE record_id = :rid ORDER BY seq")
+        .param("rid", recordId)
+        .query(Integer.class)
+        .list();
+  }
+
+  @Test
+  void insertingAPageMovesTheRestUp() throws Exception {
+    // The case this exists for: one scanned sheet holding two documents. The left half replaces
+    // the page, the right half is inserted after it.
+    long recordId = recordWithPages(4);
+
+    assertThat(
+            insertPage(recordId, 3, "the other half".getBytes(StandardCharsets.UTF_8)).statusCode())
+        .isEqualTo(200);
+
+    assertThat(seqs(recordId)).containsExactly(1, 2, 3, 4, 5);
+    assertThat(
+            jdbc.sql("SELECT page_count FROM record WHERE id = :rid")
+                .param("rid", recordId)
+                .query(Integer.class)
+                .single())
+        .isEqualTo(5);
+  }
+
+  @Test
+  void insertingAtTheEndIsAllowedButNotBeyondIt() throws Exception {
+    long recordId = recordWithPages(3);
+
+    assertThat(insertPage(recordId, 4, "appended".getBytes(StandardCharsets.UTF_8)).statusCode())
+        .isEqualTo(200);
+    assertThat(seqs(recordId)).containsExactly(1, 2, 3, 4);
+
+    // Two past the end would leave a hole.
+    assertThat(insertPage(recordId, 6, "nowhere".getBytes(StandardCharsets.UTF_8)).statusCode())
+        .isEqualTo(400);
+  }
+
+  @Test
+  void deletingAPageClosesTheGap() throws Exception {
+    long recordId = recordWithPages(4);
+
+    assertThat(deletePage(recordId, 2).statusCode()).isEqualTo(200);
+
+    assertThat(seqs(recordId)).containsExactly(1, 2, 3);
+    assertThat(
+            jdbc.sql("SELECT page_count FROM record WHERE id = :rid")
+                .param("rid", recordId)
+                .query(Integer.class)
+                .single())
+        .isEqualTo(3);
+  }
+
+  @Test
+  void deletingAPageTakesItsTranscriptionWithIt() throws Exception {
+    long recordId = recordWithPages(2);
+    Long pageId =
+        jdbc.sql("SELECT id FROM page WHERE record_id = :rid AND seq = 1")
+            .param("rid", recordId)
+            .query(Long.class)
+            .single();
+    jdbc.sql(
+            "INSERT INTO page_text (page_id, engine, text_raw) VALUES (:pid, 'mistral-ocr', 'text')")
+        .param("pid", pageId)
+        .update();
+
+    deletePage(recordId, 1);
+
+    assertThat(
+            jdbc.sql("SELECT count(*) FROM page_text WHERE page_id = :pid")
+                .param("pid", pageId)
+                .query(Long.class)
+                .single())
+        .isZero();
+  }
+
+  @Test
+  void deletingAPageThatIsNotThereIsRefused() throws Exception {
+    long recordId = recordWithPages(2);
+
+    assertThat(deletePage(recordId, 9).statusCode()).isEqualTo(400);
+    assertThat(seqs(recordId)).containsExactly(1, 2);
+  }
+
+  @Test
+  void aSheetHoldingTwoDocumentsBecomesTwoPages() throws Exception {
+    // The whole point, end to end: page 2 is replaced by its left half and the right half is
+    // inserted behind it, leaving the record one page longer and still consecutively numbered.
+    long recordId = recordWithPages(3);
+
+    assertThat(replacePage(recordId, 2, "left half".getBytes(StandardCharsets.UTF_8)).statusCode())
+        .isEqualTo(200);
+    assertThat(insertPage(recordId, 3, "right half".getBytes(StandardCharsets.UTF_8)).statusCode())
+        .isEqualTo(200);
+
+    assertThat(seqs(recordId)).containsExactly(1, 2, 3, 4);
+  }
+
+  @Test
+  void anOrdinaryProcessorTokenCannotInsertOrDeletePages() throws Exception {
+    long recordId = recordWithPages(2);
+
+    var delete =
+        http.send(
+            HttpRequest.newBuilder()
+                .uri(URI.create(base + "/admin/records/" + recordId + "/pages/1"))
+                .header("Authorization", PROCESSOR_AUTH_HEADER)
+                .DELETE()
+                .build(),
+            HttpResponse.BodyHandlers.ofString());
+
+    assertThat(delete.statusCode()).isIn(401, 403);
+    assertThat(seqs(recordId)).containsExactly(1, 2);
   }
 }

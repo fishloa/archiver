@@ -225,6 +225,77 @@ public class IngestService {
   }
 
   /**
+   * Removes one page and closes the gap behind it.
+   *
+   * <p>Deleting the attachment cascades to the page and everything derived from it — its
+   * transcription, translation, chunks and jobs. The pages after it move down, because a record
+   * whose pages run 1, 2, 4 reads as one with a page missing rather than one with a page removed.
+   */
+  @Transactional
+  public Record deletePage(Long recordId, int seq) {
+    Page page =
+        pageRepository
+            .findByRecordIdAndSeq(recordId, seq)
+            .orElseThrow(
+                () ->
+                    new IllegalArgumentException(
+                        "No page %d in record %d".formatted(seq, recordId)));
+
+    attachmentRepository.deleteById(page.getAttachmentId());
+    shiftSeq(recordId, seq + 1, -1);
+    return refreshCounts(recordId);
+  }
+
+  /**
+   * Inserts a page at {@code seq}, moving that page and everything after it up by one.
+   *
+   * <p>With {@link #replacePage} this is enough to correct a scan without re-ingesting the record:
+   * a sheet holding two documents becomes the left half in place and the right half inserted after
+   * it, and a sideways page is simply replaced by a rotated one.
+   */
+  @Transactional
+  public Page insertPage(Long recordId, int seq, byte[] imageBytes, PageMetadata metadata) {
+    int pageCount = pageRepository.countByRecordId(recordId);
+    if (seq < 1 || seq > pageCount + 1) {
+      throw new IllegalArgumentException(
+          "seq %d is outside 1..%d for record %d".formatted(seq, pageCount + 1, recordId));
+    }
+    shiftSeq(recordId, seq, +1);
+    Page page = addPage(recordId, seq, imageBytes, metadata);
+    refreshCounts(recordId);
+    return page;
+  }
+
+  /**
+   * Moves every page from {@code fromSeq} upward by {@code delta}.
+   *
+   * <p>In two steps through a high offset: (record_id, seq) is unique and not deferrable, so
+   * shifting in place collides with the row being moved into.
+   */
+  private void shiftSeq(Long recordId, int fromSeq, int delta) {
+    final int parkingSpace = 1_000_000;
+    jdbcTemplate.update(
+        "UPDATE page SET seq = seq + ? WHERE record_id = ? AND seq >= ?",
+        parkingSpace,
+        recordId,
+        fromSeq);
+    jdbcTemplate.update(
+        "UPDATE page SET seq = seq - ? + ? WHERE record_id = ? AND seq >= ?",
+        parkingSpace,
+        delta,
+        recordId,
+        parkingSpace);
+  }
+
+  private Record refreshCounts(Long recordId) {
+    Record record = recordRepository.findById(recordId).orElseThrow();
+    record.setPageCount(pageRepository.countByRecordId(recordId));
+    record.setAttachmentCount(attachmentRepository.findByRecordId(recordId).size());
+    record.setUpdatedAt(Instant.now());
+    return recordRepository.save(record);
+  }
+
+  /**
    * Wipes every existing page (and their derived OCR/translation/embedding data) plus the built PDF
    * for a record, and resets its status to "ingesting" -- while keeping the record's own id, source
    * identity, and catalogue metadata untouched. Intended for a full re-scrape of a record whose
