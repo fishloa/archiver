@@ -9,6 +9,22 @@ new revision, no build is triggered, and the release silently never happens —
 which is exactly what v1.0.0 did on its first attempt. Add the entry below,
 commit, then tag that commit.
 
+## v1.1.7 — 19 September 2026
+
+**A record's catalogue entry can be corrected through the API.** Title and
+description head every exported PDF, so editorial written into them travels with
+the document to whoever it is sent.
+
+```
+POST /api/admin/records/{id}/catalogue?title=&description=&referenceCode=
+```
+
+Only the fields given change. `title_en` and `description_en` are cleared rather
+than left describing the old text, and `translate_record` is queued to write them
+again.
+
+429 tests, 0 failures.
+
 ## v1.1.6 — 19 September 2026
 
 **A record can be frozen.** `record.ai_held_at` is a condition in all three claim
