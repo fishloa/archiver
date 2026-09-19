@@ -96,12 +96,30 @@ hoped for was that he had reached the family's refuge at Altaussee rather than
 being wherever he was supposed to be. He hoped Alexander was safe, which is to
 say he had reason to think he might not be.
 
-**The counter-reading, which the authority's historian will reach for:** that in
-the last days of the war everybody worried about everybody, and the line proves
-only ordinary concern. Your judgement on how far it carries. What it does
-establish on its face is that the brothers' situations were linked in the
-family's own contemporaneous understanding, and that Alexander was not where the
-authorities had him.
+**Alexander is the only sibling named in the diary.** Felix had three brothers
+and two sisters. Across the whole diary — 26 March to 6 May — Wolfgang is never
+mentioned, Jan is never mentioned, neither sister is mentioned. Only Lucki, and
+only in this hope about his whereabouts. The diary is otherwise full of named
+people: Lippes, Karl Trauttmansdorff, Franzi Thurn und Taxis, Peter Habig,
+Hansi Dumreicher. The silence about the other four is not a silence about family.
+
+**The counter-reading, which the authority's historian will reach for:** that
+30 April was Alexander's birthday, which is why he appears in that day's entry at
+all, and that in the last weeks of the war everyone worried about everyone. The
+answer to it is what Felix actually wrote when prompted by the birthday — not a
+greeting, but a hope about **where** his brother was; and that Vienna had fallen
+on 13 April, so the danger he was hoping his brother had escaped was not the
+fighting.
+
+One comparison from the same diary, 20 April: *"Thought a great deal about
+**Ferschnitz** with fervent wishes for God's protection."* Ferschnitz, Edla 18 in
+the Melk district, is where Felix himself re-registered from in November 1945.
+The diary shows him anxious about two places — Ferschnitz, and Aussee, where he
+hoped Alexander was.
+
+What the line establishes on its face is that the brothers' situations were
+linked in the family's own contemporaneous understanding, and that Alexander was
+not where the authorities had him.
 
 ## 6. What is in the file that does not help us
 
