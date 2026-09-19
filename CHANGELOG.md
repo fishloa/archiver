@@ -9,6 +9,27 @@ new revision, no build is triggered, and the release silently never happens —
 which is exactly what v1.0.0 did on its first attempt. Add the entry below,
 commit, then tag that commit.
 
+## v1.1.8 — 19 September 2026
+
+**Pages can be inserted and deleted.** Until now a page could be replaced by
+another single image, or every page wiped for a re-ingest; neither turns one
+scanned sheet holding two documents into two pages.
+
+```
+DELETE /api/admin/records/{id}/pages/{seq}          close the gap behind it
+POST   /api/admin/records/{id}/pages/{seq}/insert   shift the rest up
+```
+
+Admin only — both destroy or renumber. With the existing replace they are enough
+to correct a scan in place: the left half replaces the page, the right half is
+inserted behind it. No image handling in the backend; rotating and cutting happen
+outside it.
+
+`(record_id, seq)` is a non-deferrable unique index, so renumbering shifts through
+a high offset and back rather than in place.
+
+436 tests, 0 failures.
+
 ## v1.1.7 — 19 September 2026
 
 **A record's catalogue entry can be corrected through the API.** Title and
