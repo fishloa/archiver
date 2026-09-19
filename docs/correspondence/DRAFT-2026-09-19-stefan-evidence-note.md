@@ -1,6 +1,14 @@
 # DRAFT — evidence note for Stefan Huber
 
-**Status: DRAFT, NOT SENT.**
+**Status: DRAFT 464945, NOT SENT.**
+
+**Page numbers are those of the repaired record.** On 19 September 2026 record
+4006 was found to hold ten pages scanned sideways, seven of them with two
+separate documents on one sheet — which is why page 28 had yielded 491
+characters of a page holding about 3,400. The sheets were rotated and cut
+offline and put back through the new insert/replace endpoints, taking the record
+from 36 pages to 43. Old 13 is now 15, old 19 is 23, old 21 is 25, old 28 is 34,
+old 30 is 36.
 **Attachments:** `Czernin-Felix-Magistrat-4006-Schluesselseiten.pdf` (16 pp,
 original and English side by side) and
 `Czernin-Felix-Tagebuch-3507-Anklagepunkte-und-30-April.pdf` (4 pp). Together
@@ -23,7 +31,7 @@ been ordered from the Wiener Stadt- und Landesarchiv and the Archiv der Republik
 ## 1. The arrest is attested by the Austrian resistance, on oath
 
 **Wilhelm Prinz Thurn und Taxis**, signing as *Leiter der Geschäftsstelle im
-Generalsekretariat O 5*, made two statements (pages 4 and 13):
+Generalsekretariat O 5*, made two statements (pages 4 and 15):
 
 > Vienna, 10 May 1945 — "His arrest by the Gestapo took place **on the ground of
 > resistance work abroad**. He was in constant contact with my group."
@@ -61,7 +69,7 @@ Widerstandsbewegungen* wrote to the Zentralregistrierstelle der Opfer des
 Naziterrors on **5 March 1946** asking that he be registered, since he was held
 *"from 27.3.1945 until the liberation by the Russian army on charges of high
 treason and treason against the country"*. He was registered under **Nr. 38.835
-on 16 March 1946** (page 28). A state register entry, not a statement of belief.
+on 16 March 1946** (page 34). A state register entry, not a statement of belief.
 
 Below it, an attestation signed **Fritz Janich**: arrested by the Gestapo on
 **28 March 1945**, held in the **Rossauer Kaserne until 7 April**, when the Red
@@ -125,7 +133,7 @@ membership on the same page. The answer is in the file itself:
 - Thurn und Taxis (page 4): in his economic position in the Sudetengau he was
   **compelled** to become a Parteianwärter in December 1938, which "was entirely
   understandable to me".
-- Felix's own account (pages 8-9): a banker with the Böhmische Escompte-Bank,
+- Felix's own account (pages 8-10): a banker with the Böhmische Escompte-Bank,
   automatically made a German citizen on 13 March 1938; his promotion blocked in
   July 1938 by Reichenberg industrialists who called him *"politisch
   untragbar"*; the Aussig branch then taken over by the **Dresdner Bank**, which
@@ -134,9 +142,9 @@ membership on the same page. The answer is in the file itself:
   demonstration"; a provisional card in March 1939; thereafter a **Parteianwärter**,
   a candidate and not a full member, taking no part in party activity.
 - **The Austrian authorities accepted this at the time.** The Begutachtungs-
-  kommission recommended in his favour on **5 December 1945** (page 19) and the
+  kommission recommended in his favour on **5 December 1945** (page 23) and the
   Magistrat as Landeshauptmannschaft decided in his favour on **5 January 1946**
-  (pages 21 and 30).
+  (pages 25 and 36).
 
 It is far better that we found this than that the authority's historian does.
 

@@ -2292,3 +2292,31 @@ registration lists; a hit would be handed to the state that decides the
 application, unprompted. MA 35 has no reason today to think Alexander was a
 member. The applicant's judgement, and it is right: *"why risk being told
 otherwise, its only downside, by asking"*.
+
+### 19 September 2026 — record 4006 was ten sideways scans, seven of them two pages each
+
+Page 28 returned 491 characters of a sheet holding about 3,400. The scan was
+rotated 90 degrees **and** held two separate document pages side by side, so
+every engine had been reading it sideways and as one page.
+
+Ten pages were affected — 1, 8, 11, 12, 15, 17, 18, 22, 25, 28, 34, 36 by a
+first heuristic pass, of which **8, 11, 17, 18, 25, 28, 34** proved to be two
+documents and **12, 15, 36** merely sideways. A gutter detector put the cut
+through single documents on three of them (*"Wiener M | agistrat"*), so every
+page was checked by eye before anything was written.
+
+The record is now **43 pages**, consecutively numbered, each holding one
+document. The internal foliation reads straight for the first time: pages 8-13
+are *-2-* to *-7-* of the 1945 submission through Dr Karl Trauttmansdorff,
+19-22 are *-2-* to *-5-* of the second, and 29-36 the 1947 Leithner submission.
+
+**Citations move:** old 13 → 15, old 19 → 23, old 21 → 25, old 28 → 34,
+old 30 → 36, old 8-9 → 8-10. Pages 1-7 are unchanged.
+
+**Two defects were found and fixed on the way** (v1.1.8, v1.1.9). The API could
+replace a page or wipe every page, but not insert or delete one — so a sheet
+could not become two pages without re-ingesting the record. And page images were
+stored as `p{seq}.jpg`, which an insert collides with: seven pages ended up
+showing their neighbour's image, with two attachment rows pointing at one file.
+Images are now named `p{seq}-{sha8}.jpg`. The affected pages were restored from
+the original scans, which had been copied locally before the work began.
