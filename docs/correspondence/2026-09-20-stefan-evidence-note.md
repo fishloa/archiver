@@ -1,6 +1,6 @@
 # DRAFT — evidence note for Stefan Huber
 
-**Status: DRAFT 464945, NOT SENT.**
+**Sent 20 September 2026, Zimbra 465100**, to Stefan Huber, cc Edith Koller-Kowalski.
 
 **Page numbers are those of the repaired record.** On 19 September 2026 record
 4006 was found to hold ten pages scanned sideways, seven of them with two
@@ -9,6 +9,15 @@ characters of a page holding about 3,400. The sheets were rotated and cut
 offline and put back through the new insert/replace endpoints, taking the record
 from 36 pages to 43. Old 13 is now 15, old 19 is 23, old 21 is 25, old 28 is 34,
 old 30 is 36.
+**Two framings corrected before it went.** The file arrived in June; what is new
+is that it has now been *read* — the sideways and two-up scans were only repaired
+on 19 September. And the diary has been with MA 35 since an earlier
+Urkundenvorlage: the filing of 15 September quotes its arrest date, the
+five-hour interrogation, the Turkey *Feindverbindungen* and the defeatist
+statements. The section introducing those charges as news was cut; what the file
+adds is a **source** behind the Turkey charge, in Thurn und Taxis's sworn
+statement.
+
 **Attachments:** `Czernin-Felix-Magistrat-4006-Schluesselseiten.pdf` (16 pp,
 original and English side by side) and
 `Czernin-Felix-Tagebuch-3507-Anklagepunkte-und-30-April.pdf` (4 pp). Together
