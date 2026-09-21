@@ -2320,3 +2320,33 @@ stored as `p{seq}.jpg`, which an insert collides with: seven pages ended up
 showing their neighbour's image, with two attachment rows pointing at one file.
 Images are now named `p{seq}-{sha8}.jpg`. The affected pages were restored from
 the original scans, which had been copied locally before the work began.
+
+### 21 September 2026 — the Archiv der Republik answers on Wolfgang and the mother
+
+Kontr. Ayse Ertugral, AdR (ref. **2026-0.771.003**), on the 15 September addendum:
+
+- **Wolfgang Czernin (b. 4.8.1903)** — a card exists in the Staatspolizei card
+  index, **no corresponding file survives**. The card is now record **4020**.
+- **Maria Gabriele Czernin**, Alexander's mother — **nothing at all**.
+- **Inneres BMI StSu StaPo Akten Kzl 32.961-2/47, Czernin Ferdinand** — **51
+  pages**. B/W copies EUR 1,00 per page, digital reproductions **EUR 6,00** per
+  page, so EUR 51 against EUR 306 for the same content. Processing about a week.
+
+**The card is not what it first looked like.** It reads: *"CZERNIN Wolfgang Ing.,
+4.8.03, Wien 3., Salmgasse 2 — 115.721-2/52 Bericht d. SD Salzburg v. 5.6.52:
+Verkehrsunfall am 2.6.52 bei Strasswalchen zwischen dem Pkw. des C. und einem
+amerik. Pkw. Sachschaden."* **SD** here is the *Sicherheitsdirektion Salzburg*,
+the post-war provincial security authority, **not** the NS Sicherheitsdienst, and
+the matter is a road traffic accident with an occupation-forces car in 1952. No
+evidential value for the § 58c case; it fixes Wolfgang at **Wien III.,
+Salmgasse 2 in 1952** and documents the nil return.
+
+It also shows what this index is: a general police register that sweeps up traffic
+accidents, which lowers the expected value of any file found in it by name alone.
+
+**Ferdinand is a different branch** — the Ottokar line, an anti-Nazi émigré who
+appears at Kew over a refused UK visa, the Pine Cay lease (FCO 141/5447) and a
+1944 Venona decrypt alongside Papánek (HW 15/24/48). Before spending EUR 51 the
+archive was asked what the file concerns and which persons appear in it (Zimbra
+**465233**), with the B/W preference stated in the same letter so the pricing
+needs no further round trip.
