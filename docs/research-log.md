@@ -2350,3 +2350,52 @@ appears at Kew over a refused UK visa, the Pine Cay lease (FCO 141/5447) and a
 archive was asked what the file concerns and which persons appear in it (Zimbra
 **465233**), with the B/W preference stated in the same letter so the pricing
 needs no further round trip.
+
+### 21 September 2026 — three of the five WStLA Meldeanfragen answered
+
+Robert Plank / Gregor Merkel, MA 8, all dated 21 September.
+
+| Zahl | Person | Period | Result |
+|---|---|---|---|
+| B-MEP-1294932-2026 | Wolfgang Otto Paul Dominikus Maria, b. 4.8.1903 | 1938-1946 | **nil** |
+| B-MEP-1295074-2026 | Franziska Paula Gabriele Johanna Maria Koblitz von Willmburg, née Czernin, b. 8.3.1910 | 1935-1950 | **nil** |
+| B-MEP-1295012-2026 | Dr. Johannes (Jan) Czernin, b. 8.3.1910 Göding | 1938-1950 | **data** |
+
+Wolfgang's nil is consistent with Berlin — Müggelseedamm 240 — in those years, and
+is worth having as a documented nil rather than an untested gap.
+
+**Jan's registrations**, citizenship given as *Deutsches Reich*, with wife Maria
+(Osterheldis Freiin von der Lippe, b. 28.3.1917) and daughters Maria (b.
+26.1.1942) and Maria-Christina (b. 13.3.1943) co-registered:
+
+- 30.5.1938 - 25.8.1938: **Wien III., Rennweg 2**, previously *Aigen-Glas bei
+  Salzburg*; deregistered end June 1938 to III., Am Heumarkt 22/9, a registration
+  the archive could not trace;
+- 26.11.1938 - 5.1.1939: **Wien III., Salesianergasse 4/8**, previously III.,
+  Heumarkt 9; **deregistered to Krumau, Sudetenland**.
+
+Nothing later survives in the holdings up to the end of 1975; anything after that
+sits with MA 62 (Meldeservice), which by law answers only on people currently
+living in Austria.
+
+**The refusal of a scan, and the way round it.** MA 8 would give no copy because
+the co-registered wife and children fall inside § 10 (2) Wiener Archivgesetz —
+the protection period for personal data, which **ends with the death of the person
+concerned**, or 110 years after birth where no death date can be established. The
+children, born 1942 and 1943, may be living. The restriction therefore attaches to
+those three individuals and not to the document.
+
+Asked for a copy with their entries redacted (Zimbra **465258**), on the ground
+that **Jan himself died at Salzburg on 24 May 1996**, so his own protection period
+ended then. No purpose stated — only the legal point and the death date the
+archive did not have.
+
+The alternative, § 10 (3) *Schutzfristverkürzung* for scientific research or
+"besondere persönliche Gründe", was not used: it would require telling a Vienna
+authority what the research is for.
+
+**Still outstanding of the five paid enquiries:** Anna (2026-1609105840418) and
+**Alexander's own, 1940-1950** (2026-1609110159140) — the one that matters.
+
+*Incidental:* "Lippes", who recur throughout Felix's 1945 diary — *"Besuch bei
+Lippes"* — are the family of Jan's wife, Osterheldis von der Lippe.
