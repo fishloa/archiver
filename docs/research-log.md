@@ -2488,3 +2488,28 @@ than dripped.
 **Postage is not in the tariff at all**, so a posted order's true cost is not
 knowable in advance. Scans at EUR 6 avoid the question and arrive as a download
 link, ready to ingest.
+
+**Next step on the Gauakt, and a framing to avoid.** Wait for the twelve sheets,
+then reassess before writing to Stefan Huber. The tempting argument — *the SD
+began targeting Alexander because he was a Czernin* — **overstates the file**:
+the Gauakt was opened because the Technische Hochschule wanted his appointment as
+a research assistant confirmed, and the SD report answers the Gauleitung's
+routine request. It shows no SD initiative against him.
+
+What it does support is narrower and still useful: **when the apparatus assessed
+him, it identified him by dynastic name and connection** — "nephew of the former
+Austrian Prime Minister Count Czernin", a relative a senior cleric in Copenhagen,
+three brothers in the Wehrmacht — and it referred the question to the SD to
+answer. That is the Bormann-letter criterion, family rather than conduct, applied
+to Alexander in person. It corroborates the criterion already pleaded; it does not
+prove initiative, and must not be written as though it did.
+
+Two further caveats for the reassessment: the outcome was **favourable**
+("keine Bedenken", "Nachteiliges konnte über ihn nicht in Erfahrung gebracht
+werden"), and a vetting passed is weaker than one failed; and the 15 weeks of
+voluntary service at the Steyrwerke belongs with Felix's party card in the
+"answer it before the authority finds it" category.
+
+The two unseen sheets are the thing to look at first: in a Gauakt the missing
+leaves are typically the Ortsgruppe's reverse-side Gutachten or a later
+re-inspection note, either of which could change the reading.
