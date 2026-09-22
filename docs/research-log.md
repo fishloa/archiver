@@ -2438,3 +2438,9 @@ sheet.
 Johannes (Jan) Graf Czernin of 24.5.1996, already ordered. The point of contact
 between the two families is Jan at Salzburg late in life — this Clary line is
 Herrnau, Salzburg — not Vienna in the 1920s.
+
+Answered with thanks (Zimbra **465462**), setting out the reasoning so she can
+correct it if the branches are wrong, and saying what shape a useful find would
+have: Salzburg, and the later years. She looked through a fonds nobody had asked
+her about and wrote unprompted; she is also the archivist who handled the HHStA
+order and flagged the expired protection period on Clary 48-144.
