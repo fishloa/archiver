@@ -2444,3 +2444,47 @@ correct it if the branches are wrong, and saying what shape a useful find would
 have: Salzburg, and the later years. She looked through a fonds nobody had asked
 her about and wrote unprompted; she is also the archivist who handled the HHStA
 order and flagged the expired protection period on Clary 48-144.
+
+### 22 September 2026 — AdR: the Gauakt ordered, the Ferdinand file dropped
+
+Two answers from Kontr. Ayse Ertugral, AdR:
+
+**Ferdinand Czernin (*25.11.1903 Hermanestes/Böhmen), StaPo 32.961-2/47** — the
+file concerns *"die Pressetätigkeit und sonstige Aktivitäten des Genannten im
+Zusammenhang mit der sog. Austrian Action und der American Association of Former
+Austrian Jurists"*. The New York exile movement, a different branch. **Not
+ordered** — the free question saved EUR 51 and a week.
+
+**For Alexander they found one file:** `ZNsZ GA Czernin Alexander (*30.04.1913)
+(Bewertung durch Gaupersonalamt)`, **12 pages**. Ordered in full as scans at EUR
+6,00 each (Zimbra **465466**), with the question whether it is the same **Gauakt
+Nr. 232.006** already held as record 3499 — where it runs to only **ten** sheets.
+If it is, our copy is short by two.
+
+**Re-reading 3499 while doing this turned up something not yet used.** The
+SD-Leitabschnitt Wien report (III C 3 PA 3852/41) states that on **12.2.1940 he
+was drafted into the Wehrmacht at Wels and was serving as a Wehrmachtsbeamter**;
+that he had been a **member of the Heimwehr until 1935**; that he spent 15 weeks
+in voluntary service at the Steyrwerke during his holidays; that he is *"der Neffe
+des ehemaligen österreichischen Ministerpräsidenten Graf Czernin"*; that **three
+of his brothers were also serving in the Wehrmacht**; and that *"Nachteiliges
+konnte über ihn nicht in Erfahrung gebracht werden"*.
+
+Wels and *Wehrmachtsbeamter* are a concrete lead for Oberst Reisner that was not
+in the letter of 20 September, and they corroborate *Truppen-Ingenieur* against
+the family's *Wachsoldat*. The Heimwehr membership and the SD's own note of the
+family name belong in the persecution argument: it is the Heydrich logic — name
+and connections rather than individual conduct.
+
+**Two things worth knowing from the ÖStA fee schedule** (attachment to the 21
+September letter). First, section 5(b): *a small number of working scans (max.
+200 dpi) may be transmitted without charge where it is administratively
+expedient, at the discretion of the Bestandsgruppenleiter* — which is how the
+Wolfgang Karteikarte arrived free, and is the route for one or two sheets.
+Second, section 6: written enquiries are charged at **EUR 45 per half hour, the
+first half hour free** — so questions should be bundled into one letter rather
+than dripped.
+
+**Postage is not in the tariff at all**, so a posted order's true cost is not
+knowable in advance. Scans at EUR 6 avoid the question and arrive as a download
+link, ready to ingest.
