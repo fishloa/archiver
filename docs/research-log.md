@@ -2399,3 +2399,42 @@ authority what the research is for.
 
 *Incidental:* "Lippes", who recur throughout Felix's 1945 diary — *"Besuch bei
 Lippes"* — are the family of Jan's wife, Osterheldis von der Lippe.
+
+### 22 September 2026 — the Clary family archive is the wrong Czernin line
+
+Mag. Maria Zdislava Röhsner (HHStA) volunteered two items in the Familienarchiv
+Clary signed *"A. Czernin"* — Clary **20-25**, letters to Edmund Clary 1923-1926,
+and Clary **13-2**, a letter to Franziska Clary of 13.1.1931 — noting it might be
+Alexander but that she could not be sure.
+
+A full-text search of the Archivinformationssystem for Czernin within that
+Bestand returns ten units:
+
+| Signature | Correspondence | Dates |
+|---|---|---|
+| Clary 13 | Franziska Clary, correspondence with families Czernin and Radziwill | 1874-1938 |
+| 13-1 | Franz Czernin to Franziska Clary | 1874-1932 |
+| 13-2 | **A. Czernin** to Franziska Clary | 13.1.1931 |
+| 13-5 | Eugen Czernin to Franziska Clary | 1899 |
+| 20-25 | **A. Czernin** to Edmund Clary | 1923-1926 |
+| 20-26 | Cari Czernin to Edmund Clary | 1949 |
+| 4-4 | Franz Czernin to Manfred Clary | 1900-1907 |
+| 31a-5, -6, -9 | Dolly, Edmund and Menny Clary to their grandmother **Marie Pejacsevich, née Czernin** | 1903-1914 |
+
+**The 31a group explains the rest.** The Clary-Czernin connection is a
+grandmother, Marie Pejacsevich née Czernin, and the correspondents are her kin.
+The forenames place them: every **Eugen** Czernin in the genealogy sits in
+**CZERNIN 2** (the `.A5` branch), as do the Franzes and Caris. The applicant's
+grandfather is **CZERNIN 3**, `.A3.B2.C6` — Dymokury and Schönhof.
+
+**Treated as a dead end, and not to be reopened without a new reason.** Three
+grounds: wrong branch on the naming evidence; nothing in the date range that
+matters, since everything but Cari's 1949 letter predates 1938; and Alexander was
+10 to 13 during the 1923-1926 correspondence, which no boy of that age conducts
+with an adult of another household. Nothing was bought — HHStA charges EUR 6 a
+sheet.
+
+**What is genuinely ours in that Bestand** is Clary **48-144**, the Gedenkbild of
+Johannes (Jan) Graf Czernin of 24.5.1996, already ordered. The point of contact
+between the two families is Jan at Salzburg late in life — this Clary line is
+Herrnau, Salzburg — not Vienna in the 1920s.
