@@ -4,6 +4,18 @@
 Bundesarchiv Abt. PA as Zimbra **464925** after the first attempt (464913)
 bounced.
 
+**Supplemented 22 September 2026, Zimbra 465476** — two facts from the Gauakt
+that the original letter did not have: **drafted into the Wehrmacht at Wels on
+12 February 1940**, and **serving as a Wehrmachtsbeamter**. Both bear on where a
+Wehrstammkarte would have originated and which personnel series holds it: a
+military official's records are kept apart from a soldier's, and the Wehrbezirk
+of induction is what the card is filed against. The Feldpostnummer 17 578 was
+already in the original letter.
+
+**No reference number exists** — the acknowledgement is a bare auto-reply and
+gives none, so any supplement must identify itself by the original subject line
+and date.
+
 **Acknowledged the same day** by *DR Tegel* (Zimbra 464928), which confirms the
 address reaches Abteilung PA. Their terms: several months, and — in terms —
 **do not chase**: *"Nachfragen zum Sachstand führen nicht zu einer schnelleren
