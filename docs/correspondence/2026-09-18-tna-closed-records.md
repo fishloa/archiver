@@ -10,6 +10,21 @@ and a free-text box, no account needed. TNA acknowledges each with a reference.
 | HO 294/593/9655 — Anna Borek-Dohalska | closed | **TNA1789757182J32** |
 | HO 294/592/9583 — Robert Hildprandt | closed | **TNA1789757194A53** |
 
+**All three acknowledged as FOI reviews, 21-22 September, with case references and
+a single deadline:**
+
+| Case reference | Record |
+|---|---|
+| CAS-354944-R1F3X1 | HO 405/9351 — CZERNIN, W |
+| CAS-355069-D7M4R0 | HO 294/593/9655 — Anna Borek-Dohalska |
+| CAS-355070-B6B2M3 | HO 294/592/9583 — Robert Hildprandt |
+
+**The deadline is 30 October 2026, not 20 working days.** Where an FOI request
+concerns information in a **transferred and closed archival public record**, the
+authority gets an initial **30** working days rather than 20 — Regulation 4 of
+The Freedom of Information (Time for Compliance with Request) Regulations 2004.
+Every application about a closed record at Kew runs on that clock.
+
 **HO 405/33767 (Lažanský) was dropped** — he appears on no signatory list we have
 read, so the application would rest on nothing.
 
