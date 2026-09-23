@@ -154,3 +154,41 @@ Alex Fishlock
 Icomb Place, Icomb, Cheltenham GL54 1JL, Großbritannien
 alex.fishlock@racingjag.com
 ```
+
+## 23 September 2026 — second supplement: the Fahndungskartei and the Feldpostnummer
+
+**Sent, Zimbra 466026**, to `poststelle-pa@bundesarchiv.de`. Identified by subject
+line and the dates of the two earlier letters, there being no reference number.
+
+**What prompted it.** Two experts said the same thing on the same day, from
+different directions. Oberst Reisner: the WNF were bombed from 13 August 1943 and
+research and development were dispersed from the autumn. Prof. von Lingen, that
+evening: *"Ich denke, wir müssen die Wehrstammkarte aus Berlin abwarten, wenn man
+sehen will, wohin er ab Herbst 1943 kommandiert war. Wenn es ein
+Deserteursverfahren gegeben hätte oder er gesucht worden wäre, müsste dies
+vermerkt sein."*
+
+That exposed a gap in the 19 September letter: it asked for **Wehrstammkarten**
+and nothing else. "Sought" is recorded in a different series.
+
+**Asked, for Alexander only:**
+
+1. whether the holdings of the former Wehrmachtauskunftstelle carry entries for
+   him in the **Fahndungskartei** or other search records, and whether anything
+   survives of **proceedings before a Wehrmacht court** — period of interest
+   **from autumn 1943**;
+2. whether the unit behind **Feldpostnummer 17 578** can be established, from his
+   own signature of 22 February 1942 as *Truppen-Ingenieur*.
+
+**Why this is not a chase.** Abt. PA asked not to be chased and said they would
+report when done. This asks for a **different record series**, repeats no facts
+they hold, and contains no status question. The distinction is what makes it
+legitimate to write at all.
+
+**The word "desertion" does not appear.** The question is neutral — whether
+entries exist — which is what an archive can answer, and it avoids putting a
+family recollection to a federal authority as an assertion.
+
+**What a nil would mean, and what it would not.** On von Lingen's reasoning, no
+*fahnenflüchtig* entry and no Fahndung means no desertion proceeding. That is not
+the same as no desertion, and must not be written up as though it were.
