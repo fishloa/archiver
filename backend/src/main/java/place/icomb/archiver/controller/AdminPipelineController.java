@@ -87,10 +87,14 @@ public class AdminPipelineController {
                   "TRANSKRIBUS_USERNAME and TRANSKRIBUS_PASSWORD must be set in the deployment"));
     }
 
-    Boolean held =
-        jdbcTemplate.queryForObject(
+    // queryForObject throws on no rows, so ask for a list: an unknown record is a 404, not a 500.
+    List<Boolean> held =
+        jdbcTemplate.queryForList(
             "SELECT ai_held_at IS NOT NULL FROM record WHERE id = ?", Boolean.class, recordId);
-    if (Boolean.TRUE.equals(held)) {
+    if (held.isEmpty()) {
+      return ResponseEntity.status(404).body(Map.of("error", "no record " + recordId));
+    }
+    if (Boolean.TRUE.equals(held.get(0))) {
       return ResponseEntity.status(409)
           .body(Map.of("error", "record " + recordId + " is on AI hold"));
     }

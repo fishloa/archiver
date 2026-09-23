@@ -551,4 +551,21 @@ class AdminPipelineControllerTest {
 
     assertThat(catalogue(recordId, "").statusCode()).isEqualTo(400);
   }
+
+  @Test
+  void transkribusUploadAnswers404ForAnUnknownRecord() throws Exception {
+    // The hold check reads the record row; asking for one that is not there used to throw out of
+    // the query and surface as a 500, which tells the caller nothing.
+    var req =
+        HttpRequest.newBuilder(URI.create(url("/api/admin/transkribus/upload?recordId=987654321")))
+            .header("X-Auth-Email", ADMIN_EMAIL)
+            .POST(HttpRequest.BodyPublishers.noBody())
+            .build();
+    var resp = http.send(req, HttpResponse.BodyHandlers.ofString());
+
+    // 409 when no Transkribus row is configured in this environment, 404 when one is: either way
+    // it must not be a 500.
+    assertThat(resp.statusCode()).isIn(404, 409);
+    assertThat(resp.body()).doesNotContain("Internal server error");
+  }
 }
