@@ -2513,3 +2513,116 @@ voluntary service at the Steyrwerke belongs with Felix's party card in the
 The two unseen sheets are the thing to look at first: in a Gauakt the missing
 leaves are typically the Ortsgruppe's reverse-side Gutachten or a later
 re-inspection note, either of which could change the reading.
+
+### 23 September 2026 — three answers in one morning, and the Transkribus route that works
+
+**MA 8 / WStLA, the two paid Meldeanfragen.**
+
+*Anna Maria Franziska Gabriele von Handel, née Czernin (b. 26.5.1907)* —
+**B-MEP-1295047-2026: nil.** No data at all in the historical Vienna registration
+records for 1935-1950. An official negative, worth keeping as such.
+
+*Alexander himself* — **B-MEP-1291761-2026**, delivered by cloud link (three
+weeks' validity, so it was pulled down the same morning). Three sheets, and the
+first scans of his cards we have had; record **3504** holds only the 2023 Kager
+letter, which was a typed summary stopping at 12.2.1940.
+
+- **Meldezettel, stamped 9 October 1939.** Wien I., Passauer Platz 6/25, Beruf
+  *"Student (Technik)"*, Staatsbürgerschaft "D.R.", ledig, r.k., ordentlicher
+  Wohnsitz Alt-Aussee, Paß 96/15, in the margin ***"nicht gedient"***. Abgemeldet
+  and ausgezogen **12. II. 40**, destination entered as ***"Wels zum Militär"***.
+- **Historische Meldekarte** (1940 form). Beruf *Ing.*; **Wehrverhältnis
+  *aktiv***; Staatsangehörigkeit *Deutsch*, nachgewiesen durch ***"Soldb. 484"***;
+  Wehrpaß-Nr. blank. Father Paul (b. 4.6.79 Dymokury, d. Schönhof), mother
+  Gabriele née Orsini-Rosenberg (b. 21.5.79 Wien, d. Alt-Aussee). Movements:
+  zugezogen **13. I. 1943 *von "Wehrdienst"*** → IV., Wohllebengasse 11, bei
+  Schmidtmann, als Untermieter; fortgezogen 22.II.43 → III., Metternichgasse 10;
+  from 20.XI.43 III., Metternichgasse 10/4; **fortgezogen 6.5.1946 nach
+  Alt-Aussee**.
+
+**Two things this settles.** The civil register and the Gauakt give the same day
+and the same place for the call-up — 12 February 1940, Wels — from two separate
+record systems; the handwritten word alone would admit more than one reading, the
+Gauakt fixes it. And "zugezogen von Wehrdienst, 13.1.1943" falls **six days
+after** the TH Wien secondment as *Arbeitsurlauber* to the Wiener Neustädter
+Flugzeugwerke of 7.1.1943: the registration clerk booked him in as arriving from
+military service, which is what a Luftwaffe man on work-leave is and is not what a
+factory's own *Wachsoldat* would be.
+
+**One date not to assert.** The final deregistration reads 6 May 1946, while the
+British collected him at Braunschweig in January 1947. Deregistrations were
+routinely filed late and often by relatives. It is a date to reconcile, not
+evidence of anything.
+
+Sent to Oberst Reisner (cc von Lingen, Trauttenberg) with the three sheets
+attached, together with Wels and *Wehrmachtsbeamter* from the Gauakt — the
+concrete detail Sunday's letter lacked.
+
+**GStA PK Berlin — the Wolfgang Einbürgerung file, free of charge.** Saskia
+Simons answered the 16 September request (Geschäftszeichen 653#00006#0331#0002)
+with four sheets from **I. HA Rep. 77, Nr. 7192**, waiving the invoice *"auf Grund
+der Geringfügigkeit"*. What they contain:
+
+- **Verzeichnis der beabsichtigten Einbürgerungen**, Polizeipräsident von Berlin,
+  19.7.1929, Nr. I C. 437, to the Prussian Minister of the Interior. Wolfgang
+  asked for the *Einzellisten-Verfahren* because he meant to go abroad for a long
+  period after finishing his studies that autumn; the Police President
+  *"möchte das Gesuch befürworten"*.
+- **The list entry itself**: Czernin, Wolfgang, 4 August 1903, Groß-Hluschitz
+  Bezirk Neu-Bydzow (Tschechoslowakei), katholisch, **Student der Chemie**,
+  **Staatsangehörigkeit Tschechoslowakei, früher Österreich-Ungarn**,
+  **ungedient**, ledig. **Parents: Paul Czernin and Gabriele Anna von
+  Orsini-Rosenberg, resident in Austria, Staatsangehörigkeit Österreich.**
+  Abroad from birth to October 1921, in Berlin since November 1921.
+- **The Reich clearance**: the Prussian minister circulated the list to the
+  Reichsministerium des Innern under § 9 Abs. 1 RuStAG 1913, and on 8 August 1929
+  the RMdI reported *"dass von keinem Lande Bedenken erhoben sind"*.
+
+**Useful, and one line to be careful with.** Useful because an official 1929 file
+records the parents as **Austrian citizens living in Austria** — the line the
+§ 58c case runs through — and because it fixes Wolfgang's own position as
+Czechoslovak, not Austrian. The care is needed over the *Besondere Bemerkungen*,
+which describe the applicant as coming from *"einer deutschstämmigen Familie"*,
+raised *"in deutschem Sinne"*, schooled only in German schools and therefore
+*"vollständig mit dem deutschen Wesen verwachsen"*. That is a Prussian official
+writing in 1929, nine years before the Anschluss, about a different brother — but
+it belongs in the same box as Felix's party application and the Steyrwerke weeks:
+known to us, not volunteered.
+
+Ingested as records **4021** (WStLA scans, 3 pp.), **4022** (the Anna nil return,
+text layer, no OCR) and **4023** (GStA PK, 4 pp.).
+
+### 23 September 2026 — why `reocr-page?engine=transkribus` cannot work, and what does
+
+The three handwritten pages of 4021 were queued for Transkribus and all three
+failed with **"Submit returned HTTP 400: Bad or no collection ID."** The message
+is misleading and the earlier diagnosis was wrong: the registry row is fine
+(`collId: 2516426`, present in both Transkribus rows since 17 September), and the
+container has been up since 19 September, so nothing is stale.
+
+The stack trace names `TranskribusClient.submit` — the **Metagrapho** client. The
+worker is wired to it, while the class that knows about collections, uploads and
+the classic API is `TranskribusTrpClient`, which only the *import* endpoint
+constructs. The row's `"api": "trpserver"` setting is never consulted by the
+worker. On the Scholar plan Metagrapho answers 401/400, so the automated path
+cannot succeed however the registry is configured. **A code fix, not a data fix**,
+and not attempted today.
+
+**What does work, by hand, from the CLI:**
+
+1. Token from `account.readcoop.eu` (`grant_type=password`, client
+   `processing-api-client`), credentials from the backend container's environment.
+2. `POST /TrpServer/rest/uploads?collId=2516426` with a descriptor naming the file
+   **`rec<recordId>_seq<seq>.jpg`** — the name is what the import matches on — then
+   `PUT /uploads/{uploadId}` with the image. The uploadId is the docId.
+3. Recognition **cannot** be started from the API for the German super model:
+   `/recognition/.../trhtr` answers *"You are not allowed for TrHtr Recognition!"*
+   (403), and `/pylaia/...` accepts the call but the job then fails with *"Not a
+   valid PyLaia model specified!"* — 265149 is a TrHtr model. So the Run must be
+   pressed in the web app, exactly as the import endpoint's javadoc says.
+4. `POST /api/admin/import-transkribus?docId=…` collects the result.
+
+Uploaded and waiting on a browser Run: **19063761** (seq 1), **19063678** (seq 2),
+**19063817** (seq 3), collection 2516426. Mistral's transcriptions stand in the
+meantime — good on the printed form frames, thin on the ink, which is the whole
+reason for the exercise.
