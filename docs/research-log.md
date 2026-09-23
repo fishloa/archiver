@@ -2724,6 +2724,35 @@ MA 35, the Gauakt or the July 1950 police inspection, and — most deliberately 
 widening the name list at this particular authority costs everything and gains
 nothing.
 
+**Closed the same afternoon, and correctly.** MA 8 answered within a minute — from
+the autoresponder, not a person: a plain email places no order. Written
+information about *which* holdings exist is free; a search **in** the holdings
+costs **EUR 35 per started half hour, maximum EUR 140 for two hours**, and
+*"auch für ergebnislose Recherchen müssen Sie den Zeitaufwand bezahlen"*. An
+order is placed only through the Anfragenformular.
+
+The form was filled as far as the review page and **abandoned unsubmitted**,
+because the applicant pointed out what the archive already holds:
+
+> **Record 3505, page 35.** Alexander's own letter to the Rektorat of the
+> Technische Hochschule Wien, Wiener Neustadt, **4 August 1943**, answering their
+> questionnaire: *"3) **Nichtmitglied der NSDAP oder einer Gliederung.**"* —
+> signed off, as everything then was, "Heil Hitler!"
+
+A written declaration of non-membership to a state authority of the Reich, in
+1943, when a false answer to that question was not a survivable thing to put in
+writing. Corroborated by the SD's own report of 1941 in the Gauakt, which records
+no membership and *"Nachteiliges konnte über ihn nicht in Erfahrung gebracht
+werden"*.
+
+**So the question is answered from our own holdings.** Registration under the
+Verbotsgesetz applied to members; for a non-member a Vienna nil return proves no
+more than his own declaration already does — at EUR 35-140, and in the form of a
+written negative obtained from the same municipal authority whose sister
+department decides the application. **Not to be reopened.** The same reasoning
+disposes of adding Alexander to the Bundesarchiv NSDAP-Mitgliederkartei request:
+there is nothing left to ask.
+
 *Also today, for the record:* Commerzbank's Historisches Archiv acknowledged the
 Felix enquiry (Dr Matthias Kemmerer, head of the archive) with a capacity-delay
 holding reply — no reference, no date. GStA PK followed its file with a referral
