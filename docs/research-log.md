@@ -2626,3 +2626,34 @@ Uploaded and waiting on a browser Run: **19063761** (seq 1), **19063678** (seq 2
 **19063817** (seq 3), collection 2516426. Mistral's transcriptions stand in the
 meantime — good on the printed form frames, thin on the ink, which is the whole
 reason for the exercise.
+
+### 23 September 2026 — Text Titan II on the Meldeunterlagen, and what it settled
+
+The three pages were run in the web app on **Text Titan II (model 579509)** and
+collected with `import-transkribus`. All three came back **shorter** than Mistral
+and were refused by the guard until `overwrite=true`, which is the guard working
+as intended and not a reason to keep the longer text: Mistral's length is markdown
+table scaffolding around the printed form, Transkribus's is the ink.
+
+On the ink Transkribus is plainly better:
+
+| | Mistral | Text Titan II |
+|---|---|---|
+| mother's maiden name | "Altenberg" | **Rosenberg** |
+| her date of birth | "7.5.79" | **21.5.79** |
+| father died at | "Lebenshof" | **Schönhof** |
+| Meldezettel deregistration | "12. I. 40" | **12.II.40** |
+| destination | "Malo zum Militär" | **Wels** … "Cilitàr" |
+| margin note | "mich gedient" | **"nicht gedient"** |
+
+**Wels is now read independently by a second engine**, which removes the one soft
+spot in the letter to Reisner — that the word rested on our own reading of one
+hand, corroborated only by the Gauakt.
+
+**One misreading to be aware of in the stored text.** On the Meldekarte's movement
+rows Text Titan II gives the January arrival as *"13.7.4"*: the writer's Roman
+**I** is serifed top and bottom and reads as a 7. At 600 dpi the same column has
+unmistakable **II**s on the two rows below, in the same hand, and the writer uses
+Roman months throughout — so the date is **13. I. 1943**, six days after the
+7.1.1943 secondment, as sent to Reisner. The stored transcription keeps what the
+engine said, per the archive's rule; the correct reading lives here.
