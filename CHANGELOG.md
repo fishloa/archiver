@@ -9,6 +9,28 @@ new revision, no build is triggered, and the release silently never happens —
 which is exactly what v1.0.0 did on its first attempt. Add the entry below,
 commit, then tag that commit.
 
+## v1.1.10 — 23 September 2026
+
+**A record says which OCR engine reads it.** The engine was one deployment-wide
+setting, so a file of handwriting was read by the print engine and then had to be
+found and re-OCR'd a page at a time. `ocrEngine` on the ingest request — beside
+the `translationQuality` hint that was already there — records the caller's
+knowledge of what the document is, and both the state machine and the audit pass
+honour it. `NULL` keeps the deployment default, which is every existing record.
+
+An engine nothing claims is refused at the API with the list of kinds that do
+exist, rather than queueing jobs no worker will ever take. The check counts
+*enabled* registry rows rather than credentialled ones: an ingest may run long
+before the pages are read, and a key absent this minute is a deployment matter.
+`reocr-page`, which starts work immediately, still checks the credential too.
+
+**`POST /api/admin/transkribus/upload`.** Uploading pages to Transkribus was the
+one step of that round trip with no endpoint, so it was done with ad-hoc curl and
+the file name the import matches pages on — `rec<recordId>_seq<seq>.jpg` — was
+retyped by hand each time. The endpoint uploads a page or a whole record and
+returns the docIds. Recognition still cannot be started from the API on this
+plan, so the Run is pressed in the web app and `import-transkribus` collects it.
+
 ## v1.1.9 — 19 September 2026
 
 **Page images are named by digest, not by sequence alone.** The sequence is not
