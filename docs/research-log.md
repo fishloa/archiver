@@ -2761,3 +2761,36 @@ das Auswanderungswesen); not pursued, for the reasons in the correspondence note
 And the ČNB registry has registered our *thank-you* as a formal submission,
 **2026/162139/CNB** — so a message quoting that number is an acknowledgement, not
 a new answer.
+
+### 23 September 2026 — Jan's Meldekarte: the request finally placed as an order
+
+MA 8's autoresponder to the Registrierungslisten email carried the detail that
+explains a silence: **a plain email places no order.** Written information about
+which holdings exist is free; a search *in* the holdings costs **EUR 35 per
+started half hour, maximum EUR 140**, is billed even when fruitless, and is
+commissioned only through the Anfragenformular.
+
+That is almost certainly why the redaction request of 21 September (Zimbra
+**465258**) was never answered — it went to the same generic address and never
+reached the research team.
+
+Re-submitted through the form, which is the actual channel:
+
+- **Eingangsnummer 2026-2309145910123**, Wiener Stadt- und Landesarchiv
+- Aktenzahl quoted: **B-MEP-1295012-2026**
+- The request: a copy of Jan's historical registration records **with the
+  co-registered wife's and children's entries masked**, so that only his own data
+  remain legible
+- The ground, and the only new fact given: **Johannes Czernin died at Salzburg on
+  24 May 1996**, so his own protection period under § 10 (2) ended then; the
+  restriction attaches to the three co-registered persons, not to the document
+- The form states that an identical request was emailed on 21 September, so the
+  archive sees one request rather than two
+- Fee acknowledgement ticked: research up to EUR 140, reproductions extra
+
+**No purpose stated, no mention of the proceedings, no siblings.** The § 10 (3)
+Schutzfristverkürzung route remains unused, because it would require telling a
+Vienna authority what the research is for.
+
+**The Registrierungslisten enquiry was not placed** — see above; it is closed on
+Alexander's own 1943 declaration and is not to be reopened.
