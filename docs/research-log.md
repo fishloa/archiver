@@ -2657,3 +2657,40 @@ unmistakable **II**s on the two rows below, in the same hand, and the writer use
 Roman months throughout — so the date is **13. I. 1943**, six days after the
 7.1.1943 secondment, as sent to Reisner. The stored transcription keeps what the
 engine said, per the archive's rule; the correct reading lives here.
+
+### 23 September 2026 — the Gauakt arrives complete, and the sheet our copy lacked
+
+Kontr. Ayse Ertugral sent `ZNsZ GA Czernin Alexander (*30.04.1913)` as a
+digitisate **"aus konservatorischen Gründen"** — no reproduction order, no
+invoice, none of the EUR 6,00 per scan that had been budgeted. Ingested as record
+**4024**, eleven sheets.
+
+Against record **3499**, the ten-sheet copy already held, sheets 1-10 are the same
+documents in the same order. **One sheet is new**, and it is the last:
+
+> **Aktenvermerk**, Wien, 13.7.1950, signed **Schebesta**: *"In den Gauakt (GSA)
+> Nr. 232006 wurde durch … der Dienststelle **Abt. I** Einsicht genommen. Weitere
+> Veranlassung, insbesondere **Verständigung der Registrierungsbehörde**, besorgt
+> die vorbezeichnete Dienststelle."*
+
+It completes the sheet we already had at seq 10: the **Polizeidirektion Wien,
+Abt. I** — the state police — asking the Bundesministerium für Inneres, Abt. 2 on
+**10 July 1950** for what it held on *"Czernin, Alexander, 30.4.1913, Ing.,
+Wien 3., Metternichgasse 10/4"*. Three days later that office read his Gauakt and
+noted that notifying the **registration authority** was its own responsibility.
+
+**What it shows and what it does not.** It shows that in July 1950 he was run
+against the NS-registration machinery, and that the Gauakt was the file consulted.
+It does **not** record the outcome; that sheet is not in the file and must not be
+inferred. Incidentally it puts Metternichgasse 10/4 — the address on the
+Meldekarte that arrived the same morning — in official use in 1950, four years
+after the card's deregistration to Alt-Aussee.
+
+**A lead, deliberately not taken.** The Vienna *Registrierungslisten* are held by
+WStLA. A nil return would be an official document stating he was never registered
+as a National Socialist, which is a strong negative — but it is also an enquiry
+that tells a Vienna authority exactly what is being looked for. Held for the
+applicant to decide.
+
+**Count discrepancy:** the AdR's earlier answer said twelve sheets, the PDF holds
+eleven. Possibly a blank verso, possibly an omission — asked.
