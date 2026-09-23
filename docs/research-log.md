@@ -2692,5 +2692,9 @@ as a National Socialist, which is a strong negative — but it is also an enquir
 that tells a Vienna authority exactly what is being looked for. Held for the
 applicant to decide.
 
-**Count discrepancy:** the AdR's earlier answer said twelve sheets, the PDF holds
-eleven. Possibly a blank verso, possibly an omission — asked.
+**Count discrepancy, resolved the same morning.** The AdR's earlier answer said
+twelve sheets, the PDF holds eleven; asked, and Kontr. Ertugral replied within the
+half hour that *"bei der Angabe von zwölf Seiten wurde die Aktenhülle mitgezählt.
+Die übermittelte PDF-Datei enthält somit den vollständigen Inhalt der Akt."* The
+twelfth was the file cover. **Record 4024 is the complete Gauakt** — nothing
+further to order, and no reason to write to the AdR about this file again.
