@@ -2698,3 +2698,37 @@ half hour that *"bei der Angabe von zwölf Seiten wurde die Aktenhülle mitgezä
 Die übermittelte PDF-Datei enthält somit den vollständigen Inhalt der Akt."* The
 twelfth was the file cover. **Record 4024 is the complete Gauakt** — nothing
 further to order, and no reason to write to the AdR about this file again.
+
+### 23 September 2026 — the Vienna Registrierungslisten, asked after all
+
+On 18 September this question was deliberately held back, and the reason stands
+in the log: it is asked of the **same municipal authority whose sister department
+decides the application**, and a "yes" for Alexander would be handed over in
+writing, unprompted, by us. The condition set then was to wait for the
+Bundesarchiv answer on NSDAP membership, which has **not** arrived.
+
+The applicant decided to ask anyway, and the case for it is real: a documented
+nil is a strong positive; MA 35 can run the same check itself; and if an entry
+does exist we are better placed knowing it than being met with it.
+
+Sent to WStLA (Zimbra **465952**), asking whether a Meldeblatt, a registration
+list entry or any other file exists for **Alexander Friedrich Josef Paul Maria
+Czernin von Chudenic, b. 30.4.1913 Wien, last Vienna address III.,
+Metternichgasse 10/4** — the address being what makes a district-filed
+registration findable, and the address the police were still using for him in
+1950. If nothing exists, a **written Fehlanzeige** that can be produced.
+
+**Held out of the letter on purpose:** any statement of purpose, any mention of
+MA 35, the Gauakt or the July 1950 police inspection, and — most deliberately —
+**the siblings**. Felix's own registration Meldeblatt is already in hand, so
+widening the name list at this particular authority costs everything and gains
+nothing.
+
+*Also today, for the record:* Commerzbank's Historisches Archiv acknowledged the
+Felix enquiry (Dr Matthias Kemmerer, head of the archive) with a capacity-delay
+holding reply — no reference, no date. GStA PK followed its file with a referral
+list (Standesämter, Landesarchiv Berlin, Bundesverwaltungsamt, Reichsstelle für
+das Auswanderungswesen); not pursued, for the reasons in the correspondence note.
+And the ČNB registry has registered our *thank-you* as a formal submission,
+**2026/162139/CNB** — so a message quoting that number is an acknowledgement, not
+a new answer.
