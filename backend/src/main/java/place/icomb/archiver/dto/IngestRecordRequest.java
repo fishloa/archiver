@@ -30,4 +30,12 @@ public record IngestRecordRequest(
      * <p>Chosen here so the pipeline enqueues one job per page of one kind. Queuing an upgrade
      * after a bulk pass meant translating the record twice, with the two racing each other.
      */
-    String translationQuality) {}
+    String translationQuality,
+    /**
+     * Job kind to OCR this record's pages with, e.g. {@code ocr_page_mistral} or {@code
+     * ocr_page_transkribus}. Null takes the deployment default.
+     *
+     * <p>The caller knows whether the document is handwriting or typescript; the pipeline does not.
+     * Saying so here saves a second pass over every page.
+     */
+    String ocrEngine) {}

@@ -114,6 +114,11 @@ public class IngestService {
     } else if (record.getTranslationQuality() == null) {
       record.setTranslationQuality("bulk");
     }
+    // An engine named at ingest sticks; a request that omits it leaves an earlier choice alone
+    // rather than silently reverting the record to the deployment default.
+    if (request.ocrEngine() != null && !request.ocrEngine().isBlank()) {
+      record.setOcrEngine(request.ocrEngine());
+    }
     record.setUpdatedAt(Instant.now());
 
     record = recordRepository.save(record);

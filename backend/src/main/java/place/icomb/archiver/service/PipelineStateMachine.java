@@ -26,7 +26,7 @@ public class PipelineStateMachine {
   private final JdbcTemplate jdbcTemplate;
   private final JobService jobService;
   private final RecordEventService recordEventService;
-  private final String defaultOcrEngine;
+  private final OcrEngines ocrEngines;
 
   private final Map<PipelineState, List<Transition>> transitions =
       new EnumMap<>(PipelineState.class);
@@ -233,13 +233,11 @@ public class PipelineStateMachine {
       JobService jobService,
       RecordEventService recordEventService,
       PipelineAuditService auditService,
-      @org.springframework.beans.factory.annotation.Value(
-              "${archiver.ocr.default-engine:ocr_page_qwen3vl}")
-          String defaultOcrEngine) {
+      OcrEngines ocrEngines) {
     this.jdbcTemplate = jdbcTemplate;
     this.jobService = jobService;
     this.recordEventService = recordEventService;
-    this.defaultOcrEngine = defaultOcrEngine;
+    this.ocrEngines = ocrEngines;
     // Break circular dependency: JobService ← PipelineStateMachine → JobService. The audit is
     // wired the same way: it decides which records are stuck, this decides what happens to them.
     jobService.setStateMachine(this);
@@ -496,8 +494,11 @@ public class PipelineStateMachine {
             Long.class,
             recordId);
 
+    // The record's own engine when it named one at ingest, otherwise the deployment default.
+    String engine = ocrEngines.forRecord(recordId);
+
     for (Long pageId : pageIds) {
-      jobService.enqueueJob(defaultOcrEngine, recordId, pageId, ocrPayload);
+      jobService.enqueueJob(engine, recordId, pageId, ocrPayload);
     }
 
     int skipped =
@@ -508,7 +509,7 @@ public class PipelineStateMachine {
 
     String detail =
         pageIds.size() + " pages" + (skipped > 0 ? " (" + skipped + " already OCR'd)" : "");
-    logPipelineEvent(recordId, "ocr", "started", detail + " via " + defaultOcrEngine);
+    logPipelineEvent(recordId, "ocr", "started", detail + " via " + engine);
 
     jdbcTemplate.execute("NOTIFY ocr_jobs");
   }

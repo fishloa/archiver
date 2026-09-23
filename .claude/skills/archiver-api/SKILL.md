@@ -116,6 +116,55 @@ POST /api/admin/reocr-page?pageId=147299&engine=transkribus&htrId=263129
   **transkribus**. Sending a handwriting model at a typescript loses most of the
   page.
 
+## Ingesting a record
+
+```bash
+POST /api/ingest/records           # create or update, matched on sourceSystem + sourceRecordId
+POST /api/ingest/records/{id}/pages?seq=N    # multipart "image"
+POST /api/ingest/records/{id}/text-pdf       # born-digital PDF: keeps its text layer, skips OCR
+POST /api/ingest/records/{id}/complete       # hands over to the state machine
+```
+
+**Say which engine and which translation at create time.** Both are fields on the
+record, and both are cheaper to get right once than to repair per page:
+
+| Field | Values | Effect |
+|---|---|---|
+| `ocrEngine` | `ocr_page_mistral`, `ocr_page_transkribus`, … | the job kind every page of this record is queued under; null takes the deployment default |
+| `translationQuality` | `bulk` (default), `best` | which model translates, one job per page of one kind |
+
+`ocrEngine` is checked against the registered OCR rows when the record is created:
+an engine nothing claims is a **400** naming the kinds that exist, rather than a
+queue of jobs no worker will ever take. Enabled rows count, credentialled or not —
+an ingest may run long before the pages are read.
+
+Print and typescript → **mistral**. Handwriting → **transkribus**, and read the
+next section before choosing it.
+
+## Transkribus: upload by machine, Run by hand, import by API
+
+The recognition models cannot be started from the API on this account — the
+TrpServer answers *"You are not allowed for TrHtr Recognition!"* (403) to the
+super models, and the PyLaia endpoint refuses them as not PyLaia models. So the
+round trip has three steps and the middle one is a person:
+
+```bash
+POST /api/admin/transkribus/upload?recordId=4021          # every page
+POST /api/admin/transkribus/upload?recordId=4021&seq=3    # one page
+#   → uploads each image as rec<recordId>_seq<seq>.jpg and returns its docId
+#   ... press Run in the Transkribus web app ...
+POST /api/admin/import-transkribus?docId=19063761
+```
+
+The file name is the only thing tying a transcription back to a page, which is
+why uploading has an endpoint rather than a shell script.
+
+Setting `ocrEngine: ocr_page_transkribus` at ingest queues
+`ocr_page_transkribus` jobs, and **those jobs currently fail**: the worker is
+wired to the Metagrapho client, which this plan does not include. Until that is
+fixed the hint is a statement of intent, and the upload endpoint above is the
+working route.
+
 ## Transkribus import
 
 ```bash

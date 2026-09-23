@@ -33,6 +33,14 @@ public class Record {
   /** "bulk" or "best" — which model translates this record's pages. */
   private String translationQuality;
 
+  /**
+   * Job kind this record's pages are OCR'd with; null means the deployment default.
+   *
+   * <p>Set at ingest by whoever knows what the document is — handwriting goes to Transkribus, print
+   * and typescript to Mistral. Guessing after the fact costs a second pass over every page.
+   */
+  private String ocrEngine;
+
   private Long pdfAttachmentId;
   private String titleEn;
   private String descriptionEn;
@@ -206,6 +214,14 @@ public class Record {
 
   public void setTranslationQuality(String translationQuality) {
     this.translationQuality = translationQuality;
+  }
+
+  public String getOcrEngine() {
+    return ocrEngine;
+  }
+
+  public void setOcrEngine(String ocrEngine) {
+    this.ocrEngine = ocrEngine;
   }
 
   public void setMetadataLang(String metadataLang) {

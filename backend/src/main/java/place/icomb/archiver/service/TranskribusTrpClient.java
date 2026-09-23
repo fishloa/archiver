@@ -97,6 +97,24 @@ public class TranskribusTrpClient implements HtrEngine {
     return new Result(text, modelId, jobId, pageXml);
   }
 
+  /**
+   * Puts one page image in the collection under the name the import matches on, and returns its
+   * docId.
+   *
+   * <p>Recognition is deliberately not started: the super models answer "You are not allowed for
+   * TrHtr Recognition!" to the API on every plan we have had, so the Run is pressed in the web app
+   * and the result collected by {@code POST /api/admin/import-transkribus}. This is the half of
+   * that round trip a machine can do.
+   *
+   * @param fileName {@code rec<recordId>_seq<seq>.jpg} — Transkribus keeps it in the PAGE XML, and
+   *     it is the only thing tying the transcription back to a page of the archive
+   */
+  public long uploadPage(int collId, String fileName, byte[] imageBytes) throws Exception {
+    long docId = createDocument(collId, fileName);
+    uploadImage(docId, fileName, imageBytes);
+    return docId;
+  }
+
   /** The collection new documents go into: the configured one, or the account's first. */
   public synchronized int collectionId() throws Exception {
     if (collectionId != null) {

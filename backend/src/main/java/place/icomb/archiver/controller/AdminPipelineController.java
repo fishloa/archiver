@@ -28,6 +28,7 @@ public class AdminPipelineController {
   private final org.springframework.core.env.Environment environment;
   private final place.icomb.archiver.service.TranskribusImportService transkribusImport;
   private final place.icomb.archiver.service.IngestService ingestService;
+  private final place.icomb.archiver.service.StorageService storageService;
 
   public AdminPipelineController(
       JdbcTemplate jdbcTemplate,
@@ -38,7 +39,8 @@ public class AdminPipelineController {
           String defaultOcrEngine,
       org.springframework.core.env.Environment environment,
       place.icomb.archiver.service.TranskribusImportService transkribusImport,
-      place.icomb.archiver.service.IngestService ingestService) {
+      place.icomb.archiver.service.IngestService ingestService,
+      place.icomb.archiver.service.StorageService storageService) {
     this.jdbcTemplate = jdbcTemplate;
     this.jobService = jobService;
     this.aiRegistry = aiRegistry;
@@ -46,6 +48,7 @@ public class AdminPipelineController {
     this.environment = environment;
     this.transkribusImport = transkribusImport;
     this.ingestService = ingestService;
+    this.storageService = storageService;
   }
 
   /** The Transkribus row and its credentials, or empty when none is configured. */
@@ -55,6 +58,92 @@ public class AdminPipelineController {
         .map(r -> new place.icomb.archiver.ai.TranskribusConfig(r, environment))
         .filter(place.icomb.archiver.ai.TranskribusConfig::isConfigured)
         .findFirst();
+  }
+
+  /**
+   * Puts a record's page images into the Transkribus collection, ready for a human to press Run.
+   *
+   * <p>The other half of the round trip that {@code import-transkribus} completes. Uploading was
+   * the one step that had no endpoint, so it was done with ad-hoc curl against the TrpServer API —
+   * which meant the file name, the thing the import matches pages on, was retyped by hand each
+   * time.
+   *
+   * <p>Give a {@code seq} for one page, or nothing for every page of the record.
+   */
+  @PostMapping("/transkribus/upload")
+  public ResponseEntity<?> transkribusUpload(
+      @RequestParam Long recordId,
+      @RequestParam(required = false) Integer seq,
+      @RequestParam(required = false) Integer collId) {
+
+    var config = transkribusConfig();
+    if (config.isEmpty()) {
+      return ResponseEntity.status(409)
+          .body(
+              Map.of(
+                  "error",
+                  "no configured Transkribus row",
+                  "hint",
+                  "TRANSKRIBUS_USERNAME and TRANSKRIBUS_PASSWORD must be set in the deployment"));
+    }
+
+    Boolean held =
+        jdbcTemplate.queryForObject(
+            "SELECT ai_held_at IS NOT NULL FROM record WHERE id = ?", Boolean.class, recordId);
+    if (Boolean.TRUE.equals(held)) {
+      return ResponseEntity.status(409)
+          .body(Map.of("error", "record " + recordId + " is on AI hold"));
+    }
+
+    List<Map<String, Object>> pages =
+        seq == null
+            ? jdbcTemplate.queryForList(
+                "SELECT p.seq, a.path FROM page p JOIN attachment a ON a.id = p.attachment_id"
+                    + " WHERE p.record_id = ? ORDER BY p.seq",
+                recordId)
+            : jdbcTemplate.queryForList(
+                "SELECT p.seq, a.path FROM page p JOIN attachment a ON a.id = p.attachment_id"
+                    + " WHERE p.record_id = ? AND p.seq = ?",
+                recordId,
+                seq);
+    if (pages.isEmpty()) {
+      return ResponseEntity.status(404)
+          .body(Map.of("error", "no pages found for record " + recordId));
+    }
+
+    var client = new place.icomb.archiver.service.TranskribusTrpClient(config.get());
+    var uploaded = new java.util.ArrayList<Map<String, Object>>();
+    try {
+      int collection = collId != null ? collId : client.collectionId();
+      for (Map<String, Object> row : pages) {
+        int pageSeq = ((Number) row.get("seq")).intValue();
+        String fileName = "rec%d_seq%d.jpg".formatted(recordId, pageSeq);
+        byte[] image =
+            java.nio.file.Files.readAllBytes(
+                storageService.resolveForRead((String) row.get("path")));
+        long docId = client.uploadPage(collection, fileName, image);
+        uploaded.add(Map.of("seq", pageSeq, "fileName", fileName, "docId", docId));
+      }
+      log.info(
+          "Transkribus upload: record={} pages={} collection={}",
+          recordId,
+          uploaded.size(),
+          collId);
+      return ResponseEntity.ok(
+          Map.of(
+              "recordId",
+              recordId,
+              "collection",
+              collection,
+              "uploaded",
+              uploaded,
+              "next",
+              "run the pages in the Transkribus web app, then POST"
+                  + " /api/admin/import-transkribus?docId=<docId>"));
+    } catch (Exception e) {
+      log.error("Transkribus upload failed: {}", e.getMessage(), e);
+      return ResponseEntity.status(502).body(Map.of("error", e.getMessage(), "uploaded", uploaded));
+    }
   }
 
   /**

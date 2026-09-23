@@ -3,7 +3,6 @@ package place.icomb.archiver.service;
 import java.util.List;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -28,18 +27,18 @@ public class PipelineAuditService {
   private final JdbcTemplate jdbcTemplate;
   private final JobService jobService;
   private final RecordEventService recordEventService;
-  private final String defaultOcrEngine;
+  private final OcrEngines ocrEngines;
   private PipelineStateMachine stateMachine;
 
   public PipelineAuditService(
       JdbcTemplate jdbcTemplate,
       JobService jobService,
       RecordEventService recordEventService,
-      @Value("${archiver.ocr.default-engine:ocr_page_mistral}") String defaultOcrEngine) {
+      OcrEngines ocrEngines) {
     this.jdbcTemplate = jdbcTemplate;
     this.jobService = jobService;
     this.recordEventService = recordEventService;
-    this.defaultOcrEngine = defaultOcrEngine;
+    this.ocrEngines = ocrEngines;
   }
 
   /** Set after construction, because the state machine needs JobService and this needs it. */
@@ -123,7 +122,7 @@ public class PipelineAuditService {
             jdbcTemplate.queryForList(
                 "SELECT id FROM page WHERE record_id = ? ORDER BY seq", Long.class, recordId);
         for (Long pageId : pageIds) {
-          enqueueJob(defaultOcrEngine, recordId, pageId, ocrPayload);
+          enqueueJob(ocrEngines.forRecord(recordId), recordId, pageId, ocrPayload);
         }
         jdbcTemplate.update(
             "UPDATE record SET status = 'ocr_pending', updated_at = now() WHERE id = ?", recordId);

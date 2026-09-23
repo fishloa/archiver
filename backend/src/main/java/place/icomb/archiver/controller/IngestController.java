@@ -43,18 +43,21 @@ public class IngestController {
   private final ArchiveRepository archiveRepository;
   private final PageRepository pageRepository;
   private final JobEventService jobEventService;
+  private final place.icomb.archiver.service.OcrEngines ocrEngines;
 
   public IngestController(
       IngestService ingestService,
       RecordRepository recordRepository,
       ArchiveRepository archiveRepository,
       PageRepository pageRepository,
-      JobEventService jobEventService) {
+      JobEventService jobEventService,
+      place.icomb.archiver.service.OcrEngines ocrEngines) {
     this.ingestService = ingestService;
     this.recordRepository = recordRepository;
     this.archiveRepository = archiveRepository;
     this.pageRepository = pageRepository;
     this.jobEventService = jobEventService;
+    this.ocrEngines = ocrEngines;
   }
 
   // ── Archive CRUD ──────────────────────────────────────────────────────────
@@ -124,8 +127,20 @@ public class IngestController {
   // ── Record ingest ───────────────────────────────────────────────────────
 
   @PostMapping("/records")
-  public ResponseEntity<IngestRecordResponse> createOrUpdateRecord(
-      @Valid @RequestBody IngestRecordRequest request) {
+  public ResponseEntity<?> createOrUpdateRecord(@Valid @RequestBody IngestRecordRequest request) {
+    // An engine nothing can claim would park a job for ever, and the caller would not find out
+    // until the pages sat unread. Say no here, and say which kinds exist.
+    String engine = request.ocrEngine();
+    if (engine != null && !engine.isBlank() && !ocrEngines.claimable(engine)) {
+      return ResponseEntity.badRequest()
+          .body(
+              Map.of(
+                  "error",
+                  "no configured OCR engine claims " + engine,
+                  "claimable",
+                  ocrEngines.claimableKinds()));
+    }
+
     Record record = ingestService.createOrUpdateRecord(request);
     return ResponseEntity.status(HttpStatus.CREATED)
         .body(
