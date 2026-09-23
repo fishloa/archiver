@@ -69,3 +69,30 @@ owes no reply.
   that a documented nil return is as useful as a find.
 
 Kontr. Ayse Ertugral (AdR) was thanked separately in the Gauakt thread.
+
+## GStA PK's onward referrals — 23 September 2026 (Zimbra 465928)
+
+Saskia Simons answered the thank-you with a referral list (Geschäftszeichen *zu*
+653#00006#0331#0002). Four pointers, three of them the standard set:
+
+1. **Personenstandsregister** are not at GStA PK; with the Standesämter since 1874.
+2. **Naturalisations and police registration** were handled per *Regierungsbezirk*
+   — look to the locally competent offices and the city or regional state
+   archives; she suggests the **Landesarchiv Berlin**.
+3. **Bundesverwaltungsamt, Köln** — responsible for evidence in citizenship
+   determination and naturalisation proceedings, and holding records *"des
+   ehemaligen Reichs- und Preußischen Ministeriums"*.
+4. **Reichsstelle für das Auswanderungswesen** (earlier Reichswanderungsamt),
+   whose fonds are at the **Bundesarchiv, Abt. Reich**.
+
+**Not pursued, and the reason recorded so it is not reopened.** Only item 3 has
+substance: the file we hold stops at the Reich clearance of August 1929 and never
+says whether Wolfgang was in fact naturalised, and the BVA is where a successor
+record of the outcome would sit. But the question is a **sibling's** citizenship
+status. Alexander's own position is documented from his own papers — Austrian on
+the 1936-1940 registration records, "D.R." on the Meldezettel of 9 October 1939,
+and the Gauakt and Meldekarte for what followed. Three new correspondences to fix
+a fact that does not move the application is not a good trade.
+
+No reply sent: a second thank-you for a referral list is noise, and she has now
+been thanked once for the substantive favour.
