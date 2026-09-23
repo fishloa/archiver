@@ -2794,3 +2794,29 @@ Vienna authority what the research is for.
 
 **The Registrierungslisten enquiry was not placed** — see above; it is closed on
 Alexander's own 1943 declaration and is not to be reopened.
+
+### 23 September 2026 — the historians are a favour, not a commission
+
+Hubertus Trauttenberg forwarded the morning's letter to Reisner on to Prof. von
+Lingen for her assessment (Zimbra **465962**), copying the applicant and adding
+**Sophie Trauttenberg** — Marie Sophie, daughter of the late Hubertus Czernin and
+so Felix's granddaughter, the line the Felix pack came down. He thanks von Lingen
+for *"Ihre wertvolle Hilfe"*, help of which we have seen only her note of
+20 September.
+
+**The commissioning question is closed, and not by an answer.** He addresses a
+serving colonel as *"Lieber Markus"* and signs to von Lingen as *"Ihr ergebener"*;
+there is no engagement letter, no fee, no reference number anywhere in the thread.
+This is a retired general calling on people who know him. The applicant's reading,
+and it fits everything on the record.
+
+**So: do not ask who is paying whom** — it would put a price on a favour. Do not
+chase the unanswered call request of 21 September; the cadence belongs to them.
+The offer already made in writing ("allfällige Kosten übernehme ich") is the
+correct position and costs nothing if no bill ever comes.
+
+The warning that `wehrmacht-auskunftstelle.de` is a private firm rather than the
+Bundesarchiv is **held**, to be sent only if he shows signs of paying them.
+
+The one lever that works here is feeding the thread good material, which is what
+the Wels corroboration did.
