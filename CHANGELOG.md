@@ -9,6 +9,14 @@ new revision, no build is triggered, and the release silently never happens —
 which is exactly what v1.0.0 did on its first attempt. Add the entry below,
 commit, then tag that commit.
 
+## v1.1.11 — 23 September 2026
+
+**`transkribus/upload` answers 404 for an unknown record, not 500.** The hold
+check read the record row with `queryForObject`, which throws when there is no
+row, so a wrong id surfaced as an internal server error that told the caller
+nothing. Found by probing the endpoint against production immediately after the
+v1.1.10 deploy, which is the reason to probe.
+
 ## v1.1.10 — 23 September 2026
 
 **A record says which OCR engine reads it.** The engine was one deployment-wide
