@@ -2865,3 +2865,21 @@ automatický systém nepodařilo doručit, pošleme ji jiným způsobem."* It ha
 sent and lost in their automated dispatch. The chase caused a re-send, not an
 issue — which is worth remembering the next time an invoice simply fails to
 appear.
+
+**All three settled, 24 September 2026.** MA 8 EUR 35 paid online by card;
+HHStA EUR 36 (GBP 31.10 at 1.1574) and Národní archiv GBP 165.96 (CZK 4.684,39 at
+28.226 — the job was quoted at CZK 4.670, so it lands 14 crowns over) both by
+transfer from Barclays, no charges, value date 25 September.
+
+**One error caught before it landed.** The HHStA transfer went out carrying
+reference **000235046691** — the *Stadt Wien* payment reference — instead of the
+Geschäftszahl **2026-0.786.804**, which their paperwork requires as the
+Verwendungszweck. Since the Staatsarchiv only digitises after it can match a
+payment to a file, EUR 36 would have sat unallocated. Written to
+`hhsta@oesta.gv.at` the same day (Zimbra **466134**) with payer, IBAN, amount,
+value date and the wrong reference, so it can be matched by hand.
+
+**The lesson, worth keeping:** when several archives are invoiced in the same
+week, the reference field is the thing that goes wrong, not the IBAN. The Prague
+transfer carried `15602026 NA-5020/03-2026` — invoice number *and* file reference
+— and needs no correction.
