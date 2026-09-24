@@ -2883,3 +2883,13 @@ value date and the wrong reference, so it can be matched by hand.
 week, the reference field is the thing that goes wrong, not the IBAN. The Prague
 transfer carried `15602026 NA-5020/03-2026` — invoice number *and* file reference
 — and needs no correction.
+
+**A tactic that works at the Národní archiv:** send the bank's receipt, and copy
+finance, the reading room and the registry at once. The scans sit with the
+badatelna but cannot be released *"až nám dají pokyn z ekonomického oddělení"*,
+and the registry itself suggested in August sending proof of payment directly to
+Jana Patková. Done for invoice 15602026 the same day (Zimbra **466135**), with the
+Barclays confirmation attached and the request stated in full — 397 scans of
+114-3-17, by download link, as for the first part. Not repeated at the HHStA: the
+correction letter of the same day already gives them what they need to match the
+payment.
