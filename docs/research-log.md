@@ -2820,3 +2820,48 @@ Bundesarchiv is **held**, to be sent only if he shows signs of paying them.
 
 The one lever that works here is feeding the thread good material, which is what
 the Wels corroboration did.
+
+### 24 September 2026 — three invoices, and what each one unlocks
+
+**MA 8 / WStLA — EUR 35,00, paid.** Geschäftszahl **MA 8 - 1295012-2026-4**,
+Zahlungsreferenz 000235046691, settled online by the applicant the same day.
+Raised against the **email** of 21 September, which corrects yesterday's
+inference: the email had not been ignored, it had been worked — half an hour of
+research — and only the *ordering* of work requires the form. Their terms:
+*"after receiving the amount we will send you the results of our research"*. The
+fee bought **time**, not a guaranteed copy; if the answer is a reasoned refusal
+rather than a masked scan, the form submission of 23 September (Eingangsnummer
+2026-2309145910123) is still live and asks for the copy in terms.
+
+**HHStA — EUR 36,00, unpaid.** GZ **2026-0.786.804**, Kostenaufstellung Nr. 1257,
+six scans at EUR 6, 14 days, scans made only after payment and sent by download
+link. Mag. Maria Röhsner again. What it buys:
+
+| Signature | Item |
+|---|---|
+| SB Partezettelsammlung 17-290 | Marriage announcement, Paul Czernin and Gabriele Orsini-Rosenberg, 22.4.1901 |
+| 17-291 | Partezettel Paul Czernin |
+| 17-246 | Partezettel Felix, 3.1.1968 |
+| 17-309 | Partezettel Wolfgang, 10.10.1982 |
+| Familienarchiv Clary 48-144 | **Gedenkbild Johannes (Jan) Czernin, 24.5.1996** (2 scans) |
+
+Plus a documented negative: **no Partezettel for Alexander** in the holdings or in
+the Nachlass collections. Expected — he died at Oxford in 2002 — but now on paper.
+
+**The Gedenkbild is worth more than its EUR 6.** It documents Jan's death on
+24 May 1996, which is the sole ground on which MA 8 is being asked to release his
+registration card with the co-registered entries masked. The cheap purchase
+evidences the expensive request.
+
+**Národní archiv — GBP 165,96, unpaid.** Invoice **15602026** (their ref
+NA-5020/03-2026), dated 17 September, due 8 October, for 391 scans at GBP 0.36
+plus 7 at GBP 3.60 — the second part of **114-3-17**. Delivery after payment,
+bank transfer only.
+
+**And the reason it had gone quiet was not a stuck file.** The chase of 24
+September (Zimbra 466058) produced an answer within four hours: *"faktura byla
+odeslána 17.9.2026. Dnes jsme ji odeslali znovu. Pokud by se ji opět přes náš
+automatický systém nepodařilo doručit, pošleme ji jiným způsobem."* It had been
+sent and lost in their automated dispatch. The chase caused a re-send, not an
+issue — which is worth remembering the next time an invoice simply fails to
+appear.
