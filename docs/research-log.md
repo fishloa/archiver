@@ -2893,3 +2893,43 @@ Barclays confirmation attached and the request stated in full — 397 scans of
 114-3-17, by download link, as for the first part. Not repeated at the HHStA: the
 correction letter of the same day already gives them what they need to match the
 payment.
+
+### 25 September 2026 — Humprecht's prisoner file, free, from Potsdam
+
+Marion Krause, Brandenburgisches Landeshauptarchiv (Az. **A-2026-00046049**),
+answering the request of 16 September: the file **29 ZH Brdbg 3189** — the
+Häftlingspersonalakte of the Zuchthaus Brandenburg-Görden for **Humprecht Ottokar
+Graf Czernin von Chudenic** (b. 9.2.1909 Dymokury), 1942-1944 — by download link,
+**64 preservation-grade images**, 3450 x 4082 with a colour target in frame.
+*"Gebühren werden nicht erhoben, da die Akte bereits als Digitalisat vorliegt."*
+
+**And two sheets nobody asked for.** She searched the **Zu- und Abgangslisten**
+and found him in two of them — Rep. 29 ZH Brdbg **DO 9-1, Bild 376** and **DO 10,
+Bild 355** — and attached both. Those are the registers that document the
+**transfer of 14 September 1944**, which until now existed only as a line in the
+finding aid.
+
+**The file cover, read on arrival.** Across the top, handwritten, underlined:
+**"Tscheche!"** Below it *Personalakten … -gefangenen -verwahrten*, the name in a
+clerk's hand, prisoner-book number **1/9470**, and the stamp *"Am 14.9. … Uhr nach
+… Prag … entlassen — übergeführt"*. He died five days later at Sanatorium Pleš.
+The regime's own cover sheet classifies him by nationality, with an exclamation
+mark, on a case that began as a death sentence.
+
+Ingested as **4025** (64 pp.) and **4026** (the two lists, cross-referenced),
+both with `ocrEngine: ocr_page_mistral` set at ingest — the first real use of the
+hint shipped in v1.1.10, and the jobs came out as Mistral because the record said
+so rather than because of a deployment default. The handwritten sheets can go to
+Transkribus afterwards through `POST /api/admin/transkribus/upload`.
+
+**Thanked (Zimbra 466318)**, naming what she did beyond the request and telling
+her, briefly, what the file is: a death sentence commuted within days, a man dead
+five days after the transfer her lists record, and a family that had only the
+story until now. She waived a fee and did unasked work; that is worth more than a
+form reply.
+
+**A note on the delivery.** BLHA uses **DRACOON** for download shares. The link is
+a JavaScript app, but the public API answers directly:
+`GET /api/v4/public/shares/downloads/{key}` for metadata, `POST` to the same path
+for a one-time S3 download URL. Worth knowing — the share has a limited life and
+the file was 26 MB.
