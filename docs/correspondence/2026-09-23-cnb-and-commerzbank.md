@@ -96,3 +96,46 @@ a fact that does not move the application is not a good trade.
 
 No reply sent: a second thank-you for a referral list is noise, and she has now
 been thanked once for the substantive favour.
+
+## 28 September 2026 — Commerzbank answers (Zimbra 466734)
+
+Lea Marie Schreck, doctoral researcher at the Historisches Archiv der Commerzbank
+(HAC), replying to the enquiry of 23 September.
+
+**A Personalakte for Felix exists in the HAC.** Modest in size, digitisation
+possible in principle. Before that she asks for three things: a concrete statement
+of the research interest, a completed **Benutzungsantrag**, and **proof of
+kinship** (death certificate, Familienbuch or Stammbuch).
+
+**She also sent two published extracts**, unasked: Bähr, *Die Dresdner Bank in der
+Wirtschaft des Dritten Reichs*, vol. 1, biographical appendix p. 602, and pages
+from Wixforth, vol. 3.
+
+**The Bähr entry, and why it changes nothing.** It records: Handelsakademie Aussig
+1920-21; Böhmische Escompte Bank from October 1921 (Trautenau, Hohenelbe, Prague);
+**director of the Hohenelbe branch 1929-1938**; Aussig 1938-1941; **"Seit 1939
+Mitglied der NSDAP"**; Continentale Bank Brussels from April 1941, Administrateur
+Directeur from September; **drafted into the Wehrmacht in 1943**; after the war
+asset manager to the Prince of Liechtenstein, then Breisach & Co., Vienna.
+
+The party membership is therefore **in print on a library shelf**, not locked in
+an archive — but the applicant's position is the right one: we already hold the
+fuller and better answer in record **4006**, Felix's own § 27 Nachsichtsgesuch to
+the Austrian authorities, with the Anwärter account and the favourable decisions
+of 1945 and 1947. Bähr is the thin version of something we can already explain.
+
+One genuine correction: **Hohenelbe from 1929**, not 1933 as inferred from the
+Compass yearbooks.
+
+**Why the Personalakte is not being pursued.** Clause 2 of the HAC
+Benutzungsantrag: *"Eine Weitergabe von Kopien an Dritte ist nicht erlaubt."*
+Submitting a copy to MA 35 is passing it to a third party, so the file could not
+be used in the proceedings without express permission — which would require
+explaining the purpose to a German bank. Set against material about a brother's
+banking career that we can already account for, that is a poor trade.
+
+**Answered (Zimbra 466758):** thanks, the Bähr correction acknowledged, and the
+one thing she asked — *Felix was a brother of my grandfather Alexander Czernin
+(1913-2002); I am his great-nephew, researching the family and the paths of the
+six siblings.* No purpose beyond family history stated, no order placed, the door
+left open.
