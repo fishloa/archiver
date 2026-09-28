@@ -9,6 +9,31 @@ new revision, no build is triggered, and the release silently never happens —
 which is exactly what v1.0.0 did on its first attempt. Add the entry below,
 commit, then tag that commit.
 
+## v1.1.13 — 28 September 2026
+
+**Transkribus can be configured from the admin page at last.** `ProviderApi` had
+no `transkribus` entry, and the form renders whatever the backend describes — so
+the row showed no fields, and the only way to choose a model was to edit the
+settings JSON by hand. It now declares its real settings: default model, model by
+language, the typescript equivalents, credits per month, tick, poll and timeout,
+language model, token URL, client id and username variable.
+
+**And pressing Save on that page would have destroyed the configuration.**
+`settingsFrom` built the settings object from the posted fields alone, while the
+API replaces settings wholesale — so every key the form had not rendered was
+dropped on save, `htrByLang` included. It now merges over the row's stored
+settings. The fix applies to every provider, and has the tests.
+
+**Language and model are edited as a pair.** One row per language: a code and a
+model chosen from the live catalogue, shown with its error rate and training size.
+A model that does not list the language says so in place — Text Titan II reads
+twelve languages, Czech is not one of them, and discovering that through a job
+costs a credit and yields confident nonsense.
+
+**The catalogue endpoint returned nothing for `de`.** The archive speaks ISO 639-1,
+Transkribus publishes ISO 639-2, and the two were compared directly; both are now
+accepted.
+
 ## v1.1.12 — 28 September 2026
 
 **The Transkribus engine is data again, all the way down.** The worker captured
