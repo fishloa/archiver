@@ -95,7 +95,99 @@ public enum ProviderApi {
                   "bulk",
                   "bulk",
                   "best")
-              .forCapabilities(AiCapability.TRANSLATION)));
+              .forCapabilities(AiCapability.TRANSLATION))),
+
+  /**
+   * Transkribus handwriting recognition, through READ-COOP's processing API.
+   *
+   * <p>Billed one credit per page against a monthly allowance, so it is never the bulk engine: a
+   * record asks for it because its pages are handwritten. Which model reads which language is the
+   * whole of the configuration that matters, and it is a pairing rather than a single choice — Text
+   * Titan II covers twelve languages and Czech is not among them.
+   */
+  TRANSKRIBUS(
+      "transkribus",
+      "Transkribus (processing API)",
+      BatchStyle.SINGLE,
+      "https://transkribus.eu/processing/v1",
+      Map.of(AiCapability.OCR, "/processes"),
+      1,
+      1,
+      List.of(
+          Setting.model(
+              "htrId",
+              "Default model",
+              "Used for any language without its own entry below. Text Titan II (579509) is the"
+                  + " multilingual default.",
+              579509,
+              Catalogue.TRANSKRIBUS_MODELS),
+          Setting.modelByLang(
+              "htrByLang",
+              "Model by language",
+              "The record's own language picks the model. A model that does not list the"
+                  + " language will read the page as gibberish and still cost a credit.",
+              Catalogue.TRANSKRIBUS_MODELS),
+          Setting.model(
+              "printHtrId",
+              "Default model (typescript)",
+              "Only used when a caller says the page is print. Print belongs on Mistral; this is"
+                  + " for the rare typed page inside a handwritten file.",
+              37545,
+              Catalogue.TRANSKRIBUS_MODELS),
+          Setting.modelByLang(
+              "printHtrByLang",
+              "Typescript model by language",
+              "As above, per language.",
+              Catalogue.TRANSKRIBUS_MODELS),
+          Setting.integer(
+              "monthlyCredits",
+              "Credits per month",
+              "The plan's allowance. The worker refuses to start a page once they are spent,"
+                  + " rather than failing pages one at a time against a provider that is saying no.",
+              150),
+          Setting.integer(
+              "tickIntervalMs", "Tick interval (ms)", "How often to look for work.", 20000),
+          Setting.integer(
+              "pollIntervalMs",
+              "Poll interval (ms)",
+              "How often to ask whether a submitted page has finished.",
+              5000),
+          Setting.integer(
+              "maxPollMs",
+              "Poll timeout (ms)",
+              "How long to wait for one page before giving up on it.",
+              900000),
+          Setting.choice(
+              "languageModel",
+              "Language model",
+              "Transkribus's own language model over the raw recognition output.",
+              "built-in",
+              "built-in",
+              "none"),
+          Setting.text(
+              "tokenUrl",
+              "Token URL",
+              "READ-COOP's Keycloak token endpoint; the password grant happens here.",
+              "https://account.readcoop.eu/auth/realms/readcoop/protocol/openid-connect/token"),
+          Setting.text("clientId", "Client id", "Keycloak client.", "processing-api-client"),
+          Setting.text(
+              "usernameEnv",
+              "Username variable",
+              "Environment variable holding the account name. The password variable is the"
+                  + " credential field above.",
+              "TRANSKRIBUS_USERNAME")));
+
+  /**
+   * Where a form fetches the choices for a catalogue-backed setting.
+   *
+   * <p>In a holder because an enum constant may not refer forward to a static field of its own
+   * class, and these belong with the providers that use them rather than in a config file.
+   */
+  private static final class Catalogue {
+    private static final String TRANSKRIBUS_MODELS = "/api/admin/transkribus/models";
+
+    private Catalogue() {}
+  }
 
   private final String id;
   private final String label;
@@ -178,14 +270,38 @@ public enum ProviderApi {
       String help,
       Object defaultValue,
       List<String> options,
+      String optionsUrl,
       List<AiCapability> capabilities) {
 
     static Setting text(String key, String label, String help, String defaultValue) {
-      return new Setting(key, label, "text", help, defaultValue, List.of(), List.of());
+      return new Setting(key, label, "text", help, defaultValue, List.of(), null, List.of());
     }
 
     static Setting integer(String key, String label, String help, int defaultValue) {
-      return new Setting(key, label, "integer", help, defaultValue, List.of(), List.of());
+      return new Setting(key, label, "integer", help, defaultValue, List.of(), null, List.of());
+    }
+
+    /**
+     * One model, chosen from a catalogue the backend can fetch.
+     *
+     * <p>A model id typed by hand is a number nobody can check: 579509 and 263129 look equally
+     * plausible and only one of them can read Czech. The form fetches {@code optionsUrl} and shows
+     * names, languages and error rates instead.
+     */
+    static Setting model(
+        String key, String label, String help, Integer defaultValue, String optionsUrl) {
+      return new Setting(key, label, "model", help, defaultValue, List.of(), optionsUrl, List.of());
+    }
+
+    /**
+     * A map of language code to model, edited as rows rather than as JSON.
+     *
+     * <p>Held in one settings key because that is how the engine reads it, but a language and its
+     * model are a pair the operator thinks in: one row per language, added and removed.
+     */
+    static Setting modelByLang(String key, String label, String help, String optionsUrl) {
+      return new Setting(
+          key, label, "modelByLang", help, Map.of(), List.of(), optionsUrl, List.of());
     }
 
     /**
@@ -197,11 +313,12 @@ public enum ProviderApi {
      */
     static Setting choice(
         String key, String label, String help, String defaultValue, String... options) {
-      return new Setting(key, label, "choice", help, defaultValue, List.of(options), List.of());
+      return new Setting(
+          key, label, "choice", help, defaultValue, List.of(options), null, List.of());
     }
 
     Setting forCapabilities(AiCapability... caps) {
-      return new Setting(key, label, type, help, defaultValue, options, List.of(caps));
+      return new Setting(key, label, type, help, defaultValue, options, optionsUrl, List.of(caps));
     }
 
     /** Empty capabilities means the setting applies to every capability the provider serves. */
@@ -217,6 +334,7 @@ public enum ProviderApi {
       m.put("help", help);
       m.put("default", defaultValue);
       m.put("options", options);
+      m.put("optionsUrl", optionsUrl);
       return m;
     }
   }

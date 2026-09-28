@@ -731,11 +731,20 @@ export interface AiImplementation {
 export interface ProviderSetting {
   key: string;
   label: string;
-  /** "choice" renders a select over `options`; the backend rejects anything outside them. */
-  type: "text" | "integer" | "choice";
+  /**
+   * How to render it.
+   *
+   * "choice" is a select over `options`, and the backend rejects anything outside them. "model" and
+   * "modelByLang" are chosen from the catalogue at `optionsUrl` — a model id typed by hand is a
+   * number nobody can check, and picking one that cannot read the language costs a credit to find
+   * out. "modelByLang" is a map of language code to model, edited as rows.
+   */
+  type: "text" | "integer" | "choice" | "model" | "modelByLang";
   help: string;
   default: unknown;
   options: string[];
+  /** Where the form fetches the choices, for the catalogue-backed types. */
+  optionsUrl?: string | null;
 }
 
 export interface ProviderCapability {
@@ -760,6 +769,37 @@ export async function fetchAiProviders(email?: string): Promise<ProviderApi[]> {
   if (!res.ok) throw new Error(`Backend error: ${res.status}`);
   const body = await res.json();
   return body.providers ?? [];
+}
+
+/** One handwriting model as the admin form offers it. */
+export interface HtrModel {
+  htrId: number;
+  name: string;
+  docType: string;
+  cer: number | null;
+  trainWords: number;
+  featured: boolean;
+  languages: string[];
+}
+
+/**
+ * The handwriting models a settings form may offer.
+ *
+ * Fetched here rather than from the browser so the page needs no admin credentials of its own, and
+ * so a provider that cannot reach its catalogue degrades to a plain number field instead of an
+ * error.
+ */
+export async function fetchHtrModels(email?: string, limit = 400): Promise<HtrModel[]> {
+  try {
+    const res = await fetch(
+      `${backendUrl()}/api/admin/transkribus/models?docType=handwritten&limit=${limit}`,
+      { headers: authHeaders(email) },
+    );
+    if (!res.ok) return [];
+    return await res.json();
+  } catch {
+    return [];
+  }
 }
 
 export async function fetchAiImplementations(

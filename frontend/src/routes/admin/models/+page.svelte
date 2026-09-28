@@ -10,7 +10,7 @@
 		Trash2,
 		TriangleAlert
 	} from 'lucide-svelte';
-	import type { AiImplementation, ProviderApi } from '$lib/server/api';
+	import type { AiImplementation, HtrModel, ProviderApi } from '$lib/server/api';
 
 	let { data, form } = $props();
 
@@ -42,6 +42,79 @@
 		} catch {
 			return undefined;
 		}
+	}
+
+	/**
+	 * The language rows being edited, per row and setting.
+	 *
+	 * Held in state rather than read from the DOM so a language can be added or removed without the
+	 * form losing what is already typed.
+	 */
+	let langRows = $state<Record<string, { lang: string; htrId: string }[]>>({});
+
+	function mapKey(rowId: string, settingKey: string): string {
+		return `${rowId}::${settingKey}`;
+	}
+
+	/** The stored map, as rows, the first time this setting is opened. */
+	function rowsFor(row: AiImplementation, settingKey: string) {
+		const key = mapKey(row.id, settingKey);
+		if (!langRows[key]) {
+			const stored = (settingValue(row, settingKey) ?? {}) as Record<string, unknown>;
+			langRows[key] = Object.entries(stored).map(([lang, htrId]) => ({
+				lang,
+				htrId: String(htrId)
+			}));
+		}
+		return langRows[key];
+	}
+
+	function addLang(row: AiImplementation, settingKey: string) {
+		const key = mapKey(row.id, settingKey);
+		langRows[key] = [...rowsFor(row, settingKey), { lang: '', htrId: '' }];
+	}
+
+	function removeLang(row: AiImplementation, settingKey: string, at: number) {
+		const key = mapKey(row.id, settingKey);
+		langRows[key] = rowsFor(row, settingKey).filter((_, i) => i !== at);
+	}
+
+	/** ISO 639-1 as the archive stores it, against ISO 639-2 as Transkribus publishes it. */
+	const ISO2TO3: Record<string, string> = {
+		de: 'deu', cs: 'ces', en: 'eng', fr: 'fra', it: 'ita', la: 'lat', nl: 'nld',
+		pl: 'pol', hu: 'hun', sk: 'slk', es: 'spa', pt: 'por', da: 'dan', sv: 'swe',
+		no: 'nor', fi: 'fin'
+	};
+
+	function models(): HtrModel[] {
+		return data.htrModels ?? [];
+	}
+
+	function modelById(htrId: string): HtrModel | undefined {
+		return models().find((m) => String(m.htrId) === String(htrId));
+	}
+
+	/** What to show in the picker: name, error rate and how much it was trained on. */
+	function modelLabel(m: HtrModel): string {
+		const cer = m.cer === null || m.cer === undefined ? '' : ` · CER ${(m.cer * 100).toFixed(1)}%`;
+		const words = m.trainWords ? ` · ${(m.trainWords / 1e6).toFixed(1)}M words` : '';
+		return `${m.name} (${m.htrId})${cer}${words}`;
+	}
+
+	/**
+	 * Whether a chosen model actually covers the language it has been paired with.
+	 *
+	 * Text Titan II reads twelve languages and Czech is not one of them; asking it for a Czech page
+	 * returns confident nonsense and still spends a credit. Said here, before it is saved.
+	 */
+	function languageWarning(lang: string, htrId: string): string {
+		if (!lang || !htrId) return '';
+		const model = modelById(htrId);
+		if (!model || !model.languages?.length) return '';
+		const want = lang.trim().toLowerCase();
+		const three = ISO2TO3[want] ?? want;
+		const covered = model.languages.some((l) => l.toLowerCase() === want || l.toLowerCase() === three);
+		return covered ? '' : `${model.name} does not list ${want} — it covers ${model.languages.join(', ')}`;
 	}
 
 	/** How this provider takes more than one item, said plainly. */
@@ -240,6 +313,75 @@
 														<option value={option} selected={option === current}>{option}</option>
 													{/each}
 												</select>
+											{:else if setting.type === 'model' && models().length}
+												<select id="es-{row.id}-{setting.key}" name="setting.{setting.key}">
+													{#each models() as m (m.htrId)}
+														<option value={m.htrId} selected={String(m.htrId) === String(current)}>
+															{modelLabel(m)}
+														</option>
+													{/each}
+												</select>
+											{:else if setting.type === 'modelByLang'}
+												<input type="hidden" name="setting-map" value={setting.key} />
+												<table class="langmap">
+													<thead>
+														<tr><th>Language</th><th>Model</th><th></th></tr>
+													</thead>
+													<tbody>
+														{#each rowsFor(row, setting.key) as pair, i (i)}
+															<tr>
+																<td>
+																	<input
+																		class="lang"
+																		name="setting.{setting.key}.{pair.lang}"
+																		type="hidden"
+																		value={pair.htrId}
+																	/>
+																	<input
+																		class="lang"
+																		aria-label="Language code"
+																		placeholder="de"
+																		bind:value={pair.lang}
+																	/>
+																</td>
+																<td>
+																	{#if models().length}
+																		<select bind:value={pair.htrId} aria-label="Model">
+																			<option value="">— choose a model —</option>
+																			{#each models() as m (m.htrId)}
+																				<option value={String(m.htrId)}>{modelLabel(m)}</option>
+																			{/each}
+																		</select>
+																	{:else}
+																		<input bind:value={pair.htrId} placeholder="model id" />
+																	{/if}
+																	{#if languageWarning(pair.lang, pair.htrId)}
+																		<p class="warn">
+																			<TriangleAlert size="14" /> {languageWarning(pair.lang, pair.htrId)}
+																		</p>
+																	{/if}
+																</td>
+																<td>
+																	<button
+																		type="button"
+																		class="vui-btn vui-btn-sm"
+																		onclick={() => removeLang(row, setting.key, i)}
+																		aria-label="Remove this language"
+																	>
+																		<Trash2 size="14" />
+																	</button>
+																</td>
+															</tr>
+														{/each}
+													</tbody>
+												</table>
+												<button
+													type="button"
+													class="vui-btn vui-btn-sm"
+													onclick={() => addLang(row, setting.key)}
+												>
+													<Plus size="14" /> Add a language
+												</button>
 											{:else}
 												<input
 													id="es-{row.id}-{setting.key}"
@@ -385,4 +527,12 @@
 	.editor input, .editor select { width: 100%; padding: 0.35rem 0.5rem; border-radius: 0.35rem; border: 1px solid var(--vui-border); background: var(--vui-bg-deep); color: var(--vui-text); font-size: var(--vui-text-sm); }
 	.hint { font-size: var(--vui-text-xs); color: var(--vui-text-sub); margin: 0.25rem 0 0; }
 	.notice { display: flex; align-items: center; gap: 0.5rem; padding: 0.6rem 0.8rem; border-radius: 0.5rem; border: 1px solid var(--vui-danger, #b91c1c); color: var(--vui-danger, #b91c1c); font-size: var(--vui-text-sm); }
+
+	.langmap { width: 100%; border-collapse: collapse; margin-bottom: 0.4rem; }
+	.langmap th { text-align: left; font-size: var(--vui-text-xs); color: var(--vui-text-sub); font-weight: 500; padding: 0 0.4rem 0.2rem 0; }
+	.langmap td { padding: 0.15rem 0.4rem 0.15rem 0; vertical-align: top; }
+	.langmap td:last-child, .langmap th:last-child { width: 2.5rem; padding-right: 0; }
+	.langmap select { width: 100%; }
+	.langmap input.lang { width: 5rem; }
+	.warn { display: flex; align-items: center; gap: 0.3rem; margin: 0.25rem 0 0; font-size: var(--vui-text-xs); color: var(--vui-warning, #b45309); }
 </style>

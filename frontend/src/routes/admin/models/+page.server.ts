@@ -3,40 +3,23 @@ import {
 	deleteAiImplementation,
 	fetchAiImplementations,
 	fetchAiProviders,
+	fetchHtrModels,
 	setAiOrder,
 	updateAiImplementation
 } from '$lib/server/api';
+import { settingsFrom, settingsOf } from '$lib/settings-form';
 import { fail } from '@sveltejs/kit';
 import type { Actions, PageServerLoad } from './$types';
 
 export const load: PageServerLoad = async ({ locals }) => {
-	const [implementations, providers] = await Promise.all([
+	const [implementations, providers, htrModels] = await Promise.all([
 		fetchAiImplementations(locals.userEmail),
-		fetchAiProviders(locals.userEmail)
+		fetchAiProviders(locals.userEmail),
+		fetchHtrModels(locals.userEmail)
 	]);
-	return { implementations, providers };
+	return { implementations, providers, htrModels };
 };
 
-
-/**
- * Collects the provider-declared settings out of the submitted form.
- *
- * The form does not know what any given provider needs; it renders whatever the backend described
- * and posts each one back as `setting.<key>`. This turns those into the JSON the API stores, so a
- * new provider setting needs no change here either.
- */
-function settingsFrom(form: FormData): string {
-	const settings: Record<string, unknown> = {};
-	for (const [key, value] of form.entries()) {
-		if (!key.startsWith('setting.')) continue;
-		const name = key.slice('setting.'.length);
-		const raw = String(value).trim();
-		if (raw === '') continue;
-		// Integers must not be stored as strings: the backend reads them with asInt.
-		settings[name] = /^-?\d+$/.test(raw) ? Number(raw) : raw;
-	}
-	return JSON.stringify(settings);
-}
 
 export const actions: Actions = {
 	/** Moves one implementation up or down, sending the whole resulting order. */
@@ -70,13 +53,19 @@ export const actions: Actions = {
 	update: async ({ request, locals }) => {
 		const form = await request.formData();
 		const id = String(form.get('id'));
+		// Merged over what the row already holds: the API replaces settings wholesale, so anything
+		// the form did not render would otherwise be dropped on save.
+		const all = await fetchAiImplementations(locals.userEmail);
+		const existing = Object.values(all)
+			.flat()
+			.find((i) => i.id === id);
 		try {
 			await updateAiImplementation(locals.userEmail, id, {
 				baseUrl: String(form.get('baseUrl') ?? ''),
 				endpointPath: String(form.get('endpointPath') ?? ''),
 				credentialEnv: String(form.get('credentialEnv') ?? ''),
 				maxBatchSize: Number(form.get('maxBatchSize') ?? 1),
-				settings: settingsFrom(form)
+				settings: settingsFrom(form, settingsOf(existing?.settings))
 			});
 		} catch (e) {
 			return fail(400, { message: e instanceof Error ? e.message : 'Could not save it' });

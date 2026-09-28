@@ -568,4 +568,21 @@ class AdminPipelineControllerTest {
     assertThat(resp.statusCode()).isIn(404, 409);
     assertThat(resp.body()).doesNotContain("Internal server error");
   }
+
+  @Test
+  void theModelCatalogueMatchesIso6391AgainstIso6392() {
+    // The archive speaks "de"; Transkribus's catalogue says "deu". Comparing them directly matched
+    // nothing, so asking for German models returned an empty list and the admin page offered no
+    // choices at all.
+    assertThat(AdminPipelineController.speaks(java.util.List.of("deu", "eng"), "de")).isTrue();
+    assertThat(AdminPipelineController.speaks(java.util.List.of("ces"), "cs")).isTrue();
+    assertThat(AdminPipelineController.speaks(java.util.List.of("deu"), "deu")).isTrue();
+
+    // Text Titan II's actual language list: no Czech in it.
+    var textTitanII =
+        java.util.List.of(
+            "dan", "deu", "eng", "fin", "fra", "ita", "lat", "nld", "nor", "por", "spa", "swe");
+    assertThat(AdminPipelineController.speaks(textTitanII, "cs")).isFalse();
+    assertThat(AdminPipelineController.speaks(textTitanII, "de")).isTrue();
+  }
 }

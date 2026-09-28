@@ -61,6 +61,45 @@ public class AdminPipelineController {
   }
 
   /**
+   * Whether a model's language list covers the language asked for.
+   *
+   * <p>The archive speaks ISO 639-1 — {@code de}, {@code cs} — and Transkribus's catalogue speaks
+   * ISO 639-2 — {@code deu}, {@code ces}. Comparing them directly matched nothing, so asking the
+   * catalogue for German models returned an empty list and the page offered no choices at all.
+   */
+  static boolean speaks(java.util.List<String> languages, String wanted) {
+    String want = wanted.trim().toLowerCase(java.util.Locale.ROOT);
+    String three = ISO_639_1_TO_2.getOrDefault(want, want);
+    for (String l : languages) {
+      String have = l.toLowerCase(java.util.Locale.ROOT);
+      if (have.equals(want) || have.equals(three)) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  /** The languages this archive actually holds; enough to bridge the two code sets. */
+  private static final Map<String, String> ISO_639_1_TO_2 =
+      Map.ofEntries(
+          Map.entry("de", "deu"),
+          Map.entry("cs", "ces"),
+          Map.entry("en", "eng"),
+          Map.entry("fr", "fra"),
+          Map.entry("it", "ita"),
+          Map.entry("la", "lat"),
+          Map.entry("nl", "nld"),
+          Map.entry("pl", "pol"),
+          Map.entry("hu", "hun"),
+          Map.entry("sk", "slk"),
+          Map.entry("es", "spa"),
+          Map.entry("pt", "por"),
+          Map.entry("da", "dan"),
+          Map.entry("sv", "swe"),
+          Map.entry("no", "nor"),
+          Map.entry("fi", "fin"));
+
+  /**
    * Puts a record's page images into the Transkribus collection, ready for a human to press Run.
    *
    * <p>The other half of the round trip that {@code import-transkribus} completes. Uploading was
@@ -632,14 +671,12 @@ public class AdminPipelineController {
               java.net.http.HttpClient.newHttpClient());
       var out = new java.util.ArrayList<Map<String, Object>>();
       for (var m : models) {
-        if (lang != null) {
-          boolean match = false;
-          for (var l : m.path("isoLanguages")) {
-            match |= lang.equalsIgnoreCase(l.asText());
-          }
-          if (!match) {
-            continue;
-          }
+        var languages = new java.util.ArrayList<String>();
+        for (var l : m.path("isoLanguages")) {
+          languages.add(l.asText());
+        }
+        if (lang != null && !speaks(languages, lang)) {
+          continue;
         }
         if (docType != null && !docType.equalsIgnoreCase(m.path("docType").asText())) {
           continue;
@@ -651,11 +688,16 @@ public class AdminPipelineController {
         row.put("cer", m.path("finalCer").isMissingNode() ? null : m.path("finalCer").asDouble());
         row.put("trainWords", m.path("nrOfWords").asLong());
         row.put("featured", m.path("featured").asBoolean(false));
+        row.put("languages", languages);
         out.add(row);
         if (out.size() >= limit) {
           break;
         }
       }
+      out.sort(
+          java.util.Comparator.comparing(
+                  (Map<String, Object> r) -> Boolean.TRUE.equals(r.get("featured")) ? 0 : 1)
+              .thenComparing(r -> -((Number) r.getOrDefault("trainWords", 0L)).longValue()));
       return ResponseEntity.ok(out);
     } catch (Exception e) {
       return ResponseEntity.status(502).body(Map.of("error", e.getMessage()));
