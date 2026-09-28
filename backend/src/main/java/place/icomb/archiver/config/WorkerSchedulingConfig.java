@@ -214,21 +214,10 @@ public class WorkerSchedulingConfig implements SchedulingConfigurer {
    * Throughput is not the constraint here — the quota is.
    */
   private void registerTranskribus(ScheduledTaskRegistrar registrar) {
-    var row =
-        aiRegistry.forCapability(place.icomb.archiver.ai.AiCapability.OCR).stream()
-            .filter(r -> "transkribus".equals(r.provider()))
-            .findFirst();
-    if (row.isEmpty()) {
-      return;
-    }
-
-    var config = new place.icomb.archiver.ai.TranskribusConfig(row.get(), environment);
-    if (!config.isConfigured()) {
-      log.info(
-          "Transkribus row {} is enabled but has no credential; handwriting OCR is off",
-          config.id());
-      return;
-    }
+    // Resolved on every tick, not once here. The row says which model, which endpoint and which
+    // credential, and all three are data: repointing them used to need a deployment, and enabling
+    // Transkribus in a system that booted without it did nothing at all until a restart.
+    var config = new place.icomb.archiver.ai.TranskribusConfig(aiRegistry, environment);
 
     var worker =
         new place.icomb.archiver.service.TranskribusOcrWorker(
@@ -243,12 +232,33 @@ public class WorkerSchedulingConfig implements SchedulingConfigurer {
             config,
             new place.icomb.archiver.service.TranskribusClient(config),
             pipelineStateMachine);
-    registrar.addFixedDelayTask(worker::pollAndProcess, Duration.ofMillis(config.tickIntervalMs()));
+    // The tick is the one thing read once: a scheduled task's period is fixed when it is added.
+    registrar.addFixedDelayTask(
+        () -> pollTranskribus(config, worker), Duration.ofMillis(config.tickIntervalMs()));
     log.info(
-        "Registered Transkribus OCR worker (model={}, credits/month={}, poll={}ms)",
-        config.model(),
-        config.monthlyCredits(),
+        "Registered Transkribus OCR worker (row resolved per tick; currently model={}, poll={}ms)",
+        config.isConfigured() ? config.model() : "none",
         config.tickIntervalMs());
+  }
+
+  /** Whether the last tick found a usable Transkribus row, so the change is logged once. */
+  private boolean transkribusWasConfigured;
+
+  private void pollTranskribus(
+      place.icomb.archiver.ai.TranskribusConfig config,
+      place.icomb.archiver.service.TranskribusOcrWorker worker) {
+    boolean configured = config.isConfigured();
+    if (configured != transkribusWasConfigured) {
+      log.info(
+          configured
+              ? "Transkribus handwriting OCR is on (model={})"
+              : "Transkribus handwriting OCR is off (no enabled row, or no credential)",
+          configured ? config.model() : "");
+      transkribusWasConfigured = configured;
+    }
+    if (configured) {
+      worker.pollAndProcess();
+    }
   }
 
   private void registerTranslation(ScheduledTaskRegistrar registrar, String model, String jobKind) {

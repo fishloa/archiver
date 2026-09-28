@@ -123,4 +123,64 @@ class TranskribusConfigTest {
     assertThat(config.isConfigured()).isTrue();
     assertThat(config.model()).isEqualTo("Transkribus super models (per language)");
   }
+
+  @Test
+  void aRegistryBackedConfigSeesARowChangedWhileRunning() {
+    // The engine is data. A model, an endpoint or a credential changed in ai_implementation has to
+    // take effect in a process that is already running: the worker lives for the life of the JVM,
+    // and until this it held whatever row existed at boot.
+    var registry = new RecordingRegistry();
+    var config = new TranskribusConfig(registry, env());
+
+    registry.row = registration(fullSettings());
+    assertThat(config.isRegistered()).isTrue();
+    assertThat(config.htrId("de")).isEqualTo(265149);
+
+    ObjectNode moved = fullSettings();
+    moved.putObject("htrByLang").put("de", 579509);
+    registry.row =
+        new AiRegistry.Registration(
+            "transkribus:text-titan-ii",
+            AiCapability.OCR,
+            "transkribus",
+            "Text Titan II",
+            "https://transkribus.eu/processing/v1",
+            "/processes",
+            "TRANSKRIBUS_PASSWORD",
+            1,
+            2,
+            true,
+            moved);
+    config.forgetCachedRow();
+
+    assertThat(config.htrId("de")).isEqualTo(579509);
+    assertThat(config.model()).isEqualTo("Text Titan II");
+  }
+
+  @Test
+  void noRowIsAnAnswerRatherThanACrash() {
+    // A row can be disabled or deleted while the archive runs; the scheduled worker must be able to
+    // ask "is there an engine?" without throwing.
+    var registry = new RecordingRegistry();
+    var config = new TranskribusConfig(registry, env());
+
+    assertThat(config.isRegistered()).isFalse();
+    assertThat(config.isConfigured()).isFalse();
+    assertThat(config.baseUrl()).isNull();
+    assertThat(config.htrId("de")).isEqualTo(51170);
+  }
+
+  /** An AiRegistry whose single row can be swapped between calls. */
+  private static class RecordingRegistry extends AiRegistry {
+    private AiRegistry.Registration row;
+
+    RecordingRegistry() {
+      super(null, null);
+    }
+
+    @Override
+    public java.util.List<Registration> forCapability(AiCapability capability) {
+      return row == null ? java.util.List.of() : java.util.List.of(row);
+    }
+  }
 }
