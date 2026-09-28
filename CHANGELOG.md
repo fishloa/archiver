@@ -9,6 +9,16 @@ new revision, no build is triggered, and the release silently never happens —
 which is exactly what v1.0.0 did on its first attempt. Add the entry below,
 commit, then tag that commit.
 
+## v1.1.14 — 28 September 2026
+
+**Fixes the edit form v1.1.13 broke.** Opening a Transkribus row did nothing
+visible: the language-map field seeded its editing state from inside the
+template, Svelte 5 refused the state change during render, and the form stopped
+rendering at that point — a form with no table and no model pickers. The template
+now only reads; edits are written from event handlers, and the row logic sits in
+`settings-form.ts` with its own tests. Type-checking could not have caught it, so
+this one was verified by clicking it in a browser against the live backend.
+
 ## v1.1.13 — 28 September 2026
 
 **Transkribus can be configured from the admin page at last.** `ProviderApi` had
