@@ -71,3 +71,40 @@ export function settingsOf(raw: unknown): Record<string, SettingValue> {
 		return {};
 	}
 }
+
+/** One language paired with the model that reads it. */
+export interface LangRow {
+	lang: string;
+	htrId: string;
+}
+
+/**
+ * The stored map as editable rows.
+ *
+ * Pure, and kept out of the component on purpose: seeding this from inside the template mutated
+ * state during render, which Svelte 5 refuses outright — the edit form stopped rendering at that
+ * field and the row appeared to do nothing when opened.
+ */
+export function langMapRows(stored: unknown): LangRow[] {
+	if (!stored || typeof stored !== 'object') return [];
+	return Object.entries(stored as Record<string, unknown>).map(([lang, htrId]) => ({
+		lang,
+		htrId: String(htrId)
+	}));
+}
+
+export function withLang(rows: LangRow[], at: number, lang: string): LangRow[] {
+	return rows.map((r, i) => (i === at ? { ...r, lang } : r));
+}
+
+export function withModel(rows: LangRow[], at: number, htrId: string): LangRow[] {
+	return rows.map((r, i) => (i === at ? { ...r, htrId } : r));
+}
+
+export function addRow(rows: LangRow[]): LangRow[] {
+	return [...rows, { lang: '', htrId: '' }];
+}
+
+export function withoutRow(rows: LangRow[], at: number): LangRow[] {
+	return rows.filter((_, i) => i !== at);
+}

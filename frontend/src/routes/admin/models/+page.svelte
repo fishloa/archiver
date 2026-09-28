@@ -11,6 +11,14 @@
 		TriangleAlert
 	} from 'lucide-svelte';
 	import type { AiImplementation, HtrModel, ProviderApi } from '$lib/server/api';
+	import {
+		addRow,
+		langMapRows,
+		withLang,
+		withModel,
+		withoutRow,
+		type LangRow
+	} from '$lib/settings-form';
 
 	let { data, form } = $props();
 
@@ -45,38 +53,25 @@
 	}
 
 	/**
-	 * The language rows being edited, per row and setting.
+	 * Edits in progress, per row and setting. Absent until something is actually changed.
 	 *
-	 * Held in state rather than read from the DOM so a language can be added or removed without the
-	 * form losing what is already typed.
+	 * The template only ever reads this. Seeding it lazily from inside the template was a state
+	 * mutation during render, which Svelte 5 refuses — the edit form stopped rendering at the first
+	 * map field, so opening a Transkribus row appeared to do nothing at all.
 	 */
-	let langRows = $state<Record<string, { lang: string; htrId: string }[]>>({});
+	let langEdits = $state<Record<string, LangRow[]>>({});
 
 	function mapKey(rowId: string, settingKey: string): string {
 		return `${rowId}::${settingKey}`;
 	}
 
-	/** The stored map, as rows, the first time this setting is opened. */
-	function rowsFor(row: AiImplementation, settingKey: string) {
-		const key = mapKey(row.id, settingKey);
-		if (!langRows[key]) {
-			const stored = (settingValue(row, settingKey) ?? {}) as Record<string, unknown>;
-			langRows[key] = Object.entries(stored).map(([lang, htrId]) => ({
-				lang,
-				htrId: String(htrId)
-			}));
-		}
-		return langRows[key];
+	/** The rows to show: what is being edited, or what is stored. A pure read. */
+	function rowsFor(row: AiImplementation, settingKey: string): LangRow[] {
+		return langEdits[mapKey(row.id, settingKey)] ?? langMapRows(settingValue(row, settingKey));
 	}
 
-	function addLang(row: AiImplementation, settingKey: string) {
-		const key = mapKey(row.id, settingKey);
-		langRows[key] = [...rowsFor(row, settingKey), { lang: '', htrId: '' }];
-	}
-
-	function removeLang(row: AiImplementation, settingKey: string, at: number) {
-		const key = mapKey(row.id, settingKey);
-		langRows[key] = rowsFor(row, settingKey).filter((_, i) => i !== at);
+	function setRows(row: AiImplementation, settingKey: string, rows: LangRow[]) {
+		langEdits = { ...langEdits, [mapKey(row.id, settingKey)]: rows };
 	}
 
 	/** ISO 639-1 as the archive stores it, against ISO 639-2 as Transkribus publishes it. */
@@ -341,19 +336,43 @@
 																		class="lang"
 																		aria-label="Language code"
 																		placeholder="de"
-																		bind:value={pair.lang}
+																		value={pair.lang}
+																		oninput={(e) =>
+																			setRows(
+																				row,
+																				setting.key,
+																				withLang(rowsFor(row, setting.key), i, e.currentTarget.value)
+																			)}
 																	/>
 																</td>
 																<td>
 																	{#if models().length}
-																		<select bind:value={pair.htrId} aria-label="Model">
+																		<select
+																			value={pair.htrId}
+																			aria-label="Model"
+																			onchange={(e) =>
+																				setRows(
+																					row,
+																					setting.key,
+																					withModel(rowsFor(row, setting.key), i, e.currentTarget.value)
+																				)}
+																		>
 																			<option value="">— choose a model —</option>
 																			{#each models() as m (m.htrId)}
 																				<option value={String(m.htrId)}>{modelLabel(m)}</option>
 																			{/each}
 																		</select>
 																	{:else}
-																		<input bind:value={pair.htrId} placeholder="model id" />
+																		<input
+																			value={pair.htrId}
+																			placeholder="model id"
+																			oninput={(e) =>
+																				setRows(
+																					row,
+																					setting.key,
+																					withModel(rowsFor(row, setting.key), i, e.currentTarget.value)
+																				)}
+																		/>
 																	{/if}
 																	{#if languageWarning(pair.lang, pair.htrId)}
 																		<p class="warn">
@@ -365,7 +384,8 @@
 																	<button
 																		type="button"
 																		class="vui-btn vui-btn-sm"
-																		onclick={() => removeLang(row, setting.key, i)}
+																		onclick={() =>
+																			setRows(row, setting.key, withoutRow(rowsFor(row, setting.key), i))}
 																		aria-label="Remove this language"
 																	>
 																		<Trash2 size="14" />
@@ -378,7 +398,8 @@
 												<button
 													type="button"
 													class="vui-btn vui-btn-sm"
-													onclick={() => addLang(row, setting.key)}
+													onclick={() =>
+														setRows(row, setting.key, addRow(rowsFor(row, setting.key)))}
 												>
 													<Plus size="14" /> Add a language
 												</button>

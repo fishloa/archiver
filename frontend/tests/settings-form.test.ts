@@ -1,5 +1,13 @@
 import { describe, expect, it } from 'vitest';
-import { settingsFrom, settingsOf } from '../src/lib/settings-form';
+import {
+	addRow,
+	langMapRows,
+	settingsFrom,
+	settingsOf,
+	withLang,
+	withModel,
+	withoutRow
+} from '../src/lib/settings-form';
 
 function form(pairs: [string, string][]): FormData {
 	const f = new FormData();
@@ -84,5 +92,60 @@ describe('settingsOf', () => {
 		expect(settingsOf({ htrId: 1 })).toEqual({ htrId: 1 });
 		expect(settingsOf('not json')).toEqual({});
 		expect(settingsOf(null)).toEqual({});
+	});
+});
+
+/**
+ * The language rows are edited as data, outside the component.
+ *
+ * The first version seeded its state lazily from inside the template, which Svelte 5 refuses —
+ * `state_unsafe_mutation` — and the whole edit form stopped rendering at that field. Keeping the
+ * logic here means the template only ever reads, and this behaviour has tests at all.
+ */
+describe('language map rows', () => {
+	it('reads the stored map as rows, in order', () => {
+		expect(langMapRows({ cs: 263129, de: 579509 })).toEqual([
+			{ lang: 'cs', htrId: '263129' },
+			{ lang: 'de', htrId: '579509' }
+		]);
+	});
+
+	it('is empty for a setting that has never been set', () => {
+		expect(langMapRows(undefined)).toEqual([]);
+		expect(langMapRows({})).toEqual([]);
+	});
+
+	it('changes a language without touching its neighbours', () => {
+		const rows = langMapRows({ cs: 263129, de: 579509 });
+		expect(withLang(rows, 1, 'en')).toEqual([
+			{ lang: 'cs', htrId: '263129' },
+			{ lang: 'en', htrId: '579509' }
+		]);
+	});
+
+	it('changes a model without touching its neighbours', () => {
+		const rows = langMapRows({ cs: 263129, de: 579509 });
+		expect(withModel(rows, 0, '341425')).toEqual([
+			{ lang: 'cs', htrId: '341425' },
+			{ lang: 'de', htrId: '579509' }
+		]);
+	});
+
+	it('adds an empty row and removes one by position', () => {
+		const rows = langMapRows({ cs: 263129 });
+		expect(addRow(rows)).toEqual([
+			{ lang: 'cs', htrId: '263129' },
+			{ lang: '', htrId: '' }
+		]);
+		expect(withoutRow(rows, 0)).toEqual([]);
+	});
+
+	it('never mutates the rows it is given', () => {
+		const rows = langMapRows({ cs: 263129 });
+		withLang(rows, 0, 'de');
+		withModel(rows, 0, '1');
+		addRow(rows);
+		withoutRow(rows, 0);
+		expect(rows).toEqual([{ lang: 'cs', htrId: '263129' }]);
 	});
 });
