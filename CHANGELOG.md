@@ -9,6 +9,19 @@ new revision, no build is triggered, and the release silently never happens —
 which is exactly what v1.0.0 did on its first attempt. Add the entry below,
 commit, then tag that commit.
 
+## v1.1.12 — 28 September 2026
+
+**The Transkribus engine is data again, all the way down.** The worker captured
+its `ai_implementation` row at boot, so changing a model, an endpoint or a
+credential took a deployment — and enabling Transkribus in a process that had
+started without a row did nothing whatever, because no worker had been registered
+to notice. `TranskribusConfig` now reads its row through `AiRegistry` on use, with
+a ten-second window so one page's accessor calls are one query. A missing row is
+an answer rather than a crash, so a row can be added, disabled or deleted while
+the archive runs, and the worker asks on every tick whether there is an engine,
+logging only when the answer changes. The tick period alone is still fixed at
+registration, because that is what a scheduled task is.
+
 ## v1.1.11 — 23 September 2026
 
 **`transkribus/upload` answers 404 for an unknown record, not 500.** The hold
