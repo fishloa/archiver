@@ -141,29 +141,39 @@ an ingest may run long before the pages are read.
 Print and typescript → **mistral**. Handwriting → **transkribus**, and read the
 next section before choosing it.
 
-## Transkribus: upload by machine, Run by hand, import by API
+## Transkribus: fully automated since 28 September 2026
 
-The recognition models cannot be started from the API on this account — the
-TrpServer answers *"You are not allowed for TrHtr Recognition!"* (403) to the
-super models, and the PyLaia endpoint refuses them as not PyLaia models. So the
-round trip has three steps and the middle one is a person:
+READ-COOP opened the **new processing API to all paid plans** at TUC 2026, and the
+registry row now points at it:
 
-```bash
-POST /api/admin/transkribus/upload?recordId=4021          # every page
-POST /api/admin/transkribus/upload?recordId=4021&seq=3    # one page
-#   → uploads each image as rec<recordId>_seq<seq>.jpg and returns its docId
-#   ... press Run in the Transkribus web app ...
-POST /api/admin/import-transkribus?docId=19063761
+```
+base_url       https://transkribus.eu/processing/v1
+endpoint_path  /processes
+htrId          579509          Text Titan II — default, German and the rest
+htrByLang      {"cs": 263129}  Czech Handwriting M1; Text Titan II has no Czech
+monthlyCredits 150             Scholar; one credit per page, the worker refuses past it
 ```
 
-The file name is the only thing tying a transcription back to a page, which is
-why uploading has an endpoint rather than a shell script.
+So handwriting is ordinary pipeline work — no browser, no Run button:
 
-Setting `ocrEngine: ocr_page_transkribus` at ingest queues
-`ocr_page_transkribus` jobs, and **those jobs currently fail**: the worker is
-wired to the Metagrapho client, which this plan does not include. Until that is
-fixed the hint is a statement of intent, and the upload endpoint above is the
-working route.
+```bash
+POST /api/admin/reocr-page?recordId=4027&seq=1&engine=transkribus&andThen=full
+# ...or name it at ingest and every page goes that way
+POST /api/ingest/records   {"...": ..., "ocrEngine": "ocr_page_transkribus"}
+```
+
+**Which model, and why not the low-CER ones.** The catalogue's German models with
+CER below 1% are trained on one scribe or one script family and measured on their
+own validation set. Proven on a Vienna Meldezettel: **Text Titan II gave 1,990
+clean characters; StAZH German Kurrent XIX (48925, CER 0.017, 26M words) gave
+1,397 characters of noise.** Pick by trial on a real page, never by the CER column.
+
+**The engine is read from the registry on use**, not captured at boot (v1.1.12), so
+changing a model, an endpoint or a credential takes effect within ten seconds and a
+row can be added, disabled or deleted while the archive runs.
+
+`POST /api/admin/transkribus/upload` and the web-app Run remain as a fallback for
+work that the API cannot start — see the import endpoint below.
 
 ## Transkribus import
 

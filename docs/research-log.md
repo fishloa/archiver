@@ -2933,3 +2933,52 @@ a JavaScript app, but the public API answers directly:
 `GET /api/v4/public/shares/downloads/{key}` for metadata, `POST` to the same path
 for a one-time S3 download URL. Worth knowing — the share has a limited life and
 the file was 26 MB.
+
+### 28 September 2026 — Transkribus, fully automated
+
+READ-COOP answered the letter of 18 September: *"As of last week the 'New'
+processing API should now be available to all paid plans (we launched this last
+week during the TUC 2026)."* Ten days, and it is the answer that removes the
+browser from the loop.
+
+**Proved before believing it.** `GET /processing/v1/processes` now answers 405
+where it answered 401; a POST with Text Titan II (579509) returned `processId
+31282668, CREATED`, finished in one poll, and gave 126 lines and 1,990 characters
+of correct text from Jan Czernin's Meldezettel — *Privatbeamter, Göding in
+Mähren, C.S.R., Reichsdeutscher, Wien Ostmark*. One credit.
+
+**The "Bad or no collection ID" mystery was never about a collection id.** The
+client was already written for this API and posts to `baseUrl + processesPath`;
+the row still carried `https://transkribus.eu/TrpServer/rest` and `/uploads`, so
+it was posting Metagrapho bodies at the old TrpServer upload endpoint. A data
+fault wearing a code fault's clothes.
+
+**Model choice, settled by trial rather than by the CER column.** The catalogue's
+best German models by CER are trained on a single hand — Lehtisalo 0.0023,
+Bruckner 0.009 — and measured on their own validation sets. The serious candidate
+was **StAZH German Kurrent XIX (48925)**, CER 0.017 on 26 million words. On our
+own page it produced **1,397 characters of noise** (*"usung aus den meideoorrr"*)
+against Text Titan II's 1,990 clean. Text Titan II wins for German. For Czech it
+is not a candidate at all — its language list is `eng,deu,ita,lat,fra,fin,swe,nld,
+por,dan,spa,nor`, no `ces` — so `cs` stays on **263129, Czech Handwriting M1**
+(917,580 words, the largest of the six Czech models). That run also proved PyLaia
+models start on the new API, so Czech will work when a Czech hand turns up.
+
+**And the flaw the applicant put his finger on.** The engine was read once, at
+boot: `WorkerSchedulingConfig` built the config and client from whatever row
+existed then, so repointing a model or an endpoint needed a deployment — and
+enabling Transkribus in a process that had started without a row did nothing at
+all, because no worker had been registered to notice. Fixed in **v1.1.12**:
+`TranskribusConfig` resolves its row through `AiRegistry` on use with a ten-second
+window, a missing row is an answer rather than a crash, and the worker asks every
+tick whether there is an engine.
+
+**Verified in production without a restart:** the row was repointed through
+`PUT /api/admin/ai/implementations`, and the next page went
+`htrId=579509 … chars=2116 credits=30/150` — new endpoint, new model, new credit
+ceiling, all live. Record **4027** page 1 now holds Transkribus text under engine
+`transkribus:579509`.
+
+**The ceiling that remains.** Scholar is 150 credits a month, one per page. The
+clicking is gone; the quota is not. Worth asking READ-COOP what a larger plan
+costs now that the API actually works.
