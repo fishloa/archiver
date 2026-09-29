@@ -2982,3 +2982,72 @@ ceiling, all live. Record **4027** page 1 now holds Transkribus text under engin
 **The ceiling that remains.** Scholar is 150 credits a month, one per page. The
 clicking is gone; the quota is not. Worth asking READ-COOP what a larger plan
 costs now that the API actually works.
+
+### 29 September 2026 — the second half of 114-3-17, and what it does and does not contain
+
+The 397 scans paid for on 24 September arrived by Úschovna: **392 files, 783.4 MB**,
+complete. Ingested as **eleven records, 4028-4038**, `lang: de`, Mistral, the
+delivered JPEGs uploaded untouched at their native ~2650x3700.
+
+**The archive divided the file for us.** Ten `_uvod` separator sheets, each naming
+the unit in Czech — *"21. situační zpráva (18.5.1942)"* and so on. Those, not my
+inferred boundaries, are what the records follow, and each separator is page 1 of
+its record so the division is visible rather than asserted:
+
+| Record | Unit | Pages |
+|---|---|---|
+| 4028 | 21. situační zpráva, 18.5.1942 | 65 |
+| 4029 | Opisy dálnopisných hlášení R. Heydricha pro A. Hitlera, 3. a 7.5.1942 | 27 |
+| 4030 | 19. situační zpráva | 13 |
+| 4031 | 18. situační zpráva, 22.1.1942 | 33 |
+| 4032 | 17. situační zpráva, 30.12.1941 | 75 |
+| 4033 | 16. situační zpráva | 25 |
+| 4034 | 15. situační zpráva, 6.11.1941 | 6 |
+| 4035 | 14. situační zpráva, 30.10.1941 | 46 |
+| 4036 | 12. situační zpráva, 14.10.1941 | 14 |
+| 4037 | 11. situační zpráva, 11.10.1941 | 84 |
+| 4038 | Ordner Berichterstattung — the file's own register of despatches | 3 |
+
+**How the boundaries were found without paying for OCR twice:** the top fifth of
+each of the 363 folio images was OCR'd directly through the Mistral API for about
+30p, which gave every page's header. That is worth remembering as a technique —
+it answers "what is this page" for a whole delivery at trivial cost.
+
+**Nothing in these 391 pages names the family.** No Czernin, no *Adel*, no nobility
+passage; OCR-mangled variants checked too. **The Heydrich-to-Bormann letter on the
+Czech nobility is folio 66, which came in the first tranche** and is already held
+as record **3796**. This delivery is folios 1-61 and 100-427 — everything around
+it.
+
+**What it does give is the machinery that condemned Humprecht**, in the regime's
+own reporting to Hitler:
+
+- **4037**: Prague Standgericht death sentences for *"unerlaubter vorsätzlicher
+  Waffenbesitz"* — the identical charge on which Humprecht was condemned in June
+  1942, shown as routinely capital eight months earlier.
+- **4032**: *"über 450 Todesurteile durch Standgerichte … vollstreckt"*; for
+  15.11.-29.12.41 alone **59 death sentences, 288 handovers to the Gestapo, 5
+  acquittals**.
+- **4033**: 7.-14.11.41, 20 death sentences, 156 handovers. **4034**: 30.10.-6.11.41,
+  9 death sentences, 150 handovers, *"while in no case was an acquittal reached"*.
+- **4032, the sharpest**: Hácha asks Heydrich to move Havelka from the Standgericht
+  to an ordinary court — even the Volksgerichtshof. Heydrich refuses: Havelka
+  belongs before the Standgericht *"wohin er nach Fug und Recht gehöre"*. The State
+  President's intervention counted for nothing.
+
+**How far that goes, and no further.** It documents that the summary court was
+chosen to bypass ordinary process and that intervention from the highest Czech
+authority was refused — which turns Humprecht's file from a family story into an
+instance of a policy. But Humprecht was Alexander's **cousin**; the reports stop
+before the second Standrecht of June 1942 that condemned him; and none of it
+touches the applicant. Context for Stefan to cite, not new evidence about
+Alexander.
+
+**Also today, and left alone deliberately:** the pipeline page reports 30 failed
+translations. All are from **8 September**, on old records, all *"The read
+operation timed out"* at `attempts = 3` — and the audit only retries below 3, so
+they will sit there for ever. `reset-pipeline` is **not** the fix: resetting to
+`translating` deletes `page_text` and drops the record to `ocr_pending`, destroying
+good OCR to clear a counter. That needs a proper retry endpoint. The failed-job
+list also still holds corpses from `ocr_page_paddle`, `ocr_page_qwen3vl` and
+Helsinki-NLP models, none of which exist any more.
