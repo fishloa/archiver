@@ -82,7 +82,8 @@ public class StorageService {
    *
    * <p>The original is left alone: the caller deletes it only once the row points at the copy.
    * Reads through the read-only archive if one is configured, so a test deployment can migrate its
-   * own catalogue without being able to touch the real scans.
+   * own catalogue without being able to touch the real scans. The copy is compared byte for byte
+   * with the source before it is kept; one that differs is discarded and reported as a failure.
    *
    * @return the new relative path, or null when the source file does not exist
    */
@@ -97,6 +98,11 @@ public class StorageService {
     try {
       Files.createDirectories(target.getParent());
       Files.copy(source, partial, java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+      // The caller deletes the original once the row points at this copy, and for a scan the
+      // original may be the only one. So the copy is read back and compared before it is trusted.
+      if (Files.mismatch(source, partial) != -1L) {
+        throw new IOException("copy differs from its source");
+      }
       Files.move(partial, target, java.nio.file.StandardCopyOption.ATOMIC_MOVE);
     } catch (IOException e) {
       try {
