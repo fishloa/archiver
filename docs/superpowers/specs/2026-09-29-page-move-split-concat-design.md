@@ -38,7 +38,7 @@ follows from that:
 
 Give the file the identity the row already has and all of it disappears.
 
-## Phase 1 — page images addressed by attachment id
+## Phase 1 — page images addressed by attachment id, then migrated
 
 **New layout**, sharded so no directory holds a hundred thousand entries:
 
@@ -60,10 +60,28 @@ A path is resolved at the new address first, then at the stored legacy path. No
 flag day: new writes go to the new layout immediately, old files are read where
 they are, and a backfill moves them.
 
-**Backfill.** A job walks `attachment` rows whose `path` still matches the legacy
-pattern, copies each file to its new address, updates `path`, and deletes the
-original — one row at a time, resumable, no locks held across the copy. Roughly
-100,000 files; it can run for days without anyone noticing.
+**The backfill is a separate job, and it runs to completion before phase 2 is
+written.** Not a step inside the storage change, and not something phase 2 waits on
+halfway through: its own admin endpoint, its own release, its own run.
+
+```
+POST /api/admin/storage/migrate        { "limit": 500 }   → moves a batch, reports counts
+GET  /api/admin/storage/migrate        → { legacy, migrated, missing }
+```
+
+It walks `attachment` rows whose `path` still matches the legacy pattern, copies
+each file to its new address, updates `path`, deletes the original — one row at a
+time, resumable, no lock held across a copy, safe to stop and restart. Roughly
+100,000 files; it can run for days without anyone noticing. A row whose file is
+already missing is counted and skipped, never treated as a failure and never
+retried forever.
+
+**The gate.** Phase 2 does not begin until `GET` reports `legacy: 0`. At that point
+every page image is at an address that does not mention its record, the legacy
+read-fallback has nothing left to find, and a move really is only a database
+statement. Starting the moves against a half-migrated store would put the old
+copy/commit/delete ordering straight back into the design — which is the thing this
+whole rewrite exists to remove.
 
 **`deleteRecord()` must change, and this is the part that bites if missed.** It
 currently deletes the `records/{id}/` tree, which will no longer contain the page
@@ -78,6 +96,12 @@ page image it owned, for ever.
 - a file at a legacy path is still found by `resolveForRead` after the change
 - the backfill moves a legacy file, updates the row, removes the original, and is
   idempotent when run twice
+- the backfill is resumable: two calls with `limit` smaller than the backlog
+  together migrate everything, and neither moves a row twice
+- a row whose file has already vanished is counted as `missing`, leaves the row
+  alone, and does not stop the batch
+- the status endpoint reports `legacy: 0` only when no row matches the legacy
+  pattern — this number is the gate on phase 2, so it must not lie
 - `deleteRecord` removes attachment-addressed files as well as the record tree,
   proved by asserting the files are gone
 - two pages in one record whose images are byte-identical get distinct addresses —
@@ -85,7 +109,8 @@ page image it owned, for ever.
 
 ## Phase 2 — move, split, concatenate
 
-With phase 1 in place a move is a database statement. No file operations, no
+**Begins only once the backfill reports `legacy: 0`.** With that done a move is a
+database statement. No file operations, no
 ordering argument, no rollback logic, no read-only-root special case.
 
 ```
