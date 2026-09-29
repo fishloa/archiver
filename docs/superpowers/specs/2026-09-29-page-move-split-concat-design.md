@@ -40,7 +40,7 @@ Everything keyed on `record_id` has to be handled:
 | `attachment.record_id` + `attachment.path` | re-parented, and **the file moves on disk** |
 | `text_chunk.record_id` | re-parented, never deleted — deleting means re-embedding |
 | `record.page_count`, `attachment_count` | recomputed on both |
-| stored searchable PDF | rebuilt on both |
+| stored searchable PDF | rebuilt on both — but **removed, not rebuilt, on a record left with no pages**, since an empty PDF is worse than none |
 | `pipeline_event` | one written on each side, recording the move |
 
 **The file must travel.** `IngestService.deleteRecord()` calls
@@ -58,15 +58,27 @@ POST /api/admin/records/{id}/pages/move
      { "targetRecordId": 4029, "fromSeq": 66, "toSeq": 99, "atSeq": null }
 
 POST /api/admin/records/{id}/split
-     { "atSeq": 66, "title": "…", "description": "…" }
+     { "splitAtSeq": 66, "title": "…", "description": "…" }
 
 POST /api/admin/records/{id}/concat
      { "sourceRecordId": 4030 }
 ```
 
-`atSeq` omitted appends to the end of the target. `split` creates a record and
-moves `atSeq`…end into it. `concat` moves all of the source's pages onto the end
-of this record. Each returns both records with their new page counts.
+`atSeq` omitted appends to the end of the target. It is the *destination position*
+and belongs to `move` alone; `split` names its cut `splitAtSeq` so the two cannot
+be confused.
+
+`split` creates a record and moves `splitAtSeq`…end into it. The new record
+inherits `archiveId`, `lang`, `metadataLang`, `ocrEngine`, `translationQuality`
+and `referenceCode` from the record being split — a split is one document being
+recognised as two, not a new acquisition — and takes its `title` and
+`description` from the request. Its `sourceRecordId` is the original's with a
+`#<splitAtSeq>` suffix, so it is traceable and cannot collide.
+
+`concat` moves all of the source's pages onto the end of this record; the
+surviving metadata is this record's, since it is the one named in the path.
+
+Each returns both records with their new page counts.
 
 **Refusals, checked before anything is touched:**
 
