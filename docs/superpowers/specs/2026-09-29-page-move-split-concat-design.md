@@ -1,160 +1,177 @@
-# Moving pages between records: move, split, concatenate
+# Page identity, then moving pages between records
 
-**Status:** design, approved in conversation 29 September 2026
-**Author:** drafted with Claude Opus 5, for the archiver
+**Status:** design, agreed in conversation 29 September 2026
+**Supersedes:** the first draft of this file, which built moves on the existing
+storage layout and was rightly rejected as complicated. The complication was a
+symptom; this is the cause.
 
 ## Why
 
 Records are divided by a judgement made at ingest, and that judgement is sometimes
-wrong. Signature 114-3-17 arrived as 391 pages and was split into eleven records
-along the archive's own separator sheets; some of those boundaries will need
-correcting once the text has been read. Today the only way to correct one is to
-re-upload the pages into a different record and delete them from the old one,
-which re-runs OCR, translation and embedding on every moved page — money spent to
-fix a filing decision, and, because `page_ocr_history` keeps metadata only, a
-re-OCR can replace a better transcription with a worse one and lose it.
+wrong. Signature 114-3-17 arrived as 391 pages, split into eleven records along the
+archive's own separator sheets; some boundaries will need correcting once the text
+is read. Today the only way to correct one is to re-upload pages into another
+record and delete them from the old one, which re-runs OCR, translation and
+embedding on every page — money spent to fix a filing decision, and, since
+`page_ocr_history` keeps metadata only, a re-OCR can quietly replace a better
+transcription with a worse one.
 
-## The constraint that shapes everything
+## The root cause
 
-**A page that has been through the pipeline must never go through it again.** The
-scan and every model output move wholesale with the page. No OCR, no translation,
-no embedding, no person matching is triggered by a move, a split or a concatenate.
-
-The single exception is the record's stored searchable PDF, which is a local
-render of text already held: it calls no model and costs nothing, and a PDF
-containing pages the record no longer owns is the kind of wrongness that ends up
-in a submission. It is rebuilt on both sides of every move.
-
-## What the data model gives us for free, and what it does not
-
-Everything keyed on `page_id` follows a page that keeps its id:
-
-`page_text`, `page_translation`, `page_search`, `page_ocr_history`,
-`page_person_match`, `entity_hit`, `evidence`.
-
-Everything keyed on `record_id` has to be handled:
-
-| Thing | Handling |
-|---|---|
-| `page.record_id` | updated — the move itself |
-| `attachment.record_id` + `attachment.path` | re-parented, and **the file moves on disk** |
-| `text_chunk.record_id` | re-parented, never deleted — deleting means re-embedding |
-| `record.page_count`, `attachment_count` | recomputed on both |
-| stored searchable PDF | rebuilt on both — but **removed, not rebuilt, on a record left with no pages**, since an empty PDF is worse than none |
-| `pipeline_event` | one written on each side, recording the move |
-
-**The file must travel.** `IngestService.deleteRecord()` calls
-`storageService.deleteRecordFiles(recordId)`, which recursively removes
-`records/{id}/`. Emptying a record and then deleting it — the intended workflow —
-would otherwise destroy the scans of pages that now live in another record, while
-their rows survive pointing at nothing.
-
-## API
-
-Admin only. One primitive, two wrappers.
+A page has a stable identity in the database — `page.id`, and `attachment.id` for
+its image. Storage does not use either:
 
 ```
-POST /api/admin/records/{id}/pages/move
-     { "targetRecordId": 4029, "fromSeq": 66, "toSeq": 99, "atSeq": null }
-
-POST /api/admin/records/{id}/split
-     { "splitAtSeq": 66, "title": "…", "description": "…" }
-
-POST /api/admin/records/{id}/concat
-     { "sourceRecordId": 4030 }
+records/{recordId}/attachments/pages/p{seq}-{sha8}.jpg
 ```
 
-`atSeq` omitted appends to the end of the target. It is the *destination position*
-and belongs to `move` alone; `split` names its cut `splitAtSeq` so the two cannot
-be confused.
+A page's address on disk is a function of **the record it belongs to** and **its
+position within that record** — the two things a move changes. Everything hard
+follows from that:
+
+- the file must be copied and deleted, so a move cannot be one transaction
+- an elaborate copy → commit → delete ordering is needed to make failure survivable
+- `deleteRecordFiles()` wipes `records/{id}/` wholesale, so a page whose row moved
+  but whose file did not loses its scan
+- and it is the same fault that made `p{seq}.jpg` collide and cost record 4006
+  seven page images in September 2026
+
+Give the file the identity the row already has and all of it disappears.
+
+## Phase 1 — page images addressed by attachment id
+
+**New layout**, sharded so no directory holds a hundred thousand entries:
+
+```
+attachments/{id % 100:02d}/{id}.jpg      e.g. attachments/79/165779.jpg
+```
+
+**What moves to it:** page images, and any other attachment that belongs to a
+*page* rather than to a record — the OCR figure crops written by
+`ProcessorController` when Mistral finds a signature or a stamp.
+
+**What deliberately stays under `records/{id}/`:** the stored searchable PDF and
+the record-level PDF. These belong to the record, are regenerated for it, and never
+move. Keeping them there keeps `records/{id}/` meaningful.
+
+**Reading during and after migration.** `StorageService.resolveForRead()` already
+falls back from the primary root to a read-only root; the same shape applies here.
+A path is resolved at the new address first, then at the stored legacy path. No
+flag day: new writes go to the new layout immediately, old files are read where
+they are, and a backfill moves them.
+
+**Backfill.** A job walks `attachment` rows whose `path` still matches the legacy
+pattern, copies each file to its new address, updates `path`, and deletes the
+original — one row at a time, resumable, no locks held across the copy. Roughly
+100,000 files; it can run for days without anyone noticing.
+
+**`deleteRecord()` must change, and this is the part that bites if missed.** It
+currently deletes the `records/{id}/` tree, which will no longer contain the page
+images. It must delete the files of that record's `attachment` rows by address, and
+then the record tree for what remains. Without this, deleting a record leaks every
+page image it owned, for ever.
+
+**Tests for phase 1**
+
+- a new page image is written at `attachments/{shard}/{id}.jpg` and its
+  `attachment.path` records that
+- a file at a legacy path is still found by `resolveForRead` after the change
+- the backfill moves a legacy file, updates the row, removes the original, and is
+  idempotent when run twice
+- `deleteRecord` removes attachment-addressed files as well as the record tree,
+  proved by asserting the files are gone
+- two pages in one record whose images are byte-identical get distinct addresses —
+  the `p{seq}` collision class cannot recur, because ids are unique
+
+## Phase 2 — move, split, concatenate
+
+With phase 1 in place a move is a database statement. No file operations, no
+ordering argument, no rollback logic, no read-only-root special case.
+
+```
+POST /api/admin/records/{id}/pages/{pageId}/move   { "targetRecordId": 4029 }
+POST /api/admin/records/{id}/split                 { "splitAtSeq": 66, "title": "…" }
+POST /api/admin/records/{id}/concat                { "sourceRecordId": 4030 }
+```
+
+Admin only. The page is addressed by **`pageId`**, not by `seq`: ids are stable,
+seq is not, and a caller iterating over seq numbers moves the wrong pages as the
+earlier ones shift.
+
+**What each call does, in one transaction:**
+
+- `UPDATE page SET record_id = ?` for the pages concerned
+- renumber `seq` contiguously on both records, shifting through the parking offset
+  because `(record_id, seq)` is a non-deferrable unique index
+- re-parent `text_chunk` rows — **never delete them**, deleting means re-embedding
+- recompute `page_count` and `attachment_count` on both
+- re-parent the page's `attachment` row to the new record; its address does not
+  change, because the address no longer mentions the record
+- write a `pipeline_event` on each side recording the move
 
 `split` creates a record and moves `splitAtSeq`…end into it. The new record
-inherits `archiveId`, `lang`, `metadataLang`, `ocrEngine`, `translationQuality`
-and `referenceCode` from the record being split — a split is one document being
-recognised as two, not a new acquisition — and takes its `title` and
-`description` from the request. Its `sourceRecordId` is the original's with a
-`#<splitAtSeq>` suffix, so it is traceable and cannot collide.
+inherits `archiveId`, `lang`, `metadataLang`, `ocrEngine`, `translationQuality` and
+`referenceCode` — a split is one document recognised as two, not a new acquisition
+— and takes `title` and `description` from the request. `concat` moves all of the
+source's pages onto the end of this record; the surviving metadata is this record's.
 
-`concat` moves all of the source's pages onto the end of this record; the
-surviving metadata is this record's, since it is the one named in the path.
+**The constraint that governs all of it:** a page that has been through the
+pipeline never goes through it again. No OCR, no translation, no embedding, no
+person matching. Everything keyed on `page_id` — `page_text`, `page_translation`,
+`page_search`, `page_ocr_history`, `page_person_match`, `entity_hit`, `evidence` —
+follows the page untouched because the page keeps its id.
 
-Each returns both records with their new page counts.
+The one exception is the stored searchable PDF, a local render of text already
+held: it calls no model, and a PDF containing pages the record no longer owns is
+the kind of wrongness that reaches a submission. Rebuilt on both sides — but
+**removed rather than rebuilt** on a record left with no pages.
 
-**Refusals, checked before anything is touched:**
-
-- either record is on AI hold
-- any job in `pending` or `claimed` touches a page being moved — a job in flight
-  would write its text into the wrong record
-- the range does not exist, is inverted, or overlaps itself
-- source equals target
-- the records are in different archives, unless `allowCrossArchive: true`
+**Refusals, checked before anything is touched:** either record on AI hold; a job
+`pending` or `claimed` against a page being moved, which would write its text into
+the record the page has just left; unknown page or record; the page does not belong
+to the record in the path; source equals target; different archives unless
+`allowCrossArchive: true`.
 
 **Never automatic:** an emptied source record is left in place. Deleting it is a
-separate, deliberate call to the existing delete endpoint.
+separate, deliberate call.
 
-## Ordering
+**Tests for phase 2**
 
-The filesystem cannot join a database transaction, so the order is chosen so that
-a failure leaves a duplicate rather than a hole.
-
-1. validate; refuse early
-2. **copy** each image to `records/{new}/attachments/pages/…`
-3. one transaction: re-parent `page`, `attachment` (with its new path) and
-   `text_chunk`; renumber `seq` on both records through the parking offset,
-   because `(record_id, seq)` is a non-deferrable unique index; refresh counts;
-   write a `pipeline_event` on each side
-4. commit; then delete the original files
-5. if the transaction fails, delete the copies; the originals are untouched
-
-**Read-only sources.** A page whose image resolves into
-`ARCHIVER_STORAGE_READONLY_ROOT` — which is how the test stack mounts the
-production store, and how any deployment reading an archive it does not own
-behaves — is copied into the writable root under the new record, and the original
-is left alone. Step 4 skips it. This must not raise.
-
-## Testing
-
-**Automated, written first:**
-
-- `page.id` preserved, and with it text, translation, search row, OCR history,
+- `page.id` preserved, and with it text, translation, search row, OCR history and
   person matches — compared either side by row id and content
-- `text_chunk` rows re-parented, same ids, new `record_id`
-- `seq` contiguous on both sides; a move into the middle of a target does not trip
-  the unique index
+- `text_chunk` re-parented, same chunk ids, new `record_id`
+- `seq` contiguous on both sides; the unique index never trips
 - `page_count` and `attachment_count` correct on both
-- **after a move the only job created is `build_searchable_pdf`** — the constraint
-  above, asserted directly
+- **the only job created is `build_searchable_pdf`** — the constraint, asserted
 - record status unchanged: `complete` stays `complete`
-- image present at the new path, absent from the old
-- **delete safety**: move pages out, delete the emptied record, assert the moved
-  images still open
+- the image is readable from the target record afterwards, at the same address
+- **delete safety**: move a page out, delete the emptied record, assert the moved
+  page's image still opens
 - every refusal above
-- rollback: fail the transaction after the copies exist; copies removed, originals
-  intact
-- read-only source: copied, original left, no exception
+- `split` inheritance, and `concat` leaving the source empty but present
 
-**Non-production, before any tag.** Push to main untagged; Jenkins builds `:test`
-and the test stack redeploys. Refresh its catalogue with
+## Proving it off production
+
+Both phases go to the test stack before any tag. Push to main untagged; Jenkins
+builds `:test`; the test stack redeploys itself. Refresh its catalogue with
 `deploy/seed-test-db.sh --records 50`, which dumps production and restores into
-`archiver_test` on 5433, refusing a restore target it does not recognise. Then
-exercise the real thing: split 4037, move a range into 4036, concatenate two
-Prague records; confirm the text survived, the images open, both PDFs rebuilt, and
-the job table holds no AI work. Only then tag for production.
+`archiver_test` on 5433 and refuses a restore target it does not recognise.
 
-## Deferred: record-agnostic storage
+The test stack mounts the production store **read-only** at
+`ARCHIVER_STORAGE_READONLY_ROOT` and writes to its own. That makes it the right
+place to prove the backfill's behaviour when a source file cannot be deleted: it is
+copied to the new address, the original is left alone, and nothing raises.
 
-Storing images at `attachments/<sha256>` rather than under `records/{id}/` would
-make a move a pure database transaction, remove the copy/commit/delete ordering
-entirely, and retire the `p{seq}` collision class that already cost record 4006
-seven page images. It needs either a re-lay of every stored file or a dual-read
-layer, and it is its own project. The move logic here is written so that it would
-not need to change: it asks `StorageService` where a file is and where it should
-go, and if the answer stops depending on the record, the copy and delete steps
-simply become no-ops.
+Then exercise the real thing on seeded Prague records: split 4037, move pages into
+4036, concatenate two records; confirm the text survived, the images open, the PDFs
+rebuilt, and the job table holds no AI work. Only then tag.
 
 ## Out of scope
 
-- retrying failed jobs (the thirty timed-out translations of 8 September need a
-  separate endpoint; `reset-pipeline` deletes `page_text` and is not the fix)
+- content-addressing by sha256, which would dedupe identical scans but makes one
+  file shared by several records and needs reference counting before anything can
+  be deleted
+- retrying failed jobs — the thirty timed-out translations of 8 September need
+  their own endpoint; `reset-pipeline` deletes `page_text` and is not the fix
 - reordering pages within one record, which `insert` and `delete` already cover
 - any change to how the pipeline itself runs
