@@ -57,20 +57,70 @@ public class StorageService {
   }
 
   /**
-   * Stores a page image and returns the relative path from the storage root. Path format:
-   * records/{recordId}/attachments/pages/p{seq:04d}.jpg
+   * Stores a page image and returns its path relative to the storage root: attachments/{first two
+   * hex of the name}/{uuid}.jpg.
+   *
+   * <p>The name is minted here and says nothing about the page. The old layout,
+   * records/{recordId}/attachments/pages/p{seq}.jpg, was a function of the record the page belongs
+   * to and its position in it — the two things moving a page changes — so a move had to copy files
+   * and could not be one transaction, and the sequence number collided when an insert renumbered
+   * pages (record 4006 lost seven images that way on 19 September 2026).
    */
-  public String storePageImage(Long recordId, int seq, byte[] imageBytes, String sha256) {
-    // The sequence alone is not a unique name. Inserting a page renumbers the ones after it, so
-    // two live pages can compute the same file and the second write destroys the first — which is
-    // what happened to record 4006 on 19 September 2026: seven pages ended up showing their
-    // neighbour's image. The digest makes the name unique to the bytes; the sequence stays in it
-    // so a directory listing is still readable.
-    String suffix = sha256 == null || sha256.length() < 8 ? "" : "-" + sha256.substring(0, 8);
-    String relativePath =
-        String.format("records/%d/attachments/pages/p%04d%s.jpg", recordId, seq, suffix);
+  public String storePageImage(byte[] imageBytes) {
+    String relativePath = newAttachmentPath();
     writeFile(relativePath, imageBytes);
     return relativePath;
+  }
+
+  private static String newAttachmentPath() {
+    String name = java.util.UUID.randomUUID().toString();
+    return "attachments/" + name.substring(0, 2) + "/" + name + ".jpg";
+  }
+
+  /**
+   * Copies a stored file to a newly minted attachment address in this deployment's own root.
+   *
+   * <p>The original is left alone: the caller deletes it only once the row points at the copy.
+   * Reads through the read-only archive if one is configured, so a test deployment can migrate its
+   * own catalogue without being able to touch the real scans.
+   *
+   * @return the new relative path, or null when the source file does not exist
+   */
+  public String copyToNewAddress(String legacyRelativePath) {
+    Path source = resolveForRead(legacyRelativePath);
+    if (!Files.exists(source)) {
+      return null;
+    }
+    String relativePath = newAttachmentPath();
+    Path target = storageRoot.resolve(relativePath);
+    Path partial = target.resolveSibling(target.getFileName() + ".partial");
+    try {
+      Files.createDirectories(target.getParent());
+      Files.copy(source, partial, java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+      Files.move(partial, target, java.nio.file.StandardCopyOption.ATOMIC_MOVE);
+    } catch (IOException e) {
+      try {
+        Files.deleteIfExists(partial);
+      } catch (IOException ignored) {
+        // The partial file is harmless; the next attempt mints a new name.
+      }
+      throw new UncheckedIOException("Failed to copy " + legacyRelativePath, e);
+    }
+    return relativePath;
+  }
+
+  /**
+   * Deletes one stored file from this deployment's own root, if it is there.
+   *
+   * <p>Never touches the read-only archive, and never throws: it runs after the database has
+   * already committed to the file being gone, when failing would only hide the commit.
+   */
+  public void deleteStoredFile(String relativePath) {
+    try {
+      Files.deleteIfExists(storageRoot.resolve(relativePath));
+    } catch (IOException e) {
+      log.warn("Could not delete stored file {}: {}", relativePath, e.toString());
+    }
   }
 
   /**

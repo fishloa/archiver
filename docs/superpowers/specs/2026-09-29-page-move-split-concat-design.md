@@ -38,56 +38,78 @@ follows from that:
 
 Give the file the identity the row already has and all of it disappears.
 
-## Phase 1 — page images addressed by attachment id, then migrated
+## Phase 1 — page images addressed by their own identity, then migrated
 
 **New layout**, sharded so no directory holds a hundred thousand entries:
 
 ```
-attachments/{id % 100:02d}/{id}.jpg      e.g. attachments/79/165779.jpg
+attachments/{first two hex of name}/{uuid}.jpg      e.g. attachments/3f/3f2a9c1e-….jpg
 ```
 
-**What moves to it:** page images, and any other attachment that belongs to a
-*page* rather than to a record — the OCR figure crops written by
-`ProcessorController` when Mistral finds a signature or a stamp.
+The name is a UUID minted when the file is written and recorded in `attachment.path`,
+which was already the source of truth for where a file lives. It is not the
+`attachment.id`: that id does not exist until the row is inserted, which would force a
+placeholder path and a second write. Nothing about the page appears in the address.
+`page.id` and `attachment.id` stay `bigint` — they are already stable across a move
+and every foreign key keys on them; converting them to UUIDs would touch some eight
+tables and buys nothing for moves, so it is out of scope.
+
+**What moves to it:** `page_image` attachments. Nothing else is page-scoped: the
+`ocr_artifact` rows written by `ProcessorController` carry a record id and no page
+link, and no code in the repository reads them.
 
 **What deliberately stays under `records/{id}/`:** the stored searchable PDF and
 the record-level PDF. These belong to the record, are regenerated for it, and never
 move. Keeping them there keeps `records/{id}/` meaningful.
 
-**Reading during and after migration.** `StorageService.resolveForRead()` already
-falls back from the primary root to a read-only root; the same shape applies here.
-A path is resolved at the new address first, then at the stored legacy path. No
-flag day: new writes go to the new layout immediately, old files are read where
-they are, and a backfill moves them.
+**Reading during and after migration.** Nothing changes on the read side. Every
+reader resolves `attachment.path` as stored, so a legacy row reads from its legacy
+path and a migrated row from its new one; the row is the switch. No flag day: new
+writes go to the new layout immediately, old files are read where they are, and the
+backfill moves them.
 
 **The backfill is a separate job, and it runs to completion before phase 2 is
 written.** Not a step inside the storage change, and not something phase 2 waits on
 halfway through: its own admin endpoint, its own release, its own run.
 
 ```
-POST /api/admin/storage/migrate        { "limit": 500 }   → moves a batch, reports counts
-GET  /api/admin/storage/migrate        → { legacy, migrated, missing }
+POST /api/admin/storage/migrate   { "limit": 500 }   → { migrated, missing, failed,
+                                                          changedUnderneath, status }
+GET  /api/admin/storage/migrate                      → { legacy, migrated, missing }
 ```
 
-It walks `attachment` rows whose `path` still matches the legacy pattern, copies
-each file to its new address, updates `path`, deletes the original — one row at a
-time, resumable, no lock held across a copy, safe to stop and restart. Roughly
-100,000 files; it can run for days without anyone noticing. A row whose file is
-already missing is counted and skipped, never treated as a failure and never
-retried forever.
+`limit` defaults to 500 and is refused outside 1–5000. It takes `page_image` rows
+whose `path` is not yet at an attachment address, and for each: copies the file to a
+new address (through a `.partial` file and an atomic move), points the row at the copy
+with an update conditional on the path being the one it copied, then deletes the
+original — but only once no other row names it, because two old rows could share a
+file (the collision that cost record 4006 its images). One row at a time, no
+transaction held across a copy, safe to stop at any moment: every step leaves a row
+pointing at a file that exists.
 
-**The gate.** Phase 2 does not begin until `GET` reports `legacy: 0`. At that point
+A row whose file is missing gets `missing_since` set (migration V17) and is left
+alone. That takes it out of the work still to do — so it is neither retried for ever
+nor able to hold the gate shut — while `GET` keeps reporting it as `missing`, so the
+gap stays visible. A copy that raises is counted as `failed` and retried next batch.
+Roughly 100,000 files; it can run for days without anyone noticing.
+
+**The gate.** Phase 2 does not begin until `GET` reports `legacy: 0`, and the `missing`
+figure has been looked at. At that point
 every page image is at an address that does not mention its record, the legacy
 read-fallback has nothing left to find, and a move really is only a database
 statement. Starting the moves against a half-migrated store would put the old
 copy/commit/delete ordering straight back into the design — which is the thing this
 whole rewrite exists to remove.
 
-**`deleteRecord()` must change, and this is the part that bites if missed.** It
-currently deletes the `records/{id}/` tree, which will no longer contain the page
-images. It must delete the files of that record's `attachment` rows by address, and
-then the record tree for what remains. Without this, deleting a record leaks every
-page image it owned, for ever.
+**Deleting must change with it, and this is the part that bites if missed.**
+`deleteRecord()` removed the `records/{id}/` tree, which no longer contains the page
+images. It now also deletes the files of that record's attachment rows that sit at an
+attachment address, then the tree for what remains. `deletePage`, `replacePage` and
+`replaceAllPages` do the same for the attachment they remove. In every case the file
+goes in an after-commit hook, so a rollback never leaves a row pointing at a file that
+has gone. (Those three previously deleted the row and left the file behind; under the
+old layout the orphan was at least swept up with its record, under the new one it would
+not be.)
 
 **Tests for phase 1**
 

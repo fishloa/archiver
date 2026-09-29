@@ -140,7 +140,7 @@ public class IngestService {
             .orElseThrow(() -> new IllegalArgumentException("Record not found: " + recordId));
 
     String sha256 = sha256(imageBytes);
-    String path = storageService.storePageImage(recordId, seq, imageBytes, sha256);
+    String path = storageService.storePageImage(imageBytes);
 
     Attachment attachment = new Attachment();
     attachment.setRecordId(recordId);
@@ -216,7 +216,7 @@ public class IngestService {
   public Page replacePage(Long recordId, int seq, byte[] imageBytes, PageMetadata metadata) {
     Optional<Page> existing = pageRepository.findByRecordIdAndSeq(recordId, seq);
     if (existing.isPresent()) {
-      attachmentRepository.deleteById(existing.get().getAttachmentId());
+      deleteAttachment(existing.get().getAttachmentId());
     }
     Page page = addPage(recordId, seq, imageBytes, metadata);
 
@@ -246,7 +246,7 @@ public class IngestService {
                     new IllegalArgumentException(
                         "No page %d in record %d".formatted(seq, recordId)));
 
-    attachmentRepository.deleteById(page.getAttachmentId());
+    deleteAttachment(page.getAttachmentId());
     shiftSeq(recordId, seq + 1, -1);
     return refreshCounts(recordId);
   }
@@ -269,6 +269,48 @@ public class IngestService {
     Page page = addPage(recordId, seq, imageBytes, metadata);
     refreshCounts(recordId);
     return page;
+  }
+
+  /**
+   * Deletes an attachment row, and its file once the delete has committed.
+   *
+   * <p>Only files at an attachment address are removed here. A file in the old
+   * records/{id}/attachments/pages layout stays where it has always stayed until then — under its
+   * record, removed with it — because two old rows can name the same file.
+   */
+  private void deleteAttachment(Long attachmentId) {
+    String path = attachmentRepository.findById(attachmentId).map(Attachment::getPath).orElse(null);
+    attachmentRepository.deleteById(attachmentId);
+    if (isAttachmentAddressed(path)) {
+      deleteFilesAfterCommit(java.util.List.of(path));
+    }
+  }
+
+  private static boolean isAttachmentAddressed(String path) {
+    return path != null && path.startsWith("attachments/");
+  }
+
+  /**
+   * Removes stored files after the surrounding transaction commits, so a rollback never leaves a
+   * row pointing at a file that has gone.
+   */
+  private void deleteFilesAfterCommit(java.util.List<String> paths) {
+    if (paths.isEmpty()) {
+      return;
+    }
+    if (!org.springframework.transaction.support.TransactionSynchronizationManager
+        .isSynchronizationActive()) {
+      paths.forEach(storageService::deleteStoredFile);
+      return;
+    }
+    org.springframework.transaction.support.TransactionSynchronizationManager
+        .registerSynchronization(
+            new org.springframework.transaction.support.TransactionSynchronization() {
+              @Override
+              public void afterCommit() {
+                paths.forEach(storageService::deleteStoredFile);
+              }
+            });
   }
 
   /**
@@ -323,7 +365,7 @@ public class IngestService {
     // Deleting attachments cascades: attachment -> page -> page_text/job/entity_hit/evidence/
     // text_chunk. This removes every page and everything derived from it, plus the old PDF.
     for (Attachment attachment : attachmentRepository.findByRecordId(recordId)) {
-      attachmentRepository.deleteById(attachment.getId());
+      deleteAttachment(attachment.getId());
     }
 
     record = recordRepository.findById(recordId).orElseThrow();
@@ -406,7 +448,13 @@ public class IngestService {
       recordRepository.save(record);
     }
 
-    // Delete files on disk
+    // Delete files on disk. Page images no longer live under records/{id}/, so the record's own
+    // rows name the rest; they are removed once the delete has committed.
+    deleteFilesAfterCommit(
+        attachmentRepository.findByRecordId(recordId).stream()
+            .map(Attachment::getPath)
+            .filter(IngestService::isAttachmentAddressed)
+            .toList());
     storageService.deleteRecordFiles(recordId);
 
     // Delete record — pages, attachments, jobs etc. cascade via ON DELETE CASCADE
@@ -463,7 +511,7 @@ public class IngestService {
 
         // Store image
         String sha = sha256(imageBytes);
-        String path = storageService.storePageImage(recordId, seq, imageBytes, sha);
+        String path = storageService.storePageImage(imageBytes);
 
         Attachment attachment = new Attachment();
         attachment.setRecordId(recordId);
