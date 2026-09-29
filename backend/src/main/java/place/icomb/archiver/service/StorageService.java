@@ -78,28 +78,47 @@ public class StorageService {
   }
 
   /**
-   * Copies a stored file to a newly minted attachment address in this deployment's own root.
+   * Gives a stored file a newly minted attachment address in this deployment's own root, leaving
+   * the file at its old path too.
    *
-   * <p>The original is left alone: the caller deletes it only once the row points at the copy.
-   * Reads through the read-only archive if one is configured, so a test deployment can migrate its
-   * own catalogue without being able to touch the real scans. The copy is compared byte for byte
-   * with the source before it is kept; one that differs is discarded and reported as a failure.
+   * <p>When the file is in this root it is hard-linked: instant, nothing is read or rewritten, and
+   * both names are the same bytes until the caller drops the old one. That is a move done in the
+   * only order that is safe — the new name exists before the row is pointed at it, and the old name
+   * goes after — so at every instant the row names a file that exists. A plain rename would take
+   * the file from under any reader that still holds the old path.
+   *
+   * <p>When it cannot be linked — the file is only in the read-only archive, as on a test stack, or
+   * the filesystem has no hard links — it is copied, and the copy is compared byte for byte with
+   * its source before it is kept, because the caller then deletes the original and for a scan the
+   * original may be the only one. A copy that differs is discarded and reported as a failure.
    *
    * @return the new relative path, or null when the source file does not exist
    */
-  public String copyToNewAddress(String legacyRelativePath) {
+  public String placeAtNewAddress(String legacyRelativePath) {
     Path source = resolveForRead(legacyRelativePath);
     if (!Files.exists(source)) {
       return null;
     }
     String relativePath = newAttachmentPath();
     Path target = storageRoot.resolve(relativePath);
-    Path partial = target.resolveSibling(target.getFileName() + ".partial");
     try {
       Files.createDirectories(target.getParent());
+    } catch (IOException e) {
+      throw new UncheckedIOException("Failed to prepare " + relativePath, e);
+    }
+
+    if (source.startsWith(storageRoot)) {
+      try {
+        Files.createLink(target, source);
+        return relativePath;
+      } catch (UnsupportedOperationException | IOException e) {
+        log.info("Cannot hard-link {} ({}); copying instead", legacyRelativePath, e.toString());
+      }
+    }
+
+    Path partial = target.resolveSibling(target.getFileName() + ".partial");
+    try {
       Files.copy(source, partial, java.nio.file.StandardCopyOption.REPLACE_EXISTING);
-      // The caller deletes the original once the row points at this copy, and for a scan the
-      // original may be the only one. So the copy is read back and compared before it is trusted.
       if (Files.mismatch(source, partial) != -1L) {
         throw new IOException("copy differs from its source");
       }

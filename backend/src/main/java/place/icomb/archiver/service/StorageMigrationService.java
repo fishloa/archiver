@@ -12,11 +12,11 @@ import org.springframework.stereotype.Service;
  * Moves page images from the old records/{id}/attachments/pages/p{seq}.jpg layout to their own
  * attachment address.
  *
- * <p>One row at a time and without a transaction around the copy: copy the file, point the row at
- * the copy, then delete the original. Every step leaves a row that points at a file that exists, so
- * it can be stopped at any moment and started again. Moving pages between records waits until
- * {@link Status#legacy()} is zero — against a half-migrated store a move would still have to move
- * files.
+ * <p>One row at a time and without a transaction around the file work: give the file its new name
+ * (a hard link where it can, a verified copy where it cannot), point the row at it, then drop the
+ * old name. Every step leaves a row that points at a file that exists, so it can be stopped at any
+ * moment and started again. Moving pages between records waits until {@link Status#legacy()} is
+ * zero — against a half-migrated store a move would still have to move files.
  */
 @Service
 public class StorageMigrationService {
@@ -70,7 +70,7 @@ public class StorageMigrationService {
 
       String newPath;
       try {
-        newPath = storage.copyToNewAddress(oldPath);
+        newPath = storage.placeAtNewAddress(oldPath);
       } catch (UncheckedIOException e) {
         // Left as it was, so the next batch tries it again; reported so a person can look.
         log.warn(

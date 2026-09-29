@@ -102,18 +102,31 @@ class StorageServiceTest {
   }
 
   @Test
-  void copiesALegacyFileToANewAddressAndLeavesTheOriginal(@TempDir Path writable) throws Exception {
-    // Deleting the original is the migration's decision, taken only once the row points at the
-    // copy — never the copy's.
+  void aFileInItsOwnRootIsLinkedNotCopied(@TempDir Path writable) throws Exception {
+    // Same bytes under both names, nothing read or rewritten — and the old name still there, so a
+    // row still pointing at it keeps working until the caller drops it.
+    Files.createDirectories(writable.resolve("records/5/attachments/pages"));
+    Path old = writable.resolve("records/5/attachments/pages/p0001.jpg");
+    Files.writeString(old, "old scan");
+    StorageService service = new StorageService(writable, (Path) null);
+
+    String placed = service.placeAtNewAddress("records/5/attachments/pages/p0001.jpg");
+
+    assertThat(placed).startsWith("attachments/");
+    assertThat(Files.readString(writable.resolve(placed))).isEqualTo("old scan");
+    assertThat(Files.isSameFile(old, writable.resolve(placed))).isTrue();
+  }
+
+  @Test
+  void droppingTheOldNameLeavesTheNewOneIntact(@TempDir Path writable) throws Exception {
     Files.createDirectories(writable.resolve("records/5/attachments/pages"));
     Files.writeString(writable.resolve("records/5/attachments/pages/p0001.jpg"), "old scan");
     StorageService service = new StorageService(writable, (Path) null);
+    String placed = service.placeAtNewAddress("records/5/attachments/pages/p0001.jpg");
 
-    String copied = service.copyToNewAddress("records/5/attachments/pages/p0001.jpg");
+    service.deleteStoredFile("records/5/attachments/pages/p0001.jpg");
 
-    assertThat(copied).startsWith("attachments/");
-    assertThat(Files.readString(writable.resolve(copied))).isEqualTo("old scan");
-    assertThat(writable.resolve("records/5/attachments/pages/p0001.jpg")).exists();
+    assertThat(Files.readString(writable.resolve(placed))).isEqualTo("old scan");
   }
 
   @Test
@@ -123,9 +136,14 @@ class StorageServiceTest {
     Files.writeString(archive.resolve("records/5/attachments/pages/p0001.jpg"), "real scan");
     StorageService service = new StorageService(writable, archive);
 
-    String copied = service.copyToNewAddress("records/5/attachments/pages/p0001.jpg");
+    String copied = service.placeAtNewAddress("records/5/attachments/pages/p0001.jpg");
 
     assertThat(Files.readString(writable.resolve(copied))).isEqualTo("real scan");
+    assertThat(
+            Files.isSameFile(
+                archive.resolve("records/5/attachments/pages/p0001.jpg"), writable.resolve(copied)))
+        .as("a read-only source is copied, never linked into the writable root")
+        .isFalse();
     assertThat(archive.resolve(copied)).doesNotExist();
   }
 
@@ -133,7 +151,7 @@ class StorageServiceTest {
   void aMissingSourceIsAnAnswerNotAnException(@TempDir Path writable) {
     StorageService service = new StorageService(writable, (Path) null);
 
-    assertThat(service.copyToNewAddress("records/9/attachments/pages/p0001.jpg")).isNull();
+    assertThat(service.placeAtNewAddress("records/9/attachments/pages/p0001.jpg")).isNull();
   }
 
   @Test
