@@ -9,6 +9,31 @@ new revision, no build is triggered, and the release silently never happens —
 which is exactly what v1.0.0 did on its first attempt. Add the entry below,
 commit, then tag that commit.
 
+## v1.1.15 — 29 September 2026
+
+**A page image's file no longer depends on which record it is in.** It was stored
+at `records/{recordId}/attachments/pages/p{seq}-{sha8}.jpg` — a function of the
+record and of the page's position, the two things moving a page changes. That is
+why moving pages between records was hard, and the same fault cost record 4006
+seven images in September when two pages computed one name. New page images are
+written to `attachments/{xx}/{uuid}.jpg`, a name that says nothing about the page.
+Nothing on the read side changes: every reader follows `attachment.path` as
+stored, so old and new rows coexist.
+
+**Deleting had to change with it.** Page images no longer sit under
+`records/{id}/`, so removing that directory would have leaked every scan a record
+owned. `deleteRecord`, `deletePage`, `replacePage` and `replaceAllPages` now delete
+the files of what they remove, after the database commit. The last three
+previously left the file behind.
+
+**The existing images move in their own job.** `POST /api/admin/storage/migrate`
+(`{"limit": N}`) and `GET` for `{legacy, migrated, missing}`. A file is given its
+new name by hard link — instant, nothing rewritten, the row never pointing at a
+file that is not there — and copied and byte-compared instead where it cannot be
+linked. The old name goes only once no row names it. A row whose file is gone is
+marked (`missing_since`, V17) and counted, not retried. Nothing in this release
+moves pages between records; that waits until `legacy` reaches zero.
+
 ## v1.1.14 — 28 September 2026
 
 **Fixes the edit form v1.1.13 broke.** Opening a Transkribus row did nothing
