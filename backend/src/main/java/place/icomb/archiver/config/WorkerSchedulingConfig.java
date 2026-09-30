@@ -81,6 +81,8 @@ public class WorkerSchedulingConfig implements SchedulingConfigurer {
   private final long embedPollInterval;
   private final int pdfConcurrency;
   private final long pdfPollInterval;
+  private final int pdfExportConcurrency;
+  private final place.icomb.archiver.service.PdfExportWorker pdfExportWorker;
 
   public WorkerSchedulingConfig(
       JobService jobService,
@@ -123,7 +125,9 @@ public class WorkerSchedulingConfig implements SchedulingConfigurer {
       @Value("${archiver.embed.concurrency:4}") int embedConcurrency,
       @Value("${archiver.embed.poll-interval:5000}") long embedPollInterval,
       @Value("${archiver.pdf.concurrency:3}") int pdfConcurrency,
-      @Value("${archiver.pdf.poll-interval:5000}") long pdfPollInterval) {
+      @Value("${archiver.pdf.poll-interval:5000}") long pdfPollInterval,
+      @Value("${archiver.pdf-export.concurrency:2}") int pdfExportConcurrency,
+      place.icomb.archiver.service.PdfExportWorker pdfExportWorker) {
     this.jobService = jobService;
     this.jobEventService = jobEventService;
     this.recordEventService = recordEventService;
@@ -165,6 +169,8 @@ public class WorkerSchedulingConfig implements SchedulingConfigurer {
     this.embedPollInterval = embedPollInterval;
     this.pdfConcurrency = pdfConcurrency;
     this.pdfPollInterval = pdfPollInterval;
+    this.pdfExportConcurrency = pdfExportConcurrency;
+    this.pdfExportWorker = pdfExportWorker;
   }
 
   /**
@@ -330,6 +336,8 @@ public class WorkerSchedulingConfig implements SchedulingConfigurer {
             + (translateRecordEnabled ? 1 : 0)
             + (personMatchEnabled ? 1 : 0)
             + pdfConcurrency
+            + pdfExportConcurrency
+            + (pdfExportConcurrency > 0 ? 1 : 0)
             + embedConcurrency;
     if (totalWorkers == 0) return;
 
@@ -442,6 +450,16 @@ public class WorkerSchedulingConfig implements SchedulingConfigurer {
     if (pdfConcurrency > 0) {
       log.info(
           "Registered {} searchable PDF worker(s) (poll={}ms)", pdfConcurrency, pdfPollInterval);
+    }
+
+    // On-demand PDF exports. A build holds a scheduler thread for as long as it runs, so each
+    // worker counts toward the pool above. The reaper is one more thread, every 15 minutes.
+    for (int i = 0; i < pdfExportConcurrency; i++) {
+      registrar.addFixedDelayTask(pdfExportWorker::drain, Duration.ofSeconds(3));
+    }
+    if (pdfExportConcurrency > 0) {
+      registrar.addFixedDelayTask(pdfExportWorker::reap, Duration.ofMinutes(15));
+      log.info("Registered {} PDF export worker(s) and the reaper", pdfExportConcurrency);
     }
 
     // Record metadata translation, flagged separately from page translation.
