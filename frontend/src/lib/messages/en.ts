@@ -53,6 +53,8 @@ export const en = {
 	'record.untitled': '(untitled)',
 	'record.source': 'Source',
 	'record.downloadPdf': 'Download PDF',
+	'record.pdfPreparing': 'Preparing PDF…',
+	'record.pdfFailed': 'Could not make the PDF',
 	'record.downloadKept': 'Download {0} kept',
 	'record.export': 'Export',
 	'record.pagesExportPlaceholder': 'Pages: 1,3,5-10',

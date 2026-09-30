@@ -55,6 +55,8 @@ export const cs: Record<MessageKey, string> = {
 	'record.untitled': '(bez názvu)',
 	'record.source': 'Zdroj',
 	'record.downloadPdf': 'Stáhnout PDF',
+	'record.pdfPreparing': 'Připravuji PDF…',
+	'record.pdfFailed': 'PDF se nepodařilo vytvořit',
 	'record.downloadKept': 'Stáhnout {0} uložených',
 	'record.export': 'Exportovat',
 	'record.pagesExportPlaceholder': 'Strany: 1,3,5-10',

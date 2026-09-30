@@ -1,9 +1,10 @@
 <script lang="ts">
 	import StatusBadge from '$lib/components/StatusBadge.svelte';
+	import PdfExportButton from '$lib/components/PdfExportButton.svelte';
 	import { parseSourceMeta, nadTranslation } from '$lib/archives';
 	import { language, t } from '$lib/i18n';
 	import {
-		ArrowLeft, Download, ChevronDown, Clock,
+		ArrowLeft, ChevronDown, Clock,
 		CircleCheckBig, AlertTriangle, Play, ExternalLink,
 		FileText, Hash, Calendar, Archive, Bookmark, Layers,
 		BookmarkCheck, X, Users, ShieldAlert, Baby, Skull,
@@ -30,23 +31,6 @@
 	let exportPages = $state('');
 	/** Which rendering an export produces: the scans, or the English translation. */
 	let exportVariant = $state<'original' | 'english' | 'side-by-side'>('original');
-
-	/**
-	 * Whole-record download, honouring the export choice.
-	 *
-	 * Every variant is rendered on request, including the scans. The stored PDF has a text layer
-	 * built before block coordinates were kept, so every line sits at the left margin with its y
-	 * derived from line number — selecting a word returns text from somewhere else on the page,
-	 * which is worse than having none because it looks like it works. The export positions text
-	 * from the engine's own boxes.
-	 */
-	let wholeRecordHref = $derived(
-		`/api/records/${data.record.id}/export-pdf?pages=${
-			exportPages.trim()
-				? encodeURIComponent(exportPages.trim())
-				: `1-${Math.max(1, data.pages?.length ?? 1)}`
-		}&variant=${exportVariant}`
-	);
 
 	let downloadLabel = $derived(
 		exportVariant === 'english'
@@ -209,20 +193,28 @@
 				<option value="side-by-side">Side by side</option>
 			</select>
 		{/if}
-		{#if record.pdfAttachmentId || pages.length > 0}
-			<a href={wholeRecordHref} class="vui-btn vui-btn-primary vui-btn-sm" target="_blank">
-				<Download size={13} strokeWidth={2} /> {downloadLabel}
-			</a>
+		<!--
+			Every variant is rendered on request, the scans included: the old stored PDFs carry a text
+			layer built before block coordinates were kept, so a selection returned text from
+			somewhere else on the page. The page picker feeds this button; empty means the whole record.
+		-->
+		{#if pages.length > 0}
+			<PdfExportButton
+				recordId={record.id}
+				variant={exportVariant}
+				pages={exportPages}
+				label={downloadLabel}
+			/>
 		{/if}
 		{#if kCount > 0}
 			<div class="flex items-center gap-2">
-				<a
-					href="/api/records/{record.id}/export-pdf?pages={encodeURIComponent(kParam)}&variant={exportVariant}"
+				<PdfExportButton
+					recordId={record.id}
+					variant={exportVariant}
+					pages={kParam}
+					label="Download {kCount} kept"
 					class="vui-btn vui-btn-sm !bg-emerald-600 !border-emerald-600 !text-white"
-					target="_blank"
-				>
-					<Download size={13} strokeWidth={2} /> Download {kCount} kept
-				</a>
+				/>
 				<button
 					class="vui-btn vui-btn-ghost vui-btn-sm text-text-sub"
 					onclick={() => clearKept(record.id)}

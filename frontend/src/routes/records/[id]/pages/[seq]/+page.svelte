@@ -1,6 +1,7 @@
 <script lang="ts">
+	import PdfExportButton from '$lib/components/PdfExportButton.svelte';
 	import MarkdownText from '$lib/components/MarkdownText.svelte';
-	import { ArrowLeft, ArrowRight, ChevronDown, Bookmark, BookmarkCheck, Download, X, Users, Baby, Skull } from 'lucide-svelte';
+	import { ArrowLeft, ArrowRight, ChevronDown, Bookmark, BookmarkCheck, X, Users, Baby, Skull } from 'lucide-svelte';
 	import { isKept, toggleKept, keptCount, keptPagesParam, clearKept } from '$lib/kept-pages.svelte';
 	import { language, t } from '$lib/i18n';
 
@@ -91,13 +92,12 @@
 	<div class="flex items-center justify-between gap-3 mb-4 py-2 px-4 rounded-lg bg-surface border border-border text-[length:var(--vui-text-sm)]">
 		<span class="text-text-sub tabular-nums">{$t('page.pagesKept', count)}</span>
 		<div class="flex items-center gap-2">
-			<a
-				href="/api/records/{record.id}/export-pdf?pages={encodeURIComponent(pagesParam)}"
+			<PdfExportButton
+				recordId={record.id}
+				pages={pagesParam}
+				label={$t('page.downloadKept')}
 				class="vui-btn vui-btn-primary vui-btn-sm !bg-emerald-600 !border-emerald-600"
-				target="_blank"
-			>
-				<Download size={13} strokeWidth={2} /> {$t('page.downloadKept')}
-			</a>
+			/>
 			<button
 				class="vui-btn vui-btn-ghost vui-btn-sm text-text-sub"
 				onclick={() => clearKept(record.id)}

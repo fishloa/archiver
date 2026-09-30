@@ -55,6 +55,8 @@ export const de: Record<MessageKey, string> = {
 	'record.untitled': '(ohne Titel)',
 	'record.source': 'Quelle',
 	'record.downloadPdf': 'PDF herunterladen',
+	'record.pdfPreparing': 'PDF wird vorbereitet…',
+	'record.pdfFailed': 'Das PDF konnte nicht erstellt werden',
 	'record.downloadKept': '{0} gemerkte herunterladen',
 	'record.export': 'Exportieren',
 	'record.pagesExportPlaceholder': 'Seiten: 1,3,5-10',
