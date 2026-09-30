@@ -16,6 +16,9 @@ archiver:
     root: ${java.io.tmpdir}/archiver-test-storage
   processor:
     token: test-processor-token
+  pdf-export:
+    concurrency: 0
+    min-free-bytes: 0
   mcp:
     oauth:
       # Throwaway CI/test-only 2048-bit RSA key, base64-encoded PKCS8 PEM. Never used outside
