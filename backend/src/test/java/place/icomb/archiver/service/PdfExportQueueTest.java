@@ -2,6 +2,7 @@ package place.icomb.archiver.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.junit.jupiter.api.Assertions.assertTimeoutPreemptively;
 
 import java.nio.file.Path;
 import java.time.Duration;
@@ -91,6 +92,32 @@ class PdfExportQueueTest {
   @Test
   void aRangeNamingNoPageSelectsNothing() {
     assertThat(queue.pageIdsFor(record, "99")).isEmpty();
+  }
+
+  @Test
+  void aHugeRangeIsClampedToTheRecordsPagesAndIsQuick() {
+    List<Long> got =
+        assertTimeoutPreemptively(
+            Duration.ofSeconds(5), () -> queue.pageIdsFor(record, "1-99999999"));
+    assertThat(got).containsExactlyElementsOf(pages);
+  }
+
+  @Test
+  void aRangeEndingAtIntegerMaxTerminates() {
+    List<Long> got =
+        assertTimeoutPreemptively(
+            Duration.ofSeconds(5), () -> queue.pageIdsFor(record, "2-2147483647"));
+    assertThat(got).containsExactly(pages.get(1), pages.get(2));
+  }
+
+  @Test
+  void aRangeStartingPastTheLastPageSelectsNothing() {
+    assertThat(queue.pageIdsFor(record, "5-99999999")).isEmpty();
+  }
+
+  @Test
+  void aNumberAndAHugeRangeMix() {
+    assertThat(queue.pageIdsFor(record, "1,3-999999")).containsExactly(pages.get(0), pages.get(2));
   }
 
   @Test

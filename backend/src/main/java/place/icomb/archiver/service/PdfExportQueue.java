@@ -130,7 +130,10 @@ public class PdfExportQueue {
       return jdbc.queryForList(
           "SELECT id FROM page WHERE record_id = ? ORDER BY seq", Long.class, recordId);
     }
-    List<Integer> seqs = pdfExportService.parsePageRange(pages);
+    int maxSeq =
+        jdbc.queryForObject(
+            "SELECT coalesce(max(seq), 0) FROM page WHERE record_id = ?", Integer.class, recordId);
+    List<Integer> seqs = pdfExportService.parsePageRange(pages, maxSeq);
     if (seqs.isEmpty()) {
       return List.of();
     }

@@ -167,6 +167,19 @@ class PdfExportApiTest {
   }
 
   @Test
+  void aHugeRangeIsClampedToTheRecordsPages() throws Exception {
+    assertThat(created("{\"pages\":\"1-99999999\"}", 202).get("pageCount").asInt()).isEqualTo(3);
+  }
+
+  @Test
+  void aRangeEntirelyPastTheRecordIsRefused() throws Exception {
+    HttpResponse<String> resp =
+        post("/records/" + record + "/pdf-exports", "{\"pages\":\"90000-99999999\"}", true);
+    assertThat(resp.statusCode()).isEqualTo(400);
+    assertThat(exports()).isZero();
+  }
+
+  @Test
   void theEnglishAndSideBySideVariantsAreNamedForTheirContent() throws Exception {
     String english = created("{\"variant\":\"english\"}", 202).get("id").asText();
     String both = created("{\"variant\":\"side-by-side\"}", 202).get("id").asText();

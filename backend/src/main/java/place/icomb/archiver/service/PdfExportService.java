@@ -130,13 +130,27 @@ public class PdfExportService {
     }
   }
 
+  /** The highest page number any selection may name when the record's own size is unknown. */
+  public static final int MAX_PAGE_NUMBER = 100_000;
+
   /**
    * Parses a page range string like "1,2,3,5-19,21,23" into a sorted set of individual page
-   * numbers.
+   * numbers, none above {@link #MAX_PAGE_NUMBER}.
    */
   public List<Integer> parsePageRange(String rangeStr) {
+    return parsePageRange(rangeStr, MAX_PAGE_NUMBER);
+  }
+
+  /**
+   * Parses a page range like {@code 1,2,5-19}, clamping every range to {@code maxSeq} before it is
+   * expanded, so a range such as {@code 1-99999999} costs no more than the record has pages.
+   *
+   * @return the sorted, unique page numbers from 1 to {@code maxSeq}; empty if {@code maxSeq < 1}
+   * @throws IllegalArgumentException if the range is malformed
+   */
+  public List<Integer> parsePageRange(String rangeStr, int maxSeq) {
     TreeSet<Integer> pages = new TreeSet<>();
-    if (rangeStr == null || rangeStr.isBlank()) {
+    if (rangeStr == null || rangeStr.isBlank() || maxSeq < 1) {
       return new ArrayList<>(pages);
     }
     for (String part : rangeStr.split(",")) {
@@ -149,14 +163,20 @@ public class PdfExportService {
         if (start > end) {
           throw new IllegalArgumentException("Invalid range: " + part);
         }
-        for (int i = start; i <= end; i++) {
-          pages.add(i);
-        }
+        addClamped(pages, start, end, maxSeq);
       } else {
-        pages.add(Integer.parseInt(part));
+        int n = Integer.parseInt(part);
+        addClamped(pages, n, n, maxSeq);
       }
     }
     return new ArrayList<>(pages);
+  }
+
+  private static void addClamped(TreeSet<Integer> pages, int start, int end, int maxSeq) {
+    int last = Math.min(end, maxSeq);
+    for (int i = start; i <= last; i++) {
+      pages.add(i);
+    }
   }
 
   /**
