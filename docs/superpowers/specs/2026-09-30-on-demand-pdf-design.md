@@ -19,7 +19,10 @@ Today there are two unrelated PDF mechanisms.
   them, 7.3 GB, the largest 604 MB. Most are never downloaded.
 - **A synchronous page-range export**, `GET /api/records/{id}/export-pdf`, which builds the PDF
   in memory as a `byte[]` and answers in the same request. English and side-by-side variants
-  exist only here.
+  exist only here. **The viewer already uses it for every download, the whole-record button
+  included** (as `pages=1-N`), because the stored PDFs carry a poor text layer. So downloading a
+  942-page record from the viewer today assembles the whole document on the heap. The stored PDFs
+  are read only through the machine API's `links.pdf`.
 
 The stored PDF goes stale the moment a record's pages change, and nothing invalidates it:
 `deletePage`, `insertPage` and `replacePage` leave a PDF that still contains a removed page.
@@ -144,9 +147,11 @@ retiring it belongs to B.
   Finishing sets `ready`, `bytes`, `finished_at` and `expires_at = now() + 24 h`.
 - **Failure.** `failed` with the first 500 characters of the message. There is no automatic retry;
   the person asks again, which makes a new export.
-- **An interrupted build.** On every tick, a `building` row started more than two hours ago
-  becomes `failed` with `interrupted`, and its `.partial` file is removed. A backend restart
-  therefore cannot leave an export building for ever.
+- **An interrupted build.** At startup every `building` row becomes `failed` with `interrupted by
+  a restart` (no build can be running in a fresh JVM), and the temp area is emptied. On every
+  reaper tick, a `building` row started more than two hours ago becomes `failed` with
+  `interrupted`, which covers a build that hangs in a live JVM. An export cannot stay `building`
+  for ever.
 - **Expiry.** A scheduled reaper, every 15 minutes, deletes the file of every `ready` export
   past `expires_at` and marks it `expired`; rows expired more than seven days are deleted, so a
   stale link says `410` rather than `404` for a week.
