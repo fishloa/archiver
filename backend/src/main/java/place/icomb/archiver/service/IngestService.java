@@ -42,6 +42,7 @@ public class IngestService {
   private final PipelineStateMachine stateMachine;
   private final JdbcTemplate jdbcTemplate;
   private final RecordEventService recordEventService;
+  private final PdfExportQueue pdfExportQueue;
 
   public IngestService(
       RecordRepository recordRepository,
@@ -51,7 +52,8 @@ public class IngestService {
       StorageService storageService,
       PipelineStateMachine stateMachine,
       JdbcTemplate jdbcTemplate,
-      RecordEventService recordEventService) {
+      RecordEventService recordEventService,
+      PdfExportQueue pdfExportQueue) {
     this.recordRepository = recordRepository;
     this.attachmentRepository = attachmentRepository;
     this.pageRepository = pageRepository;
@@ -60,6 +62,7 @@ public class IngestService {
     this.stateMachine = stateMachine;
     this.jdbcTemplate = jdbcTemplate;
     this.recordEventService = recordEventService;
+    this.pdfExportQueue = pdfExportQueue;
   }
 
   /**
@@ -455,6 +458,9 @@ public class IngestService {
             .map(Attachment::getPath)
             .filter(IngestService::isAttachmentAddressed)
             .toList());
+    // Export files hang off the record by a cascading foreign key, so the rows go with it; their
+    // files live under exports/, which deleting the record's own directory does not reach.
+    deleteFilesAfterCommit(pdfExportQueue.pathsForRecord(recordId));
     storageService.deleteRecordFiles(recordId);
 
     // Delete record — pages, attachments, jobs etc. cascade via ON DELETE CASCADE

@@ -58,6 +58,7 @@ class PdfExportApiTest {
   @Autowired private JdbcTemplate jdbc;
   @Autowired private Path storageRoot;
   @Autowired private PdfExportWorker worker;
+  @Autowired private place.icomb.archiver.service.IngestService ingestService;
 
   private final HttpClient http = HttpClient.newHttpClient();
   private final ObjectMapper json = new ObjectMapper();
@@ -322,5 +323,22 @@ class PdfExportApiTest {
     }
     // Eight requests, distinct selections or variants: each is accepted.
     assertThat(exports()).isGreaterThanOrEqualTo(7L);
+  }
+
+  // --- deleting a record -------------------------------------------------------------------
+
+  @Test
+  void deletingARecordRemovesItsExportFilesAndRows() throws Exception {
+    String id = created("{}", 202).get("id").asText();
+    worker.runOnce();
+    String path = jdbc.queryForObject("SELECT path FROM pdf_export", String.class);
+    Path file = storageRoot.resolve(path);
+    assertThat(file).exists();
+
+    ingestService.deleteRecord(record);
+
+    assertThat(file).doesNotExist();
+    assertThat(exports()).isZero();
+    assertThat(get("/pdf-exports/" + id, true).statusCode()).isEqualTo(404);
   }
 }
