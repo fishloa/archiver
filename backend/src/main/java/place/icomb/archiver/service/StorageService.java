@@ -244,6 +244,89 @@ public class StorageService {
     }
   }
 
+  // --- the exports area
+  // -----------------------------------------------------------------------
+
+  /**
+   * Where a PDF export's scratch files and unfinished output live.
+   *
+   * <p>Under the storage root, on the archive's own volume, rather than in {@code /tmp}: the size
+   * of the largest export is then bounded by the disk, not by the container's scratch space.
+   */
+  public Path exportTempDir() {
+    Path dir = storageRoot.resolve("exports/tmp");
+    try {
+      Files.createDirectories(dir);
+    } catch (IOException e) {
+      throw new UncheckedIOException("Failed to create " + dir, e);
+    }
+    return dir;
+  }
+
+  /** Empties the export temp area. Only safe when no build can be running, that is at startup. */
+  public void clearExportTemp() {
+    Path dir = exportTempDir();
+    try (var entries = Files.list(dir)) {
+      for (Path entry : (Iterable<Path>) entries::iterator) {
+        deleteTree(entry);
+      }
+    } catch (IOException e) {
+      throw new UncheckedIOException("Failed to empty " + dir, e);
+    }
+  }
+
+  /**
+   * A fresh address for a finished export: exports/{xx}/{uuid}.pdf. Says nothing about the record.
+   */
+  public String newExportPath() {
+    String name = java.util.UUID.randomUUID().toString();
+    return "exports/" + name.substring(0, 2) + "/" + name + ".pdf";
+  }
+
+  /** Moves a finished file from the temp area to its address: a rename, on one filesystem. */
+  public void placeExport(Path finished, String relativePath) {
+    Path target = storageRoot.resolve(relativePath);
+    try {
+      Files.createDirectories(target.getParent());
+      Files.move(finished, target, java.nio.file.StandardCopyOption.ATOMIC_MOVE);
+    } catch (IOException e) {
+      throw new UncheckedIOException("Failed to place " + relativePath, e);
+    }
+  }
+
+  /** The file of a finished export. */
+  public Path exportFile(String relativePath) {
+    return storageRoot.resolve(relativePath);
+  }
+
+  /** Usable bytes on the filesystem that holds the archive. */
+  public long freeBytes() {
+    try {
+      return Files.getFileStore(storageRoot).getUsableSpace();
+    } catch (IOException e) {
+      throw new UncheckedIOException("Failed to read free space for " + storageRoot, e);
+    }
+  }
+
+  private static void deleteTree(Path path) throws IOException {
+    Files.walkFileTree(
+        path,
+        new SimpleFileVisitor<>() {
+          @Override
+          public FileVisitResult visitFile(Path file, BasicFileAttributes attrs)
+              throws IOException {
+            Files.delete(file);
+            return FileVisitResult.CONTINUE;
+          }
+
+          @Override
+          public FileVisitResult postVisitDirectory(Path dir, IOException exc) throws IOException {
+            Files.delete(dir);
+            return FileVisitResult.CONTINUE;
+          }
+        });
+  }
+
   private void writeFile(String relativePath, byte[] data) {
     try {
       Path fullPath = storageRoot.resolve(relativePath);

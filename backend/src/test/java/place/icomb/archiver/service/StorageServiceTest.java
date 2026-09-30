@@ -175,4 +175,61 @@ class StorageServiceTest {
 
     assertThat(writable.resolve(stored)).doesNotExist();
   }
+
+  // --- the exports area --------------------------------------------------------------------
+
+  @Test
+  void theExportTempAreaIsUnderTheStorageRootNotTmp(@TempDir Path root) {
+    StorageService service = new StorageService(root, (Path) null);
+
+    Path dir = service.exportTempDir();
+
+    assertThat(dir).isEqualTo(root.resolve("exports/tmp")).isDirectory();
+  }
+
+  @Test
+  void clearingTheExportTempAreaEmptiesItAndKeepsIt(@TempDir Path root) throws Exception {
+    StorageService service = new StorageService(root, (Path) null);
+    Path dir = service.exportTempDir();
+    Files.writeString(dir.resolve("a.partial"), "x");
+    Files.createDirectories(dir.resolve("nested"));
+    Files.writeString(dir.resolve("nested/b.tmp"), "y");
+
+    service.clearExportTemp();
+
+    assertThat(dir).isDirectory();
+    try (var entries = Files.list(dir)) {
+      assertThat(entries).isEmpty();
+    }
+  }
+
+  @Test
+  void anExportAddressIsShardedUniqueAndSaysNothingAboutTheRecord(@TempDir Path root) {
+    StorageService service = new StorageService(root, (Path) null);
+
+    String first = service.newExportPath();
+    String second = service.newExportPath();
+
+    assertThat(first).matches("exports/[0-9a-f]{2}/[0-9a-f-]{36}\\.pdf");
+    assertThat(first).isNotEqualTo(second);
+  }
+
+  @Test
+  void aFinishedExportIsRenamedIntoPlaceFromTheTempArea(@TempDir Path root) throws Exception {
+    StorageService service = new StorageService(root, (Path) null);
+    Path finished = service.exportTempDir().resolve("done.pdf.partial");
+    Files.writeString(finished, "pdf bytes");
+    String address = service.newExportPath();
+
+    service.placeExport(finished, address);
+
+    assertThat(finished).doesNotExist();
+    assertThat(Files.readString(service.exportFile(address))).isEqualTo("pdf bytes");
+    assertThat(service.exportFile(address)).isEqualTo(root.resolve(address));
+  }
+
+  @Test
+  void freeSpaceIsReportedForTheArchiveVolume(@TempDir Path root) {
+    assertThat(new StorageService(root, (Path) null).freeBytes()).isPositive();
+  }
 }
