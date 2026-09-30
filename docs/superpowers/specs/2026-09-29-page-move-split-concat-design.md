@@ -59,8 +59,7 @@ tables and buys nothing for moves, so it is out of scope.
 link, and no code in the repository reads them.
 
 **What deliberately stays under `records/{id}/`:** the stored searchable PDF and
-the record-level PDF. These belong to the record, are regenerated for it, and never
-move. Keeping them there keeps `records/{id}/` meaningful.
+the record-level PDF. These belong to the record and never move. Keeping them there keeps `records/{id}/` meaningful.
 
 **Reading during and after migration.** Nothing changes on the read side. Every
 reader resolves `attachment.path` as stored, so a legacy row reads from its legacy
@@ -168,10 +167,11 @@ person matching. Everything keyed on `page_id` — `page_text`, `page_translatio
 `page_search`, `page_ocr_history`, `page_person_match`, `entity_hit`, `evidence` —
 follows the page untouched because the page keeps its id.
 
-The one exception is the stored searchable PDF, a local render of text already
-held: it calls no model, and a PDF containing pages the record no longer owns is
-the kind of wrongness that reaches a submission. Rebuilt on both sides — but
-**removed rather than rebuilt** on a record left with no pages.
+**A move touches no PDF.** PDFs are produced on demand (see
+`2026-09-30-on-demand-pdf-design.md`, which ships first), so nothing stored can go stale and
+nothing has to be rebuilt. The old stored searchable PDFs are no longer served; they are left
+alone until they are retired. The one interaction is that a move is refused while an export of
+either record is `queued` or `building`, because its pages would change underneath it.
 
 **Refusals, checked before anything is touched:** either record on AI hold; a job
 `pending` or `claimed` against a page being moved, which would write its text into
@@ -189,7 +189,7 @@ separate, deliberate call.
 - `text_chunk` re-parented, same chunk ids, new `record_id`
 - `seq` contiguous on both sides; the unique index never trips
 - `page_count` and `attachment_count` correct on both
-- **the only job created is `build_searchable_pdf`** — the constraint, asserted
+- **no job of any kind is created** — the constraint, asserted
 - record status unchanged: `complete` stays `complete`
 - the image is readable from the target record afterwards, at the same address
 - **delete safety**: move a page out, delete the emptied record, assert the moved
@@ -210,8 +210,8 @@ place to prove the backfill's behaviour when a source file cannot be deleted: it
 copied to the new address, the original is left alone, and nothing raises.
 
 Then exercise the real thing on seeded Prague records: split 4037, move pages into
-4036, concatenate two records; confirm the text survived, the images open, the PDFs
-rebuilt, and the job table holds no AI work. Only then tag.
+4036, concatenate two records; confirm the text survived, the images open, an
+export of each record contains the right pages, and the job table holds no new job. Only then tag.
 
 ## Out of scope
 
