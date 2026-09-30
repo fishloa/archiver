@@ -1,5 +1,6 @@
 package place.icomb.archiver.service;
 
+import jakarta.annotation.PostConstruct;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -9,8 +10,6 @@ import java.util.Optional;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.boot.context.event.ApplicationReadyEvent;
-import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Service;
 
 /**
@@ -70,6 +69,7 @@ public class PdfExportWorker {
     PdfExportQueue.Claimed export = claimed.get();
     long started = System.currentTimeMillis();
     Path partial = null;
+    String placed = null;
     try {
       if (storageService.freeBytes() < minFreeBytes) {
         throw new IOException("Not enough free space on the archive volume to build a PDF");
@@ -92,8 +92,10 @@ public class PdfExportWorker {
       long bytes = Files.size(partial);
       String address = storageService.newExportPath();
       storageService.placeExport(partial, address);
+      placed = address;
       partial = null;
       queue.markReady(export.id(), address, bytes, ttl);
+      placed = null;
       log.info(
           "PDF export {} ready: record={} variant={} pages={} bytes={} ({}ms)",
           export.id(),
@@ -102,10 +104,17 @@ public class PdfExportWorker {
           pdfPages,
           bytes,
           System.currentTimeMillis() - started);
-    } catch (Exception e) {
+    } catch (Exception | Error e) {
       log.error("PDF export {} failed: record={}", export.id(), export.recordId(), e);
-      queue.markFailed(
-          export.id(), abbreviate(e.getMessage() == null ? e.toString() : e.getMessage()));
+      if (placed != null) {
+        storageService.deleteStoredFile(placed);
+      }
+      try {
+        queue.markFailed(
+            export.id(), abbreviate(e.getMessage() == null ? e.toString() : e.getMessage()));
+      } catch (RuntimeException ex) {
+        log.error("Could not mark PDF export {} failed", export.id(), ex);
+      }
     } finally {
       if (partial != null) {
         try {
@@ -136,10 +145,10 @@ public class PdfExportWorker {
   }
 
   /**
-   * At startup no build can be running in a fresh JVM, so any export still marked building was
-   * interrupted, and anything in the temp area is debris.
+   * During bean initialization, before any scheduled task can claim work: any export still marked
+   * building was interrupted, and anything in the temp area is debris.
    */
-  @EventListener(ApplicationReadyEvent.class)
+  @PostConstruct
   public void recoverAfterRestart() {
     int failed = queue.failAllBuilding("interrupted by a restart");
     storageService.clearExportTemp();
