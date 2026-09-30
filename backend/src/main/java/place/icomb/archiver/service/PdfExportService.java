@@ -6,6 +6,9 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.TreeSet;
+import org.apache.pdfbox.io.MemoryUsageSetting;
+import org.apache.pdfbox.io.RandomAccessStreamCache;
+import org.apache.pdfbox.io.ScratchFile;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.pdmodel.PDPage;
 import org.apache.pdfbox.pdmodel.PDPageContentStream;
@@ -94,6 +97,55 @@ public class PdfExportService {
     SIDE_BY_SIDE
   }
 
+  /** Draws a variant into an open document. */
+  @FunctionalInterface
+  private interface Render {
+    void into(PDDocument doc) throws IOException;
+  }
+
+  /** Runs a render into a fresh in-memory document and returns its bytes. */
+  private byte[] toBytes(Render render) throws IOException {
+    try (PDDocument doc = new PDDocument()) {
+      render.into(doc);
+      if (doc.getNumberOfPages() == 0) {
+        throw new IOException("No valid pages found for the given selection");
+      }
+      ByteArrayOutputStream out = new ByteArrayOutputStream();
+      doc.save(out);
+      return out.toByteArray();
+    }
+  }
+
+  /**
+   * Builds any variant of the selected pages straight to a file.
+   *
+   * <p>The document is backed by PDFBox scratch files in {@code scratchDir}, and saved without ever
+   * being held as one array, so a 942-page record of full-resolution scans is no different from a
+   * three-page extract. The caller chooses the scratch directory: the archive's own volume, not
+   * {@code /tmp}.
+   *
+   * @return the number of PDF pages written
+   */
+  public int buildToFile(
+      Long recordId, List<Integer> seqNumbers, Variant variant, Path target, Path scratchDir)
+      throws IOException {
+    RandomAccessStreamCache.StreamCacheCreateFunction cache =
+        () ->
+            new ScratchFile(MemoryUsageSetting.setupTempFileOnly().setTempDir(scratchDir.toFile()));
+    try (PDDocument doc = new PDDocument(cache)) {
+      switch (variant) {
+        case ORIGINAL -> renderOriginal(doc, recordId, seqNumbers);
+        case ENGLISH -> renderEnglish(doc, recordId, seqNumbers);
+        case SIDE_BY_SIDE -> renderSideBySide(doc, recordId, seqNumbers);
+      }
+      if (doc.getNumberOfPages() == 0) {
+        throw new IOException("No valid pages found for the given selection");
+      }
+      doc.save(target.toFile());
+      return doc.getNumberOfPages();
+    }
+  }
+
   /**
    * Parses a page range string like "1,2,3,5-19,21,23" into a sorted set of individual page
    * numbers.
@@ -158,11 +210,16 @@ public class PdfExportService {
    * traced to its source.
    */
   private byte[] buildSideBySidePdf(Long recordId, List<Integer> seqNumbers) throws IOException {
+    return toBytes(doc -> renderSideBySide(doc, recordId, seqNumbers));
+  }
+
+  private void renderSideBySide(PDDocument doc, Long recordId, List<Integer> seqNumbers)
+      throws IOException {
     final float margin = 28f;
     final float gutter = 16f;
     final float footerHeight = 22f;
 
-    try (PDDocument doc = new PDDocument()) {
+    {
       MarkdownPdfRenderer renderer = newRenderer(doc);
       PDRectangle landscape =
           new PDRectangle(PDRectangle.A4.getHeight(), PDRectangle.A4.getWidth());
@@ -242,13 +299,6 @@ public class PdfExportService {
           }
         } while (lineIndex < lines.size());
       }
-
-      if (doc.getNumberOfPages() == 0) {
-        throw new IOException("No valid pages found for the given selection");
-      }
-      ByteArrayOutputStream out = new ByteArrayOutputStream();
-      doc.save(out);
-      return out.toByteArray();
     }
   }
 
@@ -376,7 +426,12 @@ public class PdfExportService {
   }
 
   private byte[] buildEnglishPdf(Long recordId, List<Integer> seqNumbers) throws IOException {
-    try (PDDocument doc = new PDDocument()) {
+    return toBytes(doc -> renderEnglish(doc, recordId, seqNumbers));
+  }
+
+  private void renderEnglish(PDDocument doc, Long recordId, List<Integer> seqNumbers)
+      throws IOException {
+    {
       MarkdownPdfRenderer renderer = newRenderer(doc);
       addCoverSheet(doc, renderer, PDRectangle.A4, recordId, seqNumbers, 56f);
       java.util.Map<Integer, String> best = translationService.bestEnglishByRecord(recordId);
@@ -412,13 +467,6 @@ public class PdfExportService {
         renderer.renderPage(
             doc, text, note, pageId, publicUrl + "/records/" + recordId + "/pages/" + seq, seq);
       }
-
-      if (doc.getNumberOfPages() == 0) {
-        throw new IOException("No valid pages found for the given selection");
-      }
-      ByteArrayOutputStream out = new ByteArrayOutputStream();
-      doc.save(out);
-      return out.toByteArray();
     }
   }
 
@@ -430,15 +478,7 @@ public class PdfExportService {
    * pictures: visually complete and completely unsearchable.
    */
   private byte[] buildOriginalPdf(Long recordId, List<Integer> seqNumbers) throws IOException {
-    try (PDDocument doc = new PDDocument()) {
-      renderOriginal(doc, recordId, seqNumbers);
-      if (doc.getNumberOfPages() == 0) {
-        throw new IOException("No valid pages found for the given selection");
-      }
-      ByteArrayOutputStream out = new ByteArrayOutputStream();
-      doc.save(out);
-      return out.toByteArray();
-    }
+    return toBytes(doc -> renderOriginal(doc, recordId, seqNumbers));
   }
 
   /**

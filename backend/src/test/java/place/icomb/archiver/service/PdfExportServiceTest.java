@@ -451,4 +451,61 @@ class PdfExportServiceTest {
     ImageIO.write(image, "jpg", out);
     return out.toByteArray();
   }
+
+  // --- building to a file ------------------------------------------------------------------
+
+  private Path scratch() throws Exception {
+    return Files.createTempDirectory("pdf-scratch");
+  }
+
+  @Test
+  void everyVariantCanBeBuiltStraightToAFile() throws Exception {
+    for (PdfExportService.Variant variant : PdfExportService.Variant.values()) {
+      Path dir = scratch();
+      Path out = dir.resolve(variant + ".pdf");
+
+      int pages = pdfExportService.buildToFile(recordId, List.of(1), variant, out, dir);
+
+      assertThat(out).exists();
+      assertThat(pages).as(variant.toString()).isGreaterThanOrEqualTo(1);
+      try (PDDocument doc = Loader.loadPDF(out.toFile())) {
+        assertThat(doc.getNumberOfPages()).as(variant.toString()).isEqualTo(pages);
+      }
+    }
+  }
+
+  @Test
+  void theFileBuildCarriesTheSameContentAsTheInMemoryBuild() throws Exception {
+    Path dir = scratch();
+    Path out = dir.resolve("english.pdf");
+
+    pdfExportService.buildToFile(recordId, List.of(1), PdfExportService.Variant.ENGLISH, out, dir);
+
+    assertThat(textOf(Files.readAllBytes(out))).contains("Expropriation of the Czech nobility");
+  }
+
+  @Test
+  void scratchFilesGoToTheDirectoryGivenAndAreGoneAfterwards() throws Exception {
+    Path dir = scratch();
+    Path out = dir.resolve("original.pdf");
+
+    pdfExportService.buildToFile(recordId, List.of(1), PdfExportService.Variant.ORIGINAL, out, dir);
+
+    try (var entries = Files.list(dir)) {
+      assertThat(entries.map(p -> p.getFileName().toString())).containsExactly("original.pdf");
+    }
+  }
+
+  @Test
+  void aSelectionThatNamesNoPageIsAnErrorNotAnEmptyFile() throws Exception {
+    Path dir = scratch();
+    Path out = dir.resolve("none.pdf");
+
+    org.assertj.core.api.Assertions.assertThatThrownBy(
+            () ->
+                pdfExportService.buildToFile(
+                    recordId, List.of(99), PdfExportService.Variant.ORIGINAL, out, dir))
+        .isInstanceOf(java.io.IOException.class)
+        .hasMessageContaining("No valid pages");
+  }
 }
