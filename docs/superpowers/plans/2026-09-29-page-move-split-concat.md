@@ -4,7 +4,7 @@
 
 **Goal:** Let an administrator move a page to another record, split a record in two, and concatenate two records — as pure database updates that re-run nothing in the pipeline.
 
-**Architecture:** Page images already live at `attachments/{xx}/{uuid}.jpg` (v1.1.15, migration finished 29 Sep 2026, `legacy: 0`), so no file ever moves. One primitive, `PageMoveService.moveRun`, moves a *contiguous run* of pages from one record to another inside a single transaction: it opens a gap in the target, re-parents `page`, `attachment`, `text_chunk` and completed `job` rows, closes the gap in the source, refreshes both records' counters, invalidates and re-queues the stored searchable PDF, and writes a history event. Move, split and concat are the run `[n,n]`, `[k,end]` and `[1,end]`.
+**Architecture:** Page images already live at `attachments/{xx}/{uuid}.jpg` (v1.1.15, migration finished 29 Sep 2026, `legacy: 0`), so no file ever moves. One primitive, `PageMoveService.moveRun`, moves a *contiguous run* of pages from one record to another inside a single transaction: it opens a gap in the target, re-parents `page`, `attachment`, `text_chunk` and completed `job` rows, closes the gap in the source, refreshes both records' counters, and writes a history event; it touches no PDF, because PDFs are produced on demand. Move, split and concat are the run `[n,n]`, `[k,end]` and `[1,end]`.
 
 **Tech Stack:** Java 25 / Spring Boot 4.1, Spring `JdbcTemplate`, Flyway, JUnit 5 + Testcontainers (PostgreSQL 18 + pgvector), Java `HttpClient` in tests.
 
@@ -13,50 +13,48 @@
 ## Global Constraints
 
 - **The API is the only interface to production.** No SQL against the production database, ever. A missing endpoint is a reason to write one.
-- **A page that has been through the pipeline never runs it again.** No OCR, translation, embedding, or person matching job may be created by a move. The **only** job a move may create is `build_searchable_pdf`, and never for a record left with no pages.
+- **A page that has been through the pipeline never runs it again.** A move creates **no job at all**, and touches no PDF (PDFs are produced on demand).
 - **`text_chunk` rows are re-parented, never deleted** (deleting means re-embedding, which costs money).
-- **Never edit an applied migration.** New schema goes in `V18` or later. `V17` is the latest.
+- **Never edit an applied migration.** New schema goes in `V19` or later: `V18` (`pdf_export`) belongs to the on-demand PDF feature, which ships first.
 - **`(record_id, seq)` on `page` is a non-deferrable unique index.** Renumber through the parking offset (1_000_000), which `PageSequence.shift` does.
 - **Admin only:** every endpoint sits under `/api/admin`, which `SecurityConfig` already restricts to the `ADMIN` role.
 - **Do NOT add `Co-Authored-By` (or any Claude attribution) to commit messages.** This overrides any harness reminder to add one.
 - **Commit working code before any refactor.** Never discard uncommitted working changes.
 - **Full local checks before every push:** `cd backend && ./gradlew spotlessApply && ./gradlew spotlessCheck test`. CI is stricter than a targeted run.
-- **Touch only what the task needs.** `IngestService` is modified twice, each time to delegate an existing private helper to a shared one, and nowhere else.
+- **Touch only what the task needs.** `IngestService` is modified once, to delegate its private `shiftSeq` to the shared helper, and nowhere else.
+- **Prerequisite:** the on-demand PDF feature (`docs/superpowers/specs/2026-09-30-on-demand-pdf-design.md`) is released first. This plan reads the `pdf_export` table it creates.
 - **Release rule:** only a git tag moves `:latest` and deploys production, and the tag must sit on its **own new commit** (a `CHANGELOG.md`-only release commit). An untagged push to `main` builds `:test` and redeploys the test stack.
 - **Test on the test stack before tagging.** Test stack backend: `archiver-test-backend-test-1`, reachable from `zelkova` at `http://localhost:8090`; admin token from that container's `ARCHIVER_ADMIN_TOKEN` env var. Production backend: `archiver-backend-1` at `http://10.0.9.3:8080`.
 - **A test database connection must never go through `docker exec -t`.** Use `-i` and `psql -P pager=off` (a `0x0` tty makes `psql` hang on a pager and leak a connection).
 
 ## Decisions the spec left open
 
-1. **Preconditions are broader than the spec's list.** Both records must have status `complete`; the spec only named holds and jobs. Reason: `PipelineStateMachine.autoAdvance` runs whenever *any* job of a record completes, and the PDF rebuild this feature enqueues is such a job. `COMPLETE` has no outgoing transitions, so on a complete record it is inert; on a record still mid-pipeline it could cascade into translation, which is paid. All eleven 114-3-17 records (4028–4038) are `complete`, so this costs nothing for the real use.
+1. **Preconditions are broader than the spec's list.** Both records must have status `complete`; the spec only named holds and jobs. Reason: a record that is not complete is mid-pipeline, and `PipelineStateMachine.autoAdvance` re-evaluates its guards whenever one of its jobs completes, so pages it had gained could be run through paid stages. `COMPLETE` has no outgoing transitions, so nothing further can happen to it. All eleven 114-3-17 records (4028–4038) are `complete`, so this costs nothing for the real use.
 2. **A page whose image is still in the legacy `records/{id}/…` layout is refused.** Production is fully migrated, but the test stack is not (50 of 128,836), and emptying the source record then deleting it would remove the file.
-3. **A rebuilt searchable PDF must be relinked.** `/api/records/{id}/pdf` and the UI follow `record.pdf_attachment_id`, and only the state machine ever sets it. `SearchablePdfWorker` therefore gets one guarded `UPDATE` so a rebuild on a complete record does not leave the new PDF orphaned.
+3. **A move touches no PDF.** On-demand PDF creation ships first, so nothing stored can go stale and nothing has to be rebuilt; the old stored searchable PDFs are no longer served and are left alone until they are retired. The one interaction is a refusal: a move is refused while a `pdf_export` of either record is `queued` or `building`, because its pages would change underneath it.
 4. **A split's English title is supplied, not generated.** `title_en` / `description_en` are optional request fields, because generating them would be an AI call. Absent, they stay empty.
 
 ## Review Focus
 
 Failure modes the spec implies but a straight reading of the tasks would not test. Each has a test in the task that owns the code.
 
-1. **The only page of a record moves out** (source emptied): no `build_searchable_pdf` job for it, its searchable PDF row removed, the record itself left in place. *(Task 3)*
+1. **The only page of a record moves out** (source emptied): the record is left in place, empty and deletable, and no job is created. *(Task 1)*
 2. **`seq` of `0`, `-1`, past the end, or a non-numeric `targetRecordId`/`seq`**: a `400` with nothing changed, never a `500`. *(Tasks 1, 2)*
 3. **A round trip, A→B→A**: page ids preserved, `seq` contiguous on both sides, counters right. *(Task 1)*
 4. **A page image still in the legacy layout** is refused, because deleting the emptied source would delete the scan. *(Task 2)*
-5. **Split at page `1` or beyond the last page, concat of a record with itself or of an empty record**: refused with `400`, and no new record is created. *(Tasks 4, 5)*
+5. **Split at page `1` or beyond the last page, concat of a record with itself or of an empty record**: refused with `400`, and no new record is created. *(Tasks 3, 4)*
 
 ## File Structure
 
 | File | Responsibility |
 |---|---|
-| `backend/src/main/resources/db/migration/V18__pipeline_event_pages_moved.sql` (create) | Allow `pages_moved` in `pipeline_event.event`. |
+| `backend/src/main/resources/db/migration/V19__pipeline_event_pages_moved.sql` (create) | Allow `pages_moved` in `pipeline_event.event`. |
 | `backend/src/main/java/place/icomb/archiver/service/PageSequence.java` (create) | The one place page renumbering lives (`shift`). |
 | `backend/src/main/java/place/icomb/archiver/service/PageMoveException.java` (create) | A refusal with a kind (`NOT_FOUND`, `BAD_REQUEST`, `CONFLICT`) the controller maps to a status. |
 | `backend/src/main/java/place/icomb/archiver/service/PageMoveService.java` (create) | `movePage`, `split`, `concat`, and the `moveRun` primitive. |
 | `backend/src/main/java/place/icomb/archiver/controller/AdminPageMoveController.java` (create) | Three thin endpoints; parses bodies, maps refusals to statuses. |
-| `backend/src/main/java/place/icomb/archiver/service/IngestService.java` (modify) | `shiftSeq` and `deleteFilesAfterCommit` delegate to the shared helpers. |
-| `backend/src/main/java/place/icomb/archiver/service/StorageService.java` (modify) | Gains `deleteAfterCommit(List<String>)` (moved from `IngestService`). |
-| `backend/src/main/java/place/icomb/archiver/service/SearchablePdfWorker.java` (modify) | Relinks `record.pdf_attachment_id` after a build. |
+| `backend/src/main/java/place/icomb/archiver/service/IngestService.java` (modify) | `shiftSeq` delegates to the shared helper. |
 | `backend/src/test/java/place/icomb/archiver/controller/PageMoveTest.java` (create) | Integration tests for every task; the harness is defined in Task 1. |
-| `backend/src/test/java/place/icomb/archiver/service/SearchablePdfRelinkTest.java` (create) | The worker relink. |
 | `.claude/skills/archiver-api/SKILL.md`, `CHANGELOG.md`, the spec (modify) | Documentation, release. |
 
 ---
@@ -64,7 +62,7 @@ Failure modes the spec implies but a straight reading of the tasks would not tes
 ### Task 1: Move one page between two complete records
 
 **Files:**
-- Create: `backend/src/main/resources/db/migration/V18__pipeline_event_pages_moved.sql`
+- Create: `backend/src/main/resources/db/migration/V19__pipeline_event_pages_moved.sql`
 - Create: `backend/src/main/java/place/icomb/archiver/service/PageSequence.java`
 - Create: `backend/src/main/java/place/icomb/archiver/service/PageMoveException.java`
 - Create: `backend/src/main/java/place/icomb/archiver/service/PageMoveService.java`
@@ -76,11 +74,11 @@ Failure modes the spec implies but a straight reading of the tasks would not tes
 - Produces (used by every later task):
   - `PageSequence.shift(JdbcTemplate jdbc, Long recordId, int fromSeq, int delta)` — package-private static.
   - `PageMoveException(Kind kind, String message)`; `enum Kind { NOT_FOUND, BAD_REQUEST, CONFLICT }`; `Kind kind()`.
-  - `PageMoveService.Moved(List<Long> pageIds, long sourceRecordId, int sourcePageCount, long targetRecordId, int targetPageCount, List<Long> pdfRebuildRecordIds)` — `pdfRebuildRecordIds` is empty until Task 3.
+  - `PageMoveService.Moved(List<Long> pageIds, long sourceRecordId, int sourcePageCount, long targetRecordId, int targetPageCount)`.
   - `PageMoveService.movePage(long sourceRecordId, long pageId, long targetRecordId, Integer atSeq, boolean allowCrossArchive)`.
   - private `moveRun(long src, int fromSeq, int toSeq, long tgt, int atSeq)` and private `Locked` record and `lockRecords(long, long)`.
-  - HTTP: `POST /api/admin/records/{recordId}/pages/{pageId}/move`, body `{"targetRecordId": N, "seq": optional N, "allowCrossArchive": optional bool}` → `200` with `{pageIds, sourceRecordId, sourcePageCount, targetRecordId, targetPageCount, pdfRebuildRecordIds}`.
-- Test harness (defined here, reused by Tasks 2–5): `newArchive()`, `recordWithPages(String tag, int n)`, `recordWithPages(String tag, int n, long archiveId)`, `pageIds(long)`, `seqs(long)`, `post(String path, String json)`, `ok(HttpResponse)`, `one(String sql, Object... params)`, `count(String sql, Object... params)`, `attachmentOf(long pageId)`, `pathOf(long attachmentId)`, `deleteRecord(long)`, and field `archive`.
+  - HTTP: `POST /api/admin/records/{recordId}/pages/{pageId}/move`, body `{"targetRecordId": N, "seq": optional N, "allowCrossArchive": optional bool}` → `200` with `{pageIds, sourceRecordId, sourcePageCount, targetRecordId, targetPageCount}`.
+- Test harness (defined here, reused by Tasks 2–4): `newArchive()`, `recordWithPages(String tag, int n)`, `recordWithPages(String tag, int n, long archiveId)`, `pageIds(long)`, `seqs(long)`, `post(String path, String json)`, `ok(HttpResponse)`, `one(String sql, Object... params)`, `count(String sql, Object... params)`, `attachmentOf(long pageId)`, `pathOf(long attachmentId)`, `deleteRecord(long)`, and field `archive`.
 
 - [ ] **Step 1: Write the harness and the failing tests**
 
@@ -436,6 +434,23 @@ class PageMoveTest {
   }
 
   @Test
+  void theOnlyPageOfARecordCanMoveOutLeavingItEmptyAndInPlace() throws Exception {
+    long a = recordWithPages("a", 1);
+    long b = recordWithPages("b", 1);
+    long jobsBefore = count("SELECT count(*) FROM job");
+
+    JsonNode out = ok(post(movePath(a, pageIds(a).get(0)), "{\"targetRecordId\":" + b + "}"));
+
+    assertThat(out.get("sourcePageCount").asInt()).isZero();
+    assertThat(seqs(a)).isEmpty();
+    assertThat(count("SELECT count(*) FROM record WHERE id = ?", a)).isEqualTo(1);
+    assertThat(one("SELECT page_count FROM record WHERE id = ?", a)).isZero();
+    assertThat(one("SELECT attachment_count FROM record WHERE id = ?", a)).isZero();
+    assertThat(seqs(b)).containsExactly(1, 2);
+    assertThat(count("SELECT count(*) FROM job")).isEqualTo(jobsBefore);
+  }
+
+  @Test
   void theMovedPagesScanSurvivesDeletingTheRecordItLeft() throws Exception {
     // The reason files are addressed by their own identity: deleting a record removes what the
     // record owns, and the moved page is no longer owned by it.
@@ -519,7 +534,7 @@ Expected: every test FAILS with a 404/405 from the missing endpoint (the harness
 
 - [ ] **Step 3: Create the migration**
 
-Create `backend/src/main/resources/db/migration/V18__pipeline_event_pages_moved.sql`:
+Create `backend/src/main/resources/db/migration/V19__pipeline_event_pages_moved.sql`:
 
 ```sql
 -- pipeline_event.event names what happened to a record's pipeline. Moving pages between records
@@ -639,14 +654,13 @@ public class PageMoveService {
     this.recordEventService = recordEventService;
   }
 
-  /** What a move did. {@code pdfRebuildRecordIds} names the records whose PDF was re-queued. */
+  /** What a move did. */
   public record Moved(
       List<Long> pageIds,
       long sourceRecordId,
       int sourcePageCount,
       long targetRecordId,
-      int targetPageCount,
-      List<Long> pdfRebuildRecordIds) {}
+      int targetPageCount) {}
 
   /** The columns of a record that decide whether pages may move in or out of it. */
   private record Locked(long id, long archiveId, String status, boolean held) {}
@@ -737,7 +751,7 @@ public class PageMoveService {
     recordEventService.recordChanged(src, "updated");
     recordEventService.recordChanged(tgt, "updated");
 
-    return new Moved(ids, src, pageCount(src), tgt, pageCount(tgt), List.of());
+    return new Moved(ids, src, pageCount(src), tgt, pageCount(tgt));
   }
 
   /** Locks both records in id order, so two moves crossing in opposite directions cannot deadlock. */
@@ -851,7 +865,6 @@ public class AdminPageMoveController {
     out.put("sourcePageCount", m.sourcePageCount());
     out.put("targetRecordId", m.targetRecordId());
     out.put("targetPageCount", m.targetPageCount());
-    out.put("pdfRebuildRecordIds", m.pdfRebuildRecordIds());
     return out;
   }
 
@@ -915,7 +928,7 @@ Renumbering is shared with IngestService through PageSequence."
 
 **Interfaces:**
 - Consumes: `lockRecords` returning `Map<Long, Locked>`, `moveRun`, `PageMoveException` (Task 1).
-- Produces: private `requireMovable(Map<Long, Locked> locked, long src, long tgt, boolean allowCross, int fromSeq, int toSeq)` — throws `PageMoveException`; called by `movePage` here, and by `split` and `concat` in Tasks 4–5.
+- Produces: private `requireMovable(Map<Long, Locked> locked, long src, long tgt, boolean allowCross, int fromSeq, int toSeq)` — throws `PageMoveException`; called by `movePage` here, and by `split` and `concat` in Tasks 3–4.
 
 - [ ] **Step 1: Write the failing tests**
 
@@ -952,8 +965,8 @@ Append these tests inside the `PageMoveTest` class (before its final `}`):
 
   @Test
   void aRecordStillInThePipelineIsRefused() throws Exception {
-    // The state machine advances a record whenever one of its jobs completes, and a move queues
-    // one. On a record that is not complete that could restart paid work.
+    // A record still in the pipeline re-evaluates its guards whenever one of its jobs completes,
+    // and a move must not hand it pages it has not processed.
     long a = recordWithPages("a", 2);
     long b = recordWithPages("b", 1);
     refused(a, b, "", "UPDATE record SET status = 'translating' WHERE id = " + a, 409);
@@ -1004,6 +1017,20 @@ Append these tests inside the `PageMoveTest` class (before its final `}`):
   }
 
   @Test
+  void aPdfExportBeingPreparedForEitherRecordIsRefused() throws Exception {
+    long a = recordWithPages("a", 2);
+    long b = recordWithPages("b", 1);
+    refused(
+        a,
+        b,
+        "",
+        "INSERT INTO pdf_export (record_id, variant, page_ids, fingerprint, state) VALUES ("
+            + b
+            + ", 'original', ARRAY[]::bigint[], 'x', 'building')",
+        409);
+  }
+
+  @Test
   void movingBetweenArchivesNeedsToBeAskedFor() throws Exception {
     long other = newArchive();
     long a = recordWithPages("a", 2);
@@ -1042,7 +1069,7 @@ Append these tests inside the `PageMoveTest` class (before its final `}`):
 - [ ] **Step 2: Run them to verify they fail**
 
 Run: `cd backend && ./gradlew test --tests '*PageMoveTest' 2>&1 | grep -E "FAILED|BUILD"`
-Expected: the nine new tests FAIL (moves that should be refused return `200`); the Task 1 tests still pass.
+Expected: the ten new tests FAIL (moves that should be refused return `200`); the Task 1 tests still pass.
 
 - [ ] **Step 3: Add `requireMovable` and call it**
 
@@ -1072,9 +1099,9 @@ Then add this method to the class:
   /**
    * Refuses a move that would be wrong, before anything is touched.
    *
-   * <p>Both records must be complete: {@code PipelineStateMachine.autoAdvance} runs whenever any
-   * job of a record finishes, and a move queues a PDF rebuild. From {@code complete} there is
-   * nowhere to advance to; from anywhere else it could restart paid work.
+   * <p>Both records must be complete: a record still in the pipeline re-evaluates its guards
+   * whenever one of its jobs finishes, so pages it had gained could be run through paid stages.
+   * From {@code complete} there is nowhere to advance to.
    */
   private void requireMovable(
       Map<Long, Locked> locked,
@@ -1118,6 +1145,20 @@ Then add this method to the class:
                   .formatted(busy)
               + " have its output written into the record it left");
     }
+    Long exporting =
+        jdbc.queryForObject(
+            "SELECT count(*) FROM pdf_export WHERE record_id IN (?, ?)"
+                + " AND state IN ('queued', 'building')",
+            Long.class,
+            src,
+            tgt);
+    if (exporting != null && exporting > 0) {
+      throw new PageMoveException(
+          Kind.CONFLICT,
+          "%d PDF export(s) of these records are still being prepared; moving pages now would"
+                  .formatted(exporting)
+              + " change them underneath the export");
+    }
     Long legacy =
         jdbc.queryForObject(
             "SELECT count(*) FROM page p JOIN attachment a ON a.id = p.attachment_id"
@@ -1149,466 +1190,14 @@ git add backend/src
 git commit -m "pages: refuse a move that is in the wrong state
 
 Both records must be complete and off AI hold, with no job pending or running against either,
-and the page's image must already be at an attachment address. A record still mid-pipeline
-could restart paid work when the PDF rebuild completes; a legacy-layout image would be
-deleted with the record the page left."
+the page's image must already be at an attachment address, and no PDF export of either record may be in preparation. A record still mid-pipeline
+would run its guards again on the next job and could spend money on pages it gained; a
+legacy-layout image would be deleted with the record the page left."
 ```
 
 ---
 
-### Task 3: Invalidate and rebuild the searchable PDF, and relink it
-
-**Files:**
-- Modify: `backend/src/main/java/place/icomb/archiver/service/StorageService.java` (add `deleteAfterCommit`)
-- Modify: `backend/src/main/java/place/icomb/archiver/service/IngestService.java` (`deleteFilesAfterCommit` delegates)
-- Modify: `backend/src/main/java/place/icomb/archiver/service/PageMoveService.java` (constructor, `moveRun`)
-- Modify: `backend/src/main/java/place/icomb/archiver/service/SearchablePdfWorker.java` (relink)
-- Test: `backend/src/test/java/place/icomb/archiver/controller/PageMoveTest.java`
-- Test: `backend/src/test/java/place/icomb/archiver/service/SearchablePdfRelinkTest.java` (create)
-
-**Interfaces:**
-- Consumes: `moveRun`, `Moved` (Task 1); `JobService.enqueueJob(String kind, Long recordId, Long pageId, String payload)` (existing).
-- Produces:
-  - `StorageService.deleteAfterCommit(List<String> relativePaths)` — public.
-  - `PageMoveService(JdbcTemplate, RecordEventService, JobService, StorageService)` — the constructor changes; `Moved.pdfRebuildRecordIds` now holds the records re-queued.
-  - private `refreshPdf(long recordId)` returning `boolean` (true if a rebuild was queued).
-
-- [ ] **Step 1: Write the failing tests**
-
-In `PageMoveTest`, add a helper next to the other helpers:
-
-```java
-  /** A stored searchable PDF for a record, as the pipeline leaves it: a file, a row, a link. */
-  private void withSearchablePdf(long recordId) throws Exception {
-    String path = "records/%d/derivatives/pdf/searchable.pdf".formatted(recordId);
-    Files.createDirectories(storageRoot.resolve(path).getParent());
-    Files.writeString(storageRoot.resolve(path), "pdf of " + recordId);
-    long id =
-        jdbc.sql(
-                "INSERT INTO attachment (record_id, role, path, mime)"
-                    + " VALUES (:r, 'searchable_pdf', :p, 'application/pdf') RETURNING id")
-            .param("r", recordId)
-            .param("p", path)
-            .query(Long.class)
-            .single();
-    jdbc.sql("UPDATE record SET pdf_attachment_id = :a, attachment_count = attachment_count + 1"
-            + " WHERE id = :r")
-        .param("a", id)
-        .param("r", recordId)
-        .update();
-  }
-```
-
-and append these tests:
-
-```java
-  // --- tests: the searchable PDF -----------------------------------------------------------
-
-  @Test
-  void bothRecordsPdfsAreDroppedAndOnlyThePdfBuildIsQueued() throws Exception {
-    // A PDF that still contains a page the record no longer owns is the kind of wrongness that
-    // reaches a submission. And the only job a move may create is the PDF build.
-    long a = recordWithPages("a", 2);
-    long b = recordWithPages("b", 1);
-    withSearchablePdf(a);
-    withSearchablePdf(b);
-    Path aPdf = storageRoot.resolve("records/%d/derivatives/pdf/searchable.pdf".formatted(a));
-    Path bPdf = storageRoot.resolve("records/%d/derivatives/pdf/searchable.pdf".formatted(b));
-    long jobsBefore = count("SELECT count(*) FROM job");
-    long moving = pageIds(a).get(0);
-
-    JsonNode out = ok(post(movePath(a, moving), "{\"targetRecordId\":" + b + "}"));
-
-    assertThat(out.get("pdfRebuildRecordIds")).hasSize(2);
-    assertThat(count("SELECT count(*) FROM attachment WHERE role = 'searchable_pdf'")).isZero();
-    assertThat(count("SELECT count(*) FROM record WHERE id IN (?, ?) AND pdf_attachment_id IS NULL", a, b))
-        .isEqualTo(2);
-    assertThat(aPdf).doesNotExist();
-    assertThat(bPdf).doesNotExist();
-    // exactly two new jobs, both PDF builds, both pending
-    assertThat(count("SELECT count(*) FROM job")).isEqualTo(jobsBefore + 2);
-    assertThat(
-            count(
-                "SELECT count(*) FROM job WHERE kind = 'build_searchable_pdf' AND status = 'pending'"
-                    + " AND record_id IN (?, ?)",
-                a,
-                b))
-        .isEqualTo(2);
-    // the counter followed the dropped row
-    assertThat(one("SELECT attachment_count FROM record WHERE id = ?", a)).isEqualTo(1);
-  }
-
-  @Test
-  void aRecordEmptiedByAMoveGetsNoPdfBuildAndItsPdfIsRemoved() throws Exception {
-    long a = recordWithPages("a", 1);
-    long b = recordWithPages("b", 1);
-    withSearchablePdf(a);
-    long moving = pageIds(a).get(0);
-
-    JsonNode out = ok(post(movePath(a, moving), "{\"targetRecordId\":" + b + "}"));
-
-    assertThat(out.get("sourcePageCount").asInt()).isZero();
-    assertThat(count("SELECT count(*) FROM record WHERE id = ?", a)).isEqualTo(1);
-    assertThat(count("SELECT count(*) FROM attachment WHERE record_id = ? AND role = 'searchable_pdf'", a))
-        .isZero();
-    assertThat(count("SELECT count(*) FROM job WHERE kind = 'build_searchable_pdf' AND record_id = ?", a))
-        .isZero();
-    assertThat(count("SELECT count(*) FROM job WHERE kind = 'build_searchable_pdf' AND record_id = ?", b))
-        .isEqualTo(1);
-    assertThat(out.get("pdfRebuildRecordIds")).hasSize(1);
-  }
-
-  @Test
-  void aRecordWithNoPdfStillGetsOneQueuedWhenItHasPages() throws Exception {
-    long a = recordWithPages("a", 2);
-    long b = recordWithPages("b", 1);
-    long moving = pageIds(a).get(0);
-
-    ok(post(movePath(a, moving), "{\"targetRecordId\":" + b + "}"));
-
-    assertThat(count("SELECT count(*) FROM job WHERE kind = 'build_searchable_pdf'")).isEqualTo(2);
-  }
-
-  @Test
-  void theOriginalPdfIsLeftAloneBecauseItIsTheDeliveredEvidence() throws Exception {
-    long a = recordWithPages("a", 2);
-    long b = recordWithPages("b", 1);
-    long original =
-        jdbc.sql(
-                "INSERT INTO attachment (record_id, role, path) VALUES (:r, 'original_pdf',"
-                    + " 'records/1/attachments/record.pdf') RETURNING id")
-            .param("r", a)
-            .query(Long.class)
-            .single();
-    jdbc.sql("UPDATE record SET pdf_attachment_id = :o WHERE id = :r")
-        .param("o", original)
-        .param("r", a)
-        .update();
-
-    ok(post(movePath(a, pageIds(a).get(0)), "{\"targetRecordId\":" + b + "}"));
-
-    assertThat(one("SELECT pdf_attachment_id FROM record WHERE id = ?", a)).isEqualTo(original);
-    assertThat(count("SELECT count(*) FROM attachment WHERE id = ?", original)).isEqualTo(1);
-  }
-```
-
-Create `backend/src/test/java/place/icomb/archiver/service/SearchablePdfRelinkTest.java`:
-
-```java
-package place.icomb.archiver.service;
-
-import static org.assertj.core.api.Assertions.assertThat;
-
-import java.awt.image.BufferedImage;
-import java.io.ByteArrayOutputStream;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import javax.imageio.ImageIO;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.jdbc.core.simple.JdbcClient;
-import org.springframework.test.context.ActiveProfiles;
-import org.springframework.test.context.DynamicPropertyRegistry;
-import org.springframework.test.context.DynamicPropertySource;
-import org.testcontainers.containers.PostgreSQLContainer;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
-import place.icomb.archiver.model.Job;
-
-/**
- * A rebuilt searchable PDF has to be linked to its record. {@code /api/records/{id}/pdf} and the
- * viewer follow {@code record.pdf_attachment_id}, and until now only the pipeline's state machine
- * set it — so a rebuild on a record that was already complete left the new PDF orphaned.
- */
-@Testcontainers
-@ActiveProfiles("test")
-@SpringBootTest
-class SearchablePdfRelinkTest {
-
-  @Container
-  static PostgreSQLContainer<?> postgres =
-      new PostgreSQLContainer<>("pgvector/pgvector:pg18")
-          .withDatabaseName("archiver_test")
-          .withUsername("postgres")
-          .withPassword("postgres")
-          .withCommand("postgres", "-c", "max_connections=50");
-
-  @Autowired private JdbcClient jdbc;
-  @Autowired private SearchablePdfWorker worker;
-  @Autowired private Path storageRoot;
-
-  @DynamicPropertySource
-  static void configureProperties(DynamicPropertyRegistry registry) {
-    registry.add("spring.datasource.url", () -> postgres.getJdbcUrl() + "&stringtype=unspecified");
-    registry.add("spring.datasource.username", postgres::getUsername);
-    registry.add("spring.datasource.password", postgres::getPassword);
-  }
-
-  @BeforeEach
-  void clean() {
-    jdbc.sql("UPDATE record SET pdf_attachment_id = NULL").update();
-    jdbc.sql("DELETE FROM record").update();
-  }
-
-  private long recordWithOnePage() throws Exception {
-    long archive =
-        jdbc.sql("INSERT INTO archive (name, country) VALUES ('Relink', 'AT') RETURNING id")
-            .query(Long.class)
-            .single();
-    long record =
-        jdbc.sql(
-                "INSERT INTO record (archive_id, source_system, source_record_id, status, lang)"
-                    + " VALUES (:a, 'test', 'relink-' || gen_random_uuid(), 'complete', 'de')"
-                    + " RETURNING id")
-            .param("a", archive)
-            .query(Long.class)
-            .single();
-    ByteArrayOutputStream jpeg = new ByteArrayOutputStream();
-    ImageIO.write(new BufferedImage(40, 60, BufferedImage.TYPE_INT_RGB), "jpg", jpeg);
-    String path = "attachments/aa/relink-" + record + ".jpg";
-    Files.createDirectories(storageRoot.resolve(path).getParent());
-    Files.write(storageRoot.resolve(path), jpeg.toByteArray());
-    long attachment =
-        jdbc.sql(
-                "INSERT INTO attachment (record_id, role, path, mime)"
-                    + " VALUES (:r, 'page_image', :p, 'image/jpeg') RETURNING id")
-            .param("r", record)
-            .param("p", path)
-            .query(Long.class)
-            .single();
-    jdbc.sql("INSERT INTO page (record_id, seq, attachment_id, width, height) VALUES (:r, 1, :a, 40, 60)")
-        .param("r", record)
-        .param("a", attachment)
-        .update();
-    return record;
-  }
-
-  private void build(long record) throws Exception {
-    Job job = new Job();
-    job.setKind("build_searchable_pdf");
-    job.setRecordId(record);
-    worker.processJob(job);
-  }
-
-  @Test
-  void aRebuildRelinksTheRecordWhenItHasNoPdfLinked() throws Exception {
-    long record = recordWithOnePage();
-
-    build(record);
-
-    long pdf =
-        jdbc.sql("SELECT id FROM attachment WHERE record_id = :r AND role = 'searchable_pdf'")
-            .param("r", record)
-            .query(Long.class)
-            .single();
-    long linked =
-        jdbc.sql("SELECT pdf_attachment_id FROM record WHERE id = :r")
-            .param("r", record)
-            .query(Long.class)
-            .single();
-    assertThat(linked).isEqualTo(pdf);
-  }
-
-  @Test
-  void aRebuildNeverStealsTheLinkFromTheOriginalPdf() throws Exception {
-    // A record still mid-pipeline points at the PDF it was delivered as; the state machine swaps
-    // that for the searchable one at the right moment. The worker must not pre-empt it.
-    long record = recordWithOnePage();
-    long original =
-        jdbc.sql(
-                "INSERT INTO attachment (record_id, role, path) VALUES (:r, 'original_pdf',"
-                    + " 'records/1/attachments/record.pdf') RETURNING id")
-            .param("r", record)
-            .query(Long.class)
-            .single();
-    jdbc.sql("UPDATE record SET pdf_attachment_id = :o WHERE id = :r")
-        .param("o", original)
-        .param("r", record)
-        .update();
-
-    build(record);
-
-    long linked =
-        jdbc.sql("SELECT pdf_attachment_id FROM record WHERE id = :r")
-            .param("r", record)
-            .query(Long.class)
-            .single();
-    assertThat(linked).isEqualTo(original);
-  }
-}
-```
-
-- [ ] **Step 2: Run them to verify they fail**
-
-Run: `cd backend && ./gradlew test --tests '*PageMoveTest' --tests '*SearchablePdfRelinkTest' 2>&1 | grep -E "FAILED|BUILD"`
-Expected: the four PDF tests in `PageMoveTest` FAIL (no jobs queued, PDFs untouched) and `aRebuildRelinksTheRecordWhenItHasNoPdfLinked` FAILS (`linked` is null).
-
-- [ ] **Step 3: Move the after-commit delete into `StorageService`**
-
-In `StorageService.java`, add this method after `deleteStoredFile`:
-
-```java
-  /**
-   * Removes stored files after the surrounding transaction commits, so a rollback never leaves a
-   * row pointing at a file that has gone. With no transaction, removes them at once.
-   */
-  public void deleteAfterCommit(java.util.List<String> relativePaths) {
-    if (relativePaths.isEmpty()) {
-      return;
-    }
-    if (!org.springframework.transaction.support.TransactionSynchronizationManager
-        .isSynchronizationActive()) {
-      relativePaths.forEach(this::deleteStoredFile);
-      return;
-    }
-    org.springframework.transaction.support.TransactionSynchronizationManager
-        .registerSynchronization(
-            new org.springframework.transaction.support.TransactionSynchronization() {
-              @Override
-              public void afterCommit() {
-                relativePaths.forEach(StorageService.this::deleteStoredFile);
-              }
-            });
-  }
-```
-
-In `IngestService.java`, replace the whole body of `deleteFilesAfterCommit` (keep its Javadoc and signature) so it reads:
-
-```java
-  private void deleteFilesAfterCommit(java.util.List<String> paths) {
-    storageService.deleteAfterCommit(paths);
-  }
-```
-
-- [ ] **Step 4: Add the PDF handling to the service**
-
-In `PageMoveService.java` change the fields and constructor:
-
-```java
-  private final JdbcTemplate jdbc;
-  private final RecordEventService recordEventService;
-  private final JobService jobService;
-  private final StorageService storageService;
-
-  public PageMoveService(
-      JdbcTemplate jdbc,
-      RecordEventService recordEventService,
-      JobService jobService,
-      StorageService storageService) {
-    this.jdbc = jdbc;
-    this.recordEventService = recordEventService;
-    this.jobService = jobService;
-    this.storageService = storageService;
-  }
-```
-
-In `moveRun`, replace the last line (`return new Moved(ids, src, pageCount(src), tgt, pageCount(tgt), List.of());`) with:
-
-```java
-    // The stored searchable PDF is the one thing that is rebuilt: it is a local render of text
-    // already held, and one that still contains a page the record no longer owns is wrong.
-    List<Long> rebuilt = new java.util.ArrayList<>();
-    for (long recordId : new long[] {src, tgt}) {
-      if (refreshPdf(recordId)) {
-        rebuilt.add(recordId);
-      }
-    }
-    return new Moved(ids, src, pageCount(src), tgt, pageCount(tgt), rebuilt);
-```
-
-and add this method (after `moveRun`); the counters were refreshed earlier, so refresh them again after the row is dropped by moving the `refreshCounts` calls below — do that by deleting the two `refreshCounts(...)` lines from `moveRun` and calling them inside `refreshPdf` once the PDF row is gone. Concretely, remove from `moveRun`:
-
-```java
-    refreshCounts(src);
-    refreshCounts(tgt);
-```
-
-and add:
-
-```java
-  /**
-   * Drops a record's searchable PDF and queues a new one if it still has pages.
-   *
-   * <p>The row and its file go, the record's link is cleared only if it pointed at that PDF (a
-   * record still holding its delivered original keeps that link), and a build is queued unless the
-   * record is now empty. Counters are refreshed here, after the row is gone.
-   *
-   * @return true if a rebuild was queued
-   */
-  private boolean refreshPdf(long recordId) {
-    List<String> paths =
-        jdbc.queryForList(
-            "SELECT path FROM attachment WHERE record_id = ? AND role = 'searchable_pdf'",
-            String.class,
-            recordId);
-    jdbc.update(
-        "UPDATE record SET pdf_attachment_id = NULL WHERE id = ? AND pdf_attachment_id IN"
-            + " (SELECT id FROM attachment WHERE record_id = ? AND role = 'searchable_pdf')",
-        recordId,
-        recordId);
-    jdbc.update(
-        "DELETE FROM attachment WHERE record_id = ? AND role = 'searchable_pdf'", recordId);
-    storageService.deleteAfterCommit(paths);
-    refreshCounts(recordId);
-
-    if (pageCount(recordId) == 0) {
-      return false;
-    }
-    jobService.enqueueJob("build_searchable_pdf", recordId, null, null);
-    return true;
-  }
-```
-
-- [ ] **Step 5: Relink in the worker**
-
-In `SearchablePdfWorker.java`, find `attachmentRepository.save(attachment);` inside `processJob` and replace that single line with:
-
-```java
-      attachment = attachmentRepository.save(attachment);
-
-      // Nothing else links a rebuilt PDF to its record once the record is past the pipeline, and
-      // /api/records/{id}/pdf follows the link. Only an empty link is filled: a record still
-      // holding its delivered original is relinked by the state machine at the right moment.
-      jdbcTemplate.update(
-          "UPDATE record SET pdf_attachment_id = ? WHERE id = ? AND pdf_attachment_id IS NULL",
-          attachment.getId(),
-          recordId);
-```
-
-If `SearchablePdfWorker` has no `JdbcTemplate` field, add `private final JdbcTemplate jdbcTemplate;` with a constructor parameter and assignment, following the way its other collaborators (`storageService`, `attachmentRepository`) are injected.
-
-- [ ] **Step 6: Run the tests**
-
-Run: `cd backend && ./gradlew spotlessApply -q && ./gradlew test --tests '*PageMoveTest' --tests '*SearchablePdfRelinkTest' --tests '*StorageMigrationTest' --tests '*ReplacePageAndRecordTest' 2>&1 | grep -E "FAILED|BUILD"`
-Expected: `BUILD SUCCESSFUL`. The Task 1 test `aMovedPageKeepsItsIdAndEverythingKeyedOnIt` asserts `job` count unchanged — it will now fail because two PDF jobs are queued. Update that one assertion to the true behaviour:
-
-```java
-    // no pipeline work was created beyond the two PDF builds, and neither record left `complete`
-    assertThat(count("SELECT count(*) FROM job")).isEqualTo(jobsBefore + 2);
-    assertThat(count("SELECT count(*) FROM job WHERE kind <> 'build_searchable_pdf' AND status = 'pending'"))
-        .isZero();
-```
-
-and re-run the same command; expected `BUILD SUCCESSFUL`.
-
-- [ ] **Step 7: Commit**
-
-```bash
-git add backend/src
-git commit -m "pages: rebuild the searchable PDF after a move, and relink it
-
-A PDF that still contains a page its record no longer owns is dropped, its file deleted after
-commit, and a build queued unless the record is now empty. The worker now relinks
-record.pdf_attachment_id after a build when the link is empty: only the state machine ever set
-it, so a rebuild on a complete record left the new PDF orphaned and the viewer without one.
-The after-commit file delete moves from IngestService into StorageService to be shared."
-```
-
----
-
-### Task 4: Split a record in two
+### Task 3: Split a record in two
 
 **Files:**
 - Modify: `backend/src/main/java/place/icomb/archiver/service/PageMoveService.java` (constructor gains `RecordRepository`; add `split`)
@@ -1616,7 +1205,7 @@ The after-commit file delete moves from IngestService into StorageService to be 
 - Test: `backend/src/test/java/place/icomb/archiver/controller/PageMoveTest.java`
 
 **Interfaces:**
-- Consumes: `lockRecords`, `requireMovable`, `moveRun`, `Moved` (Tasks 1–3); `RecordRepository.save(Record)`; `Record` setters (`setArchiveId`, `setSourceSystem`, `setSourceRecordId`, `setTitle`, `setDescription`, `setTitleEn`, `setDescriptionEn`, `setLang`, `setMetadataLang`, `setOcrEngine`, `setTranslationQuality`, `setReferenceCode`, `setStatus`, `setCreatedAt`, `setUpdatedAt`).
+- Consumes: `lockRecords`, `requireMovable`, `moveRun`, `Moved` (Tasks 1–2); `RecordRepository.save(Record)`; `Record` setters (`setArchiveId`, `setSourceSystem`, `setSourceRecordId`, `setTitle`, `setDescription`, `setTitleEn`, `setDescriptionEn`, `setLang`, `setMetadataLang`, `setOcrEngine`, `setTranslationQuality`, `setReferenceCode`, `setStatus`, `setCreatedAt`, `setUpdatedAt`).
 - Produces:
   - `PageMoveService.SplitResult(long newRecordId, Moved moved)`.
   - `PageMoveService.split(long recordId, int splitAtSeq, String title, String description, String titleEn, String descriptionEn)`.
@@ -1642,7 +1231,7 @@ Append to `PageMoveTest`:
         .param("r", a)
         .update();
     List<Long> pages = pageIds(a);
-    long jobsBefore = count("SELECT count(*) FROM job WHERE kind <> 'build_searchable_pdf'");
+    long jobsBefore = count("SELECT count(*) FROM job");
 
     JsonNode out = ok(post("/admin/records/" + a + "/split", splitBody(4, "Second half")));
 
@@ -1668,11 +1257,11 @@ Append to `PageMoveTest`:
     assertThat(row.get("title")).isEqualTo("Second half");
     assertThat(row.get("status")).isEqualTo("complete");
     assertThat(((Number) row.get("page_count")).intValue()).isEqualTo(2);
-    // everything moved with its pages, and no AI work was queued
+    // everything moved with its pages, and nothing was queued
     assertThat(count("SELECT count(*) FROM page_text WHERE page_id IN (?, ?)", pages.get(3), pages.get(4)))
         .isEqualTo(2);
     assertThat(count("SELECT count(*) FROM text_chunk WHERE record_id = ?", created)).isEqualTo(2);
-    assertThat(count("SELECT count(*) FROM job WHERE kind <> 'build_searchable_pdf'"))
+    assertThat(count("SELECT count(*) FROM job"))
         .isEqualTo(jobsBefore);
   }
 
@@ -1733,18 +1322,6 @@ Append to `PageMoveTest`:
   @Test
   void splittingAnUnknownRecordIsNotFound() throws Exception {
     assertThat(post("/admin/records/99999999/split", splitBody(2, "x")).statusCode()).isEqualTo(404);
-  }
-
-  @Test
-  void bothHalvesOfASplitGetTheirPdfRebuilt() throws Exception {
-    long a = recordWithPages("a", 4);
-    withSearchablePdf(a);
-
-    JsonNode out = ok(post("/admin/records/" + a + "/split", splitBody(3, "Second half")));
-
-    assertThat(out.get("pdfRebuildRecordIds")).hasSize(2);
-    assertThat(count("SELECT count(*) FROM attachment WHERE role = 'searchable_pdf'")).isZero();
-    assertThat(count("SELECT count(*) FROM job WHERE kind = 'build_searchable_pdf'")).isEqualTo(2);
   }
 ```
 
@@ -1881,7 +1458,7 @@ went through the pipeline. Its English title is supplied by the caller, not gene
 
 ---
 
-### Task 5: Concatenate two records
+### Task 4: Concatenate two records
 
 **Files:**
 - Modify: `backend/src/main/java/place/icomb/archiver/service/PageMoveService.java` (add `concat`)
@@ -1889,7 +1466,7 @@ went through the pipeline. Its English title is supplied by the caller, not gene
 - Test: `backend/src/test/java/place/icomb/archiver/controller/PageMoveTest.java`
 
 **Interfaces:**
-- Consumes: `lockRecords`, `requireMovable`, `moveRun`, `pageCount`, `Moved` (Tasks 1–3).
+- Consumes: `lockRecords`, `requireMovable`, `moveRun`, `pageCount`, `Moved` (Tasks 1–2).
 - Produces:
   - `PageMoveService.concat(long targetRecordId, long sourceRecordId, boolean allowCrossArchive)` — moves every page of the source onto the end of the target.
   - HTTP: `POST /api/admin/records/{recordId}/concat`, body `{"sourceRecordId": N, "allowCrossArchive": optional bool}` → `200` with the move description. `recordId` is the surviving record.
@@ -1911,7 +1488,7 @@ Append to `PageMoveTest`:
     long b = recordWithPages("b", 2);
     List<Long> aPages = pageIds(a);
     List<Long> bPages = pageIds(b);
-    long jobsBefore = count("SELECT count(*) FROM job WHERE kind <> 'build_searchable_pdf'");
+    long jobsBefore = count("SELECT count(*) FROM job");
 
     JsonNode out = ok(post(concatPath(a), "{\"sourceRecordId\":" + b + "}"));
 
@@ -1927,16 +1504,12 @@ Append to `PageMoveTest`:
     assertThat(one("SELECT page_count FROM record WHERE id = ?", b)).isZero();
     assertThat(one("SELECT page_count FROM record WHERE id = ?", a)).isEqualTo(5);
     assertThat(one("SELECT attachment_count FROM record WHERE id = ?", a)).isEqualTo(5);
-    // text, chunks and jobs all followed; nothing was queued but the PDF build
+    // text, chunks and jobs all followed; nothing was queued
     assertThat(count("SELECT count(*) FROM text_chunk WHERE record_id = ?", a)).isEqualTo(5);
     assertThat(count("SELECT count(*) FROM page_text WHERE page_id IN (?, ?)", bPages.get(0), bPages.get(1)))
         .isEqualTo(2);
-    assertThat(count("SELECT count(*) FROM job WHERE kind <> 'build_searchable_pdf'"))
+    assertThat(count("SELECT count(*) FROM job"))
         .isEqualTo(jobsBefore);
-    // only the survivor gets a PDF build: the emptied record has no pages to render
-    assertThat(out.get("pdfRebuildRecordIds")).hasSize(1);
-    assertThat(count("SELECT count(*) FROM job WHERE kind = 'build_searchable_pdf' AND record_id = ?", b))
-        .isZero();
   }
 
   @Test
@@ -2059,12 +1632,12 @@ given no PDF build, since it has no pages to render."
 
 ---
 
-### Task 6: Document it, run every check, push to the test stack
+### Task 5: Document it, run every check, push to the test stack
 
 **Files:**
 - Modify: `.claude/skills/archiver-api/SKILL.md` (add the three endpoints)
 - Modify: `docs/superpowers/specs/2026-09-29-page-move-split-concat-design.md` (status, decisions)
-- Modify: `CHANGELOG.md` (release entry — added in Task 7's release commit, not here)
+- Modify: `CHANGELOG.md` (release entry — added in Task 6's release commit, not here)
 
 **Interfaces:**
 - Consumes: the three endpoints from Tasks 1, 4, 5.
@@ -2089,14 +1662,13 @@ with no job pending or running against either, and the page image must already b
 
 Refusals: `404` unknown record or page; `400` a bad body, a position out of range, a record into
 itself, a split that would empty a record; `409` a record not `complete`, on hold, busy, in another
-archive, or holding a legacy-layout image. A refusal changes nothing. Both records' searchable PDFs
-are dropped and re-queued (one is not queued for a record left empty); the response's
-`pdfRebuildRecordIds` names them. The stored **original** PDF is never touched.
+archive, holding a legacy-layout image, or with a PDF export still being prepared. A refusal
+changes nothing. A move touches no PDF: PDFs are produced on demand.
 ```
 
 - [ ] **Step 2: Update the spec's status**
 
-In the spec, change the `**Status:**` line to `**Status:** deliverables 1 and 2 shipped in v1.1.15; deliverable 3 specified here and implemented by the plan `docs/superpowers/plans/2026-09-29-page-move-split-concat.md`. Phase 2 below is current, plus the four decisions recorded in that plan (both records `complete`; legacy-layout images refused; a rebuilt PDF is relinked; a split's English title is supplied).`
+In the spec, change the `**Status:**` line to `**Status:** deliverables 1 and 2 shipped in v1.1.15; deliverable 3 specified here and implemented by the plan `docs/superpowers/plans/2026-09-29-page-move-split-concat.md`. Phase 2 below is current, plus the four decisions recorded in that plan (both records `complete`; legacy-layout images refused; a move touches no PDF; a split's English title is supplied).`
 
 - [ ] **Step 3: Run every backend check**
 
@@ -2116,7 +1688,9 @@ Expected: Jenkins builds `:test` and redeploys the test stack; **do not** run `j
 
 ---
 
-### Task 7: Rehearse on the test stack, then release
+### Task 6: Rehearse on the test stack, then release
+
+> **Prerequisite:** the on-demand PDF feature must already be released; this plan queries its `pdf_export` table. Do not start before it.
 
 **Files:**
 - Modify: `CHANGELOG.md` (release entry)
@@ -2127,7 +1701,7 @@ Expected: Jenkins builds `:test` and redeploys the test stack; **do not** run `j
 - [ ] **Step 1: Confirm the test stack is on the new build**
 
 Run: `ssh zelkova 'curl -s http://localhost:8090/api/version'`
-Expected: the commit of the Task 6 push.
+Expected: the commit of the Task 5 push.
 
 - [ ] **Step 2: Migrate the test stack's storage so real pages are movable**
 
@@ -2136,30 +1710,30 @@ The test stack has only ~50 of its ~128,836 page images migrated and a legacy-la
 - [ ] **Step 3: Rehearse each operation on real records**
 
 On the test stack, against two real `complete` records, take a before/after snapshot each time via `GET /api/v1/documents/{id}` (page count, page ids, text lengths):
-1. `move` one page from record 4037 into 4036; confirm page ids, text and translations unchanged, both `pdfRebuildRecordIds` returned, and `GET /api/files/{attachmentId}` still serves the same bytes.
+1. `move` one page from record 4037 into 4036; confirm page ids, text and translations unchanged, and `GET /api/files/{attachmentId}` still serves the same bytes.
 2. `split` 4037 at a real boundary; confirm the new record's pages, inherited fields, and that the job table holds no OCR/translate/embed work (`GET /api/admin/jobs?recordId=…`).
 3. `concat` the two halves back; confirm the original page order and counts are restored.
 4. Delete the emptied record via `DELETE /api/ingest/records/{id}` and confirm every moved page's image still opens.
-5. Wait for the two queued `build_searchable_pdf` jobs to finish; confirm `GET /api/records/{id}/pdf` serves a PDF and its page count matches.
+5. Request an export of each affected record through the on-demand PDF flow (`POST /api/records/{id}/pdf-exports`) and confirm each PDF contains exactly the pages the record now holds.
 
 Record what was checked. **Stop and report if any check fails; do not release.**
 
 - [ ] **Step 4: Add the changelog entry and tag on its own commit**
 
-Add above `## v1.1.15` in `CHANGELOG.md` a `## v1.1.16 — <date>` entry covering: move/split/concat endpoints and what they guarantee (no pipeline re-run, chunks re-parented not deleted, only a PDF rebuild queued); the preconditions and why (both records complete, hold, busy, legacy layout); that a rebuilt searchable PDF is now relinked to its record. Then:
+Add above `## v1.1.15` in `CHANGELOG.md` a `## v1.1.17 — <date>` entry covering: move/split/concat endpoints and what they guarantee (no pipeline re-run, chunks re-parented not deleted, only a PDF rebuild queued); the preconditions and why (both records complete, hold, busy, legacy layout); that a move touches no PDF (PDFs are produced on demand) and is refused while an export of either record is being prepared. Then:
 
 ```bash
 git add CHANGELOG.md
-git commit -m "release: v1.1.16 — move, split and concatenate pages between records"
-git tag v1.1.16
+git commit -m "release: v1.1.17 — move, split and concatenate pages between records"
+git tag v1.1.17
 git push origin main
-git push origin v1.1.16
+git push origin v1.1.17
 ```
 
 - [ ] **Step 5: Verify the release**
 
-Find and wait for the release build (`jk run ls archiver | head -2`; `jk run view archiver <n> --wait`; expect `SUCCESS` and `Deploying to PRODUCTION (v1.1.16)` in `jk log`). Then on `zelkova`:
-- `curl -s http://10.0.9.3:8080/api/version` → `v1.1.16` at the tag's commit.
+Find and wait for the release build (`jk run ls archiver | head -2`; `jk run view archiver <n> --wait`; expect `SUCCESS` and `Deploying to PRODUCTION (v1.1.17)` in `jk log`). Then on `zelkova`:
+- `curl -s http://10.0.9.3:8080/api/version` → `v1.1.17` at the tag's commit.
 - `curl -s -o /dev/null -w "%{http_code}" https://archive.czernin.eu/` → `200`.
 - `docker ps -a --filter name=archiver-` → backend and frontend `Up`, nothing restarting.
 
@@ -2170,20 +1744,20 @@ Do **not** move any real page on production as part of the release check; bounda
 ## Self-Review
 
 **Spec coverage** (Phase 2 of the spec and the conversation constraints):
-- Move / split / concat as database updates → Tasks 1, 4, 5.
+- Move / split / concat as database updates → Tasks 1, 3, 4.
 - Page keeps its id and everything keyed on it follows → Task 1 test.
 - `text_chunk` re-parented, never deleted → Task 1 test (same chunk id, new `record_id`).
 - `seq` contiguous, parking offset → Task 1 (`PageSequence.shift`), tests assert contiguity, round trip.
-- Counters (`page_count`, `attachment_count`) → Task 1, refreshed after PDF row removal in Task 3.
-- History event → Task 1 test + `V18`.
-- Only `build_searchable_pdf` may be created, removed not rebuilt on an emptied record → Task 3 tests, Task 5 test.
+- Counters (`page_count`, `attachment_count`) → Task 1.
+- History event → Task 1 test + `V19`.
+- A move creates no job and touches no PDF → Task 1 test (job count unchanged), Tasks 3 and 4 tests.
 - Record status unchanged → Task 1 test.
-- Delete safety → Task 1 and Task 5 tests.
-- Every refusal (held, busy job, unknown, page not in record, same record, cross-archive) → Task 2; plus split/concat shape refusals → Tasks 4, 5.
-- Split inheritance → Task 4 test. Concat leaves source empty but present → Task 5 test.
-- Test-stack proof before tagging → Task 7.
-- Gaps found and closed by decisions: `attachment.record_id` must move (else cascade); PDF relink; `complete`-only precondition; legacy-layout refusal; English title supplied.
+- Delete safety → Task 1 and Task 4 tests.
+- Every refusal (held, busy job, unknown, page not in record, same record, cross-archive) → Task 2; plus split/concat shape refusals → Tasks 3, 4.
+- Split inheritance → Task 3 test. Concat leaves source empty but present → Task 4 test.
+- Test-stack proof before tagging → Task 6.
+- Gaps found and closed by decisions: `attachment.record_id` must move (else cascade); `complete`-only precondition; legacy-layout refusal; English title supplied.
 
-**Placeholder scan:** no `TBD`/`TODO`/"handle edge cases"; every code step carries the code. One conditional instruction remains — Task 3 Step 5 says to add a `JdbcTemplate` field to `SearchablePdfWorker` *if it has none*; the worker's constructor was not read in full, so the executor must look and follow the existing injection style (the code to add is given).
+**Placeholder scan:** no `TBD`/`TODO`/"handle edge cases"; every code step carries the code. None found.
 
-**Type consistency:** `Moved(pageIds, sourceRecordId, sourcePageCount, targetRecordId, targetPageCount, pdfRebuildRecordIds)` is defined in Task 1 and used unchanged in Tasks 3–5 and the controller `describe`. `movePage(long, long, long, Integer, boolean)` matches the controller call. `lockRecords` returns `Map<Long, Locked>` from Task 1 onward. `requireMovable(Map, long, long, boolean, int, int)` is defined in Task 2 and called with that signature in Tasks 4 and 5. `PageMoveService`'s constructor gains parameters in Task 3 (`JobService`, `StorageService`) and Task 4 (`RecordRepository`); Spring wires it by type, and no test constructs it directly.
+**Type consistency:** `Moved(pageIds, sourceRecordId, sourcePageCount, targetRecordId, targetPageCount)` is defined in Task 1 and used unchanged in Tasks 3–4 and the controller `describe`. `movePage(long, long, long, Integer, boolean)` matches the controller call. `lockRecords` returns `Map<Long, Locked>` from Task 1 onward. `requireMovable(Map, long, long, boolean, int, int)` is defined in Task 2 and called with that signature in Tasks 3 and 4. `PageMoveService`'s constructor gains one parameter in Task 3 (`RecordRepository`); Spring wires it by type, and no test constructs it directly.
