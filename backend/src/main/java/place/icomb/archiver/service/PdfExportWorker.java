@@ -94,7 +94,16 @@ public class PdfExportWorker {
       storageService.placeExport(partial, address);
       placed = address;
       partial = null;
-      queue.markReady(export.id(), address, bytes, ttl);
+      boolean accepted = queue.markReady(export.id(), address, bytes, ttl);
+      if (!accepted) {
+        storageService.deleteStoredFile(address);
+        log.warn(
+            "PDF export {} was no longer building when it finished (its record was deleted, or it"
+                + " was failed as hung); the file was removed",
+            export.id());
+        placed = null;
+        return true;
+      }
       placed = null;
       log.info(
           "PDF export {} ready: record={} variant={} pages={} bytes={} ({}ms)",

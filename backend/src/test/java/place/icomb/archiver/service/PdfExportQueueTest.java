@@ -165,6 +165,7 @@ class PdfExportQueueTest {
   @Test
   void aFinishedExportIsReusedUntilItExpires() {
     String id = request().view().id();
+    queue.claimNext();
     queue.markReady(id, "exports/aa/x.pdf", 10, Duration.ofHours(24));
 
     PdfExportQueue.Requested again = request();
@@ -339,8 +340,45 @@ class PdfExportQueueTest {
   }
 
   @Test
+  void markReadyAcceptsABuildingExport() {
+    String id = request().view().id();
+    queue.claimNext();
+
+    assertThat(queue.markReady(id, "exports/aa/x.pdf", 10, Duration.ofHours(24))).isTrue();
+
+    assertThat(queue.find(id).orElseThrow().state()).isEqualTo("ready");
+  }
+
+  @Test
+  void markReadyRefusesAnExportThatIsNotBuilding() {
+    for (String state : List.of("queued", "failed", "expired")) {
+      jdbc.execute("DELETE FROM pdf_export");
+      String id = request().view().id();
+      state(id, state);
+
+      assertThat(queue.markReady(id, "exports/aa/x.pdf", 10, Duration.ofHours(24)))
+          .as(state)
+          .isFalse();
+
+      PdfExportQueue.Row row = queue.row(id).orElseThrow();
+      assertThat(row.state()).as(state).isEqualTo(state);
+      assertThat(row.path()).as(state).isNull();
+    }
+  }
+
+  @Test
+  void markReadyOnAnExportWhoseRecordWasDeletedIsRefused() throws Exception {
+    String id = request().view().id();
+    queue.claimNext();
+    jdbc.update("DELETE FROM record WHERE id = ?", record);
+
+    assertThat(queue.markReady(id, "exports/aa/x.pdf", 10, Duration.ofHours(24))).isFalse();
+  }
+
+  @Test
   void readyRecordsTheFileSizeAndExpiry() {
     String id = request().view().id();
+    queue.claimNext();
     queue.markReady(id, "exports/aa/x.pdf", 1234, Duration.ofHours(24));
 
     PdfExportQueue.Row row = queue.row(id).orElseThrow();
@@ -374,6 +412,7 @@ class PdfExportQueueTest {
   @Test
   void dueExportsAreExpiredAndTheirFilesReturned() {
     String id = request().view().id();
+    queue.claimNext();
     queue.markReady(id, "exports/aa/x.pdf", 10, Duration.ofHours(24));
     jdbc.update("UPDATE pdf_export SET expires_at = now() - interval '1 second'");
 
@@ -384,7 +423,9 @@ class PdfExportQueueTest {
 
   @Test
   void anExportStillInDateIsNotExpired() {
-    queue.markReady(request().view().id(), "exports/aa/x.pdf", 10, Duration.ofHours(24));
+    String id = request().view().id();
+    queue.claimNext();
+    queue.markReady(id, "exports/aa/x.pdf", 10, Duration.ofHours(24));
     assertThat(queue.expireDue()).isEmpty();
   }
 
@@ -420,6 +461,7 @@ class PdfExportQueueTest {
   @Test
   void oldExpiredAndFailedRowsArePurgedButRecentOnesAreKept() {
     String expired = request().view().id();
+    queue.claimNext();
     queue.markReady(expired, "exports/aa/x.pdf", 1, Duration.ofHours(24));
     jdbc.update("UPDATE pdf_export SET expires_at = now() - interval '1 second'");
     queue.expireDue();
@@ -437,6 +479,7 @@ class PdfExportQueueTest {
   @Test
   void aRecordsExportFilesAreListedForDeletion() {
     String id = request().view().id();
+    queue.claimNext();
     queue.markReady(id, "exports/aa/x.pdf", 1, Duration.ofHours(24));
     queue.request(record, Variant.ENGLISH, pages);
 

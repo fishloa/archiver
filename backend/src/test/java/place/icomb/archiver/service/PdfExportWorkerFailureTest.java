@@ -7,6 +7,7 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -82,6 +83,26 @@ class PdfExportWorkerFailureTest {
 
     verify(storageService).deleteStoredFile("exports/aa/x.pdf");
     verify(queue).markFailed(eq("id-1"), any());
+  }
+
+  @Test
+  void aBuildThatIsNoLongerBuildingWhenItFinishesHasItsFileDeleted() throws Exception {
+    doAnswer(
+            invocation -> {
+              Path target = invocation.getArgument(3);
+              Files.writeString(target, "pdf-content");
+              return 1;
+            })
+        .when(pdfExportService)
+        .buildToFile(any(), any(), any(), any(), any());
+    when(queue.markReady(
+            any(String.class), any(String.class), any(Long.class), any(Duration.class)))
+        .thenReturn(false);
+
+    assertThat(worker.runOnce()).isTrue();
+
+    verify(storageService).deleteStoredFile("exports/aa/x.pdf");
+    verify(queue, never()).markFailed(any(), any());
   }
 
   @Test

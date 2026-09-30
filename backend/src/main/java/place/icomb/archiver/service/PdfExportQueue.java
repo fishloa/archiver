@@ -325,14 +325,22 @@ public class PdfExportQueue {
         .findFirst();
   }
 
-  public void markReady(String id, String path, long bytes, Duration ttl) {
-    jdbc.update(
-        "UPDATE pdf_export SET state = 'ready', path = ?, bytes = ?, finished_at = now(),"
-            + " expires_at = now() + make_interval(secs => ?) WHERE id = ?::uuid",
-        path,
-        bytes,
-        (double) ttl.toSeconds(),
-        id);
+  /**
+   * Records a finished build, but only for an export that is still building.
+   *
+   * @return false when it no longer was (failed as hung, or its record was deleted), in which case
+   *     nothing changed and the caller must discard the file it built
+   */
+  public boolean markReady(String id, String path, long bytes, Duration ttl) {
+    return jdbc.update(
+            "UPDATE pdf_export SET state = 'ready', path = ?, bytes = ?, finished_at = now(),"
+                + " expires_at = now() + make_interval(secs => ?)"
+                + " WHERE id = ?::uuid AND state = 'building'",
+            path,
+            bytes,
+            (double) ttl.toSeconds(),
+            id)
+        == 1;
   }
 
   public void markFailed(String id, String error) {
