@@ -74,3 +74,11 @@ export function errorFrom(status: number, body: string): string {
 	}
 	return `Request failed (${status})`;
 }
+
+/** How long a person is asked to wait for one PDF before being told to come back to it. */
+export const MAX_WAIT_MS = 30 * 60 * 1000;
+
+/** Whether a wait that began at `startedMs` has gone on too long at `nowMs`. */
+export function timedOut(startedMs: number, nowMs: number): boolean {
+	return nowMs - startedMs > MAX_WAIT_MS;
+}

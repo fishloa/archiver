@@ -5,8 +5,10 @@ import {
 	errorFrom,
 	exportRequest,
 	fileUrl,
+	MAX_WAIT_MS,
 	nextPollDelay,
-	statusUrl
+	statusUrl,
+	timedOut
 } from '../src/lib/pdf-export';
 
 describe('addresses', () => {
@@ -94,5 +96,17 @@ describe('errorFrom', () => {
 		expect(errorFrom(502, '<html>Bad gateway</html>')).toBe('Request failed (502)');
 		expect(errorFrom(500, '{"other":1}')).toBe('Request failed (500)');
 		expect(errorFrom(500, '')).toBe('Request failed (500)');
+	});
+});
+
+describe('timedOut', () => {
+	it('allows thirty minutes', () => {
+		expect(MAX_WAIT_MS).toBe(30 * 60 * 1000);
+	});
+
+	it('is false at the start and at exactly the limit, true one millisecond past it', () => {
+		expect(timedOut(1000, 1000)).toBe(false);
+		expect(timedOut(1000, 1000 + MAX_WAIT_MS)).toBe(false);
+		expect(timedOut(1000, 1000 + MAX_WAIT_MS + 1)).toBe(true);
 	});
 });
