@@ -3,7 +3,8 @@
 **Status:** design, decided in conversation 30 September 2026
 **Decided with the user:** every PDF is produced on demand and takes the same asynchronous
 path; finished exports are kept 24 hours and reused for identical requests; the old synchronous
-URLs are removed and every consumer moves to the new flow.
+URLs are removed and every consumer moves to the new flow; temporary files live in a temp area
+under the storage root, never in `/tmp`; there are no per-user limits.
 **Order of work:** this (A), then moving pages between records (C, see
 `2026-09-29-page-move-split-concat-design.md`), then retiring the pipeline's PDF stage and the
 stored PDFs (B, out of scope here).
@@ -58,7 +59,6 @@ CREATE TABLE pdf_export (
     path         text,
     bytes        bigint,
     error        text,
-    requested_by text,
     created_at   timestamptz NOT NULL DEFAULT now(),
     started_at   timestamptz,
     finished_at  timestamptz,
@@ -74,8 +74,13 @@ CREATE INDEX idx_pdf_export_record ON pdf_export (record_id);
 need.
 
 **Files** live at `exports/{xx}/{uuid}.pdf` under the storage root, the same shape as page
-images: nothing about the record appears in the address. They are built to `…pdf.partial` and
-moved into place atomically, so a reader never sees half a file.
+images: nothing about the record appears in the address. They are built to `…pdf.partial` in the
+temp area (below) and moved into place atomically, so a reader never sees half a file. The move
+is a rename within one filesystem, which is why the temp area is under the same root.
+
+**The temp area** is `exports/tmp/` under the storage root. Everything in flight lives there:
+PDFBox's scratch files and the `.partial` output. A build that fails removes its own files, and
+the backend empties the directory at startup, since no build can be running in a fresh JVM.
 
 **`fingerprint`** says what the pages *were* when the export was built: an `md5` over, for each
 selected page in order, the page id, its attachment id, its `page_text` id and a hash of its
@@ -100,7 +105,6 @@ the defaults are `original` and the whole record.
 | Otherwise | `202` with a new `queued` export |
 | Unknown record | `404` |
 | Unknown variant, malformed `pages`, or no page resolved | `400` |
-| The requester already has three exports queued or building | `429` |
 
 Response body, for all of the above:
 `{"id": "…", "state": "queued", "pageCount": 12, "variant": "original", "bytes": null,
@@ -132,7 +136,9 @@ retiring it belongs to B.
   `archiver.pdf-export.concurrency`, default **2**: a large export holds a temporary file of the
   size of the output, and two at once is enough to keep a person from waiting behind another.
 - **Building.** Every variant is built to a file through a `PDDocument` backed by PDFBox's
-  temp-file stream cache, never as a `byte[]`. `PdfExportService` gains
+  temp-file stream cache, never as a `byte[]`. The cache is pointed at the temp area:
+  `() -> new ScratchFile(MemoryUsageSetting.setupTempFileOnly().setTempDir(tmpDir.toFile()))`
+  (PDFBox 3.0.8 supports this; no JVM-wide `java.io.tmpdir` change is needed). `PdfExportService` gains
   `buildToFile(recordId, seqNumbers, variant, target)`; the English and side-by-side builders are
   split into `render…(doc, …)` methods the way `renderOriginal` already is, so all three share it.
   Finishing sets `ready`, `bytes`, `finished_at` and `expires_at = now() + 24 h`.
@@ -147,12 +153,14 @@ retiring it belongs to B.
 - **Deleting a record** removes its export files as it removes its page images: `ON DELETE
   CASCADE` takes the rows, so `IngestService.deleteRecord` collects the paths first.
 - **Free space.** A build refuses to start, failing with a clear message, when the storage root
-  has less than 2 GB free.
+  has less than 2 GB free. That filesystem now also holds the scratch files, so it is the one
+  that matters.
 
-**Temporary files.** PDFBox's stream cache writes to `java.io.tmpdir`, which in the backend
-container is whatever `/tmp` is. The rehearsal on the 604 MB record measures it; if it is too
-small the answer is to point `java.io.tmpdir` at a directory under the storage root, not to
-build in memory.
+**Temporary files** were the open question: PDFBox's default stream cache writes to `/tmp`,
+which in the backend container may be small. They are directed to `exports/tmp/` instead, on the
+same volume as the archive, so the size of the largest export is bounded by the disk and not by
+the container's scratch space. The rehearsal on the 604 MB record measures how much the area
+holds at its peak.
 
 ## Consumers
 
@@ -178,16 +186,17 @@ description and in `.claude/skills/archiver-api/SKILL.md`. The MCP tool descript
   each variant and for a page range; an identical request is reused, not rebuilt; an identical
   request while `building` joins it; changing a page's text, translation or scan changes the
   fingerprint and starts a new export; `409` before ready, `410` after expiry, `404` unknown;
-  `400` for a bad variant, a malformed range, and a range naming no page; `429` at the fourth
-  open export; a `building` row older than two hours becomes `failed` and loses its partial file;
+  `400` for a bad variant, a malformed range, and a range naming no page; scratch and partial
+  files land under `exports/tmp/` and are gone once a build finishes or fails, and startup empties
+  the area; a `building` row older than two hours becomes `failed` and loses its partial file;
   the reaper deletes an expired file and marks the row; deleting a record deletes its files;
   unauthenticated is refused.
 - **Frontend**: `bun test` for the three pure functions; `bun run check` with no errors; and a
   real browser against the running test stack, clicking the button, because that is what caught
   the failure in v1.1.13.
 - **Massive**: on the test stack, export record 3780 (the 604 MB one) as `original`, then a large
-  range as `english`; record the time, peak memory of the backend container, and free space
-  before and after.
+  range as `english`; record the time, peak memory of the backend container, the peak size of
+  `exports/tmp/`, and free space before and after.
 
 ## Out of scope
 
