@@ -268,6 +268,58 @@ class PdfExportQueueTest {
     assertThat(queue.fingerprint(record, pages)).isNotEqualTo(before);
   }
 
+  @Test
+  void theRecordsWholeRowIsInTheFingerprint() {
+    String before = queue.fingerprint(record, pages);
+    jdbc.update("UPDATE record SET date_range_text = '1938-1945' WHERE id = ?", record);
+    assertThat(queue.fingerprint(record, pages)).isNotEqualTo(before);
+  }
+
+  @Test
+  void theArchivesNameIsInTheFingerprint() {
+    String before = queue.fingerprint(record, pages);
+    jdbc.update(
+        "UPDATE archive SET name = 'Renamed' WHERE id = (SELECT archive_id FROM record WHERE id = ?)",
+        record);
+    assertThat(queue.fingerprint(record, pages)).isNotEqualTo(before);
+  }
+
+  @Test
+  void aTranslationOfAPageOutsideTheSelectionChangesTheFingerprint() {
+    List<Long> selected = pages.subList(0, 1);
+    String before = queue.fingerprint(record, selected);
+    jdbc.update(
+        "INSERT INTO page_translation (page_id, model, text_en) VALUES (?, 'better', 'x')",
+        pages.get(2));
+    assertThat(queue.fingerprint(record, selected)).isNotEqualTo(before);
+  }
+
+  @Test
+  void anEngineOfAPageOutsideTheSelectionChangesTheFingerprint() {
+    List<Long> selected = pages.subList(0, 1);
+    String before = queue.fingerprint(record, selected);
+    jdbc.update("UPDATE page_text SET engine = 'other' WHERE page_id = ?", pages.get(2));
+    assertThat(queue.fingerprint(record, selected)).isNotEqualTo(before);
+  }
+
+  @Test
+  void anotherRecordsDataLeavesTheFingerprintAlone() throws Exception {
+    String before = queue.fingerprint(record, pages);
+    long archive = PdfFixtures.archive(jdbc);
+    long other = PdfFixtures.record(jdbc, archive, "Unrelated");
+    long otherPage = PdfFixtures.page(jdbc, storageRoot, other, 1, "Elsewhere");
+    jdbc.update("UPDATE record SET title_en = 'Changed' WHERE id = ?", other);
+    jdbc.update("UPDATE page_text SET engine = 'x' WHERE page_id = ?", otherPage);
+    assertThat(queue.fingerprint(record, pages)).isEqualTo(before);
+  }
+
+  @Test
+  void theRecordsUpdatedAtAloneDoesNotChangeTheFingerprint() {
+    String before = queue.fingerprint(record, pages);
+    jdbc.update("UPDATE record SET updated_at = now() + interval '1 hour' WHERE id = ?", record);
+    assertThat(queue.fingerprint(record, pages)).isEqualTo(before);
+  }
+
   // --- claiming and finishing --------------------------------------------------------------
 
   @Test

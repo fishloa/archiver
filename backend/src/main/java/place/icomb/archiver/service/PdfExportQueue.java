@@ -148,18 +148,28 @@ public class PdfExportQueue {
   }
 
   /**
-   * What these pages are right now: an md5 over the record's cover-sheet fields and, for each page
-   * in order, its id, record, position, scan, text, a hash of its English text, and each of its
-   * translations (id and a hash of its text, since a re-run overwrites a row in place). Re-OCR, a
-   * new translation, a replaced scan or a moved page all change it.
+   * What these pages are right now: an md5 over the whole record and archive rows (minus the
+   * volatile {@code updated_at}), the ids and engines of every transcription and the ids and models
+   * of every translation in the record (the cover sheet prints record-wide provenance), and, for
+   * each selected page in order, its id, record, position, scan, text, a hash of its English text,
+   * and each of its translations (id and a hash of its text, since a re-run overwrites a row in
+   * place). Re-OCR, a new translation, a replaced scan or a moved page all change it.
    */
   public String fingerprint(long recordId, List<Long> pageIds) {
     return jdbc.queryForObject(
         """
         SELECT md5(
-          coalesce((SELECT md5(concat_ws('|', r.title, r.title_en, r.description,
-                                         r.description_en, r.reference_code))
-                    FROM record r WHERE r.id = ?), '')
+          coalesce((SELECT md5((to_jsonb(r) - 'updated_at')::text || to_jsonb(a)::text)
+                    FROM record r JOIN archive a ON a.id = r.archive_id
+                    WHERE r.id = ?), '')
+          || coalesce((SELECT md5(string_agg(pt2.id::text || ':' || pt2.engine, ','
+                                             ORDER BY pt2.id))
+                       FROM page_text pt2 JOIN page p2 ON p2.id = pt2.page_id
+                       WHERE p2.record_id = ?), '')
+          || coalesce((SELECT md5(string_agg(t2.id::text || ':' || t2.model, ','
+                                             ORDER BY t2.id))
+                       FROM page_translation t2 JOIN page p3 ON p3.id = t2.page_id
+                       WHERE p3.record_id = ?), '')
           || coalesce(string_agg(
                concat_ws(':', p.id, p.record_id, p.seq, p.attachment_id,
                          coalesce(pt.id::text, '-'),
@@ -172,6 +182,8 @@ public class PdfExportQueue {
         LEFT JOIN page_text pt ON pt.page_id = p.id
         """,
         String.class,
+        recordId,
+        recordId,
         recordId,
         csv(pageIds));
   }
