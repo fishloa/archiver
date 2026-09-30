@@ -292,9 +292,8 @@ public class PdfExportQueue {
   /** The files of a record's exports, for deleting with the record. */
   public List<String> pathsForRecord(long recordId) {
     return jdbc.queryForList(
-        "SELECT path FROM pdf_export WHERE record_id = ? AND path IS NOT NULL",
-        String.class,
-        recordId);
+        "SELECT path FROM pdf_export WHERE record_id = ? AND path LIKE 'exports/%'",
+        String.class, recordId);
   }
 
   // --- working -----------------------------------------------------------------------------

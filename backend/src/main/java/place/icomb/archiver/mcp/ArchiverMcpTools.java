@@ -143,7 +143,8 @@ public class ArchiverMcpTools {
               + " range, reference code, both original and English translation), the whole record"
               + " as one string in fullText (original) and fullTextEn (English) with pages"
               + " separated by a form feed, every page individually with its own OCR text and"
-              + " translation, and links to the page images and to the address a PDF is requested from (pdfExportUrl). Each page states the media type of its"
+              + " translation, and links to the page images and to the address a PDF is requested from (links.pdfExport; search and browse"
+              + " results carry it as pdfExportUrl). Each page states the media type of its"
               + " text in contentType (text/markdown or text/plain) - read it, do not guess:"
               + " a page number like '- 5 -' is indistinguishable from a markdown bullet.",
       annotations =

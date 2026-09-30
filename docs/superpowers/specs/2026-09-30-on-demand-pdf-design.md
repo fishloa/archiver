@@ -87,9 +87,12 @@ the backend empties the directory at startup, since no build can be running in a
 
 **`fingerprint`** says what the pages *were* when the export was built: an `md5` over, for each
 selected page in order, the page id, its attachment id, its `page_text` id and a hash of its
-English text, and its `page_translation` ids. Re-OCR, a new translation, a replaced scan or a
-moved page all change it. An export is reused only while the fingerprint of the same pages still
-matches.
+English text, and its `page_translation` ids and a hash of their text. Because the cover sheet
+prints them, it also covers the whole record and archive rows (minus `updated_at`) and the
+record-wide `page_text` ids with their engines and `page_translation` ids with their models, so a
+catalogue correction or a translation upgrade of other pages makes an old export stale. Re-OCR, a
+new translation, a replaced scan or a moved page all change it. An export is reused only while
+the fingerprint of the same pages still matches.
 
 ## API
 
@@ -99,7 +102,8 @@ under `/api/**` for them and a `GET` for any allowlisted user.
 ### `POST /api/records/{recordId}/pdf-exports`
 
 Body: `{"variant": "original" | "english" | "side-by-side", "pages": "1,3,5-10"}`. Both optional;
-the defaults are `original` and the whole record.
+the defaults are `original` and the whole record. A page selection is clamped to the record's
+own pages, so an oversized range costs no more than the record has pages.
 
 | Situation | Answer |
 |---|---|
@@ -150,10 +154,10 @@ retiring it belongs to B.
 - **An interrupted build.** At startup every `building` row becomes `failed` with `interrupted by
   a restart` (no build can be running in a fresh JVM), and the temp area is emptied. On every
   reaper tick, a `building` row started more than two hours ago becomes `failed` with
-  `interrupted`, which covers a build that hangs in a live JVM. An export cannot stay `building`
-  for ever.
+  `interrupted`, which covers a build that hangs in a live JVM; its partial and scratch files
+  are removed at the next restart. An export cannot stay `building` for ever.
 - **Expiry.** A scheduled reaper, every 15 minutes, deletes the file of every `ready` export
-  past `expires_at` and marks it `expired`; rows expired more than seven days are deleted, so a
+  past `expires_at` and marks it `expired`; rows of expired or failed exports are deleted seven days after they were created, so a
   stale link says `410` rather than `404` for a week.
 - **Deleting a record** removes its export files as it removes its page images: `ON DELETE
   CASCADE` takes the rows, so `IngestService.deleteRecord` collects the paths first.

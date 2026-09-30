@@ -19,6 +19,9 @@ import org.springframework.stereotype.Service;
  * that were asked for, build it to a file in the archive's own temp area, rename it into place, and
  * mark it ready. A failure marks it failed with the reason; the person asks again, which makes a
  * new export. Scheduling lives in {@code WorkerSchedulingConfig}.
+ *
+ * <p>Recovery at startup assumes a single backend instance: a second instance would fail the
+ * first's building exports and empty the shared temp area.
  */
 @Service
 public class PdfExportWorker {
@@ -142,7 +145,10 @@ public class PdfExportWorker {
   public void reap() {
     int hung = queue.failInterrupted(HUNG_AFTER);
     List<String> expired = queue.expireDue();
-    expired.forEach(storageService::deleteStoredFile);
+    // Only ever delete under exports/: the rows are marked expired either way.
+    expired.stream()
+        .filter(p -> p != null && p.startsWith("exports/"))
+        .forEach(storageService::deleteStoredFile);
     int purged = queue.purgeOld();
     if (hung + expired.size() + purged > 0) {
       log.info(
@@ -160,7 +166,11 @@ public class PdfExportWorker {
   @PostConstruct
   public void recoverAfterRestart() {
     int failed = queue.failAllBuilding("interrupted by a restart");
-    storageService.clearExportTemp();
+    try {
+      storageService.clearExportTemp();
+    } catch (RuntimeException e) {
+      log.warn("Could not empty the PDF export temp area: {}", e.toString());
+    }
     if (failed > 0) {
       log.warn(
           "{} PDF export(s) were building when the backend stopped and have been failed", failed);

@@ -255,4 +255,21 @@ class PdfExportWorkerTest {
     assertThat(queue.find(ready).orElseThrow().state()).isEqualTo("ready");
     assertThat(queue.find(queued).orElseThrow().state()).isEqualTo("queued");
   }
+
+  @Test
+  void reapingNeverDeletesAFileOutsideTheExportsArea() throws Exception {
+    String relative = "attachments/zz/keep-" + java.util.UUID.randomUUID() + ".jpg";
+    Path keep = storageRoot.resolve(relative);
+    Files.createDirectories(keep.getParent());
+    Files.writeString(keep, "a scan");
+    String id = request(Variant.ORIGINAL);
+    queue.claimNext();
+    queue.markReady(id, relative, 6, java.time.Duration.ofHours(24));
+    jdbc.update("UPDATE pdf_export SET expires_at = now() - interval '1 second'");
+
+    worker.reap();
+
+    assertThat(keep).exists();
+    assertThat(queue.find(id).orElseThrow().state()).isEqualTo("expired");
+  }
 }

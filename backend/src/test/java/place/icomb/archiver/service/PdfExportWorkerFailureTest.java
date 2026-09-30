@@ -113,4 +113,13 @@ class PdfExportWorkerFailureTest {
 
     assertThat(worker.runOnce()).isTrue();
   }
+
+  @Test
+  void anUnclearableTempAreaDoesNotStopStartup() {
+    doThrow(new RuntimeException("undeletable")).when(storageService).clearExportTemp();
+
+    worker.recoverAfterRestart();
+
+    verify(queue).failAllBuilding("interrupted by a restart");
+  }
 }

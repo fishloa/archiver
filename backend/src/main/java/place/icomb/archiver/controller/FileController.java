@@ -10,7 +10,6 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import place.icomb.archiver.model.Attachment;
 import place.icomb.archiver.repository.AttachmentRepository;
-import place.icomb.archiver.repository.RecordRepository;
 import place.icomb.archiver.service.StorageService;
 import place.icomb.archiver.service.ThumbnailService;
 
@@ -19,26 +18,23 @@ import place.icomb.archiver.service.ThumbnailService;
  * PdfExportController}.
  *
  * <p>Split out of ViewerController, which had grown to nineteen endpoints across five unrelated
- * jobs. These four share every dependency they have — storage, attachments and the PDF builder —
- * and none of them touch the catalogue queries, pipeline statistics or admin actions that made up
- * the rest of that class. The paths are unchanged.
+ * jobs. The two endpoints that remain, file and thumbnail, share every dependency they have —
+ * storage, attachments and thumbnails — and touch none of the catalogue queries, pipeline
+ * statistics or admin actions that made up the rest of that class. The paths are unchanged.
  */
 @RestController
 @RequestMapping("/api")
 public class FileController {
 
   private final AttachmentRepository attachmentRepository;
-  private final RecordRepository recordRepository;
   private final StorageService storageService;
   private final ThumbnailService thumbnailService;
 
   public FileController(
       AttachmentRepository attachmentRepository,
-      RecordRepository recordRepository,
       StorageService storageService,
       ThumbnailService thumbnailService) {
     this.attachmentRepository = attachmentRepository;
-    this.recordRepository = recordRepository;
     this.storageService = storageService;
     this.thumbnailService = thumbnailService;
   }

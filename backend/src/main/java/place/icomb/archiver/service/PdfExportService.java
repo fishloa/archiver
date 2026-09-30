@@ -447,8 +447,7 @@ public class PdfExportService {
    *
    * <p>Records here run to 942 pages of full-resolution scans, so the document is backed by a
    * temporary file rather than the heap and saved without ever being held as one array. This is the
-   * path the searchable-PDF worker uses; the byte-array variants serve interactive exports, which
-   * are page selections.
+   * path the stored searchable-PDF worker uses; page selections go through {@link #buildToFile}.
    *
    * @return number of PDF pages written
    */

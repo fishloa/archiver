@@ -485,4 +485,13 @@ class PdfExportQueueTest {
 
     assertThat(queue.pathsForRecord(record)).containsExactly("exports/aa/x.pdf");
   }
+
+  @Test
+  void aPathOutsideExportsIsNeverListedForDeletion() {
+    String id = request().view().id();
+    queue.claimNext();
+    queue.markReady(id, "attachments/zz/keep.jpg", 1, Duration.ofHours(24));
+
+    assertThat(queue.pathsForRecord(record)).isEmpty();
+  }
 }
