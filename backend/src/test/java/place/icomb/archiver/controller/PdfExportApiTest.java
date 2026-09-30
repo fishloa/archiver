@@ -341,4 +341,34 @@ class PdfExportApiTest {
     assertThat(exports()).isZero();
     assertThat(get("/pdf-exports/" + id, true).statusCode()).isEqualTo(404);
   }
+
+  // --- the old paths are gone --------------------------------------------------------------
+
+  @Test
+  void theSynchronousPdfUrlsNoLongerExist() throws Exception {
+    // GlobalExceptionHandler's catch-all reports an unmapped URL (and the method mismatch on
+    // /records/{id}/pdf, which still takes the scraper's POST upload) as 500, not 404; either
+    // way the old GETs no longer serve a PDF.
+    assertThat(get("/records/" + record + "/pdf", true).statusCode()).isGreaterThanOrEqualTo(400);
+    assertThat(get("/records/" + record + "/export-pdf?pages=1-3", true).statusCode())
+        .isGreaterThanOrEqualTo(400);
+  }
+
+  @Test
+  void theMachineApiPointsAtTheExportAddress() throws Exception {
+    JsonNode doc = json.readTree(get("/v1/documents/" + record, true).body());
+
+    assertThat(doc.get("links").has("pdf")).isFalse();
+    assertThat(doc.get("links").get("pdfExport").asText())
+        .endsWith("/records/" + record + "/pdf-exports");
+  }
+
+  @Test
+  void aRecordWithNoPagesOffersNoExportAddress() throws Exception {
+    long empty = PdfFixtures.record(jdbc, PdfFixtures.archive(jdbc), "Empty");
+
+    JsonNode doc = json.readTree(get("/v1/documents/" + empty, true).body());
+
+    assertThat(doc.get("links").has("pdfExport")).isFalse();
+  }
 }

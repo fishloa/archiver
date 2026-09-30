@@ -101,8 +101,9 @@ public class ApiController {
 
     // Links
     Map<String, String> links = new LinkedHashMap<>();
-    if (record.getPdfAttachmentId() != null) {
-      links.put("pdf", baseUrl + "/records/" + recordId + "/pdf");
+    if (record.getPageCount() > 0) {
+      // POST here to have a PDF built: it answers with an id to poll, then a file to fetch.
+      links.put("pdfExport", baseUrl + "/records/" + recordId + "/pdf-exports");
     }
     links.put("pages", baseUrl + "/records/" + recordId + "/pages");
     links.put("self", baseUrl + "/v1/documents/" + recordId);
@@ -247,8 +248,8 @@ public class ApiController {
       result.put("pageCount", r.getPageCount());
       result.put("sourceUrl", r.getSourceUrl());
       result.put("documentUrl", baseUrl + "/v1/documents/" + r.getId());
-      if (r.getPdfAttachmentId() != null) {
-        result.put("pdfUrl", baseUrl + "/records/" + r.getId() + "/pdf");
+      if (r.getPageCount() > 0) {
+        result.put("pdfExportUrl", baseUrl + "/records/" + r.getId() + "/pdf-exports");
       }
       results.add(result);
     }
@@ -308,8 +309,8 @@ public class ApiController {
       result.put("pageCount", r.getPageCount());
       result.put("sourceUrl", r.getSourceUrl());
       result.put("documentUrl", baseUrl + "/v1/documents/" + r.getId());
-      if (r.getPdfAttachmentId() != null) {
-        result.put("pdfUrl", baseUrl + "/records/" + r.getId() + "/pdf");
+      if (r.getPageCount() > 0) {
+        result.put("pdfExportUrl", baseUrl + "/records/" + r.getId() + "/pdf-exports");
       }
       results.add(result);
     }

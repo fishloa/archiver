@@ -200,17 +200,26 @@ identical to the stored text is skipped rather than rewritten.
 | `POST /api/admin/enqueue-reocr?recordId=&limit=` | bulk re-OCR — **never** without being asked |
 | `POST /api/admin/reset-embeddings?confirmChunks=N` | clears embeddings; N must match the count |
 
-## Exports
+## PDFs
+
+Every PDF is built on demand and takes the same asynchronous path, whatever its size: ask, poll,
+download. Any signed-in user may ask; there is no limit on how many.
 
 ```bash
-GET /api/records/{id}/export-pdf?pages=46-50&variant=original
-GET /api/records/{id}/export-pdf?pages=1,5&variant=side-by-side
-GET /api/records/{id}/pdf
+POST /api/records/{id}/pdf-exports   {"variant":"original","pages":"46-50"}   → 202 {id,state,…}
+GET  /api/pdf-exports/{id}                                                   → {state,bytes,expiresAt,error}
+GET  /api/pdf-exports/{id}/file                                              → the PDF (200 once ready)
 ```
 
-`variant` is `original`, `english` or `side-by-side`. Ranges and comma lists both
-work, and the export carries the searchable text layer — use it rather than
-assembling images by hand.
+`variant` is `original` (the scans with a searchable text layer), `english` or `side-by-side`;
+both fields are optional (`original`, the whole record). `pages` takes ranges and comma lists
+(`1,3,5-10`). `state` runs `queued`, `building`, `ready`, or ends `failed` (with `error`) or
+`expired`. An identical request is reused: `200` while a finished one is unexpired, `202` and the
+same id while one is in flight. A finished PDF is kept **24 hours**; after that the file answers
+`410` and you ask again. `409` from `…/file` means not ready yet (or failed, with the reason).
+
+Machine clients find the address in `links.pdfExport` (one record) or `pdfExportUrl` (search and
+browse results). `GET /api/records/{id}/pdf` and `…/export-pdf` no longer exist.
 
 ## After a release
 

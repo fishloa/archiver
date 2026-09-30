@@ -1,6 +1,5 @@
 package place.icomb.archiver.service;
 
-import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -97,25 +96,6 @@ public class PdfExportService {
     SIDE_BY_SIDE
   }
 
-  /** Draws a variant into an open document. */
-  @FunctionalInterface
-  private interface Render {
-    void into(PDDocument doc) throws IOException;
-  }
-
-  /** Runs a render into a fresh in-memory document and returns its bytes. */
-  private byte[] toBytes(Render render) throws IOException {
-    try (PDDocument doc = new PDDocument()) {
-      render.into(doc);
-      if (doc.getNumberOfPages() == 0) {
-        throw new IOException("No valid pages found for the given selection");
-      }
-      ByteArrayOutputStream out = new ByteArrayOutputStream();
-      doc.save(out);
-      return out.toByteArray();
-    }
-  }
-
   /**
    * Builds any variant of the selected pages straight to a file.
    *
@@ -123,6 +103,10 @@ public class PdfExportService {
    * being held as one array, so a 942-page record of full-resolution scans is no different from a
    * three-page extract. The caller chooses the scratch directory: the archive's own volume, not
    * {@code /tmp}.
+   *
+   * <p>ENGLISH renders one PDF page per source page, so the export lines up with the original page
+   * for page: a page with no text still produces a page rather than shifting everything after it,
+   * which would make the two impossible to read side by side.
    *
    * @return the number of PDF pages written
    */
@@ -176,30 +160,6 @@ public class PdfExportService {
   }
 
   /**
-   * Builds a PDF containing the specified page images for a record. Returns the PDF as a byte
-   * array.
-   */
-  public byte[] buildPdf(Long recordId, List<Integer> seqNumbers) throws IOException {
-    return buildPdf(recordId, seqNumbers, Variant.ORIGINAL);
-  }
-
-  /**
-   * Builds an export of the selected pages.
-   *
-   * <p>ENGLISH renders one PDF page per source page, so the export lines up with the original page
-   * for page — a page with no text still produces a page rather than shifting everything after it,
-   * which would make the two impossible to read side by side.
-   */
-  public byte[] buildPdf(Long recordId, List<Integer> seqNumbers, Variant variant)
-      throws IOException {
-    return switch (variant) {
-      case ENGLISH -> buildEnglishPdf(recordId, seqNumbers);
-      case SIDE_BY_SIDE -> buildSideBySidePdf(recordId, seqNumbers);
-      case ORIGINAL -> buildOriginalPdf(recordId, seqNumbers);
-    };
-  }
-
-  /**
    * Scan and translation facing each other, one landscape page per source page.
    *
    * <p>The scan carries an invisible text layer positioned from the OCR engine's own block
@@ -209,10 +169,6 @@ public class PdfExportService {
    * <p>A footer links back to the page in the archive, so a printed or forwarded extract can be
    * traced to its source.
    */
-  private byte[] buildSideBySidePdf(Long recordId, List<Integer> seqNumbers) throws IOException {
-    return toBytes(doc -> renderSideBySide(doc, recordId, seqNumbers));
-  }
-
   private void renderSideBySide(PDDocument doc, Long recordId, List<Integer> seqNumbers)
       throws IOException {
     final float margin = 28f;
@@ -425,10 +381,6 @@ public class PdfExportService {
     return out;
   }
 
-  private byte[] buildEnglishPdf(Long recordId, List<Integer> seqNumbers) throws IOException {
-    return toBytes(doc -> renderEnglish(doc, recordId, seqNumbers));
-  }
-
   private void renderEnglish(PDDocument doc, Long recordId, List<Integer> seqNumbers)
       throws IOException {
     {
@@ -468,17 +420,6 @@ public class PdfExportService {
             doc, text, note, pageId, publicUrl + "/records/" + recordId + "/pages/" + seq, seq);
       }
     }
-  }
-
-  /**
-   * The scans, with an invisible text layer over each.
-   *
-   * <p>The text is positioned from the OCR engine's own block coordinates, so selecting or
-   * searching in the exported scan lands on the right words. Without it the export is a bag of
-   * pictures: visually complete and completely unsearchable.
-   */
-  private byte[] buildOriginalPdf(Long recordId, List<Integer> seqNumbers) throws IOException {
-    return toBytes(doc -> renderOriginal(doc, recordId, seqNumbers));
   }
 
   /**
