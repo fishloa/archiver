@@ -146,8 +146,9 @@ public class PdfExportQueue {
 
   /**
    * What these pages are right now: an md5 over the record's cover-sheet fields and, for each page
-   * in order, its id, record, position, scan, text, a hash of its English text, and its
-   * translations. Re-OCR, a new translation, a replaced scan or a moved page all change it.
+   * in order, its id, record, position, scan, text, a hash of its English text, and each of its
+   * translations (id and a hash of its text, since a re-run overwrites a row in place). Re-OCR, a
+   * new translation, a replaced scan or a moved page all change it.
    */
   public String fingerprint(long recordId, List<Long> pageIds) {
     return jdbc.queryForObject(
@@ -160,7 +161,7 @@ public class PdfExportQueue {
                concat_ws(':', p.id, p.record_id, p.seq, p.attachment_id,
                          coalesce(pt.id::text, '-'),
                          md5(coalesce(pt.text_en, '')),
-                         coalesce((SELECT string_agg(t.id::text, ',' ORDER BY t.id)
+                         coalesce((SELECT string_agg(t.id::text || '=' || md5(t.text_en), ',' ORDER BY t.id)
                                    FROM page_translation t WHERE t.page_id = p.id), '-')),
                '|' ORDER BY sel.ord), ''))
         FROM unnest(string_to_array(?, ',')::bigint[]) WITH ORDINALITY AS sel(page_id, ord)

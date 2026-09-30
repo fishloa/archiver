@@ -192,6 +192,15 @@ class PdfExportQueueTest {
   }
 
   @Test
+  void rewritingATranslationInPlaceChangesTheFingerprint() {
+    // PageTranslationRepository.upsert overwrites a model's row with the same id.
+    String before = queue.fingerprint(record, pages);
+    jdbc.update(
+        "UPDATE page_translation SET text_en = 'Rewritten' WHERE page_id = ?", pages.get(1));
+    assertThat(queue.fingerprint(record, pages)).isNotEqualTo(before);
+  }
+
+  @Test
   void aReOcrdPageChangesTheFingerprint() {
     String before = queue.fingerprint(record, pages);
     jdbc.update("DELETE FROM page_text WHERE page_id = ?", pages.get(2));
