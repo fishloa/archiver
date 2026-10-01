@@ -9,6 +9,17 @@ new revision, no build is triggered, and the release silently never happens —
 which is exactly what v1.0.0 did on its first attempt. Add the entry below,
 commit, then tag that commit.
 
+## v1.1.20 — 1 October 2026
+
+**A page's whole text can be replaced by hand.** `POST /api/admin/pages/{pageId}/corrections` with
+`"replaceAll": true` and the new text in `replace` replaces a page's whole original text or
+English, for a page both engines read badly (handwritten registration forms). It is explicit and
+never inferred from a missing `find`, the old text goes into the audit row, and the page's old
+chunks are dropped so a `reset-pipeline` to `embedding` rebuilds them.
+
+**The one-off stored-PDF purge is removed.** It ran on 1 October 2026 (13,083 attachment rows, the
+files they named, and every record's pointer to them) and is gone from the code again.
+
 ## v1.1.19 — 1 October 2026
 
 **A record's pages can be put in a new order.** `POST /api/admin/records/{id}/reorder` takes the

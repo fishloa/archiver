@@ -51,11 +51,21 @@ public class ManualCorrectionService {
     this.events = events;
   }
 
-  /** Corrects {@code text_raw} or {@code text_en} of one page. */
+  /**
+   * Corrects {@code text_raw} or {@code text_en} of one page: one exact passage, or with {@code
+   * whole} the entire field (a transcription made by hand where the engines failed). Whole is
+   * explicit, never inferred from a missing {@code find}: a request that forgot its target must not
+   * overwrite a page.
+   */
   @Transactional
   public Map<String, Object> correctPage(
-      long pageId, String field, String find, String replace, String reason) {
+      long pageId, String field, String find, String replace, String reason, boolean whole) {
     require(field != null && PAGE_FIELDS.contains(field), "field must be one of " + PAGE_FIELDS);
+    if (whole) {
+      require(find == null, "give either find or replaceAll, not both");
+    } else {
+      require(find != null, "find is required");
+    }
     checkEdit(find, replace, reason);
 
     List<Map<String, Object>> page =
@@ -77,19 +87,29 @@ public class ManualCorrectionService {
     Map<String, Object> row = rows.get(0);
     long textId = ((Number) row.get("id")).longValue();
     String current = (String) row.get(field);
-    String updated = replaceOnce(current, find, replace, field);
+    if (whole && current != null && current.equals(replace)) {
+      throw new CorrectionException(Kind.BAD_REQUEST, "the text is already exactly that");
+    }
+    String updated = whole ? replace : replaceOnce(current, find, replace, field);
 
     jdbc.update("UPDATE page_text SET " + field + " = ? WHERE id = ?", updated, textId);
 
     if (field.equals("text_raw")) {
-      // The chunks are made from the original text; keep their copy of the passage in step.
-      jdbc.update(
-          "UPDATE text_chunk SET content = replace(content, ?, ?)"
-              + " WHERE page_id = ? AND position(? in content) > 0",
-          find,
-          replace,
-          pageId,
-          find);
+      if (whole) {
+        // Nothing of the old chunks can be patched; they are rebuilt by re-embedding the record.
+        jdbc.update("DELETE FROM text_chunk WHERE page_id = ?", pageId);
+      } else {
+        // The chunks are made from the original text; keep their copy of the passage in step.
+        jdbc.update(
+            "UPDATE text_chunk SET content = replace(content, ?, ?)"
+                + " WHERE page_id = ? AND position(? in content) > 0",
+            find,
+            replace,
+            pageId,
+            find);
+      }
+    } else if (whole) {
+      jdbc.update("UPDATE page_translation SET text_en = ? WHERE page_id = ?", replace, pageId);
     } else {
       // Every model's translation of the page, so the cache cannot be refilled from a stale one.
       jdbc.update(
@@ -101,19 +121,15 @@ public class ManualCorrectionService {
           find);
     }
 
-    long id = audit(recordId, pageId, field, find, replace, reason);
+    long id = audit(recordId, pageId, field, whole ? current : find, replace, reason);
     events.recordChanged(recordId, "text");
     return Map.of(
-        "correctionId",
-        id,
-        "recordId",
-        recordId,
-        "pageId",
-        pageId,
-        "field",
-        field,
-        "applied",
-        true);
+        "correctionId", id,
+        "recordId", recordId,
+        "pageId", pageId,
+        "field", field,
+        "applied", true,
+        "whole", whole);
   }
 
   /** Corrects {@code title}, {@code description}, {@code title_en} or {@code description_en}. */
@@ -169,9 +185,9 @@ public class ManualCorrectionService {
   }
 
   private static void checkEdit(String find, String replace, String reason) {
-    require(find != null && !find.isEmpty(), "find is required");
-    require(replace != null, "replace is required");
-    require(!find.equals(replace), "find and replace are identical");
+    require(find == null || !find.isEmpty(), "find must not be empty");
+    require(replace != null && !replace.isBlank(), "replace is required");
+    require(find == null || !find.equals(replace), "find and replace are identical");
     require(reason != null && !reason.isBlank(), "reason is required");
   }
 

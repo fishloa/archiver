@@ -14,7 +14,8 @@ import place.icomb.archiver.service.ManualCorrectionService;
 import place.icomb.archiver.service.ManualCorrectionService.CorrectionException;
 
 /**
- * Hand corrections to a stored transcription, translation or title. Under {@code /api/admin}
+ * Hand corrections to a stored transcription, translation or title: an exact passage (the default),
+ * or with {@code "replaceAll": true} a whole page text or translation. Under {@code /api/admin}
  * because it changes what the archive says; every correction is kept in an audit row.
  */
 @RestController
@@ -38,7 +39,8 @@ public class AdminCorrectionController {
               text(in, "field"),
               text(in, "find"),
               text(in, "replace"),
-              text(in, "reason")));
+              text(in, "reason"),
+              flag(in, "replaceAll")));
     } catch (CorrectionException e) {
       return refuse(e);
     }
@@ -77,6 +79,18 @@ public class AdminCorrectionController {
           ManualCorrectionService.Kind.BAD_REQUEST, key + " must be a string");
     }
     return s;
+  }
+
+  private static boolean flag(Map<String, Object> in, String key) {
+    Object v = in.get(key);
+    if (v == null) {
+      return false;
+    }
+    if (!(v instanceof Boolean b)) {
+      throw new CorrectionException(
+          ManualCorrectionService.Kind.BAD_REQUEST, key + " must be true or false");
+    }
+    return b;
   }
 
   private static ResponseEntity<Map<String, Object>> refuse(CorrectionException e) {

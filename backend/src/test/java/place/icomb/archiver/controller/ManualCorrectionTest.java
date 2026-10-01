@@ -196,6 +196,67 @@ class ManualCorrectionTest {
   }
 
   @Test
+  void aWholePageTextCanBeReplacedWhenAskedForExplicitly() throws Exception {
+    String body =
+        json.writeValueAsString(
+            java.util.Map.of(
+                "field",
+                "text_raw",
+                "replace",
+                "Eine Zeile.\nZweite Zeile.",
+                "reason",
+                "by hand",
+                "replaceAll",
+                true));
+    JsonNode out = ok(post("/admin/pages/" + page + "/corrections", body));
+    assertThat(out.get("whole").asBoolean()).isTrue();
+    assertThat(text("SELECT text_raw FROM page_text WHERE page_id = ?", page))
+        .isEqualTo("Eine Zeile.\nZweite Zeile.");
+    // the old chunks no longer describe the page; they go, and re-embedding rebuilds them
+    assertThat(count("SELECT count(*) FROM text_chunk WHERE page_id = ?", page)).isZero();
+    JsonNode audit = json.readTree(get("/admin/records/" + record + "/corrections").body()).get(0);
+    assertThat(audit.get("oldText").asText()).contains("1958");
+    assertThat(audit.get("newText").asText()).isEqualTo("Eine Zeile.\nZweite Zeile.");
+
+    String en =
+        json.writeValueAsString(
+            java.util.Map.of(
+                "field",
+                "text_en",
+                "replace",
+                "One line.",
+                "reason",
+                "by hand",
+                "replaceAll",
+                true));
+    ok(post("/admin/pages/" + page + "/corrections", en));
+    assertThat(text("SELECT text_en FROM page_text WHERE page_id = ?", page))
+        .isEqualTo("One line.");
+    assertThat(text("SELECT text_en FROM page_translation WHERE page_id = ?", page))
+        .isEqualTo("One line.");
+  }
+
+  @Test
+  void aMissingFindIsNeverTakenAsAWholeReplacement() throws Exception {
+    String p = "/admin/pages/" + page + "/corrections";
+    assertThat(post(p, "{\"field\":\"text_raw\",\"replace\":\"x\",\"reason\":\"r\"}").statusCode())
+        .isEqualTo(400);
+    assertThat(
+            post(
+                    p,
+                    "{\"field\":\"text_raw\",\"find\":\"1958\",\"replace\":\"x\",\"reason\":\"r\",\"replaceAll\":true}")
+                .statusCode())
+        .isEqualTo(400);
+    assertThat(
+            post(
+                    p,
+                    "{\"field\":\"text_raw\",\"replace\":\"x\",\"reason\":\"r\",\"replaceAll\":\"yes\"}")
+                .statusCode())
+        .isEqualTo(400);
+    assertThat(text("SELECT text_raw FROM page_text WHERE page_id = ?", page)).contains("1958");
+  }
+
+  @Test
   void aRecordTitleAndDescriptionCanBeCorrected() throws Exception {
     String p = "/admin/records/" + record + "/corrections";
     ok(post(p, body("title_en", "Party ticket", "Death notice", "Partezettel is a death notice")));

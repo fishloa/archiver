@@ -236,6 +236,7 @@ a correction cannot touch more than intended (`409` if absent or ambiguous, `400
 |---|---|
 | `POST /api/admin/pages/{pageId}/corrections` `{"field":"text_raw"\|"text_en","find":"…","replace":"…","reason":"…"}` | Corrects the page's original text (and its embedding chunks) or its English (and every model's translation of it) |
 | `POST /api/admin/records/{id}/corrections` `{"field":"title"\|"description"\|"title_en"\|"description_en",…}` | Same, for the record's catalogue fields |
+| `POST /api/admin/pages/{pageId}/corrections` `{"field":…,"replace":"…","reason":"…","replaceAll":true}` | Replaces the page's whole original text or English (a transcription made by hand where both engines failed); explicit, never inferred from a missing `find`. The old chunks are dropped: follow it with `reset-pipeline` to `embedding` |
 | `GET /api/admin/records/{id}/corrections` | The audit, newest first |
 
 Nothing is re-run and no embedding is recomputed, so correct a few characters, not a passage.
