@@ -9,6 +9,42 @@ new revision, no build is triggered, and the release silently never happens —
 which is exactly what v1.0.0 did on its first attempt. Add the entry below,
 commit, then tag that commit.
 
+## v1.1.17 — 1 October 2026
+
+**Pages can be moved between records, a record split in two, and two joined.**
+`POST /api/admin/records/{id}/pages/{pageId}/move`, `…/{id}/split` and
+`…/{id}/concat` (admin only). A page keeps its id, so its text, translations,
+search row, OCR history, person matches and embedding chunks follow it untouched:
+nothing is re-read, re-translated, re-embedded or re-matched, and no job of any
+kind is created. A move is one database transaction; the page images do not move,
+because since v1.1.15 their addresses no longer mention a record. An emptied
+source record is left in place for you to delete.
+
+**What it refuses, and why.** Both records must be `complete` and off AI hold,
+with no job pending or running against either (its result would land in the wrong
+record), no PDF export of either being prepared, every page image at an
+`attachments/…` address, and page numbers running 1..n. Different archives need
+`allowCrossArchive`. A refusal changes nothing. A move touches no PDF: PDFs are
+built on demand, so one requested afterwards already reflects the new pages.
+
+**A split's English title is supplied, not generated.** The new record inherits
+archive, languages, OCR engine, translation quality and reference code.
+
+**Found in review, fixed before release.** The pipeline audit queued an embedding
+for any complete record without an `embed_record` job, which a split-made record
+would have been, re-embedding it within a minute; it now skips a record that
+already has chunks. Page replace, delete and insert now take the record lock, so
+they cannot interleave with a move.
+
+**Sign-in.** The sign-in page could be cached by the browser under any URL that
+had been answered while signed out, including SvelteKit's data requests, which
+made every menu link silently do nothing. It is now `no-store`, and signing in
+returns to the page that was asked for rather than always the home page. Browsers
+that already hold a cached copy need their site data for archive.czernin.eu
+cleared once.
+
+Migration V19 adds `pages_moved` to the allowed `pipeline_event` values.
+
 ## v1.1.16 — 1 October 2026
 
 **Every PDF is now built on request, by a worker, and downloaded when it is
