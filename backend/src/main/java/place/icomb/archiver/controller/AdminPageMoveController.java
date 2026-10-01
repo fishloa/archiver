@@ -67,6 +67,19 @@ public class AdminPageMoveController {
     }
   }
 
+  @PostMapping("/records/{recordId}/concat")
+  public ResponseEntity<Map<String, Object>> concat(
+      @PathVariable long recordId, @RequestBody(required = false) Map<String, Object> body) {
+    try {
+      Map<String, Object> in = body == null ? Map.of() : body;
+      long source = requiredLong(in, "sourceRecordId");
+      boolean cross = flag(in, "allowCrossArchive");
+      return ResponseEntity.ok(describe(moves.concat(recordId, source, cross)));
+    } catch (PageMoveException e) {
+      return refuse(e);
+    }
+  }
+
   static String text(Map<String, Object> body, String key) {
     Object v = body.get(key);
     if (v == null) {

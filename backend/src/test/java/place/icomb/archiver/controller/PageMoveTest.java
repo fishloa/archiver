@@ -757,4 +757,92 @@ class PageMoveTest {
                 second))
         .isEqualTo(2);
   }
+
+  // --- tests: concatenate ------------------------------------------------------------------
+
+  private String concatPath(long target) {
+    return "/admin/records/" + target + "/concat";
+  }
+
+  @Test
+  void concatAppendsEverySourcePageAndLeavesTheSourceEmptyButPresent() throws Exception {
+    long a = recordWithPages("a", 3);
+    long b = recordWithPages("b", 2);
+    List<Long> aPages = pageIds(a);
+    List<Long> bPages = pageIds(b);
+    long jobsBefore = count("SELECT count(*) FROM job");
+
+    JsonNode out = ok(post(concatPath(a), "{\"sourceRecordId\":" + b + "}"));
+
+    assertThat(out.get("targetPageCount").asInt()).isEqualTo(5);
+    assertThat(out.get("sourcePageCount").asInt()).isZero();
+    assertThat(pageIds(a))
+        .containsExactly(aPages.get(0), aPages.get(1), aPages.get(2), bPages.get(0), bPages.get(1));
+    assertThat(seqs(a)).containsExactly(1, 2, 3, 4, 5);
+    assertThat(count("SELECT count(*) FROM record WHERE id = ?", b)).isEqualTo(1);
+    assertThat(seqs(b)).isEmpty();
+    assertThat(one("SELECT page_count FROM record WHERE id = ?", b)).isZero();
+    assertThat(one("SELECT page_count FROM record WHERE id = ?", a)).isEqualTo(5);
+    assertThat(one("SELECT attachment_count FROM record WHERE id = ?", a)).isEqualTo(5);
+    assertThat(count("SELECT count(*) FROM text_chunk WHERE record_id = ?", a)).isEqualTo(5);
+    assertThat(
+            count(
+                "SELECT count(*) FROM page_text WHERE page_id IN (?, ?)",
+                bPages.get(0),
+                bPages.get(1)))
+        .isEqualTo(2);
+    assertThat(count("SELECT count(*) FROM job")).isEqualTo(jobsBefore);
+  }
+
+  @Test
+  void deletingTheEmptiedRecordAfterAConcatKeepsEveryScan() throws Exception {
+    long a = recordWithPages("a", 1);
+    long b = recordWithPages("b", 2);
+    List<Long> bPages = pageIds(b);
+    Path scan = storageRoot.resolve(pathOf(attachmentOf(bPages.get(0))));
+
+    ok(post(concatPath(a), "{\"sourceRecordId\":" + b + "}"));
+    deleteRecord(b);
+
+    assertThat(pageIds(a)).contains(bPages.get(0), bPages.get(1));
+    assertThat(Files.readString(scan)).isEqualTo("b-page-1");
+  }
+
+  @Test
+  void concatRefusesARecordWithItselfAnEmptyRecordAndABadBodyAndChangesNothing() throws Exception {
+    long a = recordWithPages("a", 2);
+    long empty = recordWithPages("e", 0);
+    List<Long> before = pageIds(a);
+
+    assertThat(post(concatPath(a), "{\"sourceRecordId\":" + a + "}").statusCode()).isEqualTo(400);
+    assertThat(post(concatPath(a), "{\"sourceRecordId\":" + empty + "}").statusCode())
+        .isEqualTo(400);
+    assertThat(post(concatPath(a), "{}").statusCode()).isEqualTo(400);
+    assertThat(post(concatPath(a), "{\"sourceRecordId\":\"b\"}").statusCode()).isEqualTo(400);
+    assertThat(post(concatPath(a), "{\"sourceRecordId\":99999999}").statusCode()).isEqualTo(404);
+    assertThat(post(concatPath(99999999), "{\"sourceRecordId\":" + a + "}").statusCode())
+        .isEqualTo(404);
+    assertThat(pageIds(a)).containsExactlyElementsOf(before);
+    assertThat(count("SELECT count(*) FROM pipeline_event WHERE event = 'pages_moved'")).isZero();
+  }
+
+  @Test
+  void concatAppliesTheSameRefusalsAsAMove() throws Exception {
+    long a = recordWithPages("a", 2);
+    long b = recordWithPages("b", 2);
+    jdbc.sql("UPDATE record SET ai_held_at = now() WHERE id = :r").param("r", b).update();
+
+    assertThat(post(concatPath(a), "{\"sourceRecordId\":" + b + "}").statusCode()).isEqualTo(409);
+    assertThat(seqs(b)).containsExactly(1, 2);
+  }
+
+  @Test
+  void concatAcrossArchivesNeedsToBeAskedFor() throws Exception {
+    long a = recordWithPages("a", 1);
+    long b = recordWithPages("b", 1, newArchive());
+
+    assertThat(post(concatPath(a), "{\"sourceRecordId\":" + b + "}").statusCode()).isEqualTo(409);
+    ok(post(concatPath(a), "{\"sourceRecordId\":" + b + ",\"allowCrossArchive\":true}"));
+    assertThat(seqs(a)).containsExactly(1, 2);
+  }
 }

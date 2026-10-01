@@ -82,6 +82,26 @@ public class PageMoveService {
     return moveRun(sourceRecordId, seq, seq, targetRecordId, at);
   }
 
+  /**
+   * Moves every page of {@code sourceRecordId} onto the end of {@code targetRecordId}.
+   *
+   * <p>The target keeps its own metadata. The emptied source is left in place: deleting a record is
+   * a separate, deliberate call, never a side effect of moving its pages.
+   */
+  @Transactional
+  public Moved concat(long targetRecordId, long sourceRecordId, boolean allowCrossArchive) {
+    // Both records are locked before any page count is read, so the range cannot go stale.
+    Map<Long, Locked> locked = lockRecords(sourceRecordId, targetRecordId);
+    int sourcePages = pageCount(sourceRecordId);
+    if (sourcePages == 0 && sourceRecordId != targetRecordId) {
+      throw new PageMoveException(
+          Kind.BAD_REQUEST, "Record %d has no pages to move".formatted(sourceRecordId));
+    }
+    requireMovable(
+        locked, sourceRecordId, targetRecordId, allowCrossArchive, 1, Math.max(sourcePages, 1));
+    return moveRun(sourceRecordId, 1, sourcePages, targetRecordId, pageCount(targetRecordId) + 1);
+  }
+
   /** A split: the record it made, and the move that filled it. */
   public record SplitResult(long newRecordId, Moved moved) {}
 
