@@ -323,18 +323,7 @@ public class IngestService {
    * shifting in place collides with the row being moved into.
    */
   private void shiftSeq(Long recordId, int fromSeq, int delta) {
-    final int parkingSpace = 1_000_000;
-    jdbcTemplate.update(
-        "UPDATE page SET seq = seq + ? WHERE record_id = ? AND seq >= ?",
-        parkingSpace,
-        recordId,
-        fromSeq);
-    jdbcTemplate.update(
-        "UPDATE page SET seq = seq - ? + ? WHERE record_id = ? AND seq >= ?",
-        parkingSpace,
-        delta,
-        recordId,
-        parkingSpace);
+    PageSequence.shift(jdbcTemplate, recordId, fromSeq, delta);
   }
 
   private Record refreshCounts(Long recordId) {
