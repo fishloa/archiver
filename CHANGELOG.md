@@ -9,6 +9,36 @@ new revision, no build is triggered, and the release silently never happens —
 which is exactly what v1.0.0 did on its first attempt. Add the entry below,
 commit, then tag that commit.
 
+## v1.1.19 — 1 October 2026
+
+**A record's pages can be put in a new order.** `POST /api/admin/records/{id}/reorder` takes the
+whole order (`{"pageIds":[…]}`) or one page to a position (`{"pageId":N,"toSeq":M}`). Pages keep
+their ids, so their text, translations and chunks follow them; no job is created and no PDF is
+touched. It refuses what a move refuses: a record not `complete`, on AI hold, with work pending, or
+with an export being built.
+
+**A client's mistake is a 4xx, not a 500.** An unknown URL is 404, a wrong method 405, a body that
+is not JSON or a path segment of the wrong type 400, an unsupported media type 415, and a write that
+duplicates existing data or loses a race 409, all with the API's usual `error` body.
+
+**Failed jobs that would never be retried can be.** `POST /api/admin/retry-failed-jobs?kind=…`
+starts failed jobs of a kind the system still runs again from attempt 0 (administrator-cancelled
+ones are left); `POST /api/admin/dismiss-failed-jobs?kind=…&reason=…` clears retired kinds from the
+failed list and keeps the rows.
+
+**A job queued for a page lands on the record the page is in now.** An enqueuer that read the page's
+record just before a move could write the job against the old record; the page row is now read under
+a share lock, so the move and the enqueue serialise.
+
+**Stored searchable PDFs can be purged** (`GET /api/admin/storage/searchable-pdfs`, `POST
+/api/admin/storage/purge-searchable-pdfs {"limit":N}`): rows of the retired role only, the file only
+when no other row names it, page images and born-digital PDFs untouched. This is a one-off and is
+removed again once it has been run.
+
+Tests: concurrency tests for the export queue (one row for twelve identical requests; sixteen
+workers claim each export once) and component tests for the Download PDF button. The frontend
+suite now runs under vitest (`make test-frontend`).
+
 ## v1.1.18 — 1 October 2026
 
 **A stored text or title can be corrected by hand, and the correction is kept.**
