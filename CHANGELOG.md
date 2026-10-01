@@ -9,6 +9,26 @@ new revision, no build is triggered, and the release silently never happens —
 which is exactly what v1.0.0 did on its first attempt. Add the entry below,
 commit, then tag that commit.
 
+## v1.1.18 — 1 October 2026
+
+**A stored text or title can be corrected by hand, and the correction is kept.**
+`POST /api/admin/pages/{pageId}/corrections` and `POST /api/admin/records/{id}/corrections`
+change an exact passage (`find` must occur once, so a correction cannot touch more than meant),
+and `GET /api/admin/records/{id}/corrections` lists them. Each correction keeps the old text, the
+new text, who made it and why (migration V20, `manual_correction`). A page's original text also
+corrects its embedding chunks; its English also corrects every model's translation of it. Nothing
+is re-run and no embedding is recomputed.
+
+**`reset-pipeline` to `ocr_pending` no longer fails with a 500.** It deleted a record's stored
+searchable PDF before clearing the pointer to it, which broke a foreign key.
+
+**The stored searchable-PDF pipeline stage is gone.** Since v1.1.16 every PDF is built on demand,
+so the `build_searchable_pdf` job, `SearchablePdfWorker`, the `pdf_pending` and `pdf_done`
+statuses, the processor upload endpoint and the record's stored-PDF link are removed: after OCR a
+record goes straight to translation. Historical job rows and the stored PDF files are left alone;
+the audit moves any record still in a retired status on to translation. The database constraints
+keep the old values so history stays valid.
+
 ## v1.1.17 — 1 October 2026
 
 **Pages can be moved between records, a record split in two, and two joined.**
