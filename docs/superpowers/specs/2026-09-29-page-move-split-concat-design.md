@@ -1,6 +1,6 @@
 # Page identity, then moving pages between records
 
-**Status:** design, agreed in conversation 29 September 2026
+**Status:** deliverables 1 and 2 shipped in v1.1.15; deliverable 3 specified here and implemented by the plan `docs/superpowers/plans/2026-09-29-page-move-split-concat.md`. Phase 2 below is current, plus the four decisions recorded in that plan (both records `complete`; legacy-layout images refused; a move touches no PDF; a split's English title is supplied).
 **Supersedes:** the first draft of this file, which built moves on the existing
 storage layout and was rightly rejected as complicated. The complication was a
 symptom; this is the cause.

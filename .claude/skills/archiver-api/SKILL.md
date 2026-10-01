@@ -200,6 +200,24 @@ identical to the stored text is skipped rather than rewritten.
 | `POST /api/admin/enqueue-reocr?recordId=&limit=` | bulk re-OCR — **never** without being asked |
 | `POST /api/admin/reset-embeddings?confirmChunks=N` | clears embeddings; N must match the count |
 
+## Moving pages between records
+
+All admin-only, all one transaction, none of them re-run OCR, translation, embedding or matching.
+A page is named by its **id**, never its position. Both records must be `complete`, off AI hold,
+with no job pending or running against either, and the page image must already be at an
+`attachments/…` address (`GET /api/admin/storage/migrate` reports `legacy: 0`).
+
+| Call | Does |
+|---|---|
+| `POST /api/admin/records/{id}/pages/{pageId}/move` `{"targetRecordId":N,"seq":optional,"allowCrossArchive":optional}` | Moves one page; appended unless `seq` is given (1..pages+1) |
+| `POST /api/admin/records/{id}/split` `{"splitAtSeq":N,"title":"…","description":opt,"titleEn":opt,"descriptionEn":opt}` | Pages `N..end` move to a new `complete` record inheriting archive, languages, OCR engine, quality, reference code. `N` is 2..pages. English title is supplied, not generated |
+| `POST /api/admin/records/{id}/concat` `{"sourceRecordId":N,"allowCrossArchive":optional}` | Every page of the source onto the end of `{id}`. The emptied source is left in place |
+
+Refusals: `404` unknown record or page; `400` a bad body, a position out of range, a record into
+itself, a split that would empty a record; `409` a record not `complete`, on hold, busy, in another
+archive, holding a legacy-layout image, or with a PDF export still being prepared. A refusal
+changes nothing. A move touches no PDF: PDFs are produced on demand.
+
 ## PDFs
 
 Every PDF is built on demand and takes the same asynchronous path, whatever its size: ask, poll,
