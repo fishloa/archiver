@@ -9,6 +9,49 @@ new revision, no build is triggered, and the release silently never happens —
 which is exactly what v1.0.0 did on its first attempt. Add the entry below,
 commit, then tag that commit.
 
+## v1.1.16 — 1 October 2026
+
+**Every PDF is now built on request, by a worker, and downloaded when it is
+ready.** There was a stored whole-record PDF that went stale the moment a
+record's pages changed, and a synchronous export that assembled the whole
+document on the heap before answering. Both are replaced by one path whatever
+the size: ask (`POST /api/records/{id}/pdf-exports`), poll
+(`GET /api/pdf-exports/{id}`), download (`GET /api/pdf-exports/{id}/file`). It
+covers all three variants (original scans, English, side by side) and any page
+selection. A 942-page record builds a 362 MB PDF in about two minutes with the
+backend's memory unchanged; a 150-page record of full-resolution scans builds a
+604 MB one in under three.
+
+**How it behaves.** A finished PDF is kept 24 hours, and an identical request
+reuses it. "Identical" is decided by a fingerprint of what the pages were — their
+scans, text, translations, and the catalogue and archive fields the cover sheet
+prints — so a re-OCR, a new translation, a replaced scan, a moved page or a
+corrected date starts a new export instead of serving an old one. Builds run in a
+scratch area under the storage root, never `/tmp`, and are renamed into
+`exports/{xx}/{uuid}.pdf` when complete. A restart fails whatever was building and
+empties the scratch area; a reaper expires old exports and deletes their files. A
+page selection is bounded by the record's own pages, so `1-99999999` means "all of
+them" and cannot exhaust memory.
+
+**The viewer.** The whole-record button, *Download N kept* and the page viewer's
+kept-pages button share one component: it asks, shows *Preparing PDF…*, and
+downloads when ready, and stops waiting if you leave the page or after thirty
+minutes (asking again rejoins the running export).
+
+**Safety.** The only things this feature ever deletes are its own `exports/…`
+files and `pdf_export` rows, and every deletion checks the path is under
+`exports/`. It never touches a page image, a `page_*` row or a stored PDF.
+Migration V18 adds one table and changes nothing existing.
+
+**Removed.** `GET /api/records/{id}/pdf` and `/export-pdf`. In the machine API
+`links.pdf` and `pdfUrl` become `links.pdfExport` and `pdfExportUrl`, present
+whenever a record has pages. The stored searchable PDFs are no longer served;
+they are still built by the pipeline and are to be retired separately.
+
+**Known.** Anyone still holding an old `/pdf` or `/export-pdf` link now gets a
+`500` rather than a `404`: the global exception handler turns every unmapped route
+into a 500, which is older than this release and deserves its own change.
+
 ## v1.1.15 — 29 September 2026
 
 **A page image's file no longer depends on which record it is in.** It was stored
