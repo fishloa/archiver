@@ -28,6 +28,7 @@ import org.springframework.test.context.DynamicPropertySource;
 import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
+import place.icomb.archiver.service.PipelineAuditService;
 
 /**
  * Moving, splitting and concatenating pages between records without re-running the pipeline.
@@ -447,11 +448,48 @@ class PageMoveTest {
 
   // --- tests: refusals ---------------------------------------------------------------------
 
+  /** What a refused move must leave exactly as it was. */
+  private record Snapshot(
+      String statusA,
+      String statusB,
+      long pageCountA,
+      long pageCountB,
+      List<Long> attachmentsA,
+      List<Long> attachmentsB,
+      long jobs) {}
+
+  private List<Long> attachmentIds(long recordId) {
+    return jdbc.sql("SELECT id FROM attachment WHERE record_id = :r ORDER BY id")
+        .param("r", recordId)
+        .query(Long.class)
+        .list();
+  }
+
+  private String statusOf(long recordId) {
+    return jdbc.sql("SELECT status FROM record WHERE id = :r")
+        .param("r", recordId)
+        .query(String.class)
+        .single();
+  }
+
+  private Snapshot snapshot(long a, long b) {
+    return new Snapshot(
+        statusOf(a),
+        statusOf(b),
+        one("SELECT page_count FROM record WHERE id = ?", a),
+        one("SELECT page_count FROM record WHERE id = ?", b),
+        attachmentIds(a),
+        attachmentIds(b),
+        count("SELECT count(*) FROM job"));
+  }
+
   /** Asserts a refused move changed nothing. */
-  private void assertUntouched(long a, long b, List<Long> aPages, List<Long> bPages) {
+  private void assertUntouched(
+      long a, long b, List<Long> aPages, List<Long> bPages, Snapshot before) {
     assertThat(pageIds(a)).containsExactlyElementsOf(aPages);
     assertThat(pageIds(b)).containsExactlyElementsOf(bPages);
     assertThat(count("SELECT count(*) FROM pipeline_event WHERE event = 'pages_moved'")).isZero();
+    assertThat(snapshot(a, b)).isEqualTo(before);
   }
 
   private void refused(long a, long b, String extraBody, String setup, int status)
@@ -461,10 +499,11 @@ class PageMoveTest {
     if (setup != null) {
       jdbc.sql(setup).update();
     }
+    Snapshot before = snapshot(a, b);
     HttpResponse<String> resp =
         post(movePath(a, aPages.get(0)), "{\"targetRecordId\":" + b + extraBody + "}");
     assertThat(resp.statusCode()).as(resp.body()).isEqualTo(status);
-    assertUntouched(a, b, aPages, bPages);
+    assertUntouched(a, b, aPages, bPages, before);
   }
 
   @Test
@@ -665,6 +704,8 @@ class PageMoveTest {
         .isEqualTo(2);
     assertThat(count("SELECT count(*) FROM text_chunk WHERE record_id = ?", created)).isEqualTo(2);
     assertThat(count("SELECT count(*) FROM job")).isEqualTo(jobsBefore);
+    assertThat(pagesMovedEvents(a)).isEqualTo(1);
+    assertThat(pagesMovedEvents(created)).isEqualTo(1);
   }
 
   @Test
@@ -771,6 +812,14 @@ class PageMoveTest {
     List<Long> aPages = pageIds(a);
     List<Long> bPages = pageIds(b);
     long jobsBefore = count("SELECT count(*) FROM job");
+    List<Long> attachmentsA = new java.util.ArrayList<>(attachmentIds(a));
+    attachmentsA.addAll(attachmentIds(b));
+    List<Long> chunksBefore =
+        jdbc.sql("SELECT id FROM text_chunk WHERE record_id IN (:a, :b) ORDER BY id")
+            .param("a", a)
+            .param("b", b)
+            .query(Long.class)
+            .list();
 
     JsonNode out = ok(post(concatPath(a), "{\"sourceRecordId\":" + b + "}"));
 
@@ -792,6 +841,23 @@ class PageMoveTest {
                 bPages.get(1)))
         .isEqualTo(2);
     assertThat(count("SELECT count(*) FROM job")).isEqualTo(jobsBefore);
+    assertThat(attachmentIds(a)).containsExactlyInAnyOrderElementsOf(attachmentsA);
+    assertThat(attachmentIds(b)).isEmpty();
+    assertThat(
+            count(
+                "SELECT count(*) FROM job WHERE page_id IN (?, ?) AND record_id = ?",
+                bPages.get(0),
+                bPages.get(1),
+                a))
+        .isEqualTo(2);
+    assertThat(
+            jdbc.sql("SELECT id FROM text_chunk WHERE record_id = :r ORDER BY id")
+                .param("r", a)
+                .query(Long.class)
+                .list())
+        .containsExactlyElementsOf(chunksBefore);
+    assertThat(pagesMovedEvents(a)).isEqualTo(1);
+    assertThat(pagesMovedEvents(b)).isEqualTo(1);
   }
 
   @Test
@@ -844,5 +910,97 @@ class PageMoveTest {
     assertThat(post(concatPath(a), "{\"sourceRecordId\":" + b + "}").statusCode()).isEqualTo(409);
     ok(post(concatPath(a), "{\"sourceRecordId\":" + b + ",\"allowCrossArchive\":true}"));
     assertThat(seqs(a)).containsExactly(1, 2);
+  }
+
+  private long pagesMovedEvents(long recordId) {
+    return count(
+        "SELECT count(*) FROM pipeline_event WHERE record_id = ? AND event = 'pages_moved'",
+        recordId);
+  }
+
+  /** Leaves the record with page numbers 1, 2, 4, as an old delete once could. */
+  private void makeGap(long recordId) {
+    jdbc.sql("UPDATE page SET seq = 4 WHERE record_id = :r AND seq = 3")
+        .param("r", recordId)
+        .update();
+  }
+
+  // --- tests: contiguity ---------------------------------------------------------------------
+
+  @Test
+  void aRecordWithGapsInItsPageNumbersIsRefusedAsSourceOrTargetOfMoveSplitAndConcat()
+      throws Exception {
+    long gap = recordWithPages("gap", 3);
+    makeGap(gap);
+    long ok = recordWithPages("ok", 2);
+    long gapPage = pageIds(gap).get(0);
+    long okPage = pageIds(ok).get(0);
+    long recordsBefore = count("SELECT count(*) FROM record");
+
+    for (var resp :
+        List.of(
+            post(movePath(gap, gapPage), "{\"targetRecordId\":" + ok + "}"),
+            post(movePath(ok, okPage), "{\"targetRecordId\":" + gap + "}"),
+            post("/admin/records/" + gap + "/split", splitBody(2, "x")),
+            post(concatPath(gap), "{\"sourceRecordId\":" + ok + "}"),
+            post(concatPath(ok), "{\"sourceRecordId\":" + gap + "}"))) {
+      assertThat(resp.statusCode()).as(resp.body()).isEqualTo(409);
+      assertThat(resp.body()).contains("non-contiguous").contains("renumber first");
+    }
+    assertThat(seqs(gap)).containsExactly(1, 2, 4);
+    assertThat(seqs(ok)).containsExactly(1, 2);
+    assertThat(count("SELECT count(*) FROM record")).isEqualTo(recordsBefore);
+    assertThat(count("SELECT count(*) FROM pipeline_event WHERE event = 'pages_moved'")).isZero();
+  }
+
+  // --- tests: split and the audit -------------------------------------------------------------
+
+  @Autowired private PipelineAuditService audit;
+
+  private long jobsOf(long recordId) {
+    return count("SELECT count(*) FROM job WHERE record_id = ?", recordId);
+  }
+
+  @Test
+  void theAuditLeavesASplitRecordAloneBecauseItsChunksCameWithItsPages() throws Exception {
+    long a = recordWithPages("a", 4);
+    long created =
+        ok(post("/admin/records/" + a + "/split", splitBody(3, "tail")))
+            .get("newRecordId")
+            .asLong();
+    List<Long> chunks =
+        jdbc.sql("SELECT id FROM text_chunk WHERE record_id = :r ORDER BY id")
+            .param("r", created)
+            .query(Long.class)
+            .list();
+    long jobs = jobsOf(created);
+    assertThat(chunks).hasSize(2);
+
+    audit.auditPipeline();
+
+    assertThat(statusOf(created)).isEqualTo("complete");
+    assertThat(jobsOf(created)).isEqualTo(jobs);
+    assertThat(
+            count(
+                "SELECT count(*) FROM job WHERE record_id = ? AND kind = 'embed_record'", created))
+        .isZero();
+    assertThat(
+            jdbc.sql("SELECT id FROM text_chunk WHERE record_id = :r ORDER BY id")
+                .param("r", created)
+                .query(Long.class)
+                .list())
+        .containsExactlyElementsOf(chunks);
+  }
+
+  @Test
+  void theAuditStillBackfillsACompleteRecordThatWasNeverEmbedded() throws Exception {
+    long a = recordWithPages("a", 2);
+    jdbc.sql("DELETE FROM text_chunk WHERE record_id = :r").param("r", a).update();
+
+    audit.auditPipeline();
+
+    assertThat(count("SELECT count(*) FROM job WHERE record_id = ? AND kind = 'embed_record'", a))
+        .isEqualTo(1);
+    assertThat(statusOf(a)).isEqualTo("embedding");
   }
 }

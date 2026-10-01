@@ -399,6 +399,7 @@ public class PipelineAuditService {
             WHERE j.record_id = r.id
               AND j.kind = 'embed_record'
           )
+          AND NOT EXISTS (SELECT 1 FROM text_chunk c WHERE c.record_id = r.id)
         ORDER BY r.id
         """,
             Long.class);

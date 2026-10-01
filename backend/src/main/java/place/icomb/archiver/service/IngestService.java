@@ -217,6 +217,9 @@ public class IngestService {
    */
   @Transactional
   public Page replacePage(Long recordId, int seq, byte[] imageBytes, PageMetadata metadata) {
+    // Lock the record first: a page move addresses pages by seq too.
+    jdbcTemplate.queryForList(
+        "SELECT id FROM record WHERE id = ? FOR UPDATE", Long.class, recordId);
     Optional<Page> existing = pageRepository.findByRecordIdAndSeq(recordId, seq);
     if (existing.isPresent()) {
       deleteAttachment(existing.get().getAttachmentId());
@@ -241,6 +244,9 @@ public class IngestService {
    */
   @Transactional
   public Record deletePage(Long recordId, int seq) {
+    // Lock the record first: a page move addresses pages by seq too.
+    jdbcTemplate.queryForList(
+        "SELECT id FROM record WHERE id = ? FOR UPDATE", Long.class, recordId);
     Page page =
         pageRepository
             .findByRecordIdAndSeq(recordId, seq)
@@ -263,6 +269,9 @@ public class IngestService {
    */
   @Transactional
   public Page insertPage(Long recordId, int seq, byte[] imageBytes, PageMetadata metadata) {
+    // Lock the record first: a page move addresses pages by seq too.
+    jdbcTemplate.queryForList(
+        "SELECT id FROM record WHERE id = ? FOR UPDATE", Long.class, recordId);
     int pageCount = pageRepository.countByRecordId(recordId);
     if (seq < 1 || seq > pageCount + 1) {
       throw new IllegalArgumentException(

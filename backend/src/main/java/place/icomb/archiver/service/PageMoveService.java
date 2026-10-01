@@ -138,6 +138,7 @@ public class PageMoveService {
                 () ->
                     new PageMoveException(
                         Kind.NOT_FOUND, "Record %d not found".formatted(recordId)));
+    requireContiguous(recordId);
     int pages = pageCount(recordId);
     if (splitAtSeq < 2 || splitAtSeq > pages) {
       throw new PageMoveException(
@@ -191,6 +192,25 @@ public class PageMoveService {
   }
 
   /**
+   * Every range here is computed from the page count, so it is only right when the page numbers run
+   * 1..count. Callers hold the record's lock.
+   */
+  private void requireContiguous(long recordId) {
+    boolean gaps =
+        Boolean.TRUE.equals(
+            jdbc.queryForObject(
+                "SELECT count(*) > 0 AND (min(seq) <> 1 OR max(seq) <> count(*))"
+                    + " FROM page WHERE record_id = ?",
+                Boolean.class,
+                recordId));
+    if (gaps) {
+      throw new PageMoveException(
+          Kind.CONFLICT,
+          "Record %d has non-contiguous page numbers; renumber first".formatted(recordId));
+    }
+  }
+
+  /**
    * Refuses a move that would be wrong, before anything is touched.
    *
    * <p>Both records must be complete: a record still in the pipeline re-evaluates its guards
@@ -202,6 +222,8 @@ public class PageMoveService {
     if (src == tgt) {
       throw new PageMoveException(Kind.BAD_REQUEST, "Source and target are the same record");
     }
+    requireContiguous(src);
+    requireContiguous(tgt);
     Locked s = locked.get(src);
     Locked t = locked.get(tgt);
     for (Locked r : List.of(s, t)) {
