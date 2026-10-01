@@ -465,6 +465,10 @@ class PageMoveTest {
         .list();
   }
 
+  private String text(String sql, Object id) {
+    return jdbc.sql(sql).param(id).query(String.class).single();
+  }
+
   private String statusOf(long recordId) {
     return jdbc.sql("SELECT status FROM record WHERE id = :r")
         .param("r", recordId)
@@ -1002,5 +1006,111 @@ class PageMoveTest {
     assertThat(count("SELECT count(*) FROM job WHERE record_id = ? AND kind = 'embed_record'", a))
         .isEqualTo(1);
     assertThat(statusOf(a)).isEqualTo("embedding");
+  }
+
+  // --- reordering within a record --------------------------------------------------------
+
+  private String order(List<Long> ids) {
+    return "{\"pageIds\":" + ids + "}";
+  }
+
+  @Test
+  void aRecordsPagesCanBeReorderedAndTheirOutputFollowsThem() throws Exception {
+    long a = recordWithPages("ord", 4);
+    List<Long> before = pageIds(a);
+    List<Long> wanted = List.of(before.get(3), before.get(2), before.get(1), before.get(0));
+    long jobs = count("SELECT count(*) FROM job WHERE record_id = ?", a);
+    long chunk0 = one("SELECT id FROM text_chunk WHERE page_id = ?", before.get(0));
+    String text0 = text("SELECT text_raw FROM page_text WHERE page_id = ?", before.get(0));
+
+    JsonNode out = ok(post("/admin/records/" + a + "/reorder", order(wanted)));
+
+    assertThat(out.get("changed").asBoolean()).isTrue();
+    assertThat(pageIds(a)).isEqualTo(wanted);
+    assertThat(seqs(a)).containsExactly(1, 2, 3, 4);
+    // the first page is now last, and everything keyed on it came with it
+    assertThat(one("SELECT seq FROM page WHERE id = ?", before.get(0))).isEqualTo(4);
+    assertThat(one("SELECT id FROM text_chunk WHERE page_id = ?", before.get(0))).isEqualTo(chunk0);
+    assertThat(text("SELECT text_raw FROM page_text WHERE page_id = ?", before.get(0)))
+        .isEqualTo(text0);
+    assertThat(count("SELECT count(*) FROM job WHERE record_id = ?", a)).isEqualTo(jobs);
+    assertThat(statusOf(a)).isEqualTo("complete");
+    assertThat(
+            count(
+                "SELECT count(*) FROM pipeline_event WHERE record_id = ? AND event = 'pages_moved'",
+                a))
+        .isEqualTo(1);
+  }
+
+  @Test
+  void onePageCanBeMovedToAPosition() throws Exception {
+    long a = recordWithPages("pos", 3);
+    List<Long> before = pageIds(a);
+    ok(post("/admin/records/" + a + "/reorder", "{\"pageId\":" + before.get(2) + ",\"toSeq\":1}"));
+    assertThat(pageIds(a)).containsExactly(before.get(2), before.get(0), before.get(1));
+    assertThat(
+            post(
+                    "/admin/records/" + a + "/reorder",
+                    "{\"pageId\":" + before.get(0) + ",\"toSeq\":9}")
+                .statusCode())
+        .isEqualTo(400);
+    assertThat(
+            post("/admin/records/" + a + "/reorder", "{\"pageId\":99999999,\"toSeq\":1}")
+                .statusCode())
+        .isEqualTo(404);
+  }
+
+  @Test
+  void anUnchangedOrderChangesNothingAndLogsNothing() throws Exception {
+    long a = recordWithPages("same", 3);
+    JsonNode out = ok(post("/admin/records/" + a + "/reorder", order(pageIds(a))));
+    assertThat(out.get("changed").asBoolean()).isFalse();
+    assertThat(
+            count(
+                "SELECT count(*) FROM pipeline_event WHERE record_id = ? AND event = 'pages_moved'",
+                a))
+        .isZero();
+  }
+
+  @Test
+  void aListThatIsNotExactlyTheRecordsPagesIsRefusedAndNothingChanges() throws Exception {
+    long a = recordWithPages("bad", 3);
+    long b = recordWithPages("other", 1);
+    List<Long> mine = pageIds(a);
+    String p = "/admin/records/" + a + "/reorder";
+    assertThat(post(p, order(mine.subList(0, 2))).statusCode()).isEqualTo(400);
+    assertThat(post(p, order(List.of(mine.get(0), mine.get(0), mine.get(1)))).statusCode())
+        .isEqualTo(400);
+    assertThat(post(p, order(List.of(mine.get(0), mine.get(1), pageIds(b).get(0)))).statusCode())
+        .isEqualTo(400);
+    assertThat(post(p, "{\"pageIds\":\"x\"}").statusCode()).isEqualTo(400);
+    assertThat(post(p, "{\"pageIds\":[1.5,2,3]}").statusCode()).isEqualTo(400);
+    assertThat(post(p, "{}").statusCode()).isEqualTo(400);
+    assertThat(post("/admin/records/99999999/reorder", order(mine)).statusCode()).isEqualTo(404);
+    assertThat(pageIds(a)).isEqualTo(mine);
+  }
+
+  @Test
+  void aRecordThatIsHeldBusyOrNotCompleteIsNotReordered() throws Exception {
+    long a = recordWithPages("busy", 2);
+    List<Long> mine = pageIds(a);
+    List<Long> swapped = List.of(mine.get(1), mine.get(0));
+    String p = "/admin/records/" + a + "/reorder";
+
+    jdbc.sql("UPDATE record SET ai_held_at = now() WHERE id = :r").param("r", a).update();
+    assertThat(post(p, order(swapped)).statusCode()).isEqualTo(409);
+    jdbc.sql("UPDATE record SET ai_held_at = NULL WHERE id = :r").param("r", a).update();
+
+    jdbc.sql(
+            "INSERT INTO job (kind, record_id, page_id, status) VALUES ('translate_page', :r, :p, 'pending')")
+        .param("r", a)
+        .param("p", mine.get(0))
+        .update();
+    assertThat(post(p, order(swapped)).statusCode()).isEqualTo(409);
+    jdbc.sql("DELETE FROM job WHERE record_id = :r AND status = 'pending'").param("r", a).update();
+
+    jdbc.sql("UPDATE record SET status = 'translating' WHERE id = :r").param("r", a).update();
+    assertThat(post(p, order(swapped)).statusCode()).isEqualTo(409);
+    assertThat(pageIds(a)).isEqualTo(mine);
   }
 }

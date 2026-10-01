@@ -28,4 +28,20 @@ final class PageSequence {
         recordId,
         PARKING_SPACE);
   }
+
+  /**
+   * Gives a record's pages the order {@code pageIds}, which must be exactly its pages.
+   *
+   * <p>Through the same parking offset as {@link #shift}: no two pages ever hold the same number.
+   */
+  static void assign(JdbcTemplate jdbc, Long recordId, java.util.List<Long> pageIds) {
+    jdbc.update("UPDATE page SET seq = seq + ? WHERE record_id = ?", PARKING_SPACE, recordId);
+    for (int i = 0; i < pageIds.size(); i++) {
+      jdbc.update(
+          "UPDATE page SET seq = ? WHERE id = ? AND record_id = ?",
+          i + 1,
+          pageIds.get(i),
+          recordId);
+    }
+  }
 }

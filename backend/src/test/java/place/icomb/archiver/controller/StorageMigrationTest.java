@@ -418,4 +418,148 @@ class StorageMigrationTest {
 
     assertThat(storageRoot.resolve(old)).doesNotExist();
   }
+
+  // --- the retired stored PDFs -------------------------------------------------------------
+
+  private long storedPdf(long recordId, String role, String path, String content, boolean point)
+      throws Exception {
+    if (content != null) {
+      Path file = storageRoot.resolve(path);
+      Files.createDirectories(file.getParent());
+      Files.writeString(file, content);
+    }
+    long id =
+        jdbc.sql(
+                "INSERT INTO attachment (record_id, role, path, mime, bytes) VALUES (:r, :role,"
+                    + " :p, 'application/pdf', 10) RETURNING id")
+            .param("r", recordId)
+            .param("role", role)
+            .param("p", path)
+            .query(Long.class)
+            .single();
+    if (point) {
+      jdbc.sql("UPDATE record SET pdf_attachment_id = :a WHERE id = :r")
+          .param("a", id)
+          .param("r", recordId)
+          .update();
+    }
+    return id;
+  }
+
+  private HttpResponse<String> adminPost(String path, String body) throws Exception {
+    return http.send(
+        HttpRequest.newBuilder()
+            .uri(URI.create(base + path))
+            .header("Content-Type", "application/json")
+            .header("X-Auth-Email", ADMIN_EMAIL)
+            .POST(HttpRequest.BodyPublishers.ofString(body))
+            .build(),
+        HttpResponse.BodyHandlers.ofString());
+  }
+
+  @Test
+  void purgingStoredPdfsRemovesTheRowsTheFilesAndThePointerButNothingElse() throws Exception {
+    long record = newRecord();
+    long pdf =
+        storedPdf(
+            record,
+            "searchable_pdf",
+            "records/%d/attachments/record.pdf".formatted(record),
+            "pdf",
+            true);
+    long born =
+        storedPdf(
+            record,
+            "original_pdf",
+            "records/%d/attachments/original.pdf".formatted(record),
+            "orig",
+            false);
+    long image = legacyPage(record, 1, "attachments/aa/keep.jpg", "scan");
+
+    JsonNode before =
+        json.readTree(
+            http.send(
+                    HttpRequest.newBuilder()
+                        .uri(URI.create(base + "/admin/storage/searchable-pdfs"))
+                        .header("X-Auth-Email", ADMIN_EMAIL)
+                        .GET()
+                        .build(),
+                    HttpResponse.BodyHandlers.ofString())
+                .body());
+    assertThat(before.get("files").asLong()).isEqualTo(1);
+    assertThat(before.get("recordsPointing").asLong()).isEqualTo(1);
+
+    HttpResponse<String> resp = adminPost("/admin/storage/purge-searchable-pdfs", "{}");
+    assertThat(resp.statusCode()).as(resp.body()).isEqualTo(200);
+    JsonNode out = json.readTree(resp.body());
+    assertThat(out.get("purged").asInt()).isEqualTo(1);
+    assertThat(out.get("filesRemoved").asInt()).isEqualTo(1);
+    assertThat(out.get("status").get("files").asLong()).isZero();
+
+    assertThat(storageRoot.resolve("records/%d/attachments/record.pdf".formatted(record)))
+        .doesNotExist();
+    assertThat(
+            jdbc.sql("SELECT count(*) FROM attachment WHERE id = :i")
+                .param("i", pdf)
+                .query(Long.class)
+                .single())
+        .isZero();
+    assertThat(
+            jdbc.sql("SELECT pdf_attachment_id FROM record WHERE id = :r")
+                .param("r", record)
+                .query(Long.class)
+                .optional())
+        .isEmpty();
+    // a born-digital upload's own PDF and every page image are left alone
+    assertThat(storageRoot.resolve("records/%d/attachments/original.pdf".formatted(record)))
+        .exists();
+    assertThat(storageRoot.resolve("attachments/aa/keep.jpg")).exists();
+    assertThat(
+            jdbc.sql("SELECT count(*) FROM attachment WHERE id IN (:a, :b)")
+                .param("a", born)
+                .param("b", image)
+                .query(Long.class)
+                .single())
+        .isEqualTo(2);
+  }
+
+  @Test
+  void aSmallLimitWalksThePurgeAcrossCalls() throws Exception {
+    long record = newRecord();
+    for (int i = 0; i < 3; i++) {
+      storedPdf(
+          record, "searchable_pdf", "records/%d/x/%d.pdf".formatted(record, i), "p" + i, false);
+    }
+    assertThat(
+            json.readTree(adminPost("/admin/storage/purge-searchable-pdfs", "{\"limit\":2}").body())
+                .get("purged")
+                .asInt())
+        .isEqualTo(2);
+    JsonNode second =
+        json.readTree(adminPost("/admin/storage/purge-searchable-pdfs", "{\"limit\":2}").body());
+    assertThat(second.get("purged").asInt()).isEqualTo(1);
+    assertThat(second.get("status").get("files").asLong()).isZero();
+  }
+
+  @Test
+  void aFileAnotherRowStillNamesIsKept() throws Exception {
+    long record = newRecord();
+    String shared = "records/%d/attachments/record.pdf".formatted(record);
+    storedPdf(record, "searchable_pdf", shared, "shared", false);
+    storedPdf(record, "original_pdf", shared, null, false);
+
+    JsonNode out = json.readTree(adminPost("/admin/storage/purge-searchable-pdfs", "{}").body());
+    assertThat(out.get("purged").asInt()).isEqualTo(1);
+    assertThat(out.get("filesRemoved").asInt()).isZero();
+    assertThat(out.get("sharedPathKept").asInt()).isEqualTo(1);
+    assertThat(storageRoot.resolve(shared)).exists();
+  }
+
+  @Test
+  void aBadPurgeLimitIsARefusal() throws Exception {
+    assertThat(adminPost("/admin/storage/purge-searchable-pdfs", "{\"limit\":0}").statusCode())
+        .isEqualTo(400);
+    assertThat(adminPost("/admin/storage/purge-searchable-pdfs", "{\"limit\":\"x\"}").statusCode())
+        .isEqualTo(400);
+  }
 }

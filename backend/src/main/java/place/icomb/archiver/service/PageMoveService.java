@@ -192,6 +192,96 @@ public class PageMoveService {
   }
 
   /**
+   * The record's current order with one page taken out and put back at position {@code toSeq}
+   * (1..page count). Read without the lock; {@link #reorder} re-checks under it.
+   */
+  public List<Long> orderWithPageAt(long recordId, long pageId, int toSeq) {
+    List<Long> order =
+        new java.util.ArrayList<>(
+            jdbc.queryForList(
+                "SELECT id FROM page WHERE record_id = ? ORDER BY seq", Long.class, recordId));
+    if (!order.remove(Long.valueOf(pageId))) {
+      throw new PageMoveException(
+          Kind.NOT_FOUND, "Page %d is not in record %d".formatted(pageId, recordId));
+    }
+    if (toSeq < 1 || toSeq > order.size() + 1) {
+      throw new PageMoveException(
+          Kind.BAD_REQUEST, "toSeq must be from 1 to %d".formatted(order.size() + 1));
+    }
+    order.add(toSeq - 1, pageId);
+    return order;
+  }
+
+  /** Result of {@link #reorder}. */
+  public record Reordered(long recordId, List<Long> pageIds, boolean changed) {}
+
+  /**
+   * Puts a record's pages in a new order, pure database work: the pages keep their ids, so their
+   * text, translations and chunks follow them, and nothing is re-run.
+   *
+   * @param pageIds every page of the record, once, in the order wanted
+   */
+  @Transactional
+  public Reordered reorder(long recordId, List<Long> pageIds) {
+    Map<Long, Locked> locked = lockRecords(recordId, recordId);
+    Locked r = locked.get(recordId);
+    requireContiguous(recordId);
+    if (!"complete".equals(r.status())) {
+      throw new PageMoveException(
+          Kind.CONFLICT,
+          "Record %d is %s, not complete; let its pipeline settle first"
+              .formatted(recordId, r.status()));
+    }
+    if (r.held()) {
+      throw new PageMoveException(Kind.CONFLICT, "Record %d is on AI hold".formatted(recordId));
+    }
+    Long busy =
+        jdbc.queryForObject(
+            "SELECT count(*) FROM job WHERE record_id = ? AND status IN ('pending', 'claimed')",
+            Long.class,
+            recordId);
+    if (busy != null && busy > 0) {
+      throw new PageMoveException(
+          Kind.CONFLICT,
+          "%d job(s) are still pending or running against this record".formatted(busy));
+    }
+    Long exporting =
+        jdbc.queryForObject(
+            "SELECT count(*) FROM pdf_export WHERE record_id = ? AND state IN ('queued', 'building')",
+            Long.class,
+            recordId);
+    if (exporting != null && exporting > 0) {
+      throw new PageMoveException(
+          Kind.CONFLICT,
+          "%d PDF export(s) of this record are still being prepared".formatted(exporting));
+    }
+
+    List<Long> current =
+        jdbc.queryForList(
+            "SELECT id FROM page WHERE record_id = ? ORDER BY seq", Long.class, recordId);
+    if (pageIds == null || pageIds.size() != current.size()) {
+      throw new PageMoveException(
+          Kind.BAD_REQUEST,
+          "pageIds must list all %d pages of record %d, once each"
+              .formatted(current.size(), recordId));
+    }
+    if (new java.util.HashSet<>(pageIds).size() != pageIds.size()
+        || !new java.util.HashSet<>(current).equals(new java.util.HashSet<>(pageIds))) {
+      throw new PageMoveException(
+          Kind.BAD_REQUEST,
+          "pageIds must be exactly the pages of record %d, no repeats".formatted(recordId));
+    }
+    if (current.equals(pageIds)) {
+      return new Reordered(recordId, current, false);
+    }
+    PageSequence.assign(jdbc, recordId, pageIds);
+    refreshCounts(recordId);
+    logMove(recordId, "pages reordered: " + pageIds);
+    recordEventService.recordChanged(recordId, "pages");
+    return new Reordered(recordId, pageIds, true);
+  }
+
+  /**
    * Every range here is computed from the page count, so it is only right when the page numbers run
    * 1..count. Callers hold the record's lock.
    */

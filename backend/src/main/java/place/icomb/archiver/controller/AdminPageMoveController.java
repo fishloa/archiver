@@ -45,6 +45,43 @@ public class AdminPageMoveController {
     }
   }
 
+  /**
+   * Reorders one record's pages: either the whole order as {@code {"pageIds":[…]}}, or one page to
+   * a position as {@code {"pageId":N,"toSeq":M}}.
+   */
+  @PostMapping("/records/{recordId}/reorder")
+  public ResponseEntity<Map<String, Object>> reorder(
+      @PathVariable long recordId, @RequestBody(required = false) Map<String, Object> body) {
+    try {
+      Map<String, Object> in = body == null ? Map.of() : body;
+      java.util.List<Long> order;
+      if (in.get("pageIds") != null) {
+        if (!(in.get("pageIds") instanceof java.util.List<?> raw)) {
+          throw new PageMoveException(PageMoveException.Kind.BAD_REQUEST, "pageIds must be a list");
+        }
+        order = new java.util.ArrayList<>();
+        for (Object o : raw) {
+          order.add(exactLong(o, "pageIds"));
+        }
+      } else if (in.get("pageId") != null) {
+        long pageId = requiredLong(in, "pageId");
+        int to = requiredInt(in, "toSeq");
+        order = moves.orderWithPageAt(recordId, pageId, to);
+      } else {
+        throw new PageMoveException(
+            PageMoveException.Kind.BAD_REQUEST, "give pageIds, or pageId and toSeq");
+      }
+      var out = moves.reorder(recordId, order);
+      Map<String, Object> res = new HashMap<>();
+      res.put("recordId", out.recordId());
+      res.put("pageIds", out.pageIds());
+      res.put("changed", out.changed());
+      return ResponseEntity.ok(res);
+    } catch (PageMoveException e) {
+      return refuse(e);
+    }
+  }
+
   @PostMapping("/records/{recordId}/split")
   public ResponseEntity<Map<String, Object>> split(
       @PathVariable long recordId, @RequestBody(required = false) Map<String, Object> body) {
@@ -112,7 +149,11 @@ public class AdminPageMoveController {
   }
 
   static long requiredLong(Map<String, Object> body, String key) {
-    Object v = body.get(key);
+    return exactLong(body.get(key), key);
+  }
+
+  /** A whole number in range, or a 400 naming the field. */
+  static long exactLong(Object v, String key) {
     if (!(v instanceof Number n)) {
       throw new PageMoveException(
           PageMoveException.Kind.BAD_REQUEST, key + " is required and must be a number");
