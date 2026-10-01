@@ -53,14 +53,13 @@ pages of stored text remain in `page_text` until re-OCR'd.
 ### Document Pipeline
 
 ```
-ingesting → ocr_pending → ocr_done → pdf_pending → pdf_done → translating → embedding → matching → complete
-                                                              → entities_pending → entities_done (future)
+ingesting → ocr_pending → ocr_done → translating → embedding → matching → complete
+                                                    → entities_pending → entities_done (future)
 ```
 
 Pipeline transitions are managed by `PipelineStateMachine` — a formal state machine with guards, actions, and validated transitions. `autoAdvance(recordId)` chains through all applicable transitions.
 
 When all OCR jobs complete for a record, the state machine auto-enqueues:
-- `build_searchable_pdf` (1 per record)
 - `translate_record` (metadata translation, uses `record.metadata_lang`)
 - `translate_page` or `translate_page_upgrade` per page, chosen once from
   `record.translation_quality` (`bulk` default, or `best`). One job per page of one kind:
@@ -192,9 +191,8 @@ Config: `backend/src/test/resources/application-test.yml`.
 - `service/PersonMatchWorker.java` — internal scheduled worker for `match_persons` jobs
 - `service/IngestService.java` — record creation, OCR job enqueuing
 - `service/StorageService.java` — file storage abstraction over archiver_store
-- `service/PdfExportService.java` — all three PDF exports (original scans, English translation, side-by-side), and the stored searchable PDF
+- `service/PdfExportService.java` — all three PDF exports (original scans, English translation, side-by-side); every PDF is built on demand (`PdfExportQueue`/`PdfExportWorker`), nothing is stored per record
 - `service/MarkdownPdfRenderer.java` — markdown → PDF: headings, tables, bold runs, OCR figures
-- `service/SearchablePdfWorker.java` — internal worker for `build_searchable_pdf` (replaced the Python pdf-worker)
 - `service/OcrImageService.java` — crops the figures Mistral found (signatures, stamps) out of the scan
 
 ## Frontend Details
@@ -253,11 +251,12 @@ docker build -f scraper-cz/Dockerfile -t dockerregistry.icomb.place/archiver/scr
 
 - **ONLY the backend talks to PostgreSQL and archiver_store.** Workers, scrapers, and frontend communicate exclusively via the backend HTTP API.
 - ISO 639-1 language codes everywhere (2-char: de, cs, en)
-- Job kinds: `ocr_page_mistral`, `ocr_page_qwen3vl`, `build_searchable_pdf`, `translate_page`,
+- Job kinds: `ocr_page_mistral`, `ocr_page_qwen3vl`, `translate_page`,
   `translate_page_upgrade`, `translate_record`, `embed_record`, `match_persons`,
   `extract_entities`. `ocr_page_claude` stays in the DB CHECK constraint for 38 historical
-  rows, but the engine is gone.
-- Record statuses: `ingesting`, `ingested`, `ocr_pending`, `ocr_in_progress`, `ocr_done`, `pdf_pending`, `pdf_done`, `translating`, `embedding`, `matching`, `entities_pending`, `entities_done`, `complete`, `error`
+  rows, but the engine is gone; so does `build_searchable_pdf` (16,270 historical rows, stage removed
+  October 2026).
+- Record statuses: `ingesting`, `ingested`, `ocr_pending`, `ocr_in_progress`, `ocr_done`, `translating`, `embedding`, `matching`, `entities_pending`, `entities_done`, `complete`, `error`
 - Python linting: `ruff` (line-length 100, target py314)
 - Java formatting: `spotlessApply` (Google Java Format)
 

@@ -25,7 +25,7 @@ all state and runs a formal pipeline state machine; workers only ever talk to it
 **Nothing but the backend touches PostgreSQL or the file store.**
 
 ```
-ingesting → ocr_pending → ocr_done → pdf_pending → pdf_done → translating → embedding → matching → complete
+ingesting → ocr_pending → ocr_done → translating → embedding → matching → complete
 ```
 
 ## Engines
@@ -38,7 +38,7 @@ GPU at all**.
 | OCR | Mistral OCR (`mistral-ocr-latest`) | returns markdown; 16 workers, ~19 pages/s |
 | Translation | `google/gemma-4-31B-it` | markdown in, markdown out |
 | Embedding | `Qwen/Qwen3-Embedding-8B` @ 1024d | `halfvec`, cross-lingual |
-| Searchable PDF | reportlab | invisible text layer over the page image |
+| PDF export | PDFBox | built on demand: scans with an invisible text layer, English, side by side |
 
 Alternates remain in the image and are switchable by a single env var, both currently
 disabled: Claude vision OCR (`CLAUDE_OCR_ENABLED`) and Qwen3-VL via Ollama on a Mac Studio

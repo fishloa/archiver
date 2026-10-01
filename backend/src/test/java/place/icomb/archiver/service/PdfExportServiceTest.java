@@ -423,19 +423,6 @@ class PdfExportServiceTest {
     }
   }
 
-  @Test
-  void storedRecordPdfIsBuiltToFile() throws Exception {
-    Path target = Files.createTempFile("searchable-test-", ".pdf");
-    try {
-      int pages = pdfExportService.buildRecordPdfToFile(recordId, target);
-      assertThat(pages).isEqualTo(1);
-      assertThat(Files.size(target)).isGreaterThan(0);
-      assertThat(textOf(Files.readAllBytes(target))).contains("Enteignung des tschechischen Adels");
-    } finally {
-      Files.deleteIfExists(target);
-    }
-  }
-
   private long countImages(PDDocument doc, int pageIndex) {
     var resources = doc.getPage(pageIndex).getResources();
     return java.util.stream.StreamSupport.stream(resources.getXObjectNames().spliterator(), false)

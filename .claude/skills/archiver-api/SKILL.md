@@ -218,6 +218,20 @@ itself, a split that would empty a record; `409` a record not `complete`, on hol
 archive, holding a legacy-layout image, or with a PDF export still being prepared. A refusal
 changes nothing. A move touches no PDF: PDFs are produced on demand.
 
+## Correcting a stored text or title by hand
+
+A transcription is stored exactly as the engine produced it; a deliberate correction is made in
+place and audited (old text, new text, who, why). `find` must occur **exactly once** in the field, so
+a correction cannot touch more than intended (`409` if absent or ambiguous, `400` for a bad body).
+
+| Call | Does |
+|---|---|
+| `POST /api/admin/pages/{pageId}/corrections` `{"field":"text_raw"\|"text_en","find":"…","replace":"…","reason":"…"}` | Corrects the page's original text (and its embedding chunks) or its English (and every model's translation of it) |
+| `POST /api/admin/records/{id}/corrections` `{"field":"title"\|"description"\|"title_en"\|"description_en",…}` | Same, for the record's catalogue fields |
+| `GET /api/admin/records/{id}/corrections` | The audit, newest first |
+
+Nothing is re-run and no embedding is recomputed, so correct a few characters, not a passage.
+
 ## PDFs
 
 Every PDF is built on demand and takes the same asynchronous path, whatever its size: ask, poll,

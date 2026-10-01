@@ -442,33 +442,6 @@ public class PdfExportService {
     }
   }
 
-  /**
-   * Builds the stored searchable PDF for a whole record, straight to a file.
-   *
-   * <p>Records here run to 942 pages of full-resolution scans, so the document is backed by a
-   * temporary file rather than the heap and saved without ever being held as one array. This is the
-   * path the stored searchable-PDF worker uses; page selections go through {@link #buildToFile}.
-   *
-   * @return number of PDF pages written
-   */
-  public int buildRecordPdfToFile(Long recordId, Path target) throws IOException {
-    List<Integer> seqNumbers =
-        jdbcTemplate.queryForList(
-            "SELECT seq FROM page WHERE record_id = ? ORDER BY seq", Integer.class, recordId);
-    if (seqNumbers.isEmpty()) {
-      throw new IOException("Record " + recordId + " has no pages");
-    }
-    try (PDDocument doc =
-        new PDDocument(org.apache.pdfbox.io.IOUtils.createTempFileOnlyStreamCache())) {
-      renderOriginal(doc, recordId, seqNumbers);
-      if (doc.getNumberOfPages() == 0) {
-        throw new IOException("Record " + recordId + " produced no pages");
-      }
-      doc.save(target.toFile());
-      return doc.getNumberOfPages();
-    }
-  }
-
   /** Draws the scans with their invisible text layers into an open document. */
   private void renderOriginal(PDDocument doc, Long recordId, List<Integer> seqNumbers)
       throws IOException {
