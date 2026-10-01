@@ -614,4 +614,117 @@ class PageMoveTest {
     assertThat(pageIds(b)).endsWith(moving);
     assertThat(seqs(b)).containsExactly(1, 2);
   }
+
+  // --- tests: split ------------------------------------------------------------------------
+
+  private String splitBody(int at, String title) {
+    return "{\"splitAtSeq\":%d,\"title\":\"%s\"}".formatted(at, title);
+  }
+
+  @Test
+  void splitMovesTheTailIntoANewRecordThatInheritsWhatItShould() throws Exception {
+    long a = recordWithPages("a", 5);
+    jdbc.sql(
+            "UPDATE record SET lang = 'cs', metadata_lang = 'de', ocr_engine = 'ocr_page_transkribus',"
+                + " translation_quality = 'best', reference_code = '114-3-17' WHERE id = :r")
+        .param("r", a)
+        .update();
+    List<Long> pages = pageIds(a);
+    long jobsBefore = count("SELECT count(*) FROM job");
+
+    JsonNode out = ok(post("/admin/records/" + a + "/split", splitBody(4, "Second half")));
+
+    long created = out.get("newRecordId").asLong();
+    assertThat(created).isNotEqualTo(a);
+    assertThat(pageIds(a)).containsExactly(pages.get(0), pages.get(1), pages.get(2));
+    assertThat(pageIds(created)).containsExactly(pages.get(3), pages.get(4));
+    assertThat(seqs(created)).containsExactly(1, 2);
+    // the new record inherits what a split of one document should: it is not a new acquisition
+    assertThat(one("SELECT archive_id FROM record WHERE id = ?", created)).isEqualTo(archive);
+    var row =
+        jdbc.sql(
+                "SELECT lang, metadata_lang, ocr_engine, translation_quality, reference_code,"
+                    + " title, status, page_count FROM record WHERE id = :r")
+            .param("r", created)
+            .query()
+            .singleRow();
+    assertThat(row.get("lang")).isEqualTo("cs");
+    assertThat(row.get("metadata_lang")).isEqualTo("de");
+    assertThat(row.get("ocr_engine")).isEqualTo("ocr_page_transkribus");
+    assertThat(row.get("translation_quality")).isEqualTo("best");
+    assertThat(row.get("reference_code")).isEqualTo("114-3-17");
+    assertThat(row.get("title")).isEqualTo("Second half");
+    assertThat(row.get("status")).isEqualTo("complete");
+    assertThat(((Number) row.get("page_count")).intValue()).isEqualTo(2);
+    // everything moved with its pages, and nothing was queued
+    assertThat(
+            count(
+                "SELECT count(*) FROM page_text WHERE page_id IN (?, ?)",
+                pages.get(3),
+                pages.get(4)))
+        .isEqualTo(2);
+    assertThat(count("SELECT count(*) FROM text_chunk WHERE record_id = ?", created)).isEqualTo(2);
+    assertThat(count("SELECT count(*) FROM job")).isEqualTo(jobsBefore);
+  }
+
+  @Test
+  void theEnglishTitleIsSuppliedNotGenerated() throws Exception {
+    long a = recordWithPages("a", 3);
+
+    JsonNode out =
+        ok(
+            post(
+                "/admin/records/" + a + "/split",
+                "{\"splitAtSeq\":2,\"title\":\"Zweite\",\"titleEn\":\"Second\","
+                    + "\"descriptionEn\":\"The second part\"}"));
+
+    long created = out.get("newRecordId").asLong();
+    var row =
+        jdbc.sql("SELECT title_en, description_en FROM record WHERE id = :r")
+            .param("r", created)
+            .query()
+            .singleRow();
+    assertThat(row.get("title_en")).isEqualTo("Second");
+    assertThat(row.get("description_en")).isEqualTo("The second part");
+  }
+
+  @Test
+  void aSplitIsRefusedAtThePointsThatWouldLeaveARecordEmptyAndCreatesNothing() throws Exception {
+    long a = recordWithPages("a", 3);
+    long recordsBefore = count("SELECT count(*) FROM record");
+
+    for (String body :
+        List.of(
+            splitBody(1, "x"), // would empty the source
+            splitBody(0, "x"),
+            splitBody(-2, "x"),
+            splitBody(4, "x"), // beyond the last page
+            "{\"splitAtSeq\":2}", // no title
+            "{\"splitAtSeq\":2,\"title\":\"   \"}",
+            "{\"title\":\"x\"}", // no split point
+            "{\"splitAtSeq\":\"two\",\"title\":\"x\"}")) {
+      assertThat(post("/admin/records/" + a + "/split", body).statusCode()).as(body).isEqualTo(400);
+    }
+    assertThat(count("SELECT count(*) FROM record")).isEqualTo(recordsBefore);
+    assertThat(seqs(a)).containsExactly(1, 2, 3);
+  }
+
+  @Test
+  void aSplitOfARecordThatCannotBeMovedCreatesNothing() throws Exception {
+    long a = recordWithPages("a", 3);
+    jdbc.sql("UPDATE record SET ai_held_at = now() WHERE id = :r").param("r", a).update();
+    long recordsBefore = count("SELECT count(*) FROM record");
+
+    assertThat(post("/admin/records/" + a + "/split", splitBody(2, "x")).statusCode())
+        .isEqualTo(409);
+
+    assertThat(count("SELECT count(*) FROM record")).isEqualTo(recordsBefore);
+    assertThat(seqs(a)).containsExactly(1, 2, 3);
+  }
+
+  @Test
+  void splittingAnUnknownRecordIsNotFound() throws Exception {
+    assertThat(post("/admin/records/99999999/split", splitBody(2, "x")).statusCode())
+        .isEqualTo(404);
+  }
 }

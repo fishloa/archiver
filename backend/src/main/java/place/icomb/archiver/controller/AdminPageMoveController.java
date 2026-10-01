@@ -45,6 +45,39 @@ public class AdminPageMoveController {
     }
   }
 
+  @PostMapping("/records/{recordId}/split")
+  public ResponseEntity<Map<String, Object>> split(
+      @PathVariable long recordId, @RequestBody(required = false) Map<String, Object> body) {
+    try {
+      Map<String, Object> in = body == null ? Map.of() : body;
+      int at = (int) requiredLong(in, "splitAtSeq");
+      var result =
+          moves.split(
+              recordId,
+              at,
+              text(in, "title"),
+              text(in, "description"),
+              text(in, "titleEn"),
+              text(in, "descriptionEn"));
+      Map<String, Object> out = describe(result.moved());
+      out.put("newRecordId", result.newRecordId());
+      return ResponseEntity.ok(out);
+    } catch (PageMoveException e) {
+      return refuse(e);
+    }
+  }
+
+  static String text(Map<String, Object> body, String key) {
+    Object v = body.get(key);
+    if (v == null) {
+      return null;
+    }
+    if (!(v instanceof String s)) {
+      throw new PageMoveException(PageMoveException.Kind.BAD_REQUEST, key + " must be text");
+    }
+    return s;
+  }
+
   static Map<String, Object> describe(PageMoveService.Moved m) {
     Map<String, Object> out = new HashMap<>();
     out.put("pageIds", m.pageIds());

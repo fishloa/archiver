@@ -1,11 +1,14 @@
 package place.icomb.archiver.service;
 
+import java.time.Instant;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import place.icomb.archiver.model.Record;
+import place.icomb.archiver.repository.RecordRepository;
 import place.icomb.archiver.service.PageMoveException.Kind;
 
 /**
@@ -21,10 +24,13 @@ public class PageMoveService {
 
   private final JdbcTemplate jdbc;
   private final RecordEventService recordEventService;
+  private final RecordRepository recordRepository;
 
-  public PageMoveService(JdbcTemplate jdbc, RecordEventService recordEventService) {
+  public PageMoveService(
+      JdbcTemplate jdbc, RecordEventService recordEventService, RecordRepository recordRepository) {
     this.jdbc = jdbc;
     this.recordEventService = recordEventService;
+    this.recordRepository = recordRepository;
   }
 
   /** What a move did. */
@@ -74,6 +80,74 @@ public class PageMoveService {
           "seq %d is outside 1..%d for record %d".formatted(at, targetPages + 1, targetRecordId));
     }
     return moveRun(sourceRecordId, seq, seq, targetRecordId, at);
+  }
+
+  /** A split: the record it made, and the move that filled it. */
+  public record SplitResult(long newRecordId, Moved moved) {}
+
+  /**
+   * Splits a record in two: pages {@code splitAtSeq..end} move to a new record.
+   *
+   * <p>The new record inherits what a split of one document should — archive, languages, OCR
+   * engine, translation quality, reference code — because it is one document recognised as two, not
+   * a new acquisition. It is created {@code complete}: its pages already went through the pipeline.
+   * Its English title is supplied, never generated, because generating it is an AI call.
+   */
+  @Transactional
+  public SplitResult split(
+      long recordId,
+      int splitAtSeq,
+      String title,
+      String description,
+      String titleEn,
+      String descriptionEn) {
+    if (title == null || title.isBlank()) {
+      throw new PageMoveException(Kind.BAD_REQUEST, "title is required for the new record");
+    }
+    Record source =
+        recordRepository
+            .findById(recordId)
+            .orElseThrow(
+                () ->
+                    new PageMoveException(
+                        Kind.NOT_FOUND, "Record %d not found".formatted(recordId)));
+    int pages = pageCount(recordId);
+    if (splitAtSeq < 2 || splitAtSeq > pages) {
+      throw new PageMoveException(
+          Kind.BAD_REQUEST,
+          "splitAtSeq must be from 2 to %d, so that both records keep at least one page"
+              .formatted(pages));
+    }
+    long firstMoved =
+        jdbc.queryForObject(
+            "SELECT id FROM page WHERE record_id = ? AND seq = ?",
+            Long.class,
+            recordId,
+            splitAtSeq);
+
+    Record made = new Record();
+    made.setArchiveId(source.getArchiveId());
+    made.setSourceSystem(source.getSourceSystem());
+    // Unique, and derived from the first page moved: a page moves once, so the id cannot recur.
+    made.setSourceRecordId(source.getSourceRecordId() + "#split-" + firstMoved);
+    made.setTitle(title);
+    made.setDescription(description);
+    made.setTitleEn(titleEn);
+    made.setDescriptionEn(descriptionEn);
+    made.setLang(source.getLang());
+    made.setMetadataLang(source.getMetadataLang());
+    made.setOcrEngine(source.getOcrEngine());
+    made.setTranslationQuality(source.getTranslationQuality());
+    made.setReferenceCode(source.getReferenceCode());
+    made.setStatus("complete");
+    made.setCreatedAt(Instant.now());
+    made.setUpdatedAt(Instant.now());
+    made = recordRepository.save(made);
+
+    Map<Long, Locked> locked = lockRecords(recordId, made.getId());
+    requireMovable(locked, recordId, made.getId(), false, splitAtSeq, pages);
+    Moved moved = moveRun(recordId, splitAtSeq, pages, made.getId(), 1);
+    return new SplitResult(made.getId(), moved);
   }
 
   /**
