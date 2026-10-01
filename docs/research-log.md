@@ -3051,3 +3051,61 @@ they will sit there for ever. `reset-pipeline` is **not** the fix: resetting to
 good OCR to clear a counter. That needs a proper retry endpoint. The failed-job
 list also still holds corpses from `ocr_page_paddle`, `ocr_page_qwen3vl` and
 Helsinki-NLP models, none of which exist any more.
+
+
+### 1 October 2026 — four things arrive, and the open list brought up to date
+
+**HHStA, GZ 2026-0.786.804 — delivered and ingested.** Download link and password
+came as two mails (Zimbra 467428, 467429; filed to /Citizenship). Ten TIFFs in five
+folders, 300 ppi, JPEG-compressed: the JPEG stream inside each strip is a complete
+JPEG, so it was lifted out whole and checked pixel-identical to the TIFF decode —
+no re-render, no downscale. Records **4039** (17-290, marriage announcement of
+22.4.1901), **4040** (17-291, Paul's Partezettel, d. 17.1.1938), **4041** (17-246,
+Felix, 3.1.1968), **4042** (17-309, Wolfgang, 10.10.1982), **4043** (Clary 48-144,
+Jan's Gedenkbild), two pages each, archive 9, Mistral. Noted on arrival, not yet
+discussed: the back of 17-246 is an unrelated Warsaw telegram of 21.4.1917 (a stray
+sheet in the archive's scan); Clary's two pages are in reverse order (prayer-card
+verso first); Mistral reads *Czernin von Chudenitz* as *"Ezerhin von Ebudenih"* and
+the like in 4039/4040 because of the display face (stored as the engine said it; a
+single-page re-read is the user's call); 4040's mourning notice names Wolfgang,
+Johannes and **Alexander** among Paul's sons.
+
+**MA 8 / WStLA, B-MEP-1295012-2026 — Jan's registrations, delivered 25.9.** The EUR 35
+paid on 24.9 bought the delivery, by Vienna cloud link (Nextcloud, password in the
+letter B-MEP-1295012-2026-4, Zimbra 466320), **valid three weeks, to about 16 October**.
+One A4 scan, 2496 x 3488, 300 ppi, ingested as **4045** with the embedded JPEG
+extracted untouched. Not read yet.
+
+**Staatsarchiv Nürnberg — the interrogation is online.** Reply of 29.9 (Ulrich Baur,
+StArchiv-N-A4-5051.16-1729/1/2, Zimbra 467065): *StAN, Nürnberger Prozesse, KV-Anklage,
+Interrogations C 22*, four interrogations of Felix by Verber, 6, 7, 10 and 19
+November 1947 (7+8+6+4 sheets, subject *Dresdner Bank*), is in the virtual reading
+room as a free digitisation; a reproduction would be a paid order; Felix is not
+listed in Case 11. Ingested as **4044**, 29 images. **Lesson:** the server's IIIF
+`full/full` is capped at 5000 px, so the 5480 x 4280 double-leaf pages came back
+shrunk to 5000 x 3905. The first ingest used those; the 26 affected pages were
+re-fetched at native scale as column strips (boundaries on multiples of 16) and
+joined, then replaced in place. The server only delivers JPEG at about quality 75,
+so the join is saved at 97, 4:4:4. **4044 is on AI hold** (its first pipeline
+started before the size was caught; the user stopped it), so nothing further spends
+until it is released. Pages 1, 2 and 29 were already native.
+
+**What is still outstanding, as at 1 October 2026.** Nothing is unsent.
+
+| Request | Sent | State |
+|---|---|---|
+| Bundesarchiv Abt. PA — Wehrstammkarten, Alexander and six siblings | 19.9, +22.9 and +25.9 | auto-acknowledged (DR Tegel); several months; **do not chase**; the historians are waiting on it too |
+| ABS-S 8452/2026 — Czernin line | 14.9 | "supplemented" 20.9; eBadatelna live |
+| Bundesarchiv Berlin — Benutzungsantrag and follow-up | 16.9, 18.9 | acknowledged; they notify on completion; ten free files |
+| BArch-MA Freiburg — Abwehr/Turkey, Felix | 15.9 | several weeks; do not chase |
+| Arolsen — inquiry 2026-09-15-59916 | 15.9 | up to 13 months |
+| TNA FOI reviews — HO 294/592/9583, HO 294/593/9655, HO 405/9351 | 18.9 | acknowledged; due about 16.10 |
+| DÖW — O 5 Generalsekretariat | 18.9 | auto-reply only |
+| Terezín Memorial follow-up | 16.9 | no reply found |
+| ÚSTR — corrected Heydrich-letter question | 18.9 | receipt confirmed 21.9, nothing since |
+| WStLA — Opferfürsorge / Volksgericht holdings (2026-1609131617490) | 18.9 | no reply found |
+
+Closed since 16 September: the AdR Gauakt (Ferdinand dropped), the five WStLA
+registration enquiries, GStA PK, BLHA, Commerzbank (not pursued), ČNB, Národní archiv
+114-3-17 part two, HHStA, Nürnberg. **Still unlocated:** the forced-administration
+order of 12 February 1942 and the SD-Leitabschnitt Wien report PA 3852/41.

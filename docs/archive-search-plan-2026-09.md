@@ -198,3 +198,12 @@ Also awaited: the Národní archiv invoice for the rest of sign. 114-3-17.
   fields plus `ctl00$cphMainArea$txtMitAllenWoertern`. Result paging is a Telerik
   postback that did not reproduce with a plain form POST — narrow the query rather
   than trying to page.
+
+## STATUS — as at 1 October 2026
+
+Nothing is unsent. Delivered since 16 September: HHStA (records 4039–4043), BLHA
+(4025/4026), the AdR Gauakt, WStLA (4021, 4045), GStA PK (4023), the second half of
+114-3-17 (4028–4038), Nürnberg C 22 (4044, on hold). The open requests, with their
+state, are tabled at the end of the research log under *1 October 2026*; the ones that
+matter for the §58c file are the Bundesarchiv Abt. PA Wehrstammkarten (do not chase)
+and the two unlocated items (the 12 February 1942 order; SD report PA 3852/41).
