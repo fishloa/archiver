@@ -44,8 +44,10 @@ lint-entity:
 dev-frontend:
 	cd frontend && bun run dev
 
+# vitest runs the suite (it resolves SvelteKit's $env aliases; bare `bun test` cannot). The i18n
+# completeness check is excluded from vitest on purpose and runs under bun.
 test-frontend:
-	cd frontend && bun test
+	cd frontend && bun run test && bun test tests/i18n-completeness.test.ts
 
 lint-frontend:
 	cd frontend && npx eslint . && npx prettier --check .

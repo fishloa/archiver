@@ -130,7 +130,7 @@ make dev-frontend         # cd frontend && bun run dev
 make test-backend         # cd backend && ./gradlew test
 make test-scraper         # cd scraper-cz && pytest -v
 make test-entity          # cd entity-worker && pytest -v
-make test-frontend        # cd frontend && bun test
+make test-frontend        # cd frontend && bun run test (vitest) + the i18n check
 make test                 # all of the above
 make lint                 # all linters (spotless, ruff, eslint+prettier)
 make test-smoke           # web/test-endpoints.sh (quick endpoint smoke test)
