@@ -359,12 +359,10 @@ class PdfExportApiTest {
 
   @Test
   void theSynchronousPdfUrlsNoLongerExist() throws Exception {
-    // GlobalExceptionHandler's catch-all reports an unmapped URL (and the method mismatch on
-    // /records/{id}/pdf, which still takes the scraper's POST upload) as 500, not 404; either
-    // way the old GETs no longer serve a PDF.
-    assertThat(get("/records/" + record + "/pdf", true).statusCode()).isGreaterThanOrEqualTo(400);
+    // both synchronous addresses are gone altogether
+    assertThat(get("/records/" + record + "/pdf", true).statusCode()).isEqualTo(404);
     assertThat(get("/records/" + record + "/export-pdf?pages=1-3", true).statusCode())
-        .isGreaterThanOrEqualTo(400);
+        .isEqualTo(404);
   }
 
   @Test
