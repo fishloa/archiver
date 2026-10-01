@@ -104,6 +104,13 @@ public class PageMoveService {
     if (title == null || title.isBlank()) {
       throw new PageMoveException(Kind.BAD_REQUEST, "title is required for the new record");
     }
+    // Lock the source before reading anything that decides the range, so a concurrent move or
+    // split cannot make the page count or the first moved page stale.
+    List<Long> lockedSource =
+        jdbc.queryForList("SELECT id FROM record WHERE id = ? FOR UPDATE", Long.class, recordId);
+    if (lockedSource.isEmpty()) {
+      throw new PageMoveException(Kind.NOT_FOUND, "Record %d not found".formatted(recordId));
+    }
     Record source =
         recordRepository
             .findById(recordId)
@@ -128,8 +135,21 @@ public class PageMoveService {
     Record made = new Record();
     made.setArchiveId(source.getArchiveId());
     made.setSourceSystem(source.getSourceSystem());
-    // Unique, and derived from the first page moved: a page moves once, so the id cannot recur.
-    made.setSourceRecordId(source.getSourceRecordId() + "#split-" + firstMoved);
+    // A page can move back and the source be split at the same seq again, so the id from the
+    // first page moved can already be taken; count up until it is free (the source is locked).
+    String baseId = source.getSourceRecordId() + "#split-" + firstMoved;
+    String sourceRecordId = baseId;
+    for (int n = 2;
+        jdbc.queryForObject(
+                "SELECT count(*) FROM record WHERE source_system = ? AND source_record_id = ?",
+                Long.class,
+                source.getSourceSystem(),
+                sourceRecordId)
+            > 0;
+        n++) {
+      sourceRecordId = baseId + "-" + n;
+    }
+    made.setSourceRecordId(sourceRecordId);
     made.setTitle(title);
     made.setDescription(description);
     made.setTitleEn(titleEn);

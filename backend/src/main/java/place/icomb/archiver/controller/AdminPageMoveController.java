@@ -50,7 +50,7 @@ public class AdminPageMoveController {
       @PathVariable long recordId, @RequestBody(required = false) Map<String, Object> body) {
     try {
       Map<String, Object> in = body == null ? Map.of() : body;
-      int at = (int) requiredLong(in, "splitAtSeq");
+      int at = requiredInt(in, "splitAtSeq");
       var result =
           moves.split(
               recordId,

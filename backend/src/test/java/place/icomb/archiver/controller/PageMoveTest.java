@@ -727,4 +727,34 @@ class PageMoveTest {
     assertThat(post("/admin/records/99999999/split", splitBody(2, "x")).statusCode())
         .isEqualTo(404);
   }
+
+  @Test
+  void aSplitPointBeyondIntRangeIsRefusedAndCreatesNothing() throws Exception {
+    long a = recordWithPages("a", 3);
+    long recordsBefore = count("SELECT count(*) FROM record");
+    assertThat(
+            post("/admin/records/" + a + "/split", splitBody(2, "x").replace("2", "4294967298"))
+                .statusCode())
+        .isEqualTo(400);
+    assertThat(count("SELECT count(*) FROM record")).isEqualTo(recordsBefore);
+  }
+
+  @Test
+  void splittingAgainAtTheSameSeqAfterAPageMovedBackGetsADistinctSourceId() throws Exception {
+    long a = recordWithPages("a", 3);
+    long first =
+        ok(post("/admin/records/" + a + "/split", splitBody(3, "one"))).get("newRecordId").asLong();
+    long page = pageIds(first).get(0);
+    ok(post(movePath(first, page), "{\"targetRecordId\":" + a + "}"));
+    assertThat(seqs(a)).containsExactly(1, 2, 3);
+    long second =
+        ok(post("/admin/records/" + a + "/split", splitBody(3, "two"))).get("newRecordId").asLong();
+    assertThat(second).isNotEqualTo(first);
+    assertThat(
+            count(
+                "SELECT count(DISTINCT source_record_id) FROM record WHERE id IN (?, ?)",
+                first,
+                second))
+        .isEqualTo(2);
+  }
 }
