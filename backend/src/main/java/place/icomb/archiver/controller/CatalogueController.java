@@ -183,7 +183,6 @@ public class CatalogueController {
         r.getFindingAidNumber(),
         r.getIndexTerms(),
         r.getRawSourceMetadata(),
-        r.getPdfAttachmentId(),
         r.getTitleEn(),
         r.getDescriptionEn(),
         r.getAttachmentCount(),

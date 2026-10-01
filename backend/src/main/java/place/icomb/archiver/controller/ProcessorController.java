@@ -238,37 +238,6 @@ public class ProcessorController {
   }
 
   // -------------------------------------------------------------------------
-  // Searchable PDF upload
-  // -------------------------------------------------------------------------
-
-  @PostMapping(
-      value = "/records/{recordId}/searchable-pdf",
-      consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-  public ResponseEntity<Map<String, Object>> uploadSearchablePdf(
-      @RequestHeader("Authorization") String authHeader,
-      @PathVariable Long recordId,
-      @RequestPart("pdf") MultipartFile pdf)
-      throws IOException {
-    validateToken(authHeader);
-
-    String path =
-        storageService.storeDerivStream(recordId, "pdf", "searchable.pdf", pdf.getInputStream());
-
-    Attachment attachment = new Attachment();
-    attachment.setRecordId(recordId);
-    attachment.setRole("searchable_pdf");
-    attachment.setPath(path);
-    attachment.setMime("application/pdf");
-    attachment.setBytes(pdf.getSize());
-    attachment.setCreatedAt(Instant.now());
-    attachmentRepository.save(attachment);
-
-    return ResponseEntity.status(HttpStatus.CREATED)
-        .body(Map.of("recordId", recordId, "path", path));
-  }
-
-  // -------------------------------------------------------------------------
-  // -------------------------------------------------------------------------
   // Embedding storage
   // -------------------------------------------------------------------------
 

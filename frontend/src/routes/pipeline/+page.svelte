@@ -4,7 +4,6 @@
 	import {
 		Inbox,
 		ScanText,
-		FileText,
 		Languages,
 		BrainCircuit,
 		CircleCheckBig,
@@ -92,7 +91,6 @@
 	}> = $derived({
 		Ingested:      { icon: Inbox,          color: '#a78bfa', dimBg: 'rgba(167,139,250,0.08)', borderColor: 'rgba(167,139,250,0.35)', desc: $t('pipeline.desc.inbox') },
 		OCR:           { icon: ScanText,       color: '#f59e0b', dimBg: 'rgba(245,158,11,0.08)',  borderColor: 'rgba(245,158,11,0.35)',  desc: $t('pipeline.desc.ocr') },
-		'PDF Build':   { icon: FileText,       color: '#f472b6', dimBg: 'rgba(244,114,182,0.08)', borderColor: 'rgba(244,114,182,0.35)', desc: $t('pipeline.desc.pdf') },
 		Translation:   { icon: Languages,      color: '#38bdf8', dimBg: 'rgba(56,189,248,0.08)',  borderColor: 'rgba(56,189,248,0.35)',  desc: $t('pipeline.desc.translation') },
 		Embedding:     { icon: BrainCircuit,   color: '#c084fc', dimBg: 'rgba(192,132,252,0.08)', borderColor: 'rgba(192,132,252,0.35)', desc: $t('pipeline.desc.embedding') },
 		Complete:      { icon: CircleCheckBig, color: '#34d399', dimBg: 'rgba(52,211,153,0.08)',  borderColor: 'rgba(52,211,153,0.35)',  desc: $t('pipeline.desc.completed') }

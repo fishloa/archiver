@@ -21,7 +21,6 @@ public record RecordResponse(
     String findingAidNumber,
     java.util.List<String> indexTerms,
     String rawSourceMetadata,
-    Long pdfAttachmentId,
     String titleEn,
     String descriptionEn,
     int attachmentCount,

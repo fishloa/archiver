@@ -15,7 +15,6 @@ import java.util.Map;
 public final class PipelineStages {
 
   public static final String OCR = "OCR";
-  public static final String PDF_BUILD = "PDF Build";
   public static final String EMBEDDING = "Embedding";
   public static final String TRANSLATION = "Translation";
   public static final String MATCHING = "Person matching";
@@ -24,7 +23,6 @@ public final class PipelineStages {
 
   static {
     KINDS.put(OCR, List.of("ocr_page_mistral", "ocr_page_claude", "ocr_page_qwen3vl"));
-    KINDS.put(PDF_BUILD, List.of("build_searchable_pdf"));
     KINDS.put(EMBEDDING, List.of("embed_record"));
     KINDS.put(TRANSLATION, List.of("translate_page", "translate_page_upgrade", "translate_record"));
     KINDS.put(MATCHING, List.of("match_persons"));

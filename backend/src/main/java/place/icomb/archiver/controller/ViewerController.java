@@ -299,17 +299,6 @@ public class ViewerController {
     ocrStage.put("batched", true);
     stages.add(ocrStage);
 
-    stages.add(
-        buildStage(
-            "PDF Build",
-            "pdf_pending",
-            recordsByStatus,
-            pagesByStatus,
-            new String[] {"build_searchable_pdf"},
-            jobsByKind,
-            workerCounts,
-            modelsByKind));
-
     // Embedding before translation: it no longer waits for it. Chunks are built from the
     // ORIGINAL text, so search comes back as soon as embedding finishes, while translation —
     // by far the slowest stage — runs behind it. Showing them the other way round implied a
@@ -344,13 +333,9 @@ public class ViewerController {
 
     // "Complete" aggregates terminal statuses
     long doneRecords =
-        recordsByStatus.getOrDefault("ocr_done", 0L)
-            + recordsByStatus.getOrDefault("pdf_done", 0L)
-            + recordsByStatus.getOrDefault("complete", 0L);
+        recordsByStatus.getOrDefault("ocr_done", 0L) + recordsByStatus.getOrDefault("complete", 0L);
     long donePages =
-        pagesByStatus.getOrDefault("ocr_done", 0L)
-            + pagesByStatus.getOrDefault("pdf_done", 0L)
-            + pagesByStatus.getOrDefault("complete", 0L);
+        pagesByStatus.getOrDefault("ocr_done", 0L) + pagesByStatus.getOrDefault("complete", 0L);
     Map<String, Object> completeStage = new LinkedHashMap<>();
     completeStage.put("name", "Complete");
     completeStage.put("records", doneRecords);

@@ -812,8 +812,7 @@ public class AdminPipelineController {
         SELECT DISTINCT r.id AS record_id, r.lang
         FROM record r
         JOIN page p ON p.record_id = r.id
-        WHERE r.status IN ('ocr_done', 'pdf_pending', 'pdf_done',
-                           'translating', 'embedding', 'complete')
+        WHERE r.status IN ('ocr_done', 'translating', 'embedding', 'complete')
           AND NOT EXISTS (
             SELECT 1 FROM job j
             WHERE j.record_id = r.id AND j.kind = ?

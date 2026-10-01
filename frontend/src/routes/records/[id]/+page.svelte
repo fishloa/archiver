@@ -168,7 +168,7 @@
 </div>
 
 <!-- Action bar -->
-{#if record.sourceUrl || record.pdfAttachmentId || pages.length > 0}
+{#if record.sourceUrl || pages.length > 0}
 	<div class="flex flex-wrap items-center gap-3 mb-6 py-3 px-4 rounded-lg bg-surface border border-border vui-animate-fade-in">
 		<!--
 			Left: choose what to export and get it. The page picker feeds the download button

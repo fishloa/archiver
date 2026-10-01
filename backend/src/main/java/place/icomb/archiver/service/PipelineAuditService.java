@@ -184,17 +184,16 @@ public class PipelineAuditService {
     }
     total += ocrPendingAllDone.size();
 
-    // --- Pass 4: ocr_done records with no build_searchable_pdf job ---
+    // --- Pass 4: ocr_done records that never advanced. ocr_done is transient: the state
+    //     machine carries a record straight on to translating or embedding, so one that has
+    //     sat here for a while was interrupted. The age bound keeps the audit off a record
+    //     whose transition is still in flight. ---
     List<Long> ocrDoneStuck =
         jdbcTemplate.queryForList(
             """
             SELECT r.id FROM record r
             WHERE r.status = 'ocr_done'
-              AND NOT EXISTS (
-                SELECT 1 FROM job j
-                WHERE j.record_id = r.id
-                  AND j.kind = 'build_searchable_pdf'
-              )
+              AND r.updated_at < now() - interval '5 minutes'
             ORDER BY r.id
             """,
             Long.class);
@@ -205,69 +204,26 @@ public class PipelineAuditService {
     }
     total += ocrDoneStuck.size();
 
-    // --- Pass 4b: pdf_pending records with 0 pages (skip PDF, go to translating) ---
-    List<Long> noPageRecords =
+    // --- Pass 5: legacy pdf_pending / pdf_done records. The PDF stage no longer exists (every
+    //     PDF is built on demand). Such a record already had its translation jobs queued on
+    //     leaving ocr_done, so it rejoins the pipeline at translating; pass 7 then advances it
+    //     once those jobs are done, and the embedding passes queue what is missing. ---
+    List<Long> legacyPdfStage =
         jdbcTemplate.queryForList(
             """
             SELECT r.id FROM record r
-            WHERE r.status = 'pdf_pending'
-              AND NOT EXISTS (SELECT 1 FROM page p WHERE p.record_id = r.id)
+            WHERE r.status IN ('pdf_pending', 'pdf_done')
             ORDER BY r.id
             """,
             Long.class);
 
-    for (Long recordId : noPageRecords) {
-      // The state machine owns the skip (PDF_PENDING → PDF_DONE when a record has no pages),
-      // including cancelling the build_searchable_pdf job that can never be satisfied.
-      log.info("Audit: record {} pdf_pending with 0 pages, skipping PDF", recordId);
-      stateMachine.autoAdvance(recordId);
+    for (Long recordId : legacyPdfStage) {
+      log.info("Audit: record {} in retired PDF stage, moving to translating", recordId);
+      jdbcTemplate.update(
+          "UPDATE record SET status = 'translating', updated_at = now() WHERE id = ?", recordId);
+      recordEventService.recordChanged(recordId, "status");
     }
-    total += noPageRecords.size();
-
-    // --- Pass 5: pdf_pending records whose build_searchable_pdf job is completed
-    //             but the record never transitioned to pdf_done ---
-    List<Long> pdfPendingStuck =
-        jdbcTemplate.queryForList(
-            """
-            SELECT r.id FROM record r
-            WHERE r.status = 'pdf_pending'
-              AND EXISTS (
-                SELECT 1 FROM job j
-                WHERE j.record_id = r.id
-                  AND j.kind = 'build_searchable_pdf'
-                  AND j.status = 'completed'
-              )
-              AND EXISTS (
-                SELECT 1 FROM attachment a
-                WHERE a.record_id = r.id
-                  AND a.role = 'searchable_pdf'
-              )
-            ORDER BY r.id
-            """,
-            Long.class);
-
-    for (Long recordId : pdfPendingStuck) {
-      log.info("Audit: nudging pdf_pending for record {}", recordId);
-      stateMachine.autoAdvance(recordId);
-    }
-    total += pdfPendingStuck.size();
-
-    // --- Pass 6: Migrate pdf_done records to translating or complete ---
-    //     Records stuck in pdf_done from before the translating status was added.
-    List<Long> pdfDoneStuck =
-        jdbcTemplate.queryForList(
-            """
-        SELECT r.id FROM record r
-        WHERE r.status = 'pdf_done'
-        ORDER BY r.id
-        """,
-            Long.class);
-
-    for (Long recordId : pdfDoneStuck) {
-      log.info("Audit: advancing stuck pdf_done record {}", recordId);
-      stateMachine.autoAdvance(recordId);
-    }
-    total += pdfDoneStuck.size();
+    total += legacyPdfStage.size();
 
     // --- Pass 7: Stuck translating records where all translation jobs are actually done ---
     List<Long> translatingDone =
@@ -416,8 +372,8 @@ public class PipelineAuditService {
 
     log.info(
         "Pipeline audit complete: {} stale jobs reset, {} failed retried, {} ingesting fixed, "
-            + "{} ocr_pending text-done, {} ocr_done re-queued, {} pdf_pending nudged, "
-            + "{} pdf_done advanced, {} translating→embedding, "
+            + "{} ocr_pending text-done, {} ocr_done re-queued, {} legacy pdf stage moved, "
+            + "{} translating→embedding, "
             + "{} translation events backfilled, "
             + "{} embedding advanced, {} embedding re-queued, {} matching advanced, "
             + "{} complete→embedding backfill ({} total)",
@@ -426,8 +382,7 @@ public class PipelineAuditService {
         ingestingStuck.size(),
         ocrPendingAllDone.size(),
         ocrDoneStuck.size(),
-        pdfPendingStuck.size(),
-        pdfDoneStuck.size(),
+        legacyPdfStage.size(),
         translatingDone.size(),
         translationEventsMissing.size(),
         embeddingDone.size(),

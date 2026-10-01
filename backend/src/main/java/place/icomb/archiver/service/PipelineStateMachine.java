@@ -42,9 +42,7 @@ public class PipelineStateMachine {
     // Lazily loaded
     private Boolean hasPages;
     private Boolean allOcrJobsComplete;
-    private Boolean pdfJobComplete;
     private Boolean allTranslationJobsComplete;
-    private Boolean hasTranslationJobs;
     private Boolean embedJobComplete;
     private Boolean matchJobComplete;
     private Boolean hasPrePopulatedText;
@@ -73,7 +71,7 @@ public class PipelineStateMachine {
         //
         // This guard used to count only pending and claimed jobs. That is vacuously true when
         // no jobs were ever created, so a record whose enqueue was interrupted advanced
-        // straight through PDF, translation and embedding to `complete` with most of its pages
+        // straight through translation and embedding to `complete` with most of its pages
         // never transcribed. 1,569 records reached `complete` that way, 320 of them with no
         // text whatsoever, and nothing anywhere reported a problem.
         //
@@ -107,28 +105,6 @@ public class PipelineStateMachine {
       return allOcrJobsComplete;
     }
 
-    boolean pdfJobComplete() {
-      if (pdfJobComplete == null) {
-        // Requires the artifact, not merely a job row saying one was once built. Counting
-        // completed jobs alone made this guard true forever: a record reset to ocr_pending
-        // still carries the build_searchable_pdf job from its previous cycle, so the state
-        // machine jumped straight to PDF_DONE and then failed looking up an attachment the
-        // reset had deleted — taking the whole autoAdvance chain down with it. Both reset
-        // paths delete the searchable_pdf attachment, so its presence tracks the current
-        // cycle exactly.
-        Long built =
-            jdbc.queryForObject(
-                """
-                SELECT count(*) FROM attachment
-                WHERE record_id = ? AND role = 'searchable_pdf'
-                """,
-                Long.class,
-                recordId);
-        pdfJobComplete = built != null && built > 0;
-      }
-      return pdfJobComplete;
-    }
-
     boolean allTranslationJobsComplete() {
       if (allTranslationJobsComplete == null) {
         Long pending =
@@ -144,23 +120,6 @@ public class PipelineStateMachine {
         allTranslationJobsComplete = pending != null && pending == 0;
       }
       return allTranslationJobsComplete;
-    }
-
-    boolean hasTranslationJobs() {
-      if (hasTranslationJobs == null) {
-        Long count =
-            jdbc.queryForObject(
-                """
-                SELECT count(*) FROM job
-                WHERE record_id = ?
-                  AND kind IN ('translate_page', 'translate_page_upgrade', 'translate_record')
-                  AND status != 'completed'
-                """,
-                Long.class,
-                recordId);
-        hasTranslationJobs = count != null && count > 0;
-      }
-      return hasTranslationJobs;
     }
 
     boolean embedJobComplete() {
@@ -270,67 +229,27 @@ public class PipelineStateMachine {
         RecordContext::allOcrJobsComplete,
         ctx -> logPipelineEvent(ctx.recordId, "ocr", "completed", null));
 
-    // OCR_DONE → PDF_PENDING: has pages (enqueue PDF + translations)
-    addTransition(
-        OCR_DONE, PDF_PENDING, RecordContext::hasPages, ctx -> enqueuePostOcrJobs(ctx, true));
-
-    // OCR_DONE → TRANSLATING: no pages but has translations to do
+    // OCR_DONE → TRANSLATING: translation work to do. Translation jobs and the embed job are
+    // both queued here. Embedding starts here, not after translation: chunks are built from the
+    // ORIGINAL text, so embedding never needed the translation, and waiting for it left
+    // semantic search dead for the whole length of a translation run. Translation is by far the
+    // slowest stage (~45 pages/min against OCR's ~500).
     addTransition(
         OCR_DONE,
         TRANSLATING,
-        ctx -> !ctx.hasPages() && needsTranslation(ctx),
-        ctx -> enqueuePostOcrJobs(ctx, false));
-
-    // OCR_DONE → EMBEDDING: no pages and no translation needed
-    addTransition(
-        OCR_DONE,
-        EMBEDDING,
-        ctx -> !ctx.hasPages() && !needsTranslation(ctx),
-        ctx -> enqueueEmbedJob(ctx.recordId));
-
-    // PDF_PENDING → PDF_DONE: PDF job complete
-    addTransition(
-        PDF_PENDING, PDF_DONE, RecordContext::pdfJobComplete, ctx -> setPdfAttachmentId(ctx));
-
-    // PDF_PENDING → PDF_DONE: nothing to build. A record with no pages can never gain a
-    // searchable_pdf attachment, so pdfJobComplete() is false forever and the record sits in
-    // pdf_pending until something outside the state machine shoves it. Model the skip here
-    // instead, so every pdf_pending exit lives in one place.
-    addTransition(
-        PDF_PENDING,
-        PDF_DONE,
-        ctx -> !ctx.hasPages(),
+        this::needsAnyTranslation,
         ctx -> {
-          jdbcTemplate.update(
-              """
-              UPDATE job SET status = 'completed', error = 'skipped (no pages)',
-                finished_at = now()
-              WHERE record_id = ? AND kind = 'build_searchable_pdf'
-                AND status IN ('pending', 'claimed', 'failed')
-              """,
-              ctx.recordId);
-          logPipelineEvent(ctx.recordId, "pdf_build", "completed", "skipped (no pages)");
+          enqueuePostOcrJobs(ctx);
+          enqueueEmbedJob(ctx.recordId);
         });
 
-    // PDF_DONE → TRANSLATING: still has pending translation jobs
-    // Embedding starts here, not after translation. Chunks are built from the ORIGINAL text,
-    // so embedding never needed the translation — yet it used to wait for it, which left
-    // semantic search dead for the whole length of a translation run. Translation is by far
-    // the slowest stage (~45 pages/min against OCR's ~500), so that ordering could hold the
-    // entire archive out of the index for a day or more for no reason at all.
+    // OCR_DONE → EMBEDDING: nothing to translate
     addTransition(
-        PDF_DONE,
-        TRANSLATING,
-        RecordContext::hasTranslationJobs,
-        ctx -> enqueueEmbedJob(ctx.recordId));
-
-    // PDF_DONE → EMBEDDING: no pending translation jobs
-    addTransition(
-        PDF_DONE,
+        OCR_DONE,
         EMBEDDING,
-        ctx -> !ctx.hasTranslationJobs(),
+        ctx -> !needsAnyTranslation(ctx),
         ctx -> {
-          logTranslationCompleteIfNeeded(ctx);
+          enqueuePostOcrJobs(ctx);
           enqueueEmbedJob(ctx.recordId);
         });
 
@@ -341,7 +260,7 @@ public class PipelineStateMachine {
         RecordContext::allTranslationJobsComplete,
         // The embed job was enqueued on entry to TRANSLATING and has very likely finished by
         // now; enqueueing again here would embed the record twice.
-        ctx -> logPipelineEvent(ctx.recordId, "translation", "completed", null));
+        ctx -> logTranslationCompleteIfNeeded(ctx));
 
     // EMBEDDING → MATCHING: embed job complete
     addTransition(
@@ -374,7 +293,7 @@ public class PipelineStateMachine {
 
   /**
    * Evaluates guards from the current state and chains through transitions until no more apply.
-   * E.g. OCR_PENDING → OCR_DONE → PDF_PENDING all in one call. Returns true if any transition
+   * E.g. OCR_PENDING → OCR_DONE → TRANSLATING all in one call. Returns true if any transition
    * occurred.
    */
   @Transactional
@@ -514,15 +433,8 @@ public class PipelineStateMachine {
     jdbcTemplate.execute("NOTIFY ocr_jobs");
   }
 
-  private void enqueuePostOcrJobs(RecordContext ctx, boolean includesPdf) {
+  private void enqueuePostOcrJobs(RecordContext ctx) {
     Long recordId = ctx.recordId;
-
-    if (includesPdf) {
-      jobService.enqueueJob("build_searchable_pdf", recordId, null, null);
-      logPipelineEvent(recordId, "pdf_build", "started", null);
-    } else {
-      logPipelineEvent(recordId, "pdf_build", "completed", "skipped (no pages)");
-    }
 
     String metadataLang = ctx.metadataLang();
     String contentLang = ctx.contentLang();
@@ -567,9 +479,8 @@ public class PipelineStateMachine {
    * <p>For a page that was re-read on a different engine — handwriting sent to Transkribus, say —
    * where re-running the record would be wrong: {@link #autoAdvance} enqueues OCR for every page
    * that has no text and translation for every page that has any, so a record-level pass would
-   * re-translate a hundred pages to fix one. This translates the page that changed, rebuilds the
-   * record's searchable PDF because its text layer is now stale, and re-embeds the record because
-   * its chunks include this page's text.
+   * re-translate a hundred pages to fix one. This translates the page that changed and re-embeds
+   * the record because its chunks include this page's text.
    *
    * <p>Deliberately not a state transition: the record is already complete and stays complete.
    */
@@ -590,10 +501,9 @@ public class PipelineStateMachine {
     }
 
     // Record-level work, queued at most once no matter how many pages are re-transcribed. Without
-    // this guard a 27-page import enqueued 27 PDF rebuilds and 27 re-embeddings of the same three
-    // records: the PDF and the embedding cover the whole record, so the second is pure waste and
-    // embedding is charged per record.
-    enqueueRecordJobUnlessPending("build_searchable_pdf", recordId);
+    // this guard a 27-page import enqueued 27 re-embeddings of the same three records: the
+    // embedding covers the whole record, so the second is pure waste and embedding is charged per
+    // record.
     enqueueRecordJobUnlessPending("embed_record", recordId);
 
     // pipeline_event.event is CHECK-constrained to started/completed/failed/admin_reset/
@@ -602,7 +512,6 @@ public class PipelineStateMachine {
     // exactly what happened to 27 imported pages before it was caught. The page identity belongs
     // in the detail column, which is free text.
     logPipelineEvent(recordId, "ocr", "completed", "page " + pageId + " re-transcribed");
-    logPipelineEvent(recordId, "pdf_build", "started", "page " + pageId + " re-transcribed");
     log.info("Record {} page {}: re-transcribed, downstream jobs enqueued", recordId, pageId);
   }
 
@@ -636,25 +545,11 @@ public class PipelineStateMachine {
     return metadataLang == null || !"en".equals(metadataLang);
   }
 
-  private void setPdfAttachmentId(RecordContext ctx) {
-    // queryForList rather than queryForObject: the latter THROWS on zero rows rather than
-    // returning null, which made the null check below unreachable and turned a missing
-    // attachment into an EmptyResultDataAccessException that rolled back the entire
-    // transition chain.
-    Long pdfAttId =
-        jdbcTemplate
-            .queryForList(
-                "SELECT id FROM attachment WHERE record_id = ? AND role = 'searchable_pdf' ORDER BY id DESC LIMIT 1",
-                Long.class,
-                ctx.recordId)
-            .stream()
-            .findFirst()
-            .orElse(null);
-    if (pdfAttId != null) {
-      jdbcTemplate.update(
-          "UPDATE record SET pdf_attachment_id = ? WHERE id = ?", pdfAttId, ctx.recordId);
-      logPipelineEvent(ctx.recordId, "pdf_build", "completed", "attachment_id=" + pdfAttId);
-    }
+  /** True when OCR_DONE has translation jobs to queue: metadata and/or page translations. */
+  private boolean needsAnyTranslation(RecordContext ctx) {
+    if (needsTranslation(ctx)) return true;
+    String contentLang = ctx.contentLang();
+    return ctx.hasPages() && (contentLang == null || !"en".equals(contentLang));
   }
 
   private void logTranslationCompleteIfNeeded(RecordContext ctx) {
@@ -666,7 +561,7 @@ public class PipelineStateMachine {
     if (totalTranslation == null || totalTranslation == 0) {
       return;
     }
-    // A record can reach PDF_DONE more than once (a reset, or an audit nudge). Logging
+    // A record can reach this point more than once (a reset, or an audit nudge). Logging
     // unconditionally gave those records two "translation completed" events, which the
     // pipeline stats then counted twice.
     Long existing =
@@ -680,7 +575,7 @@ public class PipelineStateMachine {
     if (existing != null && existing > 0) {
       return;
     }
-    logPipelineEvent(ctx.recordId, "translation", "completed", "finished before pdf");
+    logPipelineEvent(ctx.recordId, "translation", "completed", null);
   }
 
   void logPipelineEvent(Long recordId, String stage, String event, String detail) {

@@ -10,8 +10,6 @@
 		ingested: 'vui-badge-info',
 		ocr_pending: 'vui-badge-purple',
 		ocr_done: 'vui-badge-success',
-		pdf_pending: 'vui-badge-info',
-		pdf_done: 'vui-badge-success',
 		translating: 'vui-badge-warning',
 		processing: 'vui-badge-warning',
 		complete: 'vui-badge-success',

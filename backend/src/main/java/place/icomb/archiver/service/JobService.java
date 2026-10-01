@@ -174,7 +174,7 @@ public class JobService {
 
   /**
    * Cleans up downstream pipeline data and resets a record to ocr_pending. Deletes old page_text,
-   * text_chunks, searchable PDF, translations, and cancels pending downstream jobs.
+   * text_chunks, translations, and cancels pending downstream jobs.
    */
   @Transactional
   public void resetForOcr(Long recordId) {
@@ -184,7 +184,7 @@ public class JobService {
         UPDATE job SET status = 'completed', error = 'cancelled for ocr reset',
           finished_at = now()
         WHERE record_id = ?
-          AND kind IN ('build_searchable_pdf', 'translate_page', 'translate_page_upgrade',
+          AND kind IN ('translate_page', 'translate_page_upgrade',
                        'translate_record', 'embed_record', 'match_persons')
           AND status IN ('pending', 'claimed')
         """,
@@ -198,14 +198,10 @@ public class JobService {
         "DELETE FROM page_text WHERE page_id IN (SELECT id FROM page WHERE record_id = ?)",
         recordId);
 
-    // Delete searchable PDF attachment
-    jdbcTemplate.update("UPDATE record SET pdf_attachment_id = NULL WHERE id = ?", recordId);
+    // Clear translated fields. pdf_attachment_id is cleared here: a legacy record may
+    // still point at a stored searchable PDF, and the attachment row and file are left alone.
     jdbcTemplate.update(
-        "DELETE FROM attachment WHERE record_id = ? AND role = 'searchable_pdf'", recordId);
-
-    // Clear translated fields
-    jdbcTemplate.update(
-        "UPDATE record SET title_en = NULL, description_en = NULL, status = 'ocr_pending', updated_at = now() WHERE id = ?",
+        "UPDATE record SET title_en = NULL, description_en = NULL, pdf_attachment_id = NULL, status = 'ocr_pending', updated_at = now() WHERE id = ?",
         recordId);
 
     logPipelineEvent(recordId, "ocr", "started", "reset for ocr");
@@ -225,10 +221,11 @@ public class JobService {
    * How long a claimed job of each kind may run before it is presumed abandoned.
    *
    * <p>A single global threshold cannot distinguish a dead worker from a slow job. The previous
-   * fixed 10 minutes was shorter than the observed maximum for three kinds — build_searchable_pdf
-   * has taken 863s, translate_page 657s, ocr_page_qwen3vl 622s — so seven jobs were reset while
-   * still running and a second worker re-executed them. That is duplicated work, duplicated API
-   * spend, and before the UNIQUE constraint in V26 it also produced duplicate page_text rows.
+   * fixed 10 minutes was shorter than the observed maximum for several kinds — the retired
+   * build_searchable_pdf took 863s, translate_page 657s, ocr_page_qwen3vl 622s — so seven jobs were
+   * reset while still running and a second worker re-executed them. That is duplicated work,
+   * duplicated API spend, and before the UNIQUE constraint in V26 it also produced duplicate
+   * page_text rows.
    *
    * <p>Values are the measured maximum for the kind with generous headroom, not guesses. A kind
    * absent here uses {@link #DEFAULT_LEASE_SECONDS}; keeping that short means genuinely dead jobs
@@ -240,7 +237,6 @@ public class JobService {
    */
   private static final Map<String, Integer> LEASE_SECONDS_BY_KIND =
       Map.of(
-          "build_searchable_pdf", 3600,
           "translate_page", 1800,
           "translate_record", 1800,
           "ocr_page_qwen3vl", 1800,
@@ -347,11 +343,8 @@ public class JobService {
             "DELETE FROM page_text WHERE page_id IN (SELECT id FROM page WHERE record_id = ?)",
             recordId);
 
-        // Delete searchable PDF attachment
-        jdbcTemplate.update(
-            "DELETE FROM attachment WHERE record_id = ? AND role = 'searchable_pdf'", recordId);
-
-        // Clear translated fields and pdf_attachment_id
+        // Clear translated fields and pdf_attachment_id. The pointer is cleared; any legacy
+        // searchable_pdf attachment row and its file are left alone.
         jdbcTemplate.update(
             "UPDATE record SET title_en = NULL, description_en = NULL, pdf_attachment_id = NULL, status = 'ocr_pending', updated_at = now() WHERE id = ?",
             recordId);
@@ -509,7 +502,6 @@ public class JobService {
   /** Returns the Postgres NOTIFY channel name for a given job kind. */
   private static String channelForKind(String kind) {
     return switch (kind) {
-      case "build_searchable_pdf" -> "pdf_jobs";
       case "generate_thumbs" -> "ocr_jobs";
       case "translate_page", "translate_record" -> "translate_jobs";
       case "embed_record" -> "embed_jobs";

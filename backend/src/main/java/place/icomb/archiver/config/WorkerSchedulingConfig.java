@@ -52,7 +52,6 @@ public class WorkerSchedulingConfig implements SchedulingConfigurer {
   private final int translateSyncConcurrency;
   private final long translateSyncPoll;
   private final place.icomb.archiver.service.TranslationService translationService;
-  private final place.icomb.archiver.service.PdfExportService pdfExportService;
   private final org.springframework.jdbc.core.JdbcTemplate jdbcTemplate;
   private final org.springframework.core.env.Environment environment;
   private final place.icomb.archiver.service.PipelineStateMachine pipelineStateMachine;
@@ -79,8 +78,6 @@ public class WorkerSchedulingConfig implements SchedulingConfigurer {
 
   private final int embedConcurrency;
   private final long embedPollInterval;
-  private final int pdfConcurrency;
-  private final long pdfPollInterval;
   private final int pdfExportConcurrency;
   private final place.icomb.archiver.service.PdfExportWorker pdfExportWorker;
 
@@ -101,7 +98,6 @@ public class WorkerSchedulingConfig implements SchedulingConfigurer {
       @Value("${archiver.translate.sync.concurrency:4}") int translateSyncConcurrency,
       @Value("${archiver.translate.sync.poll-interval:2000}") long translateSyncPoll,
       place.icomb.archiver.service.TranslationService translationService,
-      place.icomb.archiver.service.PdfExportService pdfExportService,
       org.springframework.jdbc.core.JdbcTemplate jdbcTemplate,
       org.springframework.core.env.Environment environment,
       place.icomb.archiver.service.PipelineStateMachine pipelineStateMachine,
@@ -124,8 +120,6 @@ public class WorkerSchedulingConfig implements SchedulingConfigurer {
       @Value("${archiver.person-match.poll-interval:5000}") long personMatchPollInterval,
       @Value("${archiver.embed.concurrency:4}") int embedConcurrency,
       @Value("${archiver.embed.poll-interval:5000}") long embedPollInterval,
-      @Value("${archiver.pdf.concurrency:3}") int pdfConcurrency,
-      @Value("${archiver.pdf.poll-interval:5000}") long pdfPollInterval,
       @Value("${archiver.pdf-export.concurrency:2}") int pdfExportConcurrency,
       place.icomb.archiver.service.PdfExportWorker pdfExportWorker) {
     this.jobService = jobService;
@@ -164,11 +158,8 @@ public class WorkerSchedulingConfig implements SchedulingConfigurer {
     this.translateSyncConcurrency = translateSyncConcurrency;
     this.translateSyncPoll = translateSyncPoll;
     this.translationService = translationService;
-    this.pdfExportService = pdfExportService;
     this.embedConcurrency = embedConcurrency;
     this.embedPollInterval = embedPollInterval;
-    this.pdfConcurrency = pdfConcurrency;
-    this.pdfPollInterval = pdfPollInterval;
     this.pdfExportConcurrency = pdfExportConcurrency;
     this.pdfExportWorker = pdfExportWorker;
   }
@@ -335,7 +326,6 @@ public class WorkerSchedulingConfig implements SchedulingConfigurer {
             + (translateBatchEnabled ? 2 : 0)
             + (translateRecordEnabled ? 1 : 0)
             + (personMatchEnabled ? 1 : 0)
-            + pdfConcurrency
             + pdfExportConcurrency
             + (pdfExportConcurrency > 0 ? 1 : 0)
             + embedConcurrency;
@@ -430,26 +420,6 @@ public class WorkerSchedulingConfig implements SchedulingConfigurer {
       // drained independently of the bulk run.
       registerTranslation(registrar, TranslationModels.BULK_MODEL, "translate_page");
       registerTranslation(registrar, TranslationModels.UPGRADE_MODEL, "translate_page_upgrade");
-    }
-
-    // Searchable PDFs are built in-process rather than by a separate service: the invisible
-    // text layer needs the OCR block coordinates and an embedded Unicode font, both of which
-    // already exist here for the on-the-fly exports. A small pool because the work is IO-bound
-    // on reading scans and each job holds a whole record's images in turn.
-    for (int i = 0; i < pdfConcurrency; i++) {
-      var worker =
-          new place.icomb.archiver.service.SearchablePdfWorker(
-              "searchable-pdf-" + i,
-              jobService,
-              jobEventService,
-              pdfExportService,
-              storageService,
-              attachmentRepository);
-      registrar.addFixedDelayTask(worker::pollAndProcess, Duration.ofMillis(pdfPollInterval));
-    }
-    if (pdfConcurrency > 0) {
-      log.info(
-          "Registered {} searchable PDF worker(s) (poll={}ms)", pdfConcurrency, pdfPollInterval);
     }
 
     // On-demand PDF exports. A build holds a scheduler thread for as long as it runs, so each

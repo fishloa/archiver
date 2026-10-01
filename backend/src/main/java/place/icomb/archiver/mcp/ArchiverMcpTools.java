@@ -312,7 +312,7 @@ public class ArchiverMcpTools {
           "List processing jobs, newest first. Filter by record, page, kind or status "
               + "(pending, claimed, completed, failed). This is how a job's id is found. "
               + "Kinds include ocr_page_mistral, ocr_page_transkribus, translate_page, "
-              + "translate_record, build_searchable_pdf, embed_record, match_persons.",
+              + "translate_record, embed_record, match_persons.",
       annotations =
           @McpTool.McpAnnotations(
               title = "List Pipeline Jobs",

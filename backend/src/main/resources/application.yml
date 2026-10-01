@@ -71,10 +71,6 @@ archiver:
     concurrency: ${EMBED_CONCURRENCY:4}
     poll-interval: ${EMBED_POLL_INTERVAL:5000}
     query-prefix: "${EMBED_QUERY_PREFIX:Instruct: Given a research question, retrieve the archive passage that answers it\nQuery: }"
-  pdf:
-    # Searchable PDFs are built in-process (see SearchablePdfWorker), not by a separate service.
-    concurrency: ${PDF_CONCURRENCY:3}
-    poll-interval: ${PDF_POLL_INTERVAL:5000}
   ocr:
     default-engine: ${OCR_DEFAULT_ENGINE:ocr_page_qwen3vl}
     qwen:

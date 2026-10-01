@@ -5,8 +5,6 @@ public enum PipelineState {
   INGESTING,
   OCR_PENDING,
   OCR_DONE,
-  PDF_PENDING,
-  PDF_DONE,
   TRANSLATING,
   EMBEDDING,
   MATCHING,

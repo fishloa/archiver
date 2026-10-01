@@ -18,7 +18,6 @@
 	 */
 	const STAGES: { stage: string; note: string }[] = [
 		{ stage: 'OCR', note: 'Batched at the provider; held work stays queued at our end' },
-		{ stage: 'PDF Build', note: 'Rebuilds the invisible text layer over the scans' },
 		{ stage: 'Embedding', note: 'Powers semantic search; built from the original text, not the translation' },
 		{ stage: 'Translation', note: 'Pages, on-demand upgrades and record metadata' },
 		{ stage: 'Person matching', note: 'Heuristic pass against the family tree' }

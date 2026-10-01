@@ -201,14 +201,14 @@ public class AdminPipelineOpsController {
         """,
             Long.class));
 
-    // ocr_done without post-OCR jobs
+    // ocr_done is transient; one that has sat here has not advanced
     stats.put(
         "ocrDoneNoPostOcrJobs",
         jdbcTemplate.queryForObject(
             """
         SELECT count(*) FROM record r
         WHERE r.status = 'ocr_done'
-          AND NOT EXISTS (SELECT 1 FROM job j WHERE j.record_id = r.id AND j.kind = 'build_searchable_pdf')
+          AND r.updated_at < now() - interval '5 minutes'
         """,
             Long.class));
 

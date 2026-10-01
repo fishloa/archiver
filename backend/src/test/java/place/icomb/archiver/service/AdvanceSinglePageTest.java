@@ -109,11 +109,11 @@ class AdvanceSinglePageTest {
             .params(ids[0])
             .query(String.class)
             .list();
-    assertThat(events).contains("ocr/completed", "pdf_build/started");
+    assertThat(events).contains("ocr/completed");
   }
 
   @Test
-  void enqueuesTranslationForThatPageAndRebuildsTheRecord() {
+  void enqueuesTranslationForThatPageAndReembedsTheRecord() {
     long[] ids = seedRecord("de");
 
     stateMachine.advanceSinglePage(ids[0], ids[1]);
@@ -124,10 +124,10 @@ class AdvanceSinglePageTest {
             .query(String.class)
             .list();
 
-    // The page that changed is translated; the PDF and the embedding are record-level, because the
-    // text layer and the chunks both include this page.
-    assertThat(jobs)
-        .contains("translate_page:" + ids[1], "build_searchable_pdf:-", "embed_record:-");
+    // The page that changed is translated; the embedding is record-level, because the chunks
+    // include this page. No PDF job: every PDF is built on demand.
+    assertThat(jobs).contains("translate_page:" + ids[1], "embed_record:-");
+    assertThat(jobs).doesNotContain("build_searchable_pdf:-");
   }
 
   @Test
@@ -153,8 +153,8 @@ class AdvanceSinglePageTest {
 
   @Test
   void manyPagesOfOneRecordQueueTheRecordLevelWorkOnce() {
-    // A 27-page import enqueued 27 PDF rebuilds and 27 re-embeddings of the same records before
-    // this guard existed. Both jobs cover the whole record, and embedding is charged per record.
+    // A 27-page import enqueued 27 re-embeddings of the same records before this guard
+    // existed. The job covers the whole record, and embedding is charged per record.
     long[] first = seedRecord("de");
     long recordId = first[0];
     Long attachmentId =
@@ -178,11 +178,6 @@ class AdvanceSinglePageTest {
     stateMachine.advanceSinglePage(recordId, first[1]);
     stateMachine.advanceSinglePage(recordId, secondPage);
 
-    Long pdfJobs =
-        jdbc.sql("SELECT count(*) FROM job WHERE record_id = ? AND kind = 'build_searchable_pdf'")
-            .params(recordId)
-            .query(Long.class)
-            .single();
     Long embedJobs =
         jdbc.sql("SELECT count(*) FROM job WHERE record_id = ? AND kind = 'embed_record'")
             .params(recordId)
@@ -194,7 +189,6 @@ class AdvanceSinglePageTest {
             .query(Long.class)
             .single();
 
-    assertThat(pdfJobs).isEqualTo(1);
     assertThat(embedJobs).isEqualTo(1);
     // Translation is per page, so both pages are queued.
     assertThat(translateJobs).isEqualTo(2);

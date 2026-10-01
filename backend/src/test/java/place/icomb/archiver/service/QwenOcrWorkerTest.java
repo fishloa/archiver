@@ -209,13 +209,13 @@ class QwenOcrWorkerTest {
     // Process all pending jobs
     worker.pollAndProcess();
 
-    // Record should now be in pdf_pending (post-OCR pipeline started after both completed)
+    // Record should now be in translating (post-OCR pipeline started after both completed)
     String statusAfterAll =
         jdbc.sql("SELECT status FROM record WHERE id = :id")
             .param("id", recordId)
             .query(String.class)
             .single();
-    assertThat(statusAfterAll).isEqualTo("pdf_pending");
+    assertThat(statusAfterAll).isEqualTo("translating");
 
     // Qwen page_text should exist for both pages
     long qwenCount =
@@ -226,14 +226,14 @@ class QwenOcrWorkerTest {
             .single();
     assertThat(qwenCount).isEqualTo(2);
 
-    // build_searchable_pdf job should be enqueued
+    // No PDF job: every PDF is built on demand
     long pdfJobs =
         jdbc.sql(
-                "SELECT count(*) FROM job WHERE record_id = :rid AND kind = 'build_searchable_pdf' AND status = 'pending'")
+                "SELECT count(*) FROM job WHERE record_id = :rid AND kind = 'build_searchable_pdf'")
             .param("rid", recordId)
             .query(Long.class)
             .single();
-    assertThat(pdfJobs).isEqualTo(1);
+    assertThat(pdfJobs).isZero();
   }
 
   @Test

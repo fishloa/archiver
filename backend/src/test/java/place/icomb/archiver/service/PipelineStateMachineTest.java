@@ -175,10 +175,11 @@ class PipelineStateMachineTest {
 
     boolean advanced = stateMachine.autoAdvance(recordId);
 
-    // Should chain: ocr_pending → ocr_done → pdf_pending (has pages)
+    // Should chain: ocr_pending → ocr_done → translating (has pages), with no PDF stage
     assertThat(advanced).isTrue();
-    assertThat(getRecordStatus(recordId)).isEqualTo("pdf_pending");
-    assertThat(countJobs(recordId, "build_searchable_pdf", "pending")).isEqualTo(1);
+    assertThat(getRecordStatus(recordId)).isEqualTo("translating");
+    assertThat(countJobs(recordId, "translate_page", "pending")).isEqualTo(2);
+    assertThat(countJobs(recordId, "embed_record", "pending")).isEqualTo(1);
   }
 
   @Test
@@ -216,7 +217,7 @@ class PipelineStateMachineTest {
     boolean advanced = stateMachine.autoAdvance(recordId);
 
     assertThat(advanced).isTrue();
-    assertThat(getRecordStatus(recordId)).isEqualTo("pdf_pending");
+    assertThat(getRecordStatus(recordId)).isEqualTo("translating");
   }
 
   @Test
@@ -266,15 +267,15 @@ class PipelineStateMachineTest {
     boolean advanced = stateMachine.autoAdvance(recordId);
 
     assertThat(advanced).isTrue();
-    assertThat(getRecordStatus(recordId)).isEqualTo("pdf_pending");
+    assertThat(getRecordStatus(recordId)).isEqualTo("translating");
   }
 
   // ---------------------------------------------------------------------------
-  // OCR_DONE → PDF_PENDING (has pages) / TRANSLATING (no pages) / EMBEDDING
+  // OCR_DONE → TRANSLATING / EMBEDDING
   // ---------------------------------------------------------------------------
 
   @Test
-  void ocrDoneToPdfPending_whenHasPages() {
+  void ocrDoneToTranslating_whenHasPages() {
     Long archiveId = createArchive();
     Long recordId = createRecord(archiveId, "ocr_done", 1);
     createPage(recordId, 1);
@@ -282,8 +283,7 @@ class PipelineStateMachineTest {
     boolean advanced = stateMachine.autoAdvance(recordId);
 
     assertThat(advanced).isTrue();
-    assertThat(getRecordStatus(recordId)).isEqualTo("pdf_pending");
-    assertThat(countJobs(recordId, "build_searchable_pdf", "pending")).isEqualTo(1);
+    assertThat(getRecordStatus(recordId)).isEqualTo("translating");
     assertThat(countJobs(recordId, "translate_record", "pending")).isEqualTo(1);
     assertThat(countJobs(recordId, "translate_page", "pending")).isEqualTo(1);
   }
@@ -373,46 +373,67 @@ class PipelineStateMachineTest {
     assertThat(countJobs(recordId, "embed_record", "pending")).isEqualTo(1);
   }
 
-  // ---------------------------------------------------------------------------
-  // PDF_PENDING → PDF_DONE → TRANSLATING/EMBEDDING chain
-  // ---------------------------------------------------------------------------
-
   @Test
-  void pdfPendingToPdfDone_thenTranslating() {
+  void ocrDoneToEmbedding_whenHasPages_nothingToTranslate() {
     Long archiveId = createArchive();
-    Long recordId = createRecord(archiveId, "pdf_pending", 1);
+    Long recordId =
+        jdbc.sql(
+                """
+                INSERT INTO record (archive_id, source_system, source_record_id, status, page_count,
+                    attachment_count, lang, metadata_lang, created_at, updated_at)
+                VALUES (:aid, 'test', :srcId, 'ocr_done', 1, 0, 'en', 'en', now(), now())
+                RETURNING id
+                """)
+            .param("aid", archiveId)
+            .param("srcId", "REC-" + System.nanoTime())
+            .query(Long.class)
+            .single();
     Long page1 = createPage(recordId, 1);
-
-    // PDF job completed, attachment exists
-    createJob(recordId, null, "build_searchable_pdf", "completed");
-    createAttachment(recordId, "searchable_pdf");
-    // Translation still pending
-    createJob(recordId, page1, "translate_page", "pending");
+    createPageText(page1);
 
     boolean advanced = stateMachine.autoAdvance(recordId);
 
     assertThat(advanced).isTrue();
-    // Should chain: pdf_pending → pdf_done → translating
-    assertThat(getRecordStatus(recordId)).isEqualTo("translating");
+    assertThat(getRecordStatus(recordId)).isEqualTo("embedding");
+    assertThat(countJobs(recordId, "embed_record", "pending")).isEqualTo(1);
+    assertThat(countJobs(recordId, "translate_page", "pending")).isZero();
   }
 
   @Test
-  void pdfPendingToPdfDone_thenEmbedding_noTranslation() {
+  void fullChain_ocrDoneToComplete_hasNoPdfStep() {
     Long archiveId = createArchive();
-    Long recordId = createRecord(archiveId, "pdf_pending", 1);
-    createPage(recordId, 1);
+    Long recordId = createRecord(archiveId, "ocr_done", 1);
+    Long page1 = createPage(recordId, 1);
+    createPageText(page1);
 
-    // PDF job completed, attachment exists
-    createJob(recordId, null, "build_searchable_pdf", "completed");
-    createAttachment(recordId, "searchable_pdf");
-    // No translation jobs
-
-    boolean advanced = stateMachine.autoAdvance(recordId);
-
-    assertThat(advanced).isTrue();
-    // Should chain: pdf_pending → pdf_done → embedding
-    assertThat(getRecordStatus(recordId)).isEqualTo("embedding");
+    // ocr_done → translating
+    assertThat(stateMachine.autoAdvance(recordId)).isTrue();
+    assertThat(getRecordStatus(recordId)).isEqualTo("translating");
+    assertThat(countJobs(recordId, "build_searchable_pdf", "pending")).isZero();
     assertThat(countJobs(recordId, "embed_record", "pending")).isEqualTo(1);
+
+    // translating → embedding once the translation jobs are done
+    jdbc.sql(
+            "UPDATE job SET status = 'completed' WHERE record_id = :rid AND kind LIKE 'translate%'")
+        .param("rid", recordId)
+        .update();
+    assertThat(stateMachine.autoAdvance(recordId)).isTrue();
+    assertThat(getRecordStatus(recordId)).isEqualTo("embedding");
+
+    // embedding → matching once the embed job is done
+    jdbc.sql("UPDATE job SET status = 'completed' WHERE record_id = :rid AND kind = 'embed_record'")
+        .param("rid", recordId)
+        .update();
+    assertThat(stateMachine.autoAdvance(recordId)).isTrue();
+    assertThat(getRecordStatus(recordId)).isEqualTo("matching");
+
+    // matching → complete once the match job is done
+    jdbc.sql(
+            "UPDATE job SET status = 'completed' WHERE record_id = :rid AND kind = 'match_persons'")
+        .param("rid", recordId)
+        .update();
+    assertThat(stateMachine.autoAdvance(recordId)).isTrue();
+    assertThat(getRecordStatus(recordId)).isEqualTo("complete");
   }
 
   // ---------------------------------------------------------------------------
@@ -444,7 +465,7 @@ class PipelineStateMachineTest {
     // It used to wait for it anyway, which left semantic search dead for the length of a
     // translation run — 27 hours at the measured rate, for no reason.
     Long archiveId = createArchive();
-    Long recordId = createRecord(archiveId, "pdf_done", 1);
+    Long recordId = createRecord(archiveId, "ocr_done", 1);
     Long page1 = createPage(recordId, 1);
     createPageText(page1);
     createJob(recordId, page1, "translate_page", "pending");

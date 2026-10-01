@@ -36,8 +36,6 @@
 		'ingested': 'records.statusIngested',
 		'ocr_pending': 'records.statusOcrPending',
 		'ocr_done': 'records.statusOcrDone',
-		'pdf_pending': 'records.statusPdfPending',
-		'pdf_done': 'records.statusPdfDone',
 		'translating': 'records.statusTranslating',
 		'complete': 'records.statusComplete',
 		'error': 'records.statusError'

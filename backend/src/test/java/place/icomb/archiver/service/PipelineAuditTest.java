@@ -312,22 +312,18 @@ class PipelineAuditTest {
 
   @Test
   void slowKindStillRunning_notReclaimed() {
-    // The bug this guards: build_searchable_pdf has taken 863s in production, translate_page
-    // 657s and ocr_page_qwen3vl 622s. Under a single 10-minute threshold each was reset while
+    // The bug this guards: translate_page has taken 657s in production, build_searchable_pdf
+    // (retired) 863s and ocr_page_qwen3vl 622s. Under a single 10-minute threshold each was reset
+    // while
     // still running, and a second worker re-executed it — duplicate work, duplicate API spend,
     // and (before V26's UNIQUE constraint) duplicate page_text rows.
     Long archiveId = createArchive();
-    Long recordId = createRecord(archiveId, "pdf_pending", 1);
+    Long recordId = createRecord(archiveId, "translating", 1);
     Long pageId = createPage(recordId, 1);
 
     Long jobId =
         createJobWithStartedAt(
-            recordId,
-            pageId,
-            "build_searchable_pdf",
-            "claimed",
-            1,
-            "now() - interval '15 minutes'");
+            recordId, pageId, "translate_page", "claimed", 1, "now() - interval '15 minutes'");
 
     jobService.recoverStaleClaims();
 
@@ -338,12 +334,12 @@ class PipelineAuditTest {
   void slowKindPastItsOwnLease_isReclaimed() {
     // A longer lease is not an unlimited one — past it, the job is still presumed abandoned.
     Long archiveId = createArchive();
-    Long recordId = createRecord(archiveId, "pdf_pending", 1);
+    Long recordId = createRecord(archiveId, "translating", 1);
     Long pageId = createPage(recordId, 1);
 
     Long jobId =
         createJobWithStartedAt(
-            recordId, pageId, "build_searchable_pdf", "claimed", 1, "now() - interval '2 hours'");
+            recordId, pageId, "translate_page", "claimed", 1, "now() - interval '2 hours'");
 
     assertThat(jobService.recoverStaleClaims()).isGreaterThanOrEqualTo(1);
     assertThat(getJobStatus(jobId)).isEqualTo("pending");
@@ -462,13 +458,13 @@ class PipelineAuditTest {
   }
 
   @Test
-  void pass2_failedPdfJob_resetToPending() {
+  void pass2_failedRecordJob_resetToPending() {
     Long archiveId = createArchive();
-    Long recordId = createRecord(archiveId, "pdf_pending", 1);
+    Long recordId = createRecord(archiveId, "translating", 1);
     createPage(recordId, 1);
 
     Long jobId =
-        createJobWithError(recordId, null, "build_searchable_pdf", "failed", 1, "PDF build failed");
+        createJobWithError(recordId, null, "translate_record", "failed", 1, "translate failed");
 
     int fixed = auditService.auditPipeline();
 
@@ -598,32 +594,34 @@ class PipelineAuditTest {
     assertThat(countJobs(recordId, "translate_record", "pending")).isEqualTo(1);
     assertThat(countPipelineEvents(recordId, "ingest", "completed")).isEqualTo(1);
     assertThat(countPipelineEvents(recordId, "ocr", "completed")).isEqualTo(1);
-    assertThat(countPipelineEvents(recordId, "pdf_build", "completed")).isEqualTo(1);
     assertThat(countPipelineEvents(recordId, "translation", "started")).isEqualTo(1);
   }
 
   // ---------------------------------------------------------------------------
-  // Pass 4 — ocr_done without post-OCR jobs
+  // Pass 4 — ocr_done records that never advanced
   // ---------------------------------------------------------------------------
 
+  private void ageRecord(Long recordId) {
+    jdbc.sql("UPDATE record SET updated_at = now() - interval '1 hour' WHERE id = :id")
+        .param("id", recordId)
+        .update();
+  }
+
   @Test
-  void pass4_ocrDoneNoPdfJob_startsPipeline() {
+  void pass4_staleOcrDone_startsPipeline() {
     Long archiveId = createArchive();
     Long recordId = createRecord(archiveId, "ocr_done", 2);
-    Long pageId1 = createPage(recordId, 1);
-    Long pageId2 = createPage(recordId, 2);
-
-    // No build_searchable_pdf job exists yet
+    createPage(recordId, 1);
+    createPage(recordId, 2);
+    ageRecord(recordId);
 
     int fixed = auditService.auditPipeline();
 
     assertThat(fixed).isGreaterThanOrEqualTo(1);
 
-    // Record should transition to pdf_pending
-    assertThat(getRecordStatus(recordId)).isEqualTo("pdf_pending");
-
-    // Should have enqueued a PDF build job
-    assertThat(countJobs(recordId, "build_searchable_pdf", "pending")).isEqualTo(1);
+    // Straight to translating: there is no PDF stage
+    assertThat(getRecordStatus(recordId)).isEqualTo("translating");
+    assertThat(countJobs(recordId, "build_searchable_pdf", "pending")).isZero();
 
     // Should have enqueued a translate_record job
     assertThat(countJobs(recordId, "translate_record", "pending")).isEqualTo(1);
@@ -631,40 +629,22 @@ class PipelineAuditTest {
     // Should have enqueued translate_page jobs for each page (lang is null → not English)
     assertThat(countJobs(recordId, "translate_page", "pending")).isEqualTo(2);
 
-    // Pipeline events: pdf_build started + translation started
-    assertThat(countPipelineEvents(recordId, "pdf_build", "started")).isEqualTo(1);
+    // Embedding starts alongside translation
+    assertThat(countJobs(recordId, "embed_record", "pending")).isEqualTo(1);
     assertThat(countPipelineEvents(recordId, "translation", "started")).isEqualTo(1);
   }
 
   @Test
-  void pass4_ocrDoneWithPdfJob_notRetriggered() {
+  void pass4_freshOcrDone_notTouched() {
+    // ocr_done is transient; a record that only just got there may still be mid-transition.
     Long archiveId = createArchive();
     Long recordId = createRecord(archiveId, "ocr_done", 1);
     createPage(recordId, 1);
-
-    // A PDF job already exists — should not be re-triggered
-    createJob(recordId, null, "build_searchable_pdf", "pending", 0);
-
-    int fixedBefore =
-        jdbc.sql(
-                "SELECT count(*) FROM job WHERE record_id = :rid AND kind = 'build_searchable_pdf'")
-            .param("rid", recordId)
-            .query(Long.class)
-            .single()
-            .intValue();
+    jdbc.sql("UPDATE record SET updated_at = now() WHERE id = :id").param("id", recordId).update();
 
     auditService.auditPipeline();
 
-    // Still ocr_done (startPostOcrPipeline was not called for this record)
     assertThat(getRecordStatus(recordId)).isEqualTo("ocr_done");
-
-    long pdfJobCount =
-        jdbc.sql(
-                "SELECT count(*) FROM job WHERE record_id = :rid AND kind = 'build_searchable_pdf'")
-            .param("rid", recordId)
-            .query(Long.class)
-            .single();
-    assertThat(pdfJobCount).isEqualTo(fixedBefore); // no new PDF job added
   }
 
   @Test
@@ -689,8 +669,7 @@ class PipelineAuditTest {
 
     auditService.auditPipeline();
 
-    assertThat(getRecordStatus(recordId)).isEqualTo("pdf_pending");
-    assertThat(countJobs(recordId, "build_searchable_pdf", "pending")).isEqualTo(1);
+    assertThat(getRecordStatus(recordId)).isEqualTo("translating");
     // No page translation for English content
     assertThat(countJobs(recordId, "translate_page", "pending")).isEqualTo(0);
     // translate_record still runs (metadata may be in another language)
@@ -698,86 +677,32 @@ class PipelineAuditTest {
   }
 
   // ---------------------------------------------------------------------------
-  // Pass 5 — pdf_pending with completed PDF job
+  // Pass 5 — legacy pdf_pending / pdf_done records (the PDF stage is retired)
   // ---------------------------------------------------------------------------
 
   @Test
-  void pass5_pdfPendingWithCompletedJob_transitionsToEmbedding() {
+  void pass5_legacyPdfPending_rejoinsPipelineAtTranslating() {
     Long archiveId = createArchive();
     Long recordId = createRecord(archiveId, "pdf_pending", 1);
-    createPage(recordId, 1);
-
-    // PDF job is completed
-    Long pdfJobId = createJob(recordId, null, "build_searchable_pdf", "completed", 1);
-    jdbc.sql("UPDATE job SET finished_at = now() WHERE id = :id").param("id", pdfJobId).update();
-
-    // searchable_pdf attachment exists
-    Long attId = createAttachment(recordId, "searchable_pdf");
-
-    int fixed = auditService.auditPipeline();
-
-    assertThat(fixed).isGreaterThanOrEqualTo(1);
-    // State machine chains: pdf_pending → pdf_done → embedding (no translations pending)
-    assertThat(getRecordStatus(recordId)).isEqualTo("embedding");
-
-    // pdf_attachment_id should be set on the record
-    Long pdfAttId =
-        jdbc.sql("SELECT pdf_attachment_id FROM record WHERE id = :id")
-            .param("id", recordId)
-            .query(Long.class)
-            .single();
-    assertThat(pdfAttId).isEqualTo(attId);
-
-    // pdf_build completed pipeline event should exist
-    assertThat(countPipelineEvents(recordId, "pdf_build", "completed")).isEqualTo(1);
-    // embed_record job should be enqueued
-    assertThat(countJobs(recordId, "embed_record", "pending")).isEqualTo(1);
-    assertThat(countPipelineEvents(recordId, "embedding", "started")).isEqualTo(1);
-  }
-
-  @Test
-  void pass5_pdfPendingNoAttachment_notTransitioned() {
-    Long archiveId = createArchive();
-    Long recordId = createRecord(archiveId, "pdf_pending", 1);
-    createPage(recordId, 1);
-
-    // PDF job is completed but no attachment uploaded yet
-    Long pdfJobId = createJob(recordId, null, "build_searchable_pdf", "completed", 1);
-    jdbc.sql("UPDATE job SET finished_at = now() WHERE id = :id").param("id", pdfJobId).update();
+    Long pageId = createPage(recordId, 1);
+    createJob(recordId, pageId, "translate_page", "pending", 0);
+    createJob(recordId, null, "build_searchable_pdf", "completed", 1);
 
     auditService.auditPipeline();
 
-    assertThat(getRecordStatus(recordId)).isEqualTo("pdf_pending");
+    assertThat(getRecordStatus(recordId)).isEqualTo("translating");
   }
 
   @Test
-  void pass5_pdfPendingJobNotCompleted_notTransitioned() {
+  void pass5_legacyPdfDone_rejoinsPipeline() {
     Long archiveId = createArchive();
-    Long recordId = createRecord(archiveId, "pdf_pending", 1);
-    createPage(recordId, 1);
-
-    // PDF job still in progress
-    createJob(recordId, null, "build_searchable_pdf", "claimed", 1);
-    createAttachment(recordId, "searchable_pdf");
+    Long recordId = createRecord(archiveId, "pdf_done", 1);
+    Long pageId = createPage(recordId, 1);
+    createJob(recordId, pageId, "translate_page", "pending", 0);
 
     auditService.auditPipeline();
 
-    assertThat(getRecordStatus(recordId)).isEqualTo("pdf_pending");
-  }
-
-  @Test
-  void pass5_pdfPendingNoJob_notTransitioned() {
-    Long archiveId = createArchive();
-    Long recordId = createRecord(archiveId, "pdf_pending", 1);
-    createPage(recordId, 1);
-
-    // No PDF job at all
-    createAttachment(recordId, "searchable_pdf");
-
-    auditService.auditPipeline();
-
-    // No completed PDF job → Pass 5 doesn't match, record stays pdf_pending
-    assertThat(getRecordStatus(recordId)).isEqualTo("pdf_pending");
+    assertThat(getRecordStatus(recordId)).isEqualTo("translating");
   }
 
   // ---------------------------------------------------------------------------
@@ -914,20 +839,6 @@ class PipelineAuditTest {
   }
 
   @Test
-  void pass4b_pdfPendingNoPages_skipsPdfAndCancelsTheJob() {
-    Long archiveId = createArchive();
-    Long recordId = createRecord(archiveId, "pdf_pending", 0);
-    // No pages: a searchable_pdf can never be built, so the job can never be satisfied.
-    createJob(recordId, null, "build_searchable_pdf", "pending", 0);
-
-    auditService.auditPipeline();
-
-    assertThat(getRecordStatus(recordId)).isNotEqualTo("pdf_pending");
-    assertThat(countJobs(recordId, "build_searchable_pdf", "pending")).isEqualTo(0);
-    assertThat(countPipelineEvents(recordId, "pdf_build", "completed")).isEqualTo(1);
-  }
-
-  @Test
   void pass9c_embeddingWithNoEmbedJob_getsOne() {
     Long archiveId = createArchive();
     Long recordId = createRecord(archiveId, "embedding", 1);
@@ -975,6 +886,60 @@ class PipelineAuditTest {
     assertThat(countJobs(recordId, "translate_page_upgrade", "pending")).isEqualTo(0);
   }
 
+  @Test
+  void resetToOcrPending_legacyRecordWithStoredSearchablePdf_resetsCleanly() {
+    // Regression: the reset deleted the searchable_pdf attachment before clearing
+    // record.pdf_attachment_id, so fk_record_pdf_attachment made the endpoint return 500 for any
+    // record that had one. The pointer is now cleared and the legacy attachment is left alone.
+    Long archiveId = createArchive();
+    Long recordId = createRecord(archiveId, "complete", 1);
+    createPage(recordId, 1);
+    Long attId = createAttachment(recordId, "searchable_pdf");
+    jdbc.sql("UPDATE record SET pdf_attachment_id = :att WHERE id = :id")
+        .param("att", attId)
+        .param("id", recordId)
+        .update();
+
+    jobService.resetRecordToStage(recordId, "ocr_pending");
+
+    assertThat(getRecordStatus(recordId)).isEqualTo("ocr_pending");
+    Long pointer =
+        jdbc.sql("SELECT pdf_attachment_id FROM record WHERE id = :id")
+            .param("id", recordId)
+            .query(Long.class)
+            .optional()
+            .orElse(null);
+    assertThat(pointer).isNull();
+    Long remaining =
+        jdbc.sql("SELECT count(*) FROM attachment WHERE id = :id")
+            .param("id", attId)
+            .query(Long.class)
+            .single();
+    assertThat(remaining).isEqualTo(1);
+  }
+
+  @Test
+  void resetForOcr_legacyRecordWithStoredSearchablePdf_resetsCleanly() {
+    Long archiveId = createArchive();
+    Long recordId = createRecord(archiveId, "complete", 1);
+    createPage(recordId, 1);
+    Long attId = createAttachment(recordId, "searchable_pdf");
+    jdbc.sql("UPDATE record SET pdf_attachment_id = :att WHERE id = :id")
+        .param("att", attId)
+        .param("id", recordId)
+        .update();
+
+    jobService.resetForOcr(recordId);
+
+    assertThat(getRecordStatus(recordId)).isEqualTo("ocr_pending");
+    Long remaining =
+        jdbc.sql("SELECT count(*) FROM attachment WHERE id = :id")
+            .param("id", attId)
+            .query(Long.class)
+            .single();
+    assertThat(remaining).isEqualTo(1);
+  }
+
   // ---------------------------------------------------------------------------
   // Multi-pass — all passes run in a single audit call
   // ---------------------------------------------------------------------------
@@ -996,9 +961,10 @@ class PipelineAuditTest {
     Long failedJob =
         createJobWithError(record2, page2, "ocr_page_mistral", "failed", 1, "Transient error");
 
-    // Pass 4: ocr_done with no PDF job
+    // Pass 4: ocr_done that never advanced
     Long record4 = createRecord(archiveId, "ocr_done", 1);
     createPage(record4, 1);
+    ageRecord(record4);
 
     // Run the audit exactly as PipelineAuditScheduler and the admin endpoint do: recovery
     // first, in its own transaction, then the remaining passes.
@@ -1013,8 +979,8 @@ class PipelineAuditTest {
     assertThat(getJobStatus(failedJob)).isEqualTo("pending");
 
     // Pass 4 result
-    assertThat(getRecordStatus(record4)).isEqualTo("pdf_pending");
-    assertThat(countJobs(record4, "build_searchable_pdf", "pending")).isEqualTo(1);
+    assertThat(getRecordStatus(record4)).isEqualTo("translating");
+    assertThat(countJobs(record4, "translate_page", "pending")).isEqualTo(1);
   }
 
   @Test
