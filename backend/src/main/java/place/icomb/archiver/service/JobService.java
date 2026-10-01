@@ -53,6 +53,17 @@ public class JobService {
   /** Creates a new pending job and fires a NOTIFY on the appropriate channel. */
   @Transactional
   public Job enqueueJob(String kind, Long recordId, Long pageId, String payload) {
+    if (pageId != null) {
+      // The record is whichever one the page is in NOW. A page move updates this row, so reading it
+      // under a share lock makes the two serialise: either the move has committed and the job is
+      // written against the new record, or the move waits and re-parents this job with the page.
+      List<Long> current =
+          jdbcTemplate.queryForList(
+              "SELECT record_id FROM page WHERE id = ? FOR SHARE", Long.class, pageId);
+      if (!current.isEmpty()) {
+        recordId = current.get(0);
+      }
+    }
     Job job = new Job();
     job.setKind(kind);
     job.setRecordId(recordId);

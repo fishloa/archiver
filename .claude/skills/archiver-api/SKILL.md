@@ -47,15 +47,20 @@ atok() { ssh zelkova 'docker inspect archiver-backend-1 --format "{{range .Confi
   | grep -E "^ARCHIVER_ADMIN_TOKEN=" | cut -d= -f2-'; }
 ```
 
-Call it from zelkova, where the container's IP resolves:
+Call it from zelkova, where the container's IP resolves. **The IP is not fixed**: the container is
+recreated on every deploy and takes whatever address is free (it was 10.0.9.3, then 10.0.9.2), so ask
+Docker each time rather than trusting a number written down:
 
 ```bash
-ssh zelkova 'atok=$(docker inspect archiver-backend-1 --format "{{range .Config.Env}}{{println .}}{{end}}" \
+ssh zelkova 'ip=$(docker inspect archiver-backend-1 --format "{{range .NetworkSettings.Networks}}{{.IPAddress}} {{end}}" | awk "{print \$1}"); \
+  atok=$(docker inspect archiver-backend-1 --format "{{range .Config.Env}}{{println .}}{{end}}" \
   | grep -E "^ARCHIVER_ADMIN_TOKEN=" | cut -d= -f2-); \
-  curl -s -H "Authorization: Bearer $atok" "http://10.0.9.3:8080/api/admin/jobs?recordId=4006"'
+  curl -s -H "Authorization: Bearer $atok" "http://$ip:8080/api/admin/jobs?recordId=4006"'
 ```
 
-`10.0.9.3` is the backend container; confirm with `docker inspect archiver-backend-1`.
+Prefer the public domain where it will do: `https://archive.czernin.eu/api/admin/**`, `/api/ingest/**`
+and `/api/processor/**` take the bearer token from anywhere (the admin token is `ADMIN_TOKEN` in the
+Portainer stack's env, the processor token `PROCESSOR_TOKEN`), and the archive MCP reads records.
 Port 8099 is the nginx/OAuth2 front door and will answer 401 to a token.
 
 ## Reading
@@ -77,6 +82,8 @@ Port 8099 is the nginx/OAuth2 front door and will answer 401 to a token.
 | `POST /api/admin/cancel-jobs?jobId=&reason=` | stops **one** job. Pending and claimed only; a finished job is untouched |
 | `GET /api/admin/stats` | queue depth and pipeline state |
 | `POST /api/admin/audit` | runs the audit pass that unsticks records |
+| `POST /api/admin/retry-failed-jobs?kind=translate_page&limit=100` | starts failed jobs of a kind the system still runs again from attempt 0 (cancelled ones are not retried) |
+| `POST /api/admin/dismiss-failed-jobs?kind=…&reason=…` | clears failed jobs of a **retired** kind from the failed list, keeping the rows |
 
 There is deliberately no "cancel everything matching". A record's queued work is
 stopped by holding the record, below — cancelling its jobs without holding it
@@ -212,6 +219,7 @@ with no job pending or running against either, and the page image must already b
 | `POST /api/admin/records/{id}/pages/{pageId}/move` `{"targetRecordId":N,"seq":optional,"allowCrossArchive":optional}` | Moves one page; appended unless `seq` is given (1..pages+1) |
 | `POST /api/admin/records/{id}/split` `{"splitAtSeq":N,"title":"…","description":opt,"titleEn":opt,"descriptionEn":opt}` | Pages `N..end` move to a new `complete` record inheriting archive, languages, OCR engine, quality, reference code. `N` is 2..pages. English title is supplied, not generated |
 | `POST /api/admin/records/{id}/concat` `{"sourceRecordId":N,"allowCrossArchive":optional}` | Every page of the source onto the end of `{id}`. The emptied source is left in place |
+| `POST /api/admin/records/{id}/reorder` `{"pageIds":[…]}` or `{"pageId":N,"toSeq":M}` | Reorders one record's pages (all of them once, or one page to a position). Same refusals as a move; no job, no PDF |
 
 Refusals: `404` unknown record or page; `400` a bad body, a position out of range, a record into
 itself, a split that would empty a record; `409` a record not `complete`, on hold, busy, in another

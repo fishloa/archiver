@@ -54,6 +54,7 @@ class PageMoveTest {
 
   @Autowired private JdbcClient jdbc;
   @Autowired private Path storageRoot;
+  @Autowired private place.icomb.archiver.service.JobService jobService;
 
   private String base;
   private long archive;
@@ -1112,5 +1113,19 @@ class PageMoveTest {
     jdbc.sql("UPDATE record SET status = 'translating' WHERE id = :r").param("r", a).update();
     assertThat(post(p, order(swapped)).statusCode()).isEqualTo(409);
     assertThat(pageIds(a)).isEqualTo(mine);
+  }
+
+  @Test
+  void aJobQueuedForAPageLandsOnTheRecordThePageIsInNow() throws Exception {
+    long a = recordWithPages("race-a", 2);
+    long b = recordWithPages("race-b", 1);
+    long moved = pageIds(a).get(1);
+    ok(post("/admin/records/" + a + "/pages/" + moved + "/move", "{\"targetRecordId\":" + b + "}"));
+
+    // an enqueuer that read the page's record before the move still names the old one
+    jobService.enqueueJob("translate_page", a, moved, null);
+
+    assertThat(one("SELECT record_id FROM job WHERE page_id = ? AND status = 'pending'", moved))
+        .isEqualTo(b);
   }
 }

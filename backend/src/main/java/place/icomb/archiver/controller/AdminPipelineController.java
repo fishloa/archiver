@@ -531,6 +531,84 @@ public class AdminPipelineController {
     return ResponseEntity.ok(Map.of("cancelled", stopped.size(), "jobs", stopped));
   }
 
+  /** Job kinds the system can still run: failed ones of these can be retried. */
+  private static final java.util.Set<String> RETRYABLE_KINDS =
+      java.util.Set.of(
+          "translate_page",
+          "translate_page_upgrade",
+          "translate_record",
+          "embed_record",
+          "match_persons",
+          "ocr_page_mistral",
+          "ocr_page_transkribus");
+
+  /**
+   * Puts failed jobs of one kind back in the queue.
+   *
+   * <p>The audit retries a failed job only while it has attempts left, so a job that timed out
+   * three times sits in the failed list for ever. This starts it again from the beginning. Jobs an
+   * administrator cancelled are not retried, and neither are kinds the system can no longer run;
+   * those are dismissed instead.
+   */
+  @PostMapping("/retry-failed-jobs")
+  public ResponseEntity<Map<String, Object>> retryFailedJobs(
+      @RequestParam String kind, @RequestParam(defaultValue = "100") int limit) {
+    if (!RETRYABLE_KINDS.contains(kind)) {
+      return ResponseEntity.badRequest()
+          .body(
+              Map.of(
+                  "error",
+                  "kind must be one the system still runs: "
+                      + new java.util.TreeSet<>(RETRYABLE_KINDS)
+                      + " (a retired kind is dismissed, not retried)"));
+    }
+    if (limit < 1 || limit > 1000) {
+      return ResponseEntity.badRequest().body(Map.of("error", "limit must be from 1 to 1000"));
+    }
+    List<Map<String, Object>> retried =
+        jdbcTemplate.queryForList(
+            """
+            UPDATE job
+               SET status = 'pending', attempts = 0, error = NULL, started_at = NULL,
+                   finished_at = NULL
+             WHERE id IN (SELECT id FROM job
+                           WHERE kind = ? AND status = 'failed'
+                             AND (error IS NULL OR error NOT LIKE 'cancelled%')
+                           ORDER BY id LIMIT ?)
+            RETURNING id, record_id, page_id
+            """,
+            kind, limit);
+    log.info("Retrying {} failed {} job(s)", retried.size(), kind);
+    return ResponseEntity.ok(Map.of("kind", kind, "retried", retried.size(), "jobs", retried));
+  }
+
+  /**
+   * Clears failed jobs of a kind the system can no longer run from the failed list, keeping the
+   * rows. They are marked completed with the reason, so the dashboard stops counting them as
+   * failures and history still shows what they were.
+   */
+  @PostMapping("/dismiss-failed-jobs")
+  public ResponseEntity<Map<String, Object>> dismissFailedJobs(
+      @RequestParam String kind, @RequestParam String reason) {
+    if (RETRYABLE_KINDS.contains(kind)) {
+      return ResponseEntity.badRequest()
+          .body(Map.of("error", kind + " can still run: retry its failed jobs instead"));
+    }
+    if (reason.isBlank()) {
+      return ResponseEntity.badRequest().body(Map.of("error", "reason is required"));
+    }
+    int n =
+        jdbcTemplate.update(
+            """
+            UPDATE job SET status = 'completed', error = ?, finished_at = coalesce(finished_at, now())
+             WHERE kind = ? AND status = 'failed'
+            """,
+            "dismissed via /api/admin/dismiss-failed-jobs: " + reason,
+            kind);
+    log.info("Dismissed {} failed {} job(s): {}", n, kind, reason);
+    return ResponseEntity.ok(Map.of("kind", kind, "dismissed", n));
+  }
+
   /**
    * Re-transcribes one page on a chosen engine, and carries that page alone onward.
    *

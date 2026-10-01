@@ -494,4 +494,78 @@ class PdfExportQueueTest {
 
     assertThat(queue.pathsForRecord(record)).isEmpty();
   }
+
+  // --- concurrency ---------------------------------------------------------------------------
+
+  @Test
+  void manyCallersAskingForTheSameExportAtOnceGetOneRow() throws Exception {
+    int callers = 12;
+    var pool = java.util.concurrent.Executors.newFixedThreadPool(callers);
+    var start = new java.util.concurrent.CountDownLatch(1);
+    List<java.util.concurrent.Future<PdfExportQueue.Requested>> results =
+        new java.util.ArrayList<>();
+    for (int i = 0; i < callers; i++) {
+      results.add(
+          pool.submit(
+              () -> {
+                start.await();
+                return request();
+              }));
+    }
+    start.countDown();
+    java.util.Set<String> ids = new java.util.HashSet<>();
+    int created = 0;
+    for (var f : results) {
+      PdfExportQueue.Requested r = f.get(60, java.util.concurrent.TimeUnit.SECONDS);
+      ids.add(r.view().id());
+      if (r.created()) {
+        created++;
+      }
+    }
+    pool.shutdownNow();
+
+    assertThat(ids).hasSize(1);
+    assertThat(created).isEqualTo(1);
+    assertThat(jdbc.queryForObject("SELECT count(*) FROM pdf_export", Long.class)).isEqualTo(1L);
+  }
+
+  @Test
+  void manyWorkersClaimEachQueuedExportExactlyOnce() throws Exception {
+    // nine distinct fingerprints: three variants over three single pages
+    int queued = 0;
+    for (Variant v : Variant.values()) {
+      for (long page : pages) {
+        queue.request(record, v, List.of(page));
+        queued++;
+      }
+    }
+    int workers = 16;
+    var pool = java.util.concurrent.Executors.newFixedThreadPool(workers);
+    var start = new java.util.concurrent.CountDownLatch(1);
+    List<java.util.concurrent.Future<List<String>>> results = new java.util.ArrayList<>();
+    for (int i = 0; i < workers; i++) {
+      results.add(
+          pool.submit(
+              () -> {
+                start.await();
+                List<String> mine = new java.util.ArrayList<>();
+                for (var c = queue.claimNext(); c.isPresent(); c = queue.claimNext()) {
+                  mine.add(c.get().id());
+                }
+                return mine;
+              }));
+    }
+    start.countDown();
+    List<String> all = new java.util.ArrayList<>();
+    for (var f : results) {
+      all.addAll(f.get(60, java.util.concurrent.TimeUnit.SECONDS));
+    }
+    pool.shutdownNow();
+
+    assertThat(all).hasSize(queued).doesNotHaveDuplicates();
+    assertThat(
+            jdbc.queryForObject(
+                "SELECT count(*) FROM pdf_export WHERE state = 'building'", Long.class))
+        .isEqualTo((long) queued);
+  }
 }
