@@ -150,7 +150,10 @@ body {
 <script>
 (function() {
   var params = new URLSearchParams(window.location.search);
-  var rd = params.get('rd') || '/';
+  // nginx serves this page in place of whatever unauthenticated URL was asked for
+  // (error_page 401 = /signin), so the address bar still holds the page the user wanted.
+  var here = window.location.pathname + window.location.search;
+  var rd = params.get('rd') || (window.location.pathname === '/signin' ? '/' : here);
   document.getElementById('googleBtn').href = '/oauth2-google/start?rd=' + encodeURIComponent(rd);
   document.getElementById('appleBtn').href = '/oauth2-apple/start?rd=' + encodeURIComponent(rd);
 })();
