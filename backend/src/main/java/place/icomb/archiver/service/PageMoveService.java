@@ -50,7 +50,7 @@ public class PageMoveService {
       long targetRecordId,
       Integer atSeq,
       boolean allowCrossArchive) {
-    lockRecords(sourceRecordId, targetRecordId);
+    Map<Long, Locked> locked = lockRecords(sourceRecordId, targetRecordId);
     Integer seq =
         jdbc
             .queryForList(
@@ -65,6 +65,7 @@ public class PageMoveService {
                     new PageMoveException(
                         Kind.NOT_FOUND,
                         "Page %d is not in record %d".formatted(pageId, sourceRecordId)));
+    requireMovable(locked, sourceRecordId, targetRecordId, allowCrossArchive, seq, seq);
     int targetPages = pageCount(targetRecordId);
     int at = atSeq == null ? targetPages + 1 : atSeq;
     if (at < 1 || at > targetPages + 1) {
@@ -73,6 +74,79 @@ public class PageMoveService {
           "seq %d is outside 1..%d for record %d".formatted(at, targetPages + 1, targetRecordId));
     }
     return moveRun(sourceRecordId, seq, seq, targetRecordId, at);
+  }
+
+  /**
+   * Refuses a move that would be wrong, before anything is touched.
+   *
+   * <p>Both records must be complete: a record still in the pipeline re-evaluates its guards
+   * whenever one of its jobs finishes, so pages it had gained could be run through paid stages.
+   * From {@code complete} there is nowhere to advance to.
+   */
+  private void requireMovable(
+      Map<Long, Locked> locked, long src, long tgt, boolean allowCross, int fromSeq, int toSeq) {
+    if (src == tgt) {
+      throw new PageMoveException(Kind.BAD_REQUEST, "Source and target are the same record");
+    }
+    Locked s = locked.get(src);
+    Locked t = locked.get(tgt);
+    for (Locked r : List.of(s, t)) {
+      if (!"complete".equals(r.status())) {
+        throw new PageMoveException(
+            Kind.CONFLICT,
+            "Record %d is %s, not complete; let its pipeline settle before moving pages"
+                .formatted(r.id(), r.status()));
+      }
+      if (r.held()) {
+        throw new PageMoveException(Kind.CONFLICT, "Record %d is on AI hold".formatted(r.id()));
+      }
+    }
+    if (s.archiveId() != t.archiveId() && !allowCross) {
+      throw new PageMoveException(
+          Kind.CONFLICT,
+          "Records %d and %d are in different archives; pass allowCrossArchive to move between them"
+              .formatted(src, tgt));
+    }
+    Long busy =
+        jdbc.queryForObject(
+            "SELECT count(*) FROM job WHERE record_id IN (?, ?) AND status IN ('pending', 'claimed')",
+            Long.class,
+            src,
+            tgt);
+    if (busy != null && busy > 0) {
+      throw new PageMoveException(
+          Kind.CONFLICT,
+          "%d job(s) are still pending or running against these records; a page moved now would"
+                  .formatted(busy)
+              + " have its output written into the record it left");
+    }
+    Long exporting =
+        jdbc.queryForObject(
+            "SELECT count(*) FROM pdf_export WHERE record_id IN (?, ?)"
+                + " AND state IN ('queued', 'building')",
+            Long.class,
+            src,
+            tgt);
+    if (exporting != null && exporting > 0) {
+      throw new PageMoveException(
+          Kind.CONFLICT,
+          "%d PDF export(s) of these records are still being prepared; moving pages now would"
+                  .formatted(exporting)
+              + " change them underneath the export");
+    }
+    Long legacy =
+        jdbc.queryForObject(
+            "SELECT count(*) FROM page p JOIN attachment a ON a.id = p.attachment_id"
+                + " WHERE p.record_id = ? AND p.seq BETWEEN ? AND ?"
+                + " AND a.path NOT LIKE 'attachments/%'",
+            Long.class, src, fromSeq, toSeq);
+    if (legacy != null && legacy > 0) {
+      throw new PageMoveException(
+          Kind.CONFLICT,
+          "%d of these pages still have their image in the old records/{id}/ layout; run the storage"
+                  .formatted(legacy)
+              + " migration first, or deleting the record they leave would delete the scan");
+    }
   }
 
   /**

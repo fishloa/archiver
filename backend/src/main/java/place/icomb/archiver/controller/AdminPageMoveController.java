@@ -1,5 +1,6 @@
 package place.icomb.archiver.controller;
 
+import java.math.BigDecimal;
 import java.util.HashMap;
 import java.util.Map;
 import org.springframework.http.HttpStatus;
@@ -36,7 +37,7 @@ public class AdminPageMoveController {
     try {
       Map<String, Object> in = body == null ? Map.of() : body;
       long target = requiredLong(in, "targetRecordId");
-      Integer seq = in.containsKey("seq") ? (int) requiredLong(in, "seq") : null;
+      Integer seq = in.get("seq") == null ? null : requiredInt(in, "seq");
       boolean cross = flag(in, "allowCrossArchive");
       return ResponseEntity.ok(describe(moves.movePage(recordId, pageId, target, seq, cross)));
     } catch (PageMoveException e) {
@@ -70,7 +71,21 @@ public class AdminPageMoveController {
       throw new PageMoveException(
           PageMoveException.Kind.BAD_REQUEST, key + " is required and must be a number");
     }
-    return n.longValue();
+    try {
+      return new BigDecimal(n.toString()).longValueExact();
+    } catch (ArithmeticException | NumberFormatException e) {
+      throw new PageMoveException(
+          PageMoveException.Kind.BAD_REQUEST, key + " must be a whole number in range");
+    }
+  }
+
+  static int requiredInt(Map<String, Object> body, String key) {
+    long v = requiredLong(body, key);
+    if (v < Integer.MIN_VALUE || v > Integer.MAX_VALUE) {
+      throw new PageMoveException(
+          PageMoveException.Kind.BAD_REQUEST, key + " must be a whole number in range");
+    }
+    return (int) v;
   }
 
   static boolean flag(Map<String, Object> body, String key) {

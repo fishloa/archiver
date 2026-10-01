@@ -444,4 +444,174 @@ class PageMoveTest {
         .isEqualTo(404);
     assertThat(pageIds(a)).containsExactly(moving);
   }
+
+  // --- tests: refusals ---------------------------------------------------------------------
+
+  /** Asserts a refused move changed nothing. */
+  private void assertUntouched(long a, long b, List<Long> aPages, List<Long> bPages) {
+    assertThat(pageIds(a)).containsExactlyElementsOf(aPages);
+    assertThat(pageIds(b)).containsExactlyElementsOf(bPages);
+    assertThat(count("SELECT count(*) FROM pipeline_event WHERE event = 'pages_moved'")).isZero();
+  }
+
+  private void refused(long a, long b, String extraBody, String setup, int status)
+      throws Exception {
+    List<Long> aPages = pageIds(a);
+    List<Long> bPages = pageIds(b);
+    if (setup != null) {
+      jdbc.sql(setup).update();
+    }
+    HttpResponse<String> resp =
+        post(movePath(a, aPages.get(0)), "{\"targetRecordId\":" + b + extraBody + "}");
+    assertThat(resp.statusCode()).as(resp.body()).isEqualTo(status);
+    assertUntouched(a, b, aPages, bPages);
+  }
+
+  @Test
+  void aRecordCannotBeMovedIntoItself() throws Exception {
+    long a = recordWithPages("a", 2);
+    refused(a, a, "", null, 400);
+  }
+
+  @Test
+  void aRecordStillInThePipelineIsRefused() throws Exception {
+    // A record still in the pipeline re-evaluates its guards whenever one of its jobs completes,
+    // and a move must not hand it pages it has not processed.
+    long a = recordWithPages("a", 2);
+    long b = recordWithPages("b", 1);
+    refused(a, b, "", "UPDATE record SET status = 'translating' WHERE id = " + a, 409);
+  }
+
+  @Test
+  void theTargetMustBeCompleteToo() throws Exception {
+    long a = recordWithPages("a", 2);
+    long b = recordWithPages("b", 1);
+    refused(a, b, "", "UPDATE record SET status = 'embedding' WHERE id = " + b, 409);
+  }
+
+  @Test
+  void aRecordOnAiHoldIsRefused() throws Exception {
+    long a = recordWithPages("a", 2);
+    long b = recordWithPages("b", 1);
+    refused(a, b, "", "UPDATE record SET ai_held_at = now() WHERE id = " + b, 409);
+  }
+
+  @Test
+  void aPendingJobAgainstEitherRecordIsRefused() throws Exception {
+    // Its output would be written into the record the page has just left.
+    long a = recordWithPages("a", 2);
+    long b = recordWithPages("b", 1);
+    refused(
+        a,
+        b,
+        "",
+        "INSERT INTO job (kind, record_id, status) VALUES ('translate_record', "
+            + b
+            + ", 'pending')",
+        409);
+  }
+
+  @Test
+  void aClaimedJobAgainstThePageItselfIsRefused() throws Exception {
+    long a = recordWithPages("a", 2);
+    long b = recordWithPages("b", 1);
+    long page = pageIds(a).get(0);
+    refused(
+        a,
+        b,
+        "",
+        "INSERT INTO job (kind, record_id, page_id, status) VALUES ('translate_page', "
+            + a
+            + ", "
+            + page
+            + ", 'claimed')",
+        409);
+  }
+
+  @Test
+  void aPdfExportBeingPreparedForEitherRecordIsRefused() throws Exception {
+    long a = recordWithPages("a", 2);
+    long b = recordWithPages("b", 1);
+    refused(
+        a,
+        b,
+        "",
+        "INSERT INTO pdf_export (record_id, variant, page_ids, fingerprint, state) VALUES ("
+            + b
+            + ", 'original', ARRAY[]::bigint[], 'x', 'building')",
+        409);
+  }
+
+  @Test
+  void movingBetweenArchivesNeedsToBeAskedFor() throws Exception {
+    long other = newArchive();
+    long a = recordWithPages("a", 2);
+    long b = recordWithPages("b", 1, other);
+    refused(a, b, "", null, 409);
+
+    long moving = pageIds(a).get(0);
+    ok(post(movePath(a, moving), "{\"targetRecordId\":" + b + ",\"allowCrossArchive\":true}"));
+    assertThat(one("SELECT record_id FROM page WHERE id = ?", moving)).isEqualTo(b);
+  }
+
+  @Test
+  void aPageWhoseImageIsStillInTheLegacyLayoutIsRefused() throws Exception {
+    // Emptying the source and then deleting it would remove a file under records/{id}/. Production
+    // is migrated; a test stack is not.
+    long a = recordWithPages("a", 2);
+    long b = recordWithPages("b", 1);
+    long attachment = attachmentOf(pageIds(a).get(0));
+    refused(
+        a,
+        b,
+        "",
+        "UPDATE attachment SET path = 'records/1/attachments/pages/p0001.jpg' WHERE id = "
+            + attachment,
+        409);
+  }
+
+  @Test
+  void aBooleanFlagThatIsNotABooleanIsRefused() throws Exception {
+    long a = recordWithPages("a", 2);
+    long b = recordWithPages("b", 1);
+    refused(a, b, ",\"allowCrossArchive\":\"yes\"", null, 400);
+  }
+
+  @Test
+  void aClaimedJobAgainstEitherRecordIsRefused() throws Exception {
+    long a = recordWithPages("a", 2);
+    long b = recordWithPages("b", 1);
+    refused(
+        a,
+        b,
+        "",
+        "INSERT INTO job (kind, record_id, status) VALUES ('translate_record', "
+            + a
+            + ", 'claimed')",
+        409);
+  }
+
+  @Test
+  void aPositionOutsideTheIntRangeOrFractionalIsRefusedNotWrapped() throws Exception {
+    long a = recordWithPages("a", 2);
+    long b = recordWithPages("b", 2);
+    long moving = pageIds(a).get(0);
+    for (String seq : List.of("4294967297", "1.5", "99999999999999999999")) {
+      HttpResponse<String> resp =
+          post(movePath(a, moving), "{\"targetRecordId\":" + b + ",\"seq\":" + seq + "}");
+      assertThat(resp.statusCode()).as(seq).isEqualTo(400);
+    }
+    assertThat(seqs(a)).containsExactly(1, 2);
+    assertThat(seqs(b)).containsExactly(1, 2);
+  }
+
+  @Test
+  void anExplicitNullPositionAppends() throws Exception {
+    long a = recordWithPages("a", 2);
+    long b = recordWithPages("b", 1);
+    long moving = pageIds(a).get(0);
+    ok(post(movePath(a, moving), "{\"targetRecordId\":" + b + ",\"seq\":null}"));
+    assertThat(pageIds(b)).endsWith(moving);
+    assertThat(seqs(b)).containsExactly(1, 2);
+  }
 }
