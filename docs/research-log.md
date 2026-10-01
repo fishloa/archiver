@@ -3120,3 +3120,27 @@ the image itself reads: Rennweg 2, registered 30.5.1938, left 25.8.1938, from Ai
 Salzburg; Salesianergasse 4, stamped 26.11.1938, left 5.1.1939 for Krumau, Sudetenland; born
 8.3.1910 at Göding, *ledig*, *Beamter*; the co-registered entries are blacked out. The stored text
 for 4045 is left as the engines produced it.
+
+**Housekeeping, 1 October 2026 (v1.1.17–v1.1.20).**
+- **114-3-17 boundaries.** The register (4038) is the authority for the serial numbers: reports 1–6 are
+  28.9.41, 7–8 30.9, 9 1.10, 10 9.10, 11 11.10, 12 16.10 (listed before 13, 14.10), 14 30.10, 15 6.11,
+  16 16.11, 17 3.1.42. The first ingest had split only along the archive's slips, which exist from
+  report 11 upwards, so **4037 held 84 pages of six different documents**. It is now 4037 (report 11,
+  pp 1–36), 4046 (report 10, 9.10.41), 4047 (report 9, 1.10.41), 4048 (reports 7–8, 29–30.9.41),
+  4049 (reports 1–6 and the Erlass on the civil state of emergency, 28.9.41) and 4050 (the telexes of
+  27.9.41, taking up office). Cut points were read from the pages' own datelines, not guessed.
+- **4038 (the register) had its pages out of order** — the index starts on the "Ordner:
+  Berichterstattung" page, which was last. Reordered. **4043** (Jan's Gedenkbild) likewise: the
+  memorial card first, the prayer-card verso second.
+- **Slip dates.** Every handwritten slip's year had been misread (1952, 1997, 1977, 1957, 1951); corrected
+  from the report's own date and the images, and 4035's slip number from 15 to 14. Audited in
+  `manual_correction`.
+- **4041 page 2 deleted:** an unrelated telegram (Ugron, Warsaw, 21.4.1917, "M 4053", an archbishop's
+  pastoral letter) that the archive's scanner had picked up with Felix's Partezettel. It names no
+  Czernin. The scan remains in the delivery zip.
+- **4045** (Jan's two registration forms): both engines read the handwriting badly; the stored text is
+  now a hand transcription from the image with `[?]` for doubtful readings (audited, old text kept in
+  the audit row). **4044** was re-translated at "best" quality after the first translation mangled
+  names. **4039** was re-read on Transkribus and now has the family name right.
+- **Housekeeping.** The 13,083 stored searchable-PDF rows and their files were purged; 30 translations
+  that had timed out in September were retried; 10 failures of retired engines were dismissed.
