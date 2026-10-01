@@ -3109,3 +3109,14 @@ Closed since 16 September: the AdR Gauakt (Ferdinand dropped), the five WStLA
 registration enquiries, GStA PK, BLHA, Commerzbank (not pursued), ČNB, Národní archiv
 114-3-17 part two, HHStA, Nürnberg. **Still unlocated:** the forced-administration
 order of 12 February 1942 and the SD-Leitabschnitt Wien report PA 3852/41.
+
+**Hand corrections, 1 October 2026 (v1.1.18, audited in `manual_correction`).** Record 4040 page 1:
+Transkribus read Paul's death year as *1958* in the body; the dateline, Mistral and his age (59th
+year, b. 1879) say **1938**, so `text_raw` and `text_en` were corrected. The English titles of 4040
+read *"Party ticket"* for *Partezettel*; now *"Death notice"*. 4039, 4041, 4042 and 4043 did not
+have that error. 4045 (Jan's two registration forms) was read twice, Mistral and Transkribus, and
+both are poor on the handwriting (Mistral invented a "2016 … 2100" run and a wrong birth date);
+the image itself reads: Rennweg 2, registered 30.5.1938, left 25.8.1938, from Aigen-Glas near
+Salzburg; Salesianergasse 4, stamped 26.11.1938, left 5.1.1939 for Krumau, Sudetenland; born
+8.3.1910 at Göding, *ledig*, *Beamter*; the co-registered entries are blacked out. The stored text
+for 4045 is left as the engines produced it.
