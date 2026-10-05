@@ -3144,3 +3144,22 @@ for 4045 is left as the engines produced it.
   names. **4039** was re-read on Transkribus and now has the family name right.
 - **Housekeeping.** The 13,083 stored searchable-PDF rows and their files were purged; 30 translations
   that had timed out in September were retried; 10 failures of retired engines were dismissed.
+
+### 5 October 2026 — the Salzburger Landesarchiv answers on Jan and the mother
+
+Bernhard Friedl, Amt der Salzburger Landesregierung, Landesarchiv, Geschäftszahl
+**20033-A/3430/1144-2026** (Zimbra 468381), on the 16 September enquiry (463991). No fee, no scans:
+
+- **Salzburg city registration records** are in the Landesarchiv only **to 1938**. Because Dr. Johannes
+  (Jan) Czernin **married in Vienna in 1940**, they point to the **Stadtarchiv Salzburg**
+  (`stadtarchivundstatistik@stadt-salzburg.at`), which holds registration records **from 1939**.
+- **A possible citizenship file for Jan was found in the registers: LAD d 10266/1950** — but it was
+  **taken out and sent to the Foreign Ministry in Vienna**, so the Landesarchiv no longer holds it.
+- **Maria Gabriele Czernin (the mother):** a **probate file of the Bezirksgericht Salzburg, 10 A 264/1951**,
+  lies in the Landesarchiv; for legal reasons it can only be inspected through the **Bezirksgericht
+  Salzburg**.
+- The letter's own header confirms the dates: Jan b. 8 March 1910, d. 24 May 1996 in Salzburg; Maria
+  Gabriele née Orsini-Rosenberg b. 21 May 1879, **d. 4 May 1951 in Salzburg**.
+
+Not yet actioned: the Stadtarchiv Salzburg (registrations 1939 onward), the Bezirksgericht Salzburg
+(probate 10 A 264/1951), and where the 1950 citizenship file went at the Foreign Ministry.
