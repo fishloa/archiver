@@ -1,6 +1,6 @@
 # Three follow-ups to the Salzburger Landesarchiv's answer — 5 October 2026
 
-**Status: #1 SENT 5 October 2026 (Zimbra 468418), amended to name all six children and the mother. #2 (posted letter) and #3 (Zimbra draft 468423, now also asking the Landesarchiv itself for a copy of the probate file) are still HELD.** Trigger: the Landesarchiv's
+**Status: #1 SENT 5 October 2026 (Zimbra 468418), amended to name all six children and the mother. #2 (posted letter, printable Word copy `2026-10-05-bezirksgericht-salzburg-brief.docx`) is HELD until the Landesarchiv answers — send it only if they say they cannot supply the file; and #3 SENT 5 October 2026 (Zimbra 468424), also asking the Landesarchiv itself for a copy of the probate file are still HELD.** Trigger: the Landesarchiv's
 answer of 5 October (Zahl 20033-A/3430/1144-2026, Zimbra 468381). Written under
 `DISCLOSURE-rules-for-austrian-bodies.md`: names, dates, holdings, a written nil return, the cost
 undertaking, and a postal address in the first letter — no purpose, no relationship, nothing about what we hold.
@@ -9,7 +9,7 @@ undertaking, and a postal address in the first letter — no purpose, no relatio
 |---|---|---|---|
 | 1 | Stadtarchiv Salzburg, `stadtarchivundstatistik@stadt-salzburg.at` | Meldeunterlagen from 1939 for Jan, the mother, Alexander | **Sent**, Zimbra **468418** (draft 468384 deleted) |
 | 2 | Bezirksgericht Salzburg, Rudolfsplatz 3, 5020 Salzburg (Servicecenter) | Conditions for inspecting or copying probate file **10 A 264/1951** | **Posted letter** — the court's site says courts take no email in concrete proceedings; JustizOnline needs an account |
-| 3 | Landesarchiv, reply on Zimbra 468381 | What the register says about **LAD d 10266/1950**, where it went in the Foreign Ministry, whether a copy remains | Zimbra draft **468423** (replaces 468385) |
+| 3 | Landesarchiv, reply on Zimbra 468381 | What the register says about **LAD d 10266/1950**, where it went in the Foreign Ministry, whether a copy remains | **Sent**, Zimbra **468424** |
 
 ## 1. Stadtarchiv Salzburg (English of the draft)
 
