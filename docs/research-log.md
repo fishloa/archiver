@@ -3163,3 +3163,13 @@ Bernhard Friedl, Amt der Salzburger Landesregierung, Landesarchiv, Geschäftszah
 
 Not yet actioned: the Stadtarchiv Salzburg (registrations 1939 onward), the Bezirksgericht Salzburg
 (probate 10 A 264/1951), and where the 1950 citizenship file went at the Foreign Ministry.
+
+**5 October 2026 — status note to Stefan Huber (Cerha Hempel), sent by the applicant.** Reply to his
+21 September "wait until the end of the week" (Zimbra 465311). Said: nothing decisive since; the
+Wehrstammkarten are months away (Bundesarchiv Abt. PA, "do not chase"), so the § 27 VerbotsG file need not
+wait for them; listed what has arrived (complete Gauakt incl. the 13.7.1950 sheet, the Vienna registration
+cards, the Nürnberg C 22 interrogation, Commerzbank entry and its Hohenelbe-1929 correction, Wolfgang's 1929
+file, the HHStA documents, Jan's 1938–39 registrations, the Salzburg Landesarchiv answer) and what is open;
+asked whether MA 35 has replied (a chase is due) and whether to file the § 27 file now. **Deliberately
+not raised as cautions:** Alexander's "aktiv"/Soldbuch entry (army service already known), the differing
+arrest dates in Felix's 1947 testimony, and the 6.5.1946 deregistration — none is material.
