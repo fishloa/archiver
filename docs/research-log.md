@@ -3173,3 +3173,13 @@ file, the HHStA documents, Jan's 1938–39 registrations, the Salzburg Landesarc
 asked whether MA 35 has replied (a chase is due) and whether to file the § 27 file now. **Deliberately
 not raised as cautions:** Alexander's "aktiv"/Soldbuch entry (army service already known), the differing
 arrest dates in Felix's 1947 testimony, and the 6.5.1946 deregistration — none is material.
+
+### 9 October 2026 — Landesarchiv Berlin: the 1932 marriage entry, free
+
+Marie-Sophie Buck, Landesarchiv Berlin (LAB-V Bu – 921-7548/2026-0001, Zimbra 469465, 469550), answering
+the 16 September enquiry (Zimbra 463911) about Wolfgang's 1932 Berlin marriage. She needed a postal address
+for a **certified copy of the marriage register entry**; supplied the same morning (Zimbra 469469), asking
+for the cost first and **with no funding commitment** (the standing EUR 200 undertaking was deliberately
+left out). Her reply: *because it is a nationality matter (Staatsangehörigkeitssache) she is not invoicing
+this request.* Certified copy to follow by post, nothing to pay. The enquiry itself had stated no purpose;
+the Berlin office drew the inference from the request. Nothing further to do until it arrives.
