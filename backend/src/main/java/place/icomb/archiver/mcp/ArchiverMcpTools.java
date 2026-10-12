@@ -26,7 +26,7 @@ public class ArchiverMcpTools {
   private final place.icomb.archiver.service.JobService jobService;
   private final place.icomb.archiver.controller.PdfExportController pdfExportController;
 
-  private static final String MCP_BASE = "https://archive.czernin.eu/api/mcp";
+  private static final String API_BASE = "https://archive.czernin.eu/api";
 
   public ArchiverMcpTools(
       ApiController apiController,
@@ -242,7 +242,6 @@ public class ArchiverMcpTools {
     }
     Map<String, Object> page = new LinkedHashMap<>(pages.get(0));
     page.put("recordId", recordId);
-    page.put("imageUrl", MCP_BASE + "/pages/" + page.get("pageId") + "/image");
     return page;
   }
 
@@ -254,7 +253,7 @@ public class ArchiverMcpTools {
               + " searchable text layer, default), 'english' or 'side-by-side'. pages takes"
               + " ranges and comma lists such as '14' or '1,3,5-10'; omit it for the whole"
               + " record. The PDF is built in the background: poll get_pdf_export with the id"
-              + " until state is 'ready', then fetch downloadUrl with the same MCP OAuth session."
+              + " until state is 'ready', then fetch downloadUrl with the same MCP token."
               + " An identical request is reused. A finished PDF is kept 24 hours.",
       annotations =
           @McpTool.McpAnnotations(
@@ -283,7 +282,7 @@ public class ArchiverMcpTools {
       title = "Get PDF Export",
       description =
           "State of a PDF requested with export_pdf: queued, building, ready, failed or expired."
-              + " When ready it carries downloadUrl, fetched with the same MCP OAuth session.",
+              + " When ready it carries downloadUrl, fetched with the same MCP token.",
       annotations =
           @McpTool.McpAnnotations(
               title = "Get PDF Export",
@@ -301,7 +300,7 @@ public class ArchiverMcpTools {
     }
     Map<String, Object> out = new LinkedHashMap<>(body);
     if ("ready".equals(out.get("state"))) {
-      out.put("downloadUrl", MCP_BASE + "/pdf-exports/" + out.get("id") + "/file");
+      out.put("downloadUrl", API_BASE + "/pdf-exports/" + out.get("id") + "/file");
     }
     return out;
   }

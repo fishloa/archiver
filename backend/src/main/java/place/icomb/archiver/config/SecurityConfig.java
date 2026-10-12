@@ -1,5 +1,7 @@
 package place.icomb.archiver.config;
 
+import com.nimbusds.jose.jwk.source.JWKSource;
+import com.nimbusds.jose.proc.SecurityContext;
 import java.time.Duration;
 import java.util.Arrays;
 import java.util.List;
@@ -10,6 +12,7 @@ import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
+import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import place.icomb.archiver.repository.AppUserRepository;
@@ -22,8 +25,11 @@ public class SecurityConfig {
   private final String processorToken;
   private final String adminToken;
   private final TrustedPeerResolver trustedPeerResolver;
+  private final JwtDecoder mcpJwtDecoder;
 
   public SecurityConfig(
+      JWKSource<SecurityContext> jwkSource,
+      @Value("${archiver.mcp.oauth.issuer:https://archive.czernin.eu}") String mcpIssuer,
       AppUserRepository appUserRepository,
       @Value("${archiver.processor.token}") String processorToken,
       @Value("${archiver.admin.token:}") String adminToken,
@@ -31,6 +37,7 @@ public class SecurityConfig {
       @Value("${archiver.auth.trusted-proxy-hosts:}") String trustedProxyHosts,
       @Value("${archiver.auth.trusted-peer-cache-seconds:30}") long trustedPeerCacheSeconds) {
     this.appUserRepository = appUserRepository;
+    this.mcpJwtDecoder = McpJwtDecoders.build(mcpIssuer, jwkSource);
     this.processorToken = processorToken;
     this.adminToken = adminToken;
     this.trustedPeerResolver =
@@ -61,6 +68,9 @@ public class SecurityConfig {
             UsernamePasswordAuthenticationFilter.class)
         .addFilterBefore(
             new ProcessorTokenFilter(processorToken, adminToken),
+            UsernamePasswordAuthenticationFilter.class)
+        .addFilterBefore(
+            new McpBearerFilter(mcpJwtDecoder, appUserRepository),
             UsernamePasswordAuthenticationFilter.class)
         .authorizeHttpRequests(
             auth ->

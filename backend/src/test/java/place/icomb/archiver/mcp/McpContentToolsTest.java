@@ -6,14 +6,11 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
-import org.apache.pdfbox.Loader;
-import org.apache.pdfbox.pdmodel.PDDocument;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.http.ResponseEntity;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
@@ -25,7 +22,6 @@ import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import place.icomb.archiver.PdfFixtures;
-import place.icomb.archiver.controller.McpFileController;
 import place.icomb.archiver.service.PdfExportWorker;
 
 /**
@@ -54,7 +50,6 @@ class McpContentToolsTest {
   }
 
   @Autowired private ArchiverMcpTools tools;
-  @Autowired private McpFileController files;
   @Autowired private PdfExportWorker worker;
   @Autowired private JdbcTemplate jdbc;
   @Autowired private Path storageRoot;
@@ -115,8 +110,7 @@ class McpContentToolsTest {
     assertThat(page.get("seq")).isEqualTo(3);
     assertThat(String.valueOf(page.get("textEn"))).contains("English 3");
     assertThat(page).containsKeys("pageId", "contentType", "imageUrl");
-    assertThat(String.valueOf(page.get("imageUrl")))
-        .contains("/api/mcp/pages/" + page.get("pageId") + "/image");
+    assertThat(String.valueOf(page.get("imageUrl"))).contains("/api/files/");
   }
 
   @Test
@@ -127,7 +121,7 @@ class McpContentToolsTest {
   }
 
   @Test
-  void aPdfOfChosenPagesIsRequestedPolledAndFetched() throws Exception {
+  void aPdfOfChosenPagesIsRequestedPolledAndFetched() {
     Map<String, Object> asked = tools.exportPdf(record, "original", "2");
     assertThat(asked.get("state")).isEqualTo("queued");
     assertThat(asked.get("pageCount")).isEqualTo(1);
@@ -138,15 +132,7 @@ class McpContentToolsTest {
     Map<String, Object> ready = tools.getPdfExport(id);
     assertThat(ready.get("state")).isEqualTo("ready");
     assertThat(String.valueOf(ready.get("downloadUrl")))
-        .endsWith("/api/mcp/pdf-exports/" + id + "/file");
-
-    ResponseEntity<?> file = files.pdf(id);
-    assertThat(file.getStatusCode().value()).isEqualTo(200);
-    org.springframework.core.io.Resource body =
-        (org.springframework.core.io.Resource) file.getBody();
-    try (PDDocument doc = Loader.loadPDF(body.getContentAsByteArray())) {
-      assertThat(doc.getNumberOfPages()).isEqualTo(1);
-    }
+        .endsWith("/api/pdf-exports/" + id + "/file");
   }
 
   @Test
@@ -157,15 +143,5 @@ class McpContentToolsTest {
         .isInstanceOf(IllegalArgumentException.class);
     assertThatThrownBy(() -> tools.getPdfExport("nope"))
         .isInstanceOf(IllegalArgumentException.class);
-  }
-
-  @Test
-  void thePageImageIsServedAsTheOriginalJpegUntouched() throws Exception {
-    long pageId = ((Number) tools.getPage(record, 1, null).get("pageId")).longValue();
-
-    ResponseEntity<?> image = files.pageImage(pageId);
-
-    assertThat(image.getStatusCode().value()).isEqualTo(200);
-    assertThat(image.getHeaders().getContentType().toString()).isEqualTo("image/jpeg");
   }
 }
