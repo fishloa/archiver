@@ -9,6 +9,20 @@ new revision, no build is triggered, and the release silently never happens —
 which is exactly what v1.0.0 did on its first attempt. Add the entry below,
 commit, then tag that commit.
 
+## v1.1.21 — 12 October 2026
+
+**The MCP connector can do what the UI does.** An MCP user's access token (the JWT the connector
+already holds) is now accepted on the UI's own routes: every read, and `POST
+/api/records/{id}/pdf-exports` to ask for a PDF of chosen pages, then `GET /api/pdf-exports/{id}` and
+`…/file` to fetch it. It cannot change anything else (every other write is a 403), never carries the
+administrator role, and the user is looked up on the allowlist on every request, so removing someone
+stops their token at once. nginx lets only a JWT-shaped bearer past the browser-session check on
+`/api/`; the processor and admin tokens are plain secrets and do not take that route.
+
+New MCP tools: `export_pdf`, `get_pdf_export`, `get_page` (one page's text, translation and scan
+address), and `get_document` takes optional `fromSeq`, `toSeq` and `includeFullText` so a long
+record can be read in slices.
+
 ## v1.1.20 — 1 October 2026
 
 **A page's whole text can be replaced by hand.** `POST /api/admin/pages/{pageId}/corrections` with

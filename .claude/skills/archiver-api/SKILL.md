@@ -19,10 +19,17 @@ guidance with it.
 | `hold_record` | **the panic button** — stop a record's AI processing, or release it |
 | `cancel_job` | one queued job, by id |
 | `reocr_page` | read one page again on a chosen engine |
+| `get_page` | one page's text, translation, content type and the address of its scan |
+| `export_pdf`, `get_pdf_export` | ask for a PDF of a record or chosen pages (`pages: "14"`), poll it, and get its `downloadUrl` |
 
 The last three are administrators only and fail closed: no provable
 `ROLE_ADMIN`, no action. `reocr_page` also refuses a record that is on hold,
 rather than queueing work that would run the moment the hold lifts.
+
+`get_document` takes `fromSeq`/`toSeq`/`includeFullText` to read a long record in slices. The MCP
+access token also works as a bearer on the UI's read routes and on `POST /api/records/{id}/pdf-exports`
+(reads and PDF requests only; any other write is a 403), so a PDF the tools name is fetched from
+`/api/pdf-exports/{id}/file` with the same token.
 
 The HTTP API below is for everything the MCP does not carry — exports, gates,
 bulk operations, the Transkribus import, and the release check.
