@@ -116,6 +116,7 @@ public class ApiController {
     List<Map<String, Object>> pageList = new java.util.ArrayList<>();
     for (Page p : pages) {
       Map<String, Object> pm = new LinkedHashMap<>();
+      pm.put("pageId", p.getId());
       pm.put("seq", p.getSeq());
       pm.put("pageLabel", p.getPageLabel());
 

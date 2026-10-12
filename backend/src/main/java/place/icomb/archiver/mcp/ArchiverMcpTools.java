@@ -24,6 +24,9 @@ public class ArchiverMcpTools {
   private final PersonMatchService personMatchService;
   private final JdbcTemplate jdbcTemplate;
   private final place.icomb.archiver.service.JobService jobService;
+  private final place.icomb.archiver.controller.PdfExportController pdfExportController;
+
+  private static final String MCP_BASE = "https://archive.czernin.eu/api/mcp";
 
   public ArchiverMcpTools(
       ApiController apiController,
@@ -31,13 +34,15 @@ public class ArchiverMcpTools {
       FamilyTreeService familyTreeService,
       PersonMatchService personMatchService,
       JdbcTemplate jdbcTemplate,
-      place.icomb.archiver.service.JobService jobService) {
+      place.icomb.archiver.service.JobService jobService,
+      place.icomb.archiver.controller.PdfExportController pdfExportController) {
     this.apiController = apiController;
     this.semanticSearchController = semanticSearchController;
     this.familyTreeService = familyTreeService;
     this.personMatchService = personMatchService;
     this.jdbcTemplate = jdbcTemplate;
     this.jobService = jobService;
+    this.pdfExportController = pdfExportController;
   }
 
   /**
@@ -152,8 +157,153 @@ public class ArchiverMcpTools {
               title = "Get Document",
               readOnlyHint = true,
               destructiveHint = false))
-  public Map<String, Object> getDocument(@McpToolParam(description = "Record ID") Long recordId) {
-    return apiController.getDocument(recordId, "https://archive.czernin.eu/api");
+  public Map<String, Object> getDocument(
+      @McpToolParam(description = "Record ID") Long recordId,
+      @McpToolParam(
+              description = "First page (seq) to return, 1-based. Omit for the whole record.",
+              required = false)
+          Integer fromSeq,
+      @McpToolParam(
+              description = "Last page (seq) to return. Omit to run to the end.",
+              required = false)
+          Integer toSeq,
+      @McpToolParam(
+              description =
+                  "false to leave out fullText and fullTextEn and keep each page's own text only."
+                      + " Default true.",
+              required = false)
+          Boolean includeFullText) {
+    Map<String, Object> doc = apiController.getDocument(recordId, "https://archive.czernin.eu/api");
+    if (fromSeq == null && toSeq == null && !Boolean.FALSE.equals(includeFullText)) {
+      return doc;
+    }
+    Map<String, Object> out = new LinkedHashMap<>(doc);
+    @SuppressWarnings("unchecked")
+    List<Map<String, Object>> pages = (List<Map<String, Object>>) doc.get("pages");
+    if (pages == null) {
+      return doc;
+    }
+    List<Map<String, Object>> slice = new ArrayList<>();
+    for (Map<String, Object> p : pages) {
+      int seq = ((Number) p.get("seq")).intValue();
+      if ((fromSeq == null || seq >= fromSeq) && (toSeq == null || seq <= toSeq)) {
+        slice.add(p);
+      }
+    }
+    out.put("pages", slice);
+    if (Boolean.FALSE.equals(includeFullText)) {
+      out.remove("fullText");
+      out.remove("fullTextEn");
+    } else {
+      out.put("fullText", joinPageText(slice, "text"));
+      out.put("fullTextEn", joinPageText(slice, "textEn"));
+    }
+    return out;
+  }
+
+  private static String joinPageText(List<Map<String, Object>> pages, String key) {
+    return String.join(
+        "\f", pages.stream().map(p -> String.valueOf(p.getOrDefault(key, ""))).toList());
+  }
+
+  @McpTool(
+      name = "get_page",
+      title = "Get Page",
+      description =
+          "One page of a record: its original text, English translation, the media type of the"
+              + " text (contentType), and imageUrl, the address of the original scan (fetch it"
+              + " with the same MCP OAuth session). Give the record id and the page number (seq),"
+              + " or a page id.",
+      annotations =
+          @McpTool.McpAnnotations(title = "Get Page", readOnlyHint = true, destructiveHint = false))
+  public Map<String, Object> getPage(
+      @McpToolParam(description = "Record id, with seq", required = false) Long recordId,
+      @McpToolParam(description = "Page number within the record, 1-based", required = false)
+          Integer seq,
+      @McpToolParam(description = "Page id, instead of recordId and seq", required = false)
+          Long pageId) {
+    if (pageId != null && (recordId == null || seq == null)) {
+      List<Map<String, Object>> found =
+          jdbcTemplate.queryForList("SELECT record_id, seq FROM page WHERE id = ?", pageId);
+      if (found.isEmpty()) {
+        throw new IllegalArgumentException("No page with id " + pageId);
+      }
+      recordId = ((Number) found.get(0).get("record_id")).longValue();
+      seq = ((Number) found.get(0).get("seq")).intValue();
+    }
+    if (recordId == null || seq == null) {
+      throw new IllegalArgumentException("give recordId and seq, or pageId");
+    }
+    Map<String, Object> doc = getDocument(recordId, seq, seq, false);
+    @SuppressWarnings("unchecked")
+    List<Map<String, Object>> pages = (List<Map<String, Object>>) doc.get("pages");
+    if (pages == null || pages.isEmpty()) {
+      throw new IllegalArgumentException("Record " + recordId + " has no page " + seq);
+    }
+    Map<String, Object> page = new LinkedHashMap<>(pages.get(0));
+    page.put("recordId", recordId);
+    page.put("imageUrl", MCP_BASE + "/pages/" + page.get("pageId") + "/image");
+    return page;
+  }
+
+  @McpTool(
+      name = "export_pdf",
+      title = "Export PDF",
+      description =
+          "Ask for a PDF of a record, or of chosen pages. variant is 'original' (the scans with a"
+              + " searchable text layer, default), 'english' or 'side-by-side'. pages takes"
+              + " ranges and comma lists such as '14' or '1,3,5-10'; omit it for the whole"
+              + " record. The PDF is built in the background: poll get_pdf_export with the id"
+              + " until state is 'ready', then fetch downloadUrl with the same MCP OAuth session."
+              + " An identical request is reused. A finished PDF is kept 24 hours.",
+      annotations =
+          @McpTool.McpAnnotations(
+              title = "Export PDF",
+              readOnlyHint = false,
+              destructiveHint = false,
+              idempotentHint = true))
+  public Map<String, Object> exportPdf(
+      @McpToolParam(description = "Record id") Long recordId,
+      @McpToolParam(description = "original, english or side-by-side", required = false)
+          String variant,
+      @McpToolParam(description = "Page selection, e.g. '14' or '1,3,5-10'", required = false)
+          String pages) {
+    Map<String, Object> body = new LinkedHashMap<>();
+    if (variant != null) {
+      body.put("variant", variant);
+    }
+    if (pages != null) {
+      body.put("pages", pages);
+    }
+    return pdfView(pdfExportController.create(recordId, body));
+  }
+
+  @McpTool(
+      name = "get_pdf_export",
+      title = "Get PDF Export",
+      description =
+          "State of a PDF requested with export_pdf: queued, building, ready, failed or expired."
+              + " When ready it carries downloadUrl, fetched with the same MCP OAuth session.",
+      annotations =
+          @McpTool.McpAnnotations(
+              title = "Get PDF Export",
+              readOnlyHint = true,
+              destructiveHint = false))
+  public Map<String, Object> getPdfExport(@McpToolParam(description = "Export id") String id) {
+    return pdfView(pdfExportController.status(id));
+  }
+
+  private Map<String, Object> pdfView(ResponseEntity<Map<String, Object>> response) {
+    Map<String, Object> body = response.getBody();
+    if (!response.getStatusCode().is2xxSuccessful()) {
+      throw new IllegalArgumentException(
+          body == null ? "PDF export refused" : String.valueOf(body.get("error")));
+    }
+    Map<String, Object> out = new LinkedHashMap<>(body);
+    if ("ready".equals(out.get("state"))) {
+      out.put("downloadUrl", MCP_BASE + "/pdf-exports/" + out.get("id") + "/file");
+    }
+    return out;
   }
 
   @McpTool(
