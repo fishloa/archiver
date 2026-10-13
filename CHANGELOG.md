@@ -9,6 +9,16 @@ new revision, no build is triggered, and the release silently never happens —
 which is exactly what v1.0.0 did on its first attempt. Add the entry below,
 commit, then tag that commit.
 
+## v1.1.23 — 13 October 2026
+
+**Signing in works whichever subnet the stack lands on.** The backend believes the proxy's
+`X-Auth-Email` header only from a trusted address, and the default trusted range was the single
+subnet `10.0.9.0/24`. When the stack's Docker network was recreated on `10.0.18.0/24`, the frontend's
+"who is this?" call came from an untrusted address, so every signed-in user was shown "signed in as
+…, not on the access list". The default is now the range `10.0.0.0/16`, which covers the host's
+container networks, and a test reads the shipped default and checks the old subnet, the current one
+and a future one are all trusted while addresses outside the range are not.
+
 ## v1.1.22 — 13 October 2026
 
 **An MCP client can get the PDF itself.** `download_pdf(id)` returns a finished export as an
