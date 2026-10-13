@@ -9,6 +9,14 @@ new revision, no build is triggered, and the release silently never happens —
 which is exactly what v1.0.0 did on its first attempt. Add the entry below,
 commit, then tag that commit.
 
+## v1.1.22 — 13 October 2026
+
+**An MCP client can get the PDF itself.** `download_pdf(id)` returns a finished export as an
+embedded `application/pdf` resource, which a client can save to disk and attach, where the MCP
+tools before it could only name a download address that needs the connector's own token. It is
+refused while the export is still being prepared and above 25 MB, and reads nothing the user could
+not already request.
+
 ## v1.1.21 — 12 October 2026
 
 **The MCP connector can do what the UI does.** An MCP user's access token (the JWT the connector

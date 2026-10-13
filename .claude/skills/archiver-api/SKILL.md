@@ -20,7 +20,7 @@ guidance with it.
 | `cancel_job` | one queued job, by id |
 | `reocr_page` | read one page again on a chosen engine |
 | `get_page` | one page's text, translation, content type and the address of its scan |
-| `export_pdf`, `get_pdf_export` | ask for a PDF of a record or chosen pages (`pages: "14"`), poll it, and get its `downloadUrl` |
+| `export_pdf`, `get_pdf_export`, `download_pdf` | ask for a PDF of a record or chosen pages (`pages: "14"`), poll it, then `download_pdf` returns the file itself as an embedded resource a client can save to disk (≤ 25 MB) |
 
 The last three are administrators only and fail closed: no provable
 `ROLE_ADMIN`, no action. `reocr_page` also refuses a record that is on hold,
