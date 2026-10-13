@@ -144,4 +144,33 @@ class McpContentToolsTest {
     assertThatThrownBy(() -> tools.getPdfExport("nope"))
         .isInstanceOf(IllegalArgumentException.class);
   }
+
+  @Test
+  void aReadyPdfComesBackAsAnEmbeddedFileSoAClientCanSaveIt() {
+    String id = String.valueOf(tools.exportPdf(record, "original", "2").get("id"));
+    worker.runOnce();
+
+    io.modelcontextprotocol.spec.McpSchema.CallToolResult result = tools.downloadPdf(id);
+
+    assertThat(result.isError()).isNotEqualTo(Boolean.TRUE);
+    var embedded =
+        result.content().stream()
+            .filter(c -> c instanceof io.modelcontextprotocol.spec.McpSchema.EmbeddedResource)
+            .map(c -> (io.modelcontextprotocol.spec.McpSchema.EmbeddedResource) c)
+            .findFirst()
+            .orElseThrow();
+    var blob = (io.modelcontextprotocol.spec.McpSchema.BlobResourceContents) embedded.resource();
+    assertThat(blob.mimeType()).isEqualTo("application/pdf");
+    byte[] bytes = java.util.Base64.getDecoder().decode(blob.blob());
+    assertThat(new String(bytes, 0, 4)).isEqualTo("%PDF");
+  }
+
+  @Test
+  void aPdfThatIsNotReadyIsRefusedClearly() {
+    String id = String.valueOf(tools.exportPdf(record, "original", "3").get("id"));
+
+    assertThatThrownBy(() -> tools.downloadPdf(id))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("prepared");
+  }
 }

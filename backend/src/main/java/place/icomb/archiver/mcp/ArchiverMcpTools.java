@@ -26,6 +26,7 @@ public class ArchiverMcpTools {
   private final place.icomb.archiver.service.JobService jobService;
   private final place.icomb.archiver.controller.PdfExportController pdfExportController;
 
+  private static final long MAX_DOWNLOAD_BYTES = 25L * 1024 * 1024;
   private static final String API_BASE = "https://archive.czernin.eu/api";
 
   public ArchiverMcpTools(
@@ -290,6 +291,54 @@ public class ArchiverMcpTools {
               destructiveHint = false))
   public Map<String, Object> getPdfExport(@McpToolParam(description = "Export id") String id) {
     return pdfView(pdfExportController.status(id));
+  }
+
+  @McpTool(
+      name = "download_pdf",
+      title = "Download PDF",
+      description =
+          "The finished PDF itself, returned as an embedded file so the client can save it to disk"
+              + " and attach or read it. Give the id from export_pdf once get_pdf_export says"
+              + " ready. Refused while the PDF is still being prepared, and above 25 MB.",
+      annotations =
+          @McpTool.McpAnnotations(
+              title = "Download PDF",
+              readOnlyHint = true,
+              destructiveHint = false))
+  public io.modelcontextprotocol.spec.McpSchema.CallToolResult downloadPdf(
+      @McpToolParam(description = "Export id from export_pdf") String id) {
+    ResponseEntity<?> response = pdfExportController.file(id);
+    if (!response.getStatusCode().is2xxSuccessful()
+        || !(response.getBody() instanceof org.springframework.core.io.Resource file)) {
+      Object body = response.getBody();
+      String why =
+          body instanceof Map<?, ?> m && m.get("error") != null
+              ? String.valueOf(m.get("error"))
+              : "The PDF is not available";
+      throw new IllegalArgumentException(why);
+    }
+    byte[] bytes;
+    try {
+      if (file.contentLength() > MAX_DOWNLOAD_BYTES) {
+        throw new IllegalArgumentException(
+            "The PDF is too large to return here (" + file.contentLength() + " bytes)");
+      }
+      bytes = file.getContentAsByteArray();
+    } catch (java.io.IOException e) {
+      throw new IllegalStateException("The PDF could not be read", e);
+    }
+    String name = "pdf-export-" + id + ".pdf";
+    return io.modelcontextprotocol.spec.McpSchema.CallToolResult.builder()
+        .addTextContent(name + " (" + bytes.length + " bytes)")
+        .addContent(
+            io.modelcontextprotocol.spec.McpSchema.EmbeddedResource.builder(
+                    io.modelcontextprotocol.spec.McpSchema.BlobResourceContents.builder(
+                            "archive://pdf-exports/" + id + "/" + name,
+                            java.util.Base64.getEncoder().encodeToString(bytes))
+                        .mimeType("application/pdf")
+                        .build())
+                .build())
+        .build();
   }
 
   private Map<String, Object> pdfView(ResponseEntity<Map<String, Object>> response) {
