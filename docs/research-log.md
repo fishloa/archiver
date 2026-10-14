@@ -3183,3 +3183,65 @@ for the cost first and **with no funding commitment** (the standing EUR 200 unde
 left out). Her reply: *because it is a nationality matter (Staatsangehörigkeitssache) she is not invoicing
 this request.* Certified copy to follow by post, nothing to pay. The enquiry itself had stated no purpose;
 the Berlin office drew the inference from the request. Nothing further to do until it arrives.
+
+### 13–14 October 2026 — Bundesarchiv: what was already asked, what came back, and Alexander's NSBDT/VDI pages
+
+**A correction first.** An earlier note in this session said nothing had gone to the Freiburg Militärarchiv
+about Alexander. That was wrong. Three requests went out on **1 November 2025** (Zimbra 407725, 407732,
+407823): Freiburg (Wehrmacht court, disciplinary and desertion files), Berlin-Lichterfelde (Organisation
+Todt and construction records) and the Krankenbuchlager (hospital records). Their outcomes:
+
+- **Freiburg Militärarchiv:** only the auto-acknowledgement (407751). No answer in 11 months. A one-paragraph
+  reminder was sent 13 Oct 2026 (470292). The Felix request of 15 Sept 2026 (463859) is also at the
+  acknowledgement stage.
+- **Krankenbuchlager:** `krankenbuchlager@bundesarchiv.de` bounced (407758: mailbox not found); resent to
+  `berlin@` (407823). **Answered 16 Jan 2026** by Referat DR 2 (Schults, Gesch.-Z. DR2 - 2023/G-9756):
+  *Lazarett- und Krankenbucheinträge überprüft, Verwundungs- oder Erkrankungsmeldungen nicht ermittelt.*
+  That sits oddly with the WASt cards themselves (below). A re-check naming the 1942 Schwiebus entries was
+  sent 13 Oct 2026 (470293, acknowledged by DR2-2-1: months).
+- **Berlin-Lichterfelde (OT):** answered 23 Dec 2025 and 11 May 2026 (Luther, DR 3.02, ref
+  2023/0002#0185#0001): no OT records, but two name hits on Alexander, **R 26-III/80294** and **NS 14/165**.
+- **Wehrstammkarten (poststelle-pa@, 464925 of 19 Sep 2026)** with Nachträge 22 and 23 Sep: only
+  acknowledgements. `pa@bundesarchiv.de` is dead (a 13 Oct supplement bounced, 470284); the working address
+  is `poststelle-pa@`. The supplement was resent there as 470287 and asks only for what the earlier letters
+  did not: changes of fitness rating and discharge notes, capture and release, loss and missing reports, and
+  1943–45 with whereabouts at war's end.
+
+**The 1942 hospital entries (record 3500, hand-transcribed 13 Oct).** Both WASt cards (B 563-1 KARTEI
+C-30/456, C-179/493) record reports from **Reserve-Lazarett 101 Schwiebus, Lzb. 131**: *Gelbsucht*
+(jaundice) dated 17.4.42, and *Leberentzdg.* (liver inflammation) at 6.7.42; whether 6.7.42 is an admission
+or a receipt date is not clear from the card. Pages 2 and 4 of the record are blank (the stored OCR there was
+a hallucination and is now replaced). Stephanie Czernin (Alexander's daughter) wrote on 1 Nov 2025 that he
+"had jaundice and was allowed to leave due to ill health", was wanted for a friend's factory, and "never said
+he deserted" (407827). The cards back her account; they do not support a desertion theory.
+
+**R 26-III/80294 (record 4057).** A Reichsforschungsrat *Forscherkarte*: Dipl.-Ing., scientific assistant,
+private address "Wr. Neustadt, Flugzeugwerk", Institut für Verbrennungskraftmaschinen und Kraftfahrwesen,
+Wien IV, Karlsplatz 13, fields combustion engines and motor transport, remark **"derzeit bei der
+Wehrmacht"**, card no. 593, undated, back blank. It fits the January 1943 secondment to the Wiener
+Neustädter Flugzeugwerke and says nothing about how his service ended.
+
+**NS 14/165 (NSBDT membership correspondence, Cl–Cz, 587 pages; records 4058, 4059, 4060).** A bound volume
+of letters to the NSBDT Reichswaltung Zentralkartei, Munich, about the membership of many individuals; not a
+file about him. His pages are **536–543** (record 4060): the BDC folder label (BDC INGENIEURE 8500001907);
+a letter of **15 March 1940** to "Alexander Czernin, Assistent, Wien I, Passauerplatz 6/25" about his
+**application to join the NSBDT through the Verein Deutscher Ingenieure (Beitrittsanmeldung ZK 4500)** with
+the birth date missing; his pencil reply on a postcard from **Kan. Czernin, 2/E.A. Abt. 97, Wels**
+(postmark 28.III.40, received 28 Mar 1940), giving 30.IV.1913 and asking for the VDI journal "at last", else
+to be struck off as a member; and the Zentralkartei's letter of 1 April 1940 quoting it. The postcard fits
+the call-up at Wels on 12 Feb 1940 and the first unit on the WASt cards.
+**It is an adverse fact** (an application to an NS-affiliated association, made as an engineer-soldier) and
+is not to be volunteered to an Austrian body; it is also not political comment, and the 1941 Ortsgruppe check
+(not NSDAP, not NSV) is unaffected. Nothing in it concerns 1943–45, leaving the army, or desertion.
+Pages 544–587 are record 4059; pages 1–535 stay in 4058. Hand transcription and corrected translations for
+pages 537, 539, 541 (blank), 542 and 543 are in the archive.
+
+**How the files were obtained.** The invenio "search without login" route used in July–September no longer
+exists: use now requires an account (free; Kennung BA.2026.794638, password in `~/.config/invenio-login`, not
+here) and, from 13 Oct 2026, the digitised-file viewer returned its 503 "Wartung" page even when logged in.
+A short mail to `invenio@bundesarchiv.de` (470415) was answered the same day (Stupperich, 470439): she sent
+both files as **box.bundesarchiv.de** downloads (470441, available for 30 days). Both were downloaded unchanged.
+
+**Open:** answers from Freiburg (Alexander and Felix), DR 2 (hospital re-check) and Abt. PA (Wehrstammkarten
+and the three supplements). `scraper-barch` still uses the old open URLs and needs a login step before it can
+be used again.
