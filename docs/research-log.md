@@ -3245,3 +3245,24 @@ both files as **box.bundesarchiv.de** downloads (470441, available for 30 days).
 **Open:** answers from Freiburg (Alexander and Felix), DR 2 (hospital re-check) and Abt. PA (Wehrstammkarten
 and the three supplements). `scraper-barch` still uses the old open URLs and needs a login step before it can
 be used again.
+
+### 14 October 2026 — WStLA's own copy of Felix's registration file (record 4061), and two corrections
+
+MA 8 (Wiener Stadt- und Landesarchiv) sent, as B-AP-1312529-2026, its own digitisation of **M.Abt. 119, A42 –
+NS-Registrierung, 4. Bezirk, Nr. 3315**: 44 pages at 300 dpi, the archive's own copy of the Magistrat file
+that our family copy (record 4006, 43 pages) reproduces. Ingested as **record 4061**; licence CC BY-NC-ND 4.0,
+attribution "Quelle: WStLA". The same day MA 8 answered the 16 September enquiry about all four brothers
+(B-AP-1296160 / B-AR-1296160) with a **nil result**: nothing further in the NS-Registrierung, the
+Opferfürsorgeakten (M.Abt. 208, A36), the Gestapo-Kartei, the Gauakten-Kartei or the Volksgericht Vg Vr index.
+
+**Two corrections to the entry of 17 September on Felix's Meldeblatt**, made from the full-resolution scan
+(page 1 of record 4061, now hand-transcribed):
+- **Wehrmacht service:** the pencil remark reads *"War seit **August 1944** bis 20. März 1945 bei der
+  Wehrmacht eingerückt"*. The earlier entry said "from early 1944". The Gestapo arrest is dated **27 March
+  1945** (not 29 March). His party card, no. ca. 6,900,000, "wurde **vernichtet**" (destroyed).
+- **The paramilitary line:** the dates "Anfang 1939 – Anfang 1941" stand on the **NSFK** row (Nationalsozialistisches
+  Fliegerkorps) and the function reads "NSFK [?] Mann (Fluglehrer)", not NSKK as noted earlier; the handwritten
+  letter is partly unclear and is marked [?]. The top annotation is "V.G. **1947** / 16.6.1947".
+
+The page is marked as struck through diagonally; the Meldeblatt records "1 Gesuch mit 2 Beilagen". The remaining
+43 pages have only had the pipeline's OCR and have not been compared with record 4006 page by page.
