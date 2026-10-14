@@ -3266,3 +3266,14 @@ Opferfürsorgeakten (M.Abt. 208, A36), the Gestapo-Kartei, the Gauakten-Kartei o
 
 The page is marked as struck through diagonally; the Meldeblatt records "1 Gesuch mit 2 Beilagen". The remaining
 43 pages have only had the pipeline's OCR and have not been compared with record 4006 page by page.
+
+**Correction (14 October, later).** A page-by-page comparison of the WStLA file (record 4061) with the family copy
+(record 4006) by text and by image-feature matching shows the two are the **same file**. 4061 page 4 (the
+Zentralregistrierung der Opfer des Naziterrors slip, no. 32855, dated **16 March 1946**) is *not* new: the same
+slip is photocopied at the bottom of 4006 page 4. The pages with no counterpart in the family copy are 4061
+**page 2** (a pencil filing note, "B. M. für Inneres, Abt. 2 — bisher keine Vormerkungen", repeating the
+Interior Ministry reply of 1 Sept 1947 on page 43) and **page 39** (a blank back with a pencil note); the family
+copy's folder cover (4006 page 1) is not in the WStLA scan. The image test could not pair the dense typed pages
+(4061 pp. 29–35) reliably, which were matched by text instead. Pages 18 and 37, 40 and 41 of 4061 were
+hand-transcribed (the dentist's statement of 20 May 1947, and the official's reasons: "Gestapohaft wegen schwerer
+politischer Delikte ab 26/3 45 … durch die Befreiung im April 1945 abgebrochen").
