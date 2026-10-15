@@ -42,7 +42,10 @@ Meldekarte quoted in the research log); **NS14** = BArch NS 14/165, Alexander's 
 | 13 Jan 1943 | Vienna card: arrives "von Wehrdienst", Wien IV, Wohllebengasse 11; 22 Feb to Wien III, Metternichgasse 10; 20 Nov 1943 Metternichgasse 10/4 | | Meld. |
 | Jan–Jun 1943 | Secondment extended to 31 Mar, then 30 Jun 1943 | | TH pp.79, 91 |
 | 4 Aug 1943 | Writes from **Wiener Neustadt, Wienerstr. 67**: "currently commanded by the Wehrmacht to the WNF, salary 420 RM"; permanent residence Alt Aussee; "not a member of the NSDAP or any branch" | | TH p.35 |
-| 1 Oct 1943 | His assistant post is vacated | | TH p.111 |
+| 13 Aug 1943 | **First Allied air raid on Austria**: US B-24s of the 9th Air Force attack the WNF works (nine days after his 4 Aug letter); output falls from about 280 to 180 aircraft a month | Outside sources, see "Verified: the WNF bombing" below |
+| 1 Oct 1943 | Second raid on the WNF (B-24s); about 40 per cent loss of output. His assistant post is vacated the same day (page 111), probably coincidence | Outside sources; TH p.111 |
+| 24 Oct / 2 Nov 1943 | 24 Oct: raid aimed at the WNF misses in bad weather. **2 Nov: the 15th Air Force's first mission, the WNF hit; monthly output falls from 213 to 37 aircraft and decentralisation is ordered** | Outside sources |
+
 | 8 / 20 Oct 1943 | Secondment extended to **31 Dec 1943**. Address Wien III, Metternichgasse 10 | | TH pp.107, 110 |
 | undated | Reichsforschungsrat Forscherkarte: assistant, private address "Wr. Neustadt, Flugzeugwerk", remark "derzeit bei der Wehrmacht" | | R26 |
 
@@ -61,9 +64,36 @@ British custody at Braunschweig, January 1947 (Log, unverified); the family acco
    on it, nor is any 1943–45 entry. Asked for in the supplement of 13 Oct 2026 (Zimbra 470287).
 4. **Hospital:** the Krankenbuchlager found nothing (16 Jan 2026) although both cards record Schwiebus; a re-check
    went 13 Oct 2026 (470293).
-5. **WNF bombing:** not in our records. From general knowledge, the works were bombed from 13 Aug 1943 with further
-   raids in autumn 1943 and 1944; **unverified**, to be checked against USAAF records. He was on the site in 1943.
+5. **WNF bombing:** now verified from outside sources, see the next section. He was on the site in August 1943; whether he was still there for the November raid, and where he went when the works were dispersed, is not in any document we hold.
 6. **How the Arbeitsurlaub ended**, and whether he returned to the Luftwaffe unit, is unknown.
+
+## Verified: the WNF bombing (outside sources, 15 October 2026)
+
+The WNF were the Wiener Neustädter Flugzeugwerke, the largest Bf 109 fighter works in the Reich after Regensburg-type
+plants; they built 8,545 Bf 109s and at peak employed about 15,000. Dates below agree across the sources unless noted.
+
+| Date | Force and target | Effect |
+|---|---|---|
+| **13 Aug 1943** | 61 B-24s (9th AF, from North Africa; one source says 101 sent, 65 reached the target) against the WNF: the first Allied air raid on Austrian territory | 134–181 dead (sources differ; 26 French forced labourers among them), about 800–850 injured; output falls from about 280 to 180 a month; about 30 new Bf 109s destroyed |
+| **1 Oct 1943** | B-24s (73 from Oudna, Tunisia, on loan from the 8th AF, or 124 sent and 90 over target, depending on the source) against the WNF, the Raxwerke and the town | about 40 per cent loss of output; roughly 100 dead in all |
+| 24 Oct 1943 | 175 bombers (12th AF) aimed at the WNF; bad weather, wrong targets hit (Neunkirchen, Ebenfurth) | 29 dead |
+| **2 Nov 1943** | First mission against Wiener Neustadt by the **15th Air Force**; 139 bombers sent, 112 over target | about 100 dead; monthly output falls from **213 to 37 aircraft**; decentralisation of production ordered |
+| 1944 | 7 Jan (failed, weather); 12 Apr (150 bombers, about 20 per cent loss of output); 23 Apr; 10 May (755 bombers, limited effect because dispersal was already under way); 24, 29 and 30 May (the 30th hit the dispersal sites at Pottendorf, Ebreichsdorf, Neudörfl and Neunkirchen) | production spread over "numerous above- and below-ground sites from Carinthia to Moravia" (39 locations by May 1944), including Markersdorf near St. Pölten and railway tunnels in Moravia (code name Diana) |
+| to 1 Apr 1945 | 29 to over 30 raids on Wiener Neustadt in all, nearly 3,000 aircraft, about 900 civilian dead | |
+
+**Sources** (all secondary; the primary record is the USAAF mission reports and loss reports):
+[Bombing of Wiener Neustadt in World War II (Wikipedia)](https://en.wikipedia.org/wiki/Bombing_of_Wiener_Neustadt_in_World_War_II);
+[Luftangriffe auf Wiener Neustadt (Wikipedia)](https://de.wikipedia.org/wiki/Luftangriffe_auf_Wiener_Neustadt);
+[Wiener Neustädter Flugzeugwerke (Wikipedia)](https://de.wikipedia.org/wiki/Wiener_Neust%C3%A4dter_Flugzeugwerke);
+[Vor 80 Jahren: Erster Luftangriff auf Wiener Neustadt (Austrian Wings)](https://www.austrianwings.info/2023/08/vor-80-jahren-erster-luftangriff-auf-wiener-neustadt/);
+[Als die Alliierten Wiener Neustadt zerbombten (ORF Niederösterreich)](https://noe.orf.at/magazin/stories/3146985/).
+The articles differ on casualty counts, the number of aircraft and which air force flew the second raid; the dates
+and effects above are the points on which they agree.
+
+**What this means for Alexander.** His secondment to the WNF (7 Jan to 31 Dec 1943) covered all three 1943 raids. The
+2 Nov 1943 raid cut output to a sixth and set off the dispersal, **eight weeks before his Arbeitsurlaub was due to
+end on 31 Dec 1943**. Where he went when the works were dispersed, or whether he returned to his Luftwaffe unit, is
+the unknown 1944 gap. Nothing in the outside sources mentions him.
 
 **Handling note.** The NSBDT application (March 1940) is an adverse fact: an application to an NS-affiliated
 association, though apparently made when the NSBDT called on listed Ostmark VDI members to submit applications
