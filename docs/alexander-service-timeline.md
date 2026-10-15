@@ -69,8 +69,8 @@ British custody at Braunschweig, January 1947 (Log, unverified); the family acco
 
 ## Verified: the WNF bombing (outside sources, 15 October 2026)
 
-The WNF were the Wiener Neustädter Flugzeugwerke, the largest Bf 109 fighter works in the Reich after Regensburg-type
-plants; they built 8,545 Bf 109s and at peak employed about 15,000. Dates below agree across the sources unless noted.
+The WNF were the Wiener Neustädter Flugzeugwerke, a Bf 109 fighter works that built 8,545 aircraft (about a quarter of
+all Bf 109 production) and at peak employed about 15,000. Dates below agree across the sources unless noted.
 
 | Date | Force and target | Effect |
 |---|---|---|
