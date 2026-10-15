@@ -3277,3 +3277,29 @@ copy's folder cover (4006 page 1) is not in the WStLA scan. The image test could
 (4061 pp. 29–35) reliably, which were matched by text instead. Pages 18 and 37, 40 and 41 of 4061 were
 hand-transcribed (the dentist's statement of 20 May 1947, and the official's reasons: "Gestapohaft wegen schwerer
 politischer Delikte ab 26/3 45 … durch die Befreiung im April 1945 abgebrochen").
+
+### 15 October 2026 — Hypothesis (UNPROVEN): was Felix's 1945 arrest connected to the Maier-Messner-Caldonazzi group and the WNF plans?
+
+**Status: a question, not a finding. Nothing in our archive supports it. Not to be put to any Austrian body or into a
+submission unless a document supports it.**
+
+*The question.* The Maier-Messner-Caldonazzi resistance group passed factory locations to the Allies (OSS, SOE, via
+Switzerland and Istanbul), including the Wiener Neustadt works where Alexander was seconded in 1943 (see
+`alexander-service-timeline.md`). Felix was arrested on RSHA orders on 27/28 March 1945, five days after Maier's
+execution (22 March 1945), on charges that included a "Türkei-Feindverbindung". Could the two be connected?
+
+*What fits (coincidence only).* Turkey/Istanbul appears both in the Maier network's route and in Felix's charge and
+in his Abwehr task (an information centre on Russia via Turkey and Persia, 1943/44, under Major Bechtle, Abwehr I
+Luft); the Gestapo was still closing the Maier case in March 1945 (Maier returned to Vienna 18 March 1945).
+
+*What cuts against it.* (1) The Gestapo says Maier and Messner decided in **September 1943** to pass on the plans;
+the first WNF raid was **13 August 1943**, before that. (2) Felix's documented charge names the **Falkenhausen
+resistance circle**, not the Maier group. (3) Our archive has no mention of Maier, Messner or Caldonazzi. (4) The
+published sources name industrial informants (Messner of Semperit, Ernst Kraus of Siemens-Schuckert), not a WNF
+engineer; nothing places Alexander in contact with Felix about the works. (5) The only spy-like role in our papers
+is Felix's Abwehr task *for the Germans*, by his own account, which he says failed.
+
+*Tests.* Felix's Gestapo/RSHA file (Bundesarchiv R 3017/R 3018 and R 58, already requested); the Maier trial
+records and lists of accused (DÖW; Bundesarchiv Volksgerichtshof), searched for Czernin; the 1945 diary
+(record 3507) for Maier, Messner, Semperit or Istanbul contacts; Felix's 1947 interrogation summaries (record 4044).
+Outside sources used: English and German Wikipedia on Heinrich Maier and the group, and on the raids on Wiener Neustadt.
