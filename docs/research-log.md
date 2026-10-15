@@ -3303,3 +3303,9 @@ is Felix's Abwehr task *for the Germans*, by his own account, which he says fail
 records and lists of accused (DÖW; Bundesarchiv Volksgerichtshof), searched for Czernin; the 1945 diary
 (record 3507) for Maier, Messner, Semperit or Istanbul contacts; Felix's 1947 interrogation summaries (record 4044).
 Outside sources used: English and German Wikipedia on Heinrich Maier and the group, and on the raids on Wiener Neustadt.
+
+*Result of the first search, 15 October 2026: no link found.* Archive searches for Maier, Messner, Caldonazzi and Semperit
+returned nothing relevant; Felix's 1945 diary (record 3507) names none of the group, and its only Semperit mention
+(11 April 1945, "loaded up tyres") is after his release. The Maier group's published member and arrest lists do not
+name Czernin. Still untested: Felix's Gestapo/RSHA file (R 3017/R 3018, R 58), DÖW's name database, and the Volksgerichtshof
+Maier trial files. The hypothesis stays unproven and out of any Austrian submission.
