@@ -3355,3 +3355,12 @@ the email said the dinner would be "at the castle" in Jindřichův Hradec; it is
 Prague from the evening of Tuesday 27 October; Czernin Palace on the morning of Friday 30 October (entry arranged by the
 Czech Foreign Ministry); Jindřichův Hradec castle and a restaurant dinner that evening; home on Sunday 1 November. Tomáš
 Czernin will not be in Prague that week.
+
+**Filed, 16 October 2026 (afternoon).** Cerha Hempel sent the Urkundenvorlage to MA 35 (AZ 2026-0.068.068) in advance by email
+to 82-ref@ma35.wien.gv.at (Zimbra 471109, from Sandra Baldia, cc Huber and Kernbichler), with registered post the same day.
+Attached: the 4-page submission and the 8-page WStLA scans (`Czernin-Felix-Magistrat-Akt-Originalscans-WStLA.pdf`). The filed
+text carries the corrected Meldeblatt reading (August 1944; Hochverrat und Widerstandstätigkeit) and names the Vereinigung
+ehemaliger österreichischer Widerstandsbewegungen ("Freies Österreich"). As filed it still says the 5 December 1945 Niederschrift
+"stattgegeben" (granted) where the record shows a recommendation, and it attributes the Janich confirmation to the
+"Registrierungsbehörde für den IV. Bezirk"; both were left as drafted by decision. If MA 35 queries either, the support is
+4061 pp. 24, 26, 36 and p. 3. The Staatskanzlei's decision on the § 27 application is still outstanding (Archiv der Republik).
