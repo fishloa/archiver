@@ -3309,3 +3309,49 @@ returned nothing relevant; Felix's 1945 diary (record 3507) names none of the gr
 (11 April 1945, "loaded up tyres") is after his release. The Maier group's published member and arrest lists do not
 name Czernin. Still untested: Felix's Gestapo/RSHA file (R 3017/R 3018, R 58), DÖW's name database, and the Volksgerichtshof
 Maier trial files. The hypothesis stays unproven and out of any Austrian submission.
+
+### 16 October 2026 — Felix's § 27 file goes to counsel as WStLA scans; a correction; counsel's draft submission
+
+**Request.** Stefan Huber (Cerha Hempel) asked on 16 October (Zimbra 470859) for the § 27 VerbotsG file as the original
+without the English column. He had received only seven pages on 20 September (4006 pp. 2–4, 15, 23, 25, 34, side by side).
+Alex told him to file it with MA 35 now (his 15 October reply); no confirmation that it has gone in.
+
+**What was sent.** The same documents, scans only, taken from WStLA's own digitisation (record 4061, B-AP-1312529-2026,
+M.Abt. 119, A42, 4. Bezirk, Nr. 3315) instead of the family copy (record 4006). Reason: 4061 is a 2496 × 3488 colour JPEG
+(about 300 dpi) of the original; the 4006 pages are an enlarged black-and-white photocopy (4959 × 7017, speckled, broken
+pencil strokes). Exported through the archive API (`pages=1,3,4,5,16,24,26,34`), 8 PDF pages, 6.7 MB, not recompressed.
+Concordance (4006 page → 4061 page): 2 → 1; 3 → 3; 4 → 5, with the Zentralregistrierung slip that sits at the bottom of 4006
+p. 4 a separate sheet at 4061 p. 4; 15 → 16; 23 → 24; 25 → 26; 34 → 34. Matched by page text. WStLA added **no new
+documents** (the nil result of 14 October also covers all four brothers); the gain is legibility only.
+
+**Correction to our email of 20 September**, read from the clear scan of the Meldeblatt (4061 p. 1). The pencil remark is:
+"War seit **August 1944** bis 20. März 1945 bei der Wehrmacht eingerückt. Ist in Wien am 27. März 1945 von der Gestapo wegen
+**Hochverrat und Widerstandstätigkeit** verhaftet worden." The 20 September email said "early 1944" and "Hochverrat und
+Wehrkraftzersetzung"; both were wrong, and the correction went to Huber in the same email as the scans. (NSFK, not NSKK, on
+the paramilitary line is already recorded on 14 October.)
+
+**Counsel's draft Urkundenvorlage to MA 35** (Zimbra 470936, 16 October; Alex's tracked changes sent back as 470944). Checked
+against the scans:
+- 5 March 1946 letter (4061 p. 3, lower): ÖVP Generalsekretariat letterhead, typed sender "Vereinigung ehemaliger österr.
+  Widerstandsbewegungen, Wien I., Dominikanerbastei 6/4", red stamp "Vereinigung der Österr. Widerstandsbewegungen ·
+  Österreichische Volkspartei · 'Freies Österreich'", signature illegible. The draft now names the Vereinigung.
+- Fritz Janich (4061 p. 3, upper): the page gives only name, address (Wien IV, Schwindgasse 14/2) and a signature; the
+  "Registrierungsbehörde" stamps cancel the fee stamps and show only that it was lodged there. "Employee of the Registration
+  Authority" is unsupported ("an employee" deleted; "of the Registration Authority" still stands).
+- The "SS, SA, NSKK or NSFK" list in the Magistrat file note is printed form text; the Meldeblatt shows NSDAP and NSFK only
+  (list deleted in Alex's mark-up).
+- **Left as drafted, by decision:** "the application had been granted". The record shows a *recommendation* only: the
+  Begutachtungskommission on 5 December 1945 (4061 p. 24) and the Magistrat's file note (p. 26, entry deferred pending the
+  State Government); Felix's own summary (p. 36) says the Magistrat on 5 January 1946 recommended it to the Staatskanzlei. The
+  Staatskanzlei's decision is not in this file (requested from the Archiv der Republik).
+- The draft discloses Felix's NSDAP/NSFK membership; it is on the Meldeblatt, which is part of the filing, and counsel has
+  covered it with the Thurn und Taxis statements. Left to counsel.
+
+**Not yet confirmed:** the filing date with MA 35. Note of Fees 26/50901 (EUR 2,700, to 30 September) does not itemise it and
+predates the instruction to file.
+
+**Alex's visit.** Replied to Jan Drocár (sent 15 October, 470709) with the family photograph and dates of birth for his tree;
+the email said the dinner would be "at the castle" in Jindřichův Hradec; it is at a restaurant, the castle is a visit. Plan:
+Prague from the evening of Tuesday 27 October; Czernin Palace on the morning of Friday 30 October (entry arranged by the
+Czech Foreign Ministry); Jindřichův Hradec castle and a restaurant dinner that evening; home on Sunday 1 November. Tomáš
+Czernin will not be in Prague that week.
