@@ -9,6 +9,16 @@ new revision, no build is triggered, and the release silently never happens —
 which is exactly what v1.0.0 did on its first attempt. Add the entry below,
 commit, then tag that commit.
 
+## Unreleased
+
+**An MCP client can delete a page.** `delete_page(recordId, seq, reason)` removes one page — a blank
+or duplicate sheet that should never have been ingested — together with its scan, transcription,
+translation, chunks and jobs, and the pages behind it close the gap. It is the existing admin
+`DELETE /api/admin/records/{recordId}/pages/{seq}` behind the same administrators-only guard as the
+other writing tools, and it refuses a missing reason, since a deleted page cannot be recovered. The
+`archiver-api` skill now lists the page delete, insert and replace calls, which it did not, so the
+call was not found when it was needed.
+
 ## v1.1.23 — 13 October 2026
 
 **Signing in works whichever subnet the stack lands on.** The backend believes the proxy's

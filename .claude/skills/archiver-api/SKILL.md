@@ -19,6 +19,7 @@ guidance with it.
 | `hold_record` | **the panic button** — stop a record's AI processing, or release it |
 | `cancel_job` | one queued job, by id |
 | `reocr_page` | read one page again on a chosen engine |
+| `delete_page` | remove one page (a blank or duplicate sheet) by `recordId` and `seq`; the pages after it close the gap. Cannot be undone; a reason is required |
 | `get_page` | one page's text, translation, content type and the address of its scan |
 | `export_pdf`, `get_pdf_export`, `download_pdf` | ask for a PDF of a record or chosen pages (`pages: "14"`), poll it, then `download_pdf` returns the file itself as an embedded resource a client can save to disk (≤ 25 MB) |
 
@@ -232,6 +233,18 @@ Refusals: `404` unknown record or page; `400` a bad body, a position out of rang
 itself, a split that would empty a record; `409` a record not `complete`, on hold, busy, in another
 archive, holding a legacy-layout image, or with a PDF export still being prepared. A refusal
 changes nothing. A move touches no PDF: PDFs are produced on demand.
+
+## Editing the pages of a record
+
+A blank sheet, a duplicate or a sideways scan is fixed on the record, not by deleting it and
+ingesting again. Page numbers are positions (`seq`), and the pages after a change move to close or
+open the gap.
+
+| Call | Does |
+|---|---|
+| `DELETE /api/admin/records/{recordId}/pages/{seq}` (MCP: `delete_page`, with a reason) | Removes the page, its scan, transcription, translation, chunks and jobs; the pages behind it move down. Cannot be undone |
+| `POST /api/admin/records/{recordId}/pages/{seq}/insert` multipart `image` | Inserts a page at `seq`; that page and the ones after it move up |
+| `PUT /api/ingest/records/{recordId}/pages/{seq}` multipart `image` | Replaces the scan of a page |
 
 ## Correcting a stored text or title by hand
 

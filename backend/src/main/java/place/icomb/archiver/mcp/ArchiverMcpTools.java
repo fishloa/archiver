@@ -25,6 +25,7 @@ public class ArchiverMcpTools {
   private final JdbcTemplate jdbcTemplate;
   private final place.icomb.archiver.service.JobService jobService;
   private final place.icomb.archiver.controller.PdfExportController pdfExportController;
+  private final place.icomb.archiver.service.IngestService ingestService;
 
   private static final long MAX_DOWNLOAD_BYTES = 25L * 1024 * 1024;
   private static final String API_BASE = "https://archive.czernin.eu/api";
@@ -36,7 +37,8 @@ public class ArchiverMcpTools {
       PersonMatchService personMatchService,
       JdbcTemplate jdbcTemplate,
       place.icomb.archiver.service.JobService jobService,
-      place.icomb.archiver.controller.PdfExportController pdfExportController) {
+      place.icomb.archiver.controller.PdfExportController pdfExportController,
+      place.icomb.archiver.service.IngestService ingestService) {
     this.apiController = apiController;
     this.semanticSearchController = semanticSearchController;
     this.familyTreeService = familyTreeService;
@@ -44,6 +46,7 @@ public class ArchiverMcpTools {
     this.jdbcTemplate = jdbcTemplate;
     this.jobService = jobService;
     this.pdfExportController = pdfExportController;
+    this.ingestService = ingestService;
   }
 
   /**
@@ -723,5 +726,46 @@ public class ArchiverMcpTools {
     out.put("pageId", resolved);
     out.put("jobKind", kind);
     return out;
+  }
+
+  @McpTool(
+      name = "delete_page",
+      title = "Delete One Page",
+      description =
+          "Remove one page from a record: its scan, transcription, translation, chunks and jobs "
+              + "go with it, and the pages after it move down to close the gap. Use for a blank "
+              + "or duplicate sheet that should never have been ingested. Address it by "
+              + "recordId and seq (the page's position, from get_document). It cannot be "
+              + "undone: the page would have to be ingested again. Give a reason. "
+              + "Administrators only.",
+      annotations =
+          @McpTool.McpAnnotations(
+              title = "Delete One Page",
+              readOnlyHint = false,
+              destructiveHint = true,
+              idempotentHint = false))
+  public Map<String, Object> deletePage(
+      @McpToolParam(description = "Record id") Long recordId,
+      @McpToolParam(description = "Page sequence within the record, starting at 1") Integer seq,
+      @McpToolParam(description = "Why the page is being removed") String reason) {
+    requireAdmin();
+
+    if (recordId == null || seq == null) {
+      return Map.of("error", "give recordId and seq");
+    }
+    if (reason == null || reason.isBlank()) {
+      return Map.of("error", "give a reason: a deleted page cannot be recovered");
+    }
+    try {
+      var record = ingestService.deletePage(recordId, seq);
+      Map<String, Object> out = new LinkedHashMap<>();
+      out.put("recordId", recordId);
+      out.put("removed", seq);
+      out.put("pageCount", record.getPageCount());
+      out.put("reason", reason);
+      return out;
+    } catch (IllegalArgumentException e) {
+      return Map.of("error", String.valueOf(e.getMessage()));
+    }
   }
 }
