@@ -9,7 +9,7 @@ new revision, no build is triggered, and the release silently never happens —
 which is exactly what v1.0.0 did on its first attempt. Add the entry below,
 commit, then tag that commit.
 
-## Unreleased
+## v1.1.24 — 20 October 2026
 
 **An MCP client can delete a page.** `delete_page(recordId, seq, reason)` removes one page — a blank
 or duplicate sheet that should never have been ingested — together with its scan, transcription,
