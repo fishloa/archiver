@@ -150,7 +150,7 @@ class McpContentToolsTest {
     String id = String.valueOf(tools.exportPdf(record, "original", "2").get("id"));
     worker.runOnce();
 
-    io.modelcontextprotocol.spec.McpSchema.CallToolResult result = tools.downloadPdf(id);
+    io.modelcontextprotocol.spec.McpSchema.CallToolResult result = tools.downloadPdf(id, null);
 
     assertThat(result.isError()).isNotEqualTo(Boolean.TRUE);
     var embedded =
@@ -169,7 +169,7 @@ class McpContentToolsTest {
   void aPdfThatIsNotReadyIsRefusedClearly() {
     String id = String.valueOf(tools.exportPdf(record, "original", "3").get("id"));
 
-    assertThatThrownBy(() -> tools.downloadPdf(id))
+    assertThatThrownBy(() -> tools.downloadPdf(id, null))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining("prepared");
   }

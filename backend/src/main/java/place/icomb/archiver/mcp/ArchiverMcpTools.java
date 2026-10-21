@@ -27,7 +27,12 @@ public class ArchiverMcpTools {
   private final place.icomb.archiver.controller.PdfExportController pdfExportController;
   private final place.icomb.archiver.service.IngestService ingestService;
 
-  private static final long MAX_DOWNLOAD_BYTES = 25L * 1024 * 1024;
+  /**
+   * Largest slice of a PDF returned in one reply; the default is what a client reliably carries.
+   */
+  private final int downloadPartBytes;
+
+  private static final long MAX_DOWNLOAD_BYTES = 1024L * 1024 * 1024;
   private static final String API_BASE = "https://archive.czernin.eu/api";
 
   public ArchiverMcpTools(
@@ -38,7 +43,10 @@ public class ArchiverMcpTools {
       JdbcTemplate jdbcTemplate,
       place.icomb.archiver.service.JobService jobService,
       place.icomb.archiver.controller.PdfExportController pdfExportController,
-      place.icomb.archiver.service.IngestService ingestService) {
+      place.icomb.archiver.service.IngestService ingestService,
+      @org.springframework.beans.factory.annotation.Value(
+              "${archiver.mcp.download-part-bytes:8388608}")
+          int downloadPartBytes) {
     this.apiController = apiController;
     this.semanticSearchController = semanticSearchController;
     this.familyTreeService = familyTreeService;
@@ -47,6 +55,7 @@ public class ArchiverMcpTools {
     this.jobService = jobService;
     this.pdfExportController = pdfExportController;
     this.ingestService = ingestService;
+    this.downloadPartBytes = downloadPartBytes;
   }
 
   /**
@@ -302,14 +311,22 @@ public class ArchiverMcpTools {
       description =
           "The finished PDF itself, returned as an embedded file so the client can save it to disk"
               + " and attach or read it. Give the id from export_pdf once get_pdf_export says"
-              + " ready. Refused while the PDF is still being prepared, and above 25 MB.",
+              + " ready. A PDF is returned whole up to 8 MB; a larger one is refused with its"
+              + " number of parts, and is fetched by calling again with part=1, part=2, ... Each"
+              + " part is a plain slice of the file: save them in order and join them with"
+              + " `cat` into the one PDF, whose SHA-256 is given with every part so the result"
+              + " can be checked. Refused while the PDF is still being prepared.",
       annotations =
           @McpTool.McpAnnotations(
               title = "Download PDF",
               readOnlyHint = true,
               destructiveHint = false))
   public io.modelcontextprotocol.spec.McpSchema.CallToolResult downloadPdf(
-      @McpToolParam(description = "Export id from export_pdf") String id) {
+      @McpToolParam(description = "Export id from export_pdf") String id,
+      @McpToolParam(
+              description = "Part number, from 1, for a PDF too large for one reply",
+              required = false)
+          Integer part) {
     ResponseEntity<?> response = pdfExportController.file(id);
     if (!response.getStatusCode().is2xxSuccessful()
         || !(response.getBody() instanceof org.springframework.core.io.Resource file)) {
@@ -320,28 +337,88 @@ public class ArchiverMcpTools {
               : "The PDF is not available";
       throw new IllegalArgumentException(why);
     }
+    long total;
+    String sha256;
     byte[] bytes;
+    int parts;
+    int chosen;
     try {
-      if (file.contentLength() > MAX_DOWNLOAD_BYTES) {
-        throw new IllegalArgumentException(
-            "The PDF is too large to return here (" + file.contentLength() + " bytes)");
+      total = file.contentLength();
+      if (total > MAX_DOWNLOAD_BYTES) {
+        throw new IllegalArgumentException("The PDF is too large to return (" + total + " bytes)");
       }
-      bytes = file.getContentAsByteArray();
+      parts = (int) Math.max(1, (total + downloadPartBytes - 1) / downloadPartBytes);
+      sha256 = sha256Of(file);
+      if (part == null) {
+        if (parts > 1) {
+          throw new IllegalArgumentException(
+              "The PDF is "
+                  + total
+                  + " bytes, too large for one reply. Call download_pdf again with part=1 to"
+                  + " part="
+                  + parts
+                  + " (up to "
+                  + downloadPartBytes
+                  + " bytes each), save each in order and join them with cat. The whole file's"
+                  + " SHA-256 is "
+                  + sha256);
+        }
+        chosen = 1;
+      } else {
+        chosen = part;
+        if (chosen < 1 || chosen > parts) {
+          throw new IllegalArgumentException(
+              "There is no part " + chosen + ": this PDF has " + parts + " part(s)");
+        }
+      }
+      long from = (long) (chosen - 1) * downloadPartBytes;
+      int length = (int) Math.min(downloadPartBytes, total - from);
+      try (java.io.InputStream in = file.getInputStream()) {
+        in.skipNBytes(from);
+        bytes = in.readNBytes(length);
+      }
     } catch (java.io.IOException e) {
       throw new IllegalStateException("The PDF could not be read", e);
     }
-    String name = "pdf-export-" + id + ".pdf";
+    String name =
+        parts == 1
+            ? "pdf-export-" + id + ".pdf"
+            : "pdf-export-" + id + ".pdf.part" + String.format("%03d", chosen);
     return io.modelcontextprotocol.spec.McpSchema.CallToolResult.builder()
-        .addTextContent(name + " (" + bytes.length + " bytes)")
+        .addTextContent(
+            name
+                + " ("
+                + bytes.length
+                + " bytes"
+                + (parts == 1 ? "" : "; part " + chosen + " of " + parts)
+                + "; whole PDF "
+                + total
+                + " bytes, sha256 "
+                + sha256
+                + ")")
         .addContent(
             io.modelcontextprotocol.spec.McpSchema.EmbeddedResource.builder(
                     io.modelcontextprotocol.spec.McpSchema.BlobResourceContents.builder(
                             "archive://pdf-exports/" + id + "/" + name,
                             java.util.Base64.getEncoder().encodeToString(bytes))
-                        .mimeType("application/pdf")
+                        .mimeType(parts == 1 ? "application/pdf" : "application/octet-stream")
                         .build())
                 .build())
         .build();
+  }
+
+  private static String sha256Of(org.springframework.core.io.Resource file)
+      throws java.io.IOException {
+    try (java.io.InputStream in = file.getInputStream()) {
+      java.security.MessageDigest digest = java.security.MessageDigest.getInstance("SHA-256");
+      byte[] buffer = new byte[1 << 16];
+      for (int n; (n = in.read(buffer)) > 0; ) {
+        digest.update(buffer, 0, n);
+      }
+      return java.util.HexFormat.of().formatHex(digest.digest());
+    } catch (java.security.NoSuchAlgorithmException e) {
+      throw new IllegalStateException(e);
+    }
   }
 
   private Map<String, Object> pdfView(ResponseEntity<Map<String, Object>> response) {

@@ -21,7 +21,7 @@ guidance with it.
 | `reocr_page` | read one page again on a chosen engine |
 | `delete_page` | remove one page (a blank or duplicate sheet) by `recordId` and `seq`; the pages after it close the gap. Cannot be undone; a reason is required |
 | `get_page` | one page's text, translation, content type and the address of its scan |
-| `export_pdf`, `get_pdf_export`, `download_pdf` | ask for a PDF of a record or chosen pages (`pages: "14"`), poll it, then `download_pdf` returns the file itself as an embedded resource a client can save to disk (≤ 25 MB) |
+| `export_pdf`, `get_pdf_export`, `download_pdf` | ask for a PDF of a record or chosen pages (`pages: "14"`), poll it, then `download_pdf` returns the file itself as an embedded resource a client can save to disk. Up to 8 MB it comes whole; a larger PDF is refused with its number of parts and fetched with `part=1`, `part=2`, … (8 MB each; save in order and `cat` them into one file, then check the SHA-256 given with every part). Anything above about 12 MB in one reply used to die as "session expired" |
 
 The last three are administrators only and fail closed: no provable
 `ROLE_ADMIN`, no action. `reocr_page` also refuses a record that is on hold,

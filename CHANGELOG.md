@@ -9,6 +9,16 @@ new revision, no build is triggered, and the release silently never happens —
 which is exactly what v1.0.0 did on its first attempt. Add the entry below,
 commit, then tag that commit.
 
+## v1.1.25 — 22 October 2026
+
+**`download_pdf` can fetch a large PDF.** A PDF above about 12 MB used to fail as "MCP server session
+expired", which said nothing about size, and the tool advertised a 25 MB limit it could not carry. A
+PDF over 8 MB is now refused with its number of parts, and fetched with `part=1`, `part=2`, …: each
+part is a plain slice of the file, the answer gives the whole file's size and SHA-256, and the parts
+join with `cat` into the exact PDF. Small PDFs come back whole as before. Tests join the parts of a
+real export, check the bytes against the checksum, and refuse a part that does not exist. The
+`archiver-api` skill says how.
+
 ## v1.1.24 — 20 October 2026
 
 **An MCP client can delete a page.** `delete_page(recordId, seq, reason)` removes one page — a blank
