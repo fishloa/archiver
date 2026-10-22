@@ -3439,3 +3439,32 @@ mention is a 1939 anecdote about the Černín Palace (scan page 54).
 
 **Not fetched:** the research-room items (V-8623 MV, fond 305 sign. 305-510-6, fond Z, the emigration card) and the Gestapo men's
 lists. Rudolf's file V-8623 MV is the one item not reachable online.
+
+## 22 October 2026 — Bundesarchiv-Militärarchiv Freiburg: no Wehrmacht court records for Alexander; Feustel file read
+
+**Freiburg reply (received by post, 22 Oct).** Two letters from Sven Staude, Bundesarchiv-Militärarchiv, ref. MA 4 - 2023/0002#0185#0001.
+- **13 Nov 2025** (answering the request of 1 Nov 2025): he checked the **Wehrmacht court records** (*wehrmachtgerichtliche
+  Unterlagen*) and found **no records** on Alexander Friedrich Josef Paul Maria Czernin, b. 30.4.1913. Because of large losses of
+  records through war action it is "not unusual" for little or nothing to be found on individual soldiers. No fee.
+- **15 Oct 2026** (answering the request of 13 Oct 2026): a covering letter. The 2025 reply, sent by email, appears never to have
+  arrived, so it is enclosed. No new finding. The 15 Oct letter cites the same reference and the 2025 letter, so it appears to
+  answer Alexander's request only; the Felix request of 15 Sep 2026 is not answered by either.
+- Scanned as `scan_20261022_31`, split to one page each and ingested byte-identical (SHA-256 verified against the stored images):
+  **record 4071** (13 Nov 2025) and **record 4072** (15 Oct 2026), archive 9.
+
+**What it does and does not show.** It rules out a Wehrmacht court file for Alexander in the Militärarchiv's court collection. It
+does **not** cover personnel or service records, so it says nothing on whether his service records survive, or on how or when he
+left the army. We still hold **no evidence of desertion and no record of his discharge**: the documents stop at the end of his
+Arbeitsurlaub on 31 Dec 1943 (`alexander-service-timeline.md`); the only account is the family's (released for ill health, "never
+said he deserted"). The desertion in our papers is Felix's, on 7 Apr 1945. The service file is still to come from Abt. PA (Zimbra
+464913, supplement 470287) and the hospital recheck (470293); no replies.
+
+**eBadatelna 325-121-1 (Paul Feustel), read.** Already in the archive as **record 4011** (215 pages, ingested 17 Sep 2026). All
+Czernin hits concern **Humprecht**, none Rudolf. Scan 18: Czech report on the 14–18 Jul 1971 meeting with the Stasi (Capt. Schulz),
+who handed over photocopies of the Prague summary-court verdict of 30 Jun 1942 against **Count Humprecht Otto Czernin** (b. 9.2.1909,
+Dymokury) and the forester František Dvořák, both condemned to death; Feustel sat for the prosecution; Czernin's sentence was
+commuted to life. Scan 22: cover note of 2 Nov 1971 forwarding 481 photocopies and saying the Stasi was sending certified copies for
+"the criminal matter Czernin". Scans 136, 139, 140: handover list, including a witness protocol of Anna Chládková (27 Sep 1972), the
+Gestapo monthly report for December 1944, a death notice and death certificate for Humprecht (Pleš sanatorium, 19.9.1944), a
+witness protocol of **Leobald Czernin** (28 Sep 1972, 8 pages) and a Pleš confirmation. The list names the documents; the documents
+themselves are not in this unit. **Not yet searched:** the "criminal matter Czernin" and the Leobald protocol elsewhere in fond 325.
