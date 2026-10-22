@@ -3384,3 +3384,23 @@ ehemaliger österreichischer Widerstandsbewegungen ("Freies Österreich"). As fi
 - Drocár proposed, and we accepted, **Wednesday 28 October, 14:00, restaurant Ztracený ráj**, Čechova 239/9, Prague 7 (with Valentine and Eugene). Photos sent to him: the family, Alexander and Zannick's wedding of 9 July 1949 (Haywards Heath), Alexander's parents Pavel and Maria Gabriele (Orsini-Rosenberg), and Alex's parents.
 
 **Correction to the entry of 15 October (the Maier-group hypothesis).** The archive search for a link used "Messner Semperit" together and found nothing. Searching **"Semperit"** alone finds Felix's own § 27 file (4061 p. 17, also 4006 p. 16): a declaration of 20 October 1945 by **Fred Herok, director of Semperit-Kautschuk, Türkei (Istanbul)**, that Felix was known to him as a delegate for compensation (barter) business during his stays in Turkey in the second half of 1943, who moved in the Austrian circles there and held a clear Austrian standpoint. This is not evidence of any link to the Maier-Messner-Caldonazzi group; it records that a Semperit director in Istanbul vouched for Felix in autumn 1943, and the Maier group's Messner worked at Semperit. Not yet followed up.
+
+### 22 October 2026 — Archiv der Republik: nil result on the Staatskanzlei file for Felix's § 27 application
+
+Dr Clemens Reisner (Österreichisches Staatsarchiv, Archiv der Republik; Zimbra 472445, filed in /Citizenship) reports that
+"despite intensive research in the holdings kept here, no records on the petition mentioned could be found" (he calls it a
+Gnadengesuch). The request of 19 September 2026 asked for the Staatskanzlei's own file on the § 27 Verbotsgesetz application
+Zl. 13.413-2 N/1945, filed by Dr Karl Trauttmansdorff for Felix, with the State Government's decision, its date and number, or
+where it is kept; he asked for a citation on 12 October and a scan of the page on 12 October, and received both on 13 October.
+Thanked on 22 October (Zimbra 472448); the request is closed.
+
+**Consequence.** The State Government's decision on Felix's application has not been found. The latest records held remain the
+Begutachtungskommission's recommendation of 5 December 1945 (record 4061 p. 24) and the Magistrat's file note recommending
+that the application be granted, with entry in the register deferred pending the State Government (p. 26; Felix's own summary,
+p. 36, gives 5 January 1946 for the Magistrat's decision). The submission filed with MA 35 on 16 October says the application
+"was granted" (stattgegeben); the file supports a recommendation. If MA 35 queries it, the support is 4061 pp. 24, 26 and 36.
+
+**Also this week:** `download_pdf` on the MCP now returns a large PDF in numbered 8 MB parts with a SHA-256 (v1.1.25), after
+PDFs above about 12 MB failed as "session expired". Record 3796, Heydrich's 20th situation report to Bormann (16 May 1942, the
+original carrying the Czernin passage on folio 66), has been split into the report (pp. 1–8) and its annexes for a USB key to be
+handed to Jan Drocár on 28 October; not yet emailed.
