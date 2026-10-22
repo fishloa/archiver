@@ -3404,3 +3404,38 @@ p. 36, gives 5 January 1946 for the Magistrat's decision). The submission filed 
 PDFs above about 12 MB failed as "session expired". Record 3796, Heydrich's 20th situation report to Bormann (16 May 1942, the
 original carrying the Czernin passage on folio 66), has been split into the report (pp. 1–8) and its annexes for a USB key to be
 handed to Jan Drocár on 28 October; not yet emailed.
+
+### 22 October 2026 — ABS replies to ABS-S-8452-2026: nothing on Alexander; one online item fetched
+
+The Security Forces Archive (ABS, Prague; Zimbra 472443, filed in /Citizenship; ref. ABS 9794/2026, signed Mgr Tomáš Bursík,
+handled by Vladimír Lejtnar) answers the Czernin-line research request of 14 September 2026.
+
+**Nothing on Alexander.** For Alexander Czernin (b. 30.4.1913), Pavel (b. 4.6.1879), Humprecht (b. 9.2.1909) and Marie
+Czerninová/Kinská ABS found no records or evidence entries at all.
+
+**What it does hold**
+- *Rudolf Czernin* (b. 25.8.1904): investigation file V-8623 MV and an emigration card (Správa pasů a víz); the records of two
+  files that no longer exist or are not located (personal and surveillance file reg. no. 337 MV, destroyed 8 March 1961; file
+  AS 1427 I. S, passed to the MV's 6th section on 15 April 1957); and, in the annex, entries in fonds 305, 325 and Z, with the
+  same Národní archiv signatures as the NA reply of 5 May 2026 (109-4-398 p. 7, 110-11-102/9, 110-4-59 pp. 2–15).
+- *Maria Ida Czerninová* (née Lobkowicz, b. 15.10.1917): Národní archiv 110-4-14/13.
+- *Felix Theobald Pavel Antonín Maria Czernin* (b. 7.3.1902, bank director, Aussig): Státní oblastní archiv Litoměřice
+  112-485-4/219-229. The covering letter gives him Alexander's birth date (30.4.1913) in error; the annex entry is correct.
+- The Kolín Gestapo men of the Humprecht/Rudolf case (Paul Feustel, Heinrich Meier/Meyer, Franz Wittiger, Josef Horn, Emil Laufka)
+  with long lists in fonds 325, 52 and 2M, most marked as readable in eBadatelna.
+- ABS cannot send copies by email or post (Act 499/2004). Items marked * can be seen digitally in the research room (Na Struze 3,
+  Prague 1; badatelna.struha@abscr.cz, +420 221 008 132); items marked ** are online in eBadatelna (account active until about
+  17 September 2027).
+
+**Fetched.** The only online item concerning Rudolf, fond 325 unit 325-166-3 (ebadatelna.cz node 630292), is **record 4070**
+in archive 2: a Czech translation of Walter Jacobi's post-war report *Political conditions in the Protectorate 1939–1945*
+(Jacobi was the head of the SD office in Prague), 128 scans, OCR and translation done. The scraper takes a whole unit, so all
+128 scans came in, not only the cited page. The ABS "s. 70" is Jacobi's own German page 70 (the report's index lists
+"CZERNIN – 70"); the passage is on **scan page 76** (printed page 61): in September 1938 representatives of the old nobility,
+among them "Count Czernin (of Dymokury)", issued a declaration "unequivocally" aligning themselves with President Beneš's
+political line. This is the SD chief's own account of the declaration that Heydrich's letter of 16 May 1942 gives as the reason
+for the forced administration (record 3796, folio 66). It does not name Rudolf, and Jacobi wrote after the war. The only other
+mention is a 1939 anecdote about the Černín Palace (scan page 54).
+
+**Not fetched:** the research-room items (V-8623 MV, fond 305 sign. 305-510-6, fond Z, the emigration card) and the Gestapo men's
+lists. Rudolf's file V-8623 MV is the one item not reachable online.
