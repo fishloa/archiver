@@ -3533,3 +3533,20 @@ Bernhard Friedl, Landesarchiv, Zahl **20033-A/3430/1151-2026** (Zimbra 473135, f
 - The two fathers were sons of the same parents, so brothers; Alexander and Humprecht were first cousins (family tree persons 322, 255; common ancestor Děpolt "Theobald"). Rudolf (b. 25 Aug 1904) is Humprecht's brother; his own birth entry is being sought.
 
 **Side search, 27 Oct (nil):** Maria Gabriele's 1879 baptism is not in the 1879 indexes of the three Wien VII parishes on Matricula (St. Ulrich index A-03, Schottenfeld 01-075, Altlerchenfeld 01-46). Not needed for the court application.
+
+**Kinship proof — everything found, 27 Oct 2026** (archive sweep by a subagent, quotes from the OCR text and record descriptions, to be checked against the scans before filing):
+
+| Strength | Document | What it states |
+|---|---|---|
+| Parish, official | Alexander's 1921 *Geburts- und Tauf-Schein* (Dropbox Certificates; also record 4005 p. 4) | Paul b. Dymokury 4.6.1879, son of **Theobald** Czernin, k.k. Kämmerer, and Countess **Westphalen-Fürstenberg** |
+| Parish, official | Humprecht's Dymokury birth entry, 1909 (Dropbox Certificates) | Father **Děpolt**, b. Dymokury 18.6.1871, son of the late **Děpolt** Czernin, k.k. komoří, and **Anna Marie née Westphalen-Fürstenberg**; **Paul Graf Czernin proxy godfather** |
+| Printed notice | Record 4040, HHStA Partezettel, 17.1.1938 | Paul buried at Dymokury; Felix gives notice also for "seines Onkels Otto" |
+| Printed notice | Record 3943, Wiener Salonblatt, 6.2.1938 | Paul's widow and children incl. Johannes and Alexander |
+| Scholarly article | Record 3519, Hořejš, *Paměť a dějiny* 2014/4, p. 31 | Theobald (1836–1893); his elder son Theobald (Děpold) Josef (1871–1931) received Dymokury; **Rudolf (25.8.1904) the first-born and Humprecht (9.2.1909) the second son** of that Theobald and Marie Anna née Kinská |
+| Family history | Record 4019 p. 23, Alexander, Iver Heath, 1987 | "Theobald, 1836–1893, was my grandfather … his wife, née Countess Westphalen-Fürstenberg … The boys were my uncles, Theobald, Ottokar, Otto and my father Paul … Uncle Theobald lived in Dymokur … we saw his family quite often … I think we felt closer to them than to our other cousins." |
+| Family history | Record 4019 p. 26 | Rudobald and his brother Humprecht as cousins; "on trumped up charges, both were put into prison. Humprecht did not survive" |
+| Memoir | Record 4064, Onkel Otto's memoir of Paul, 1938 | the brothers at Dymokury told of Paul's birth; their father's death 6 Nov 1893 |
+| StB protocol | Record 4009 p. 40, Theobald Czernin, 28.9.1972 | parents Rudolf Czernin and Bedřiška née Wenckheim at Dymokury; "my uncle Humprecht" at Hlušice — Rudolf and Humprecht brothers |
+| Contact | Arolsen doc. 12120657 pp. 32–33 (log line ~1286); record 4009 p. 45 | **Wolfgang visited Humprecht in Brandenburg on 11 Apr 1943** and applied again in Sept 1943; Chládková: the visit was arranged by "a relative who was a Reich German" |
+
+**Still missing:** a primary entry for Rudolf's birth (Dymokury, 25.8.1904; SOA Praha digital reading room, ebadatelna.soapraha.cz, interactive only) and for Děpolt's (1871). Neither is needed to prove Alexander and **Humprecht** were first cousins; the two parish entries already do. Note: the applicant recalled the prison visit as Felix's; the log records it as Wolfgang's.
