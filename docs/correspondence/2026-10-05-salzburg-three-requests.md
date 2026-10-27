@@ -1,5 +1,7 @@
 # Three follow-ups to the Salzburger Landesarchiv's answer — 5 October 2026
 
+**Update 27 October 2026:** the Landesarchiv answered #3 (Zahl 20033-A/3430/1151-2026, Zimbra 473135): the register sheet of LAD d 10266/1950 (record 4077), and the court's terms — postal application with proof of kinship, then a scan of about 90 pages for about EUR 45. #2 is superseded by `2026-10-27-bezirksgericht-salzburg-antrag.docx`, a formal application with the kinship chain; it is HELD for the applicant to sign and post.
+
 **Status: #1 SENT 5 October 2026 (Zimbra 468418), amended to name all six children and the mother. #2 (posted letter, printable Word copy `2026-10-05-bezirksgericht-salzburg-brief.docx`) is HELD until the Landesarchiv answers — send it only if they say they cannot supply the file; and #3 SENT 5 October 2026 (Zimbra 468424), also asking the Landesarchiv itself for a copy of the probate file are still HELD.** Trigger: the Landesarchiv's
 answer of 5 October (Zahl 20033-A/3430/1144-2026, Zimbra 468381). Written under
 `DISCLOSURE-rules-for-austrian-bodies.md`: names, dates, holdings, a written nil return, the cost
