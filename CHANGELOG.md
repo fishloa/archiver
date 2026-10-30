@@ -9,6 +9,16 @@ new revision, no build is triggered, and the release silently never happens —
 which is exactly what v1.0.0 did on its first attempt. Add the entry below,
 commit, then tag that commit.
 
+## v1.1.26 — 30 October 2026
+
+**A page with no words is never translated.** A photograph comes back from Mistral OCR as figure
+references (`![img-0.jpeg](img-0.jpeg)`) and nothing else, and sent to the translator, record 4080's
+bed photograph came back as seven invented Prague birth, marriage and death certificates — English
+that reads as a transcription of the archive and is not. Both translate paths now treat a page of
+only figure references as blank and store an empty translation without calling the model.
+`GET /api/admin/pages/translated-without-text` lists the pages that already carry such English, so
+they can be corrected by hand with the audited corrections endpoint.
+
 ## v1.1.25 — 22 October 2026
 
 **`download_pdf` can fetch a large PDF.** A PDF above about 12 MB used to fail as "MCP server session
