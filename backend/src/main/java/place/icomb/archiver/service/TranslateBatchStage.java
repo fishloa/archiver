@@ -59,7 +59,7 @@ public class TranslateBatchStage implements BatchStage {
       return false;
     }
     String text = (String) rows.get(0).get("text_raw");
-    if (text == null || text.isBlank()) {
+    if (Markdown.hasNoText(text)) {
       jdbc.update("UPDATE page_text SET text_en = '' WHERE page_id = ?", job.getPageId());
       return true;
     }

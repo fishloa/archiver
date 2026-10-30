@@ -110,6 +110,33 @@ class ManualCorrectionTest {
   }
 
   @Test
+  void aPhotographWithAnEnglishTextIsListedForCorrection() throws Exception {
+    long photo = uploadPage(record, 2);
+    jdbc.sql(
+            "INSERT INTO page_text (page_id, engine, confidence, text_raw, text_en)"
+                + " VALUES (:p, 'mistral-ocr', 0, :t, :e)")
+        .param("p", photo)
+        .param("t", "![img-0.jpeg](img-0.jpeg)\n\n![img-1.jpeg](img-1.jpeg)")
+        .param("e", "**Registry Office of the City of Prague** Birth Certificate")
+        .update();
+    long blank = uploadPage(record, 3);
+    jdbc.sql(
+            "INSERT INTO page_text (page_id, engine, confidence, text_raw, text_en)"
+                + " VALUES (:p, 'mistral-ocr', 0, :t, '')")
+        .param("p", blank)
+        .param("t", "![img-0.jpeg](img-0.jpeg)")
+        .update();
+
+    JsonNode rows = ok(get("/admin/pages/translated-without-text"));
+
+    assertThat(rows).hasSize(1);
+    assertThat(rows.get(0).get("pageId").asLong()).isEqualTo(photo);
+    assertThat(rows.get(0).get("recordId").asLong()).isEqualTo(record);
+    assertThat(rows.get(0).get("seq").asInt()).isEqualTo(2);
+    assertThat(rows.get(0).get("textEn").asText()).contains("Registry Office");
+  }
+
+  @Test
   void aTextCorrectionChangesOnlyThatPassageAndTheChunkFollows() throws Exception {
     JsonNode out =
         ok(

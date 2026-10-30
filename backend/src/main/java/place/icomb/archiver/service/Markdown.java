@@ -42,6 +42,18 @@ public final class Markdown {
     return MEDIA_TYPE.equals(contentType);
   }
 
+  private static final java.util.regex.Pattern IMAGE_REF =
+      java.util.regex.Pattern.compile("!\\[[^\\]]*\\]\\([^)]*\\)");
+
+  /**
+   * True when a page carries no words: blank, or only the figure references Mistral OCR writes for
+   * a photograph. Given seven {@code ![img-n.jpeg](img-n.jpeg)} lines and nothing else, a
+   * translation model invented seven Prague civil-register certificates (record 4080, page 2).
+   */
+  public static boolean hasNoText(String text) {
+    return text == null || IMAGE_REF.matcher(text).replaceAll("").isBlank();
+  }
+
   /**
    * A node's words, without its markup.
    *

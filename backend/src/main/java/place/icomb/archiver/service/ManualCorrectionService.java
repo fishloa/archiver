@@ -184,6 +184,29 @@ public class ManualCorrectionService {
         who);
   }
 
+  /**
+   * Pages with no words of their own that nonetheless carry an English text. The text_raw test is
+   * {@link Markdown#hasNoText} in SQL: blank once Mistral's figure references are removed.
+   */
+  public List<Map<String, Object>> translatedWithoutText() {
+    return jdbc.queryForList(
+        """
+        SELECT p.record_id AS "recordId", p.id AS "pageId", p.seq,
+               coalesce(nullif(btrim(pt.text_en), ''),
+                        (SELECT tr.text_en FROM page_translation tr
+                         WHERE tr.page_id = p.id AND btrim(tr.text_en) <> ''
+                         ORDER BY tr.id LIMIT 1)) AS "textEn"
+        FROM page p
+        JOIN page_text pt ON pt.page_id = p.id
+        WHERE regexp_replace(coalesce(pt.text_raw, ''), '!\\[[^]]*\\]\\([^)]*\\)', '', 'g')
+              ~ '^\\s*$'
+          AND (btrim(coalesce(pt.text_en, '')) <> ''
+               OR EXISTS (SELECT 1 FROM page_translation tr
+                          WHERE tr.page_id = p.id AND btrim(tr.text_en) <> ''))
+        ORDER BY p.record_id, p.seq
+        """);
+  }
+
   private static void checkEdit(String find, String replace, String reason) {
     require(find == null || !find.isEmpty(), "find must not be empty");
     require(replace != null && !replace.isBlank(), "replace is required");

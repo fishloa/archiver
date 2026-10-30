@@ -68,6 +68,11 @@ public class AdminCorrectionController {
     return corrections.list(recordId);
   }
 
+  @GetMapping("/pages/translated-without-text")
+  public List<Map<String, Object>> translatedWithoutText() {
+    return corrections.translatedWithoutText();
+  }
+
   /** A string field, or null when absent; anything else is a bad request, not a cast error. */
   private static String text(Map<String, Object> in, String key) {
     Object v = in.get(key);

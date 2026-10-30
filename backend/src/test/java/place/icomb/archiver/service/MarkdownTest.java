@@ -117,4 +117,18 @@ class MarkdownTest {
     assertThat(Markdown.repairTables(null)).isNull();
     assertThat(Markdown.repairTables("")).isEmpty();
   }
+
+  @Test
+  void aPageOfOnlyFiguresHasNothingToTranslate() {
+    assertThat(Markdown.hasNoText(null)).isTrue();
+    assertThat(Markdown.hasNoText("  \n ")).isTrue();
+    assertThat(Markdown.hasNoText("![img-0.jpeg](img-0.jpeg)\n\n![img-1.jpeg](img-1.jpeg)"))
+        .isTrue();
+  }
+
+  @Test
+  void aCaptionBesideAFigureIsText() {
+    assertThat(Markdown.hasNoText("![img-0.jpeg](img-0.jpeg)\n\n55. DINING ROOM")).isFalse();
+    assertThat(Markdown.hasNoText("Prag, 3. Mai 1940.")).isFalse();
+  }
 }

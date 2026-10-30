@@ -78,7 +78,7 @@ public class SyncTranslateWorker extends GenericWorker {
 
     // A blank page is legitimately blank. Storing an empty translation is the correct answer;
     // asking a model to translate nothing is not, and failing the job says the page is broken.
-    if (text == null || text.isBlank()) {
+    if (Markdown.hasNoText(text)) {
       jdbc.update("UPDATE page_text SET text_en = '' WHERE page_id = ?", job.getPageId());
       return;
     }
