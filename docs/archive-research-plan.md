@@ -38,7 +38,7 @@
 - **Gestapo arrest, 11 August 1943** — charged with listening to foreign radio broadcasts
 - **Imprisoned:** Kolín → Pankrác → **Terezín (Small Fortress)** → **Gollnow camp (near Stettin)**
 - **Convicted March 1944**, forced labor until **liberation June 1945**
-- **UN Human Rights Committee case** (Rudolf Czernin v. Czech Republic, No. 823/1998, 29 March 2005) — found violations of Articles 14 and 26 of the ICCPR
+- ~~UN Human Rights Committee case~~ **Corrected 31 Oct 2026:** *Rudolf Czernin v. Czech Republic* (No. 823/1998, 29 March 2005) is **not** this Rudolf (d. 1984). Its author is Rudolf Czernin (b. 1924, d. 22 June 2004), son of Eugen and Josefa of the Jindřichův Hradec line, continued by his son Karl-Eugen (b. 1956). The Committee found a violation of art. 14(1) with art. 2(3) (authorities ignored binding court rulings on his parents' citizenship); the art. 26 claim was **inadmissible**, not upheld. See docs/czernin-v-czech-republic-UN-823-1998.html.
 
 ### 1.2 Jaromír Czernin (CZERNIN 2, Vermeer case)
 - Wife Alix-May (granddaughter of Jewish banker Oppenheim) declared **"Jewish and an enemy of the State"** by Gestapo
