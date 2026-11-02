@@ -3,9 +3,11 @@
 	import { goto, invalidateAll } from '$app/navigation';
 	import { Search, ChevronRight, UserCheck } from 'lucide-svelte';
 	import { t } from '$lib/i18n';
+	import ChangeHistory from '$lib/components/genealogy/ChangeHistory.svelte';
+	import PersonEditor from '$lib/components/genealogy/PersonEditor.svelte';
 	import PersonFacts from '$lib/components/genealogy/PersonFacts.svelte';
 
-	let { data } = $props();
+	let { data, form } = $props();
 	let query = $state('');
 
 	// Sync query when data.q changes (e.g. navigation)
@@ -32,6 +34,7 @@
 
 	const user = $derived(data.user);
 	const hasRefPerson = $derived(!!user?.familyTreePersonId);
+	const isAdmin = $derived(user?.role === 'admin');
 	let settingMe = $state(false);
 </script>
 
@@ -183,7 +186,29 @@
 						</button>
 					</form>
 				{/if}
+
+				{#if isAdmin}
+					<div class="admin-bar">
+						<a
+							class="vui-btn vui-btn-secondary vui-btn-sm"
+							href={`/family-tree?q=${encodeURIComponent(data.q)}&personId=${p.id}${data.editing ? '' : '&edit=1'}`}
+						>
+							{data.editing ? $t('family.doneEditing') : $t('family.edit')}
+						</a>
+						<a class="vui-btn vui-btn-ghost vui-btn-sm" href="/family-tree/review">{$t('family.review')}</a>
+					</div>
+				{/if}
 			</div>
+
+			{#if data.editing}
+				{#if form?.error}
+					<div class="vui-alert vui-alert-danger">{form.error}</div>
+				{:else if form?.success}
+					<div class="vui-alert vui-alert-success">{$t('family.saved')}</div>
+				{/if}
+				<PersonEditor person={p} places={data.places} sources={data.sources} />
+				<ChangeHistory changes={data.history} />
+			{/if}
 		{/if}
 
 		<!-- Search results -->
@@ -570,6 +595,12 @@
 	.this-is-me-btn:disabled:not(.is-me) {
 		opacity: 0.5;
 		cursor: wait;
+	}
+
+	.admin-bar {
+		display: flex;
+		gap: 8px;
+		margin-top: 14px;
 	}
 
 	.empty {

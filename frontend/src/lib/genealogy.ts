@@ -33,6 +33,7 @@ export const ROLES = [
 	'pictured',
 	'other'
 ] as const;
+export const SEXES = ['M', 'F', 'U'] as const;
 
 export const EVENT_LABELS: Record<EventTag, MessageKey> = {
 	BIRT: 'family.event.BIRT',
@@ -85,6 +86,12 @@ export const ROLE_LABELS: Record<(typeof ROLES)[number], MessageKey> = {
 	recipient: 'family.role.recipient',
 	pictured: 'family.role.pictured',
 	other: 'family.role.other'
+};
+
+export const SEX_LABELS: Record<(typeof SEXES)[number], MessageKey> = {
+	M: 'family.sex.M',
+	F: 'family.sex.F',
+	U: 'family.sex.U'
 };
 
 /** GEDCOM QUAY 0-3; null when the citation does not say. */
@@ -213,6 +220,128 @@ export interface PersonDetail {
 	sources: Source[];
 }
 
+export interface Change {
+	id: number;
+	entity: string;
+	entityId: number;
+	op: string;
+	before: Record<string, unknown> | null;
+	after: Record<string, unknown> | null;
+	reason: string;
+	changedBy: string;
+	changedAt: string;
+}
+
 export function fullName(n: Pick<PersonName, 'prefix' | 'given' | 'surname' | 'suffix'>): string {
 	return [n.prefix, n.given, n.surname, n.suffix].filter((p) => p && p.trim()).join(' ');
+}
+
+/** The fields a change altered, as "field: old → new". */
+export function changeSummary(c: Change): string {
+	const before = c.before ?? {};
+	const after = c.after ?? {};
+	const keys = Object.keys({ ...before, ...after }).filter(
+		(k) => !['id', 'created_at', 'updated_at', 'uid'].includes(k)
+	);
+	const changed = keys.filter((k) => JSON.stringify(before[k]) !== JSON.stringify(after[k]));
+	return changed
+		.map((k) => `${k}: ${show(before[k])} → ${show(after[k])}`)
+		.join('; ');
+}
+
+function show(v: unknown): string {
+	return v == null ? '–' : String(v);
+}
+
+export interface Crop {
+	left: number;
+	top: number;
+	width: number;
+	height: number;
+}
+
+/**
+ * The rectangle between two corner points, in whole pixels of the stored image, kept inside it.
+ * Null when nothing is left to crop.
+ */
+export function cropFromPoints(
+	a: { x: number; y: number },
+	b: { x: number; y: number },
+	width: number,
+	height: number
+): Crop | null {
+	const cx = (v: number) => Math.min(width, Math.max(0, Math.round(v)));
+	const cy = (v: number) => Math.min(height, Math.max(0, Math.round(v)));
+	const left = Math.min(cx(a.x), cx(b.x));
+	const right = Math.max(cx(a.x), cx(b.x));
+	const top = Math.min(cy(a.y), cy(b.y));
+	const bottom = Math.max(cy(a.y), cy(b.y));
+	if (right - left < 1 || bottom - top < 1) return null;
+	return { left, top, width: right - left, height: bottom - top };
+}
+
+const NUMBER_FIELDS = new Set([
+	'personId',
+	'person1Id',
+	'person2Id',
+	'parentId',
+	'childId',
+	'coupleId',
+	'placeId',
+	'sourceId',
+	'pageId',
+	'recordId',
+	'eventId',
+	'nameId',
+	'parentChildId',
+	'mediaId',
+	'quality',
+	'sortOrder',
+	'fromYear',
+	'toYear',
+	'lat',
+	'lon',
+	'cropLeft',
+	'cropTop',
+	'cropWidth',
+	'cropHeight'
+]);
+const BOOLEAN_FIELDS = new Set(['living', 'isPrimary', 'isPortrait']);
+const PATH =
+	/^(persons|names|events|couples|parent-links|places|place-names|sources|citations|record-links|media|media-people|changes)(\/\d+)?(\/(names|undo|merge\/\d+))?$/;
+const METHODS = ['POST', 'PUT', 'DELETE'] as const;
+export type WriteMethod = (typeof METHODS)[number];
+
+/**
+ * An edit form as the admin API wants it. `_method` and `_path` say where it goes; the rest are
+ * fields. An empty field is left out of a create and cleared by an update. A checkbox is preceded
+ * by a hidden "false" of the same name, so the last value wins.
+ */
+export function formToBody(form: FormData): {
+	method: WriteMethod;
+	path: string;
+	body: Record<string, unknown>;
+} {
+	const method = String(form.get('_method') ?? 'POST') as WriteMethod;
+	const path = String(form.get('_path') ?? '');
+	if (!METHODS.includes(method)) throw new Error(`unsupported method ${method}`);
+	if (!PATH.test(path)) throw new Error(`unsupported path ${path}`);
+	const body: Record<string, unknown> = {};
+	for (const key of new Set(form.keys())) {
+		if (key === '_method' || key === '_path') continue;
+		const values = form.getAll(key).map(String);
+		const value = values[values.length - 1];
+		if (BOOLEAN_FIELDS.has(key)) {
+			body[key] = value === 'true' || value === 'on';
+		} else if (value.trim() === '') {
+			if (method === 'PUT') body[key] = null;
+		} else if (NUMBER_FIELDS.has(key)) {
+			const n = Number(value);
+			if (Number.isNaN(n)) throw new Error(`${key} must be a number`);
+			body[key] = n;
+		} else {
+			body[key] = value;
+		}
+	}
+	return { method, path, body };
 }
