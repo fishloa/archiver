@@ -318,4 +318,47 @@ class GenealogyHistoryTest {
     assertThat(count("SELECT count(*) FROM gen_parent_child WHERE child_id = ?", twin))
         .isEqualTo(1);
   }
+
+  @Test
+  void undoingACreateRefusesWhenOthersDependOnIt() {
+    int p = person("Dep");
+    long created = lastChange();
+    jdbc.update(
+        "INSERT INTO app_user (display_name, role, family_tree_person_id) VALUES ('U', 'user', ?)",
+        p);
+    assertThat(kindOf(() -> history.undo(created, "created by mistake"))).isEqualTo(Kind.CONFLICT);
+    assertThat(count("SELECT count(*) FROM gen_person WHERE id = ?", p)).isEqualTo(1);
+  }
+
+  @Test
+  void undoingAParentLinkDeleteRechecksParentRules() {
+    int child = person("ChildX");
+    int existing = person("Existing");
+    int a = person("A");
+    int b = person("B");
+    genealogy.create(
+        GenEntity.PARENT_LINK, body("parentId", existing, "childId", child, "type", "birth"), "x");
+    Map<String, Object> link =
+        genealogy.create(
+            GenEntity.PARENT_LINK, body("parentId", a, "childId", child, "type", "birth"), "x");
+    long linkId = id(link);
+    long deleted = lastChange();
+    genealogy.delete(GenEntity.PARENT_LINK, linkId, "x");
+    genealogy.create(
+        GenEntity.PARENT_LINK, body("parentId", b, "childId", child, "type", "birth"), "x");
+    assertThat(kindOf(() -> history.undo(deleted, "restore"))).isEqualTo(Kind.CONFLICT);
+  }
+
+  @Test
+  void aMergeRefusesAncestorMerges() {
+    int keep = person("Keep");
+    int mid = person("Mid");
+    int gone = person("Gone");
+    genealogy.create(GenEntity.PARENT_LINK, body("parentId", gone, "childId", mid), "x");
+    genealogy.create(GenEntity.PARENT_LINK, body("parentId", mid, "childId", keep), "x");
+    long beforeChanges = jdbc.queryForObject("SELECT count(*) FROM gen_change", Long.class);
+    assertThat(kindOf(() -> history.mergePersons(keep, gone, "x"))).isEqualTo(Kind.CONFLICT);
+    assertThat(jdbc.queryForObject("SELECT count(*) FROM gen_change", Long.class))
+        .isEqualTo(beforeChanges);
+  }
 }

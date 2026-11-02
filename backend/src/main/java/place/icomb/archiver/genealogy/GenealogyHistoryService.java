@@ -35,129 +35,153 @@ public class GenealogyHistoryService {
   @Transactional
   public Map<String, Object> mergePersons(int keepId, int goneId, String reason) {
     GenealogyService.requireReason(reason);
-    if (keepId == goneId) {
-      throw GenealogyException.badRequest("a person cannot be merged into themselves");
-    }
-    for (int id : List.of(keepId, goneId)) {
-      List<Map<String, Object>> rows =
-          jdbc.queryForList("SELECT merged_into FROM gen_person WHERE id = ? FOR UPDATE", id);
-      if (rows.isEmpty()) throw GenealogyException.notFound("person %d not found".formatted(id));
-      if (rows.get(0).get("merged_into") != null) {
+    try {
+      if (keepId == goneId) {
+        throw GenealogyException.badRequest("a person cannot be merged into themselves");
+      }
+      for (int id : List.of(keepId, goneId)) {
+        List<Map<String, Object>> rows =
+            jdbc.queryForList("SELECT merged_into FROM gen_person WHERE id = ? FOR UPDATE", id);
+        if (rows.isEmpty()) throw GenealogyException.notFound("person %d not found".formatted(id));
+        if (rows.get(0).get("merged_into") != null) {
+          throw GenealogyException.conflict(
+              "person %d was already merged into %s".formatted(id, rows.get(0).get("merged_into")));
+        }
+      }
+      Integer between =
+          jdbc.queryForObject(
+              "SELECT (SELECT count(*) FROM gen_couple WHERE (person1_id, person2_id) IN ((?, ?), (?, ?)))"
+                  + " + (SELECT count(*) FROM gen_parent_child"
+                  + "    WHERE (parent_id, child_id) IN ((?, ?), (?, ?)))",
+              Integer.class,
+              keepId,
+              goneId,
+              goneId,
+              keepId,
+              keepId,
+              goneId,
+              goneId,
+              keepId);
+      if (between > 0) {
         throw GenealogyException.conflict(
-            "person %d was already merged into %s".formatted(id, rows.get(0).get("merged_into")));
+            "persons %d and %d are linked to each other; remove that link first"
+                .formatted(keepId, goneId));
       }
-    }
-    Integer between =
-        jdbc.queryForObject(
-            "SELECT (SELECT count(*) FROM gen_couple WHERE (person1_id, person2_id) IN ((?, ?), (?, ?)))"
-                + " + (SELECT count(*) FROM gen_parent_child"
-                + "    WHERE (parent_id, child_id) IN ((?, ?), (?, ?)))",
-            Integer.class,
-            keepId,
-            goneId,
-            goneId,
-            keepId,
-            keepId,
-            goneId,
-            goneId,
-            keepId);
-    if (between > 0) {
-      throw GenealogyException.conflict(
-          "persons %d and %d are linked to each other; remove that link first"
-              .formatted(keepId, goneId));
-    }
+      if (genealogy.isAncestor(keepId, goneId, null)
+          || genealogy.isAncestor(goneId, keepId, null)) {
+        throw GenealogyException.conflict(
+            "cannot merge a person into their own ancestor or descendant");
+      }
 
-    int changed = 0;
-    for (long name : ids("SELECT id FROM gen_name WHERE person_id = ?", goneId)) {
-      changed +=
-          repoint(GenEntity.NAME, name, Map.of("person_id", keepId, "is_primary", false), reason);
-    }
-    changed += repointAll(GenEntity.EVENT, "person_id", keepId, goneId, reason);
-    changed += repointAll(GenEntity.COUPLE, "person1_id", keepId, goneId, reason);
-    changed += repointAll(GenEntity.COUPLE, "person2_id", keepId, goneId, reason);
-    changed += moveParentLinks("parent_id", "child_id", keepId, goneId, reason);
-    changed += moveParentLinks("child_id", "parent_id", keepId, goneId, reason);
-    changed += repointAll(GenEntity.CITATION, "person_id", keepId, goneId, reason);
-    changed += repointAll(GenEntity.RECORD_LINK, "person_id", keepId, goneId, reason);
+      int changed = 0;
+      for (long name : ids("SELECT id FROM gen_name WHERE person_id = ?", goneId)) {
+        changed +=
+            repoint(GenEntity.NAME, name, Map.of("person_id", keepId, "is_primary", false), reason);
+      }
+      changed += repointAll(GenEntity.EVENT, "person_id", keepId, goneId, reason);
+      changed += repointAll(GenEntity.COUPLE, "person1_id", keepId, goneId, reason);
+      changed += repointAll(GenEntity.COUPLE, "person2_id", keepId, goneId, reason);
+      changed += moveParentLinks("parent_id", "child_id", keepId, goneId, reason);
+      changed += moveParentLinks("child_id", "parent_id", keepId, goneId, reason);
+      changed += repointAll(GenEntity.CITATION, "person_id", keepId, goneId, reason);
+      changed += repointAll(GenEntity.RECORD_LINK, "person_id", keepId, goneId, reason);
 
-    boolean keepHasPortrait =
-        jdbc.queryForObject(
-                "SELECT count(*) FROM gen_media_person WHERE person_id = ? AND is_portrait",
-                Integer.class,
-                keepId)
-            > 0;
-    for (Map<String, Object> mp :
-        jdbc.queryForList(
-            "SELECT id, media_id, is_portrait FROM gen_media_person WHERE person_id = ?", goneId)) {
-      long id = ((Number) mp.get("id")).longValue();
-      boolean duplicate =
+      boolean keepHasPortrait =
           jdbc.queryForObject(
-                  "SELECT count(*) FROM gen_media_person WHERE media_id = ? AND person_id = ?",
+                  "SELECT count(*) FROM gen_media_person WHERE person_id = ? AND is_portrait",
                   Integer.class,
-                  mp.get("media_id"),
                   keepId)
               > 0;
-      if (duplicate) {
-        changed += remove(GenEntity.MEDIA_PERSON, id, reason);
-      } else {
-        Map<String, Object> set = new LinkedHashMap<>();
-        set.put("person_id", keepId);
-        if (keepHasPortrait) set.put("is_portrait", false);
-        changed += repoint(GenEntity.MEDIA_PERSON, id, set, reason);
+      for (Map<String, Object> mp :
+          jdbc.queryForList(
+              "SELECT id, media_id, is_portrait FROM gen_media_person WHERE person_id = ?",
+              goneId)) {
+        long id = ((Number) mp.get("id")).longValue();
+        boolean duplicate =
+            jdbc.queryForObject(
+                    "SELECT count(*) FROM gen_media_person WHERE media_id = ? AND person_id = ?",
+                    Integer.class,
+                    mp.get("media_id"),
+                    keepId)
+                > 0;
+        if (duplicate) {
+          changed += remove(GenEntity.MEDIA_PERSON, id, reason);
+        } else {
+          Map<String, Object> set = new LinkedHashMap<>();
+          set.put("person_id", keepId);
+          if (keepHasPortrait) set.put("is_portrait", false);
+          changed += repoint(GenEntity.MEDIA_PERSON, id, set, reason);
+        }
       }
-    }
 
-    for (Map<String, Object> m :
-        jdbc.queryForList(
-            "SELECT id, page_id FROM page_person_match WHERE person_id = ?", goneId)) {
-      long id = ((Number) m.get("id")).longValue();
-      boolean duplicate =
+      for (Map<String, Object> m :
+          jdbc.queryForList(
+              "SELECT id, page_id FROM page_person_match WHERE person_id = ?", goneId)) {
+        long id = ((Number) m.get("id")).longValue();
+        boolean duplicate =
+            jdbc.queryForObject(
+                    "SELECT count(*) FROM page_person_match WHERE page_id = ? AND person_id = ?",
+                    Integer.class,
+                    m.get("page_id"),
+                    keepId)
+                > 0;
+        changed +=
+            duplicate
+                ? remove(GenEntity.PAGE_PERSON_MATCH, id, reason)
+                : partial(GenEntity.PAGE_PERSON_MATCH, id, "person_id", goneId, keepId, reason);
+      }
+      for (long user : ids("SELECT id FROM app_user WHERE family_tree_person_id = ?", goneId)) {
+        changed +=
+            partial(GenEntity.APP_USER, user, "family_tree_person_id", goneId, keepId, reason);
+      }
+      changed += repointAll(GenEntity.PERSON, "merged_into", keepId, goneId, reason);
+
+      Integer birthParents =
           jdbc.queryForObject(
-                  "SELECT count(*) FROM page_person_match WHERE page_id = ? AND person_id = ?",
-                  Integer.class,
-                  m.get("page_id"),
-                  keepId)
-              > 0;
-      changed +=
-          duplicate
-              ? remove(GenEntity.PAGE_PERSON_MATCH, id, reason)
-              : partial(GenEntity.PAGE_PERSON_MATCH, id, "person_id", goneId, keepId, reason);
-    }
-    for (long user : ids("SELECT id FROM app_user WHERE family_tree_person_id = ?", goneId)) {
-      changed += partial(GenEntity.APP_USER, user, "family_tree_person_id", goneId, keepId, reason);
-    }
-    changed += repointAll(GenEntity.PERSON, "merged_into", keepId, goneId, reason);
+              "SELECT count(*) FROM gen_parent_child WHERE child_id = ? AND type = 'birth'",
+              Integer.class,
+              keepId);
+      if (birthParents > 2) {
+        throw GenealogyException.conflict(
+            "merging would give person %d %d birth parents".formatted(keepId, birthParents));
+      }
 
-    Integer birthParents =
-        jdbc.queryForObject(
-            "SELECT count(*) FROM gen_parent_child WHERE child_id = ? AND type = 'birth'",
-            Integer.class,
-            keepId);
-    if (birthParents > 2) {
+      changed += repoint(GenEntity.PERSON, goneId, Map.of("merged_into", keepId), reason);
+      genealogy.changed();
+      Map<String, Object> out = new LinkedHashMap<>();
+      out.put("keep", keepId);
+      out.put("gone", goneId);
+      out.put("changed", changed);
+      return out;
+    } catch (DataIntegrityViolationException e) {
       throw GenealogyException.conflict(
-          "merging would give person %d %d birth parents".formatted(keepId, birthParents));
+          "persons %d and %d cannot be merged".formatted(keepId, goneId));
     }
-
-    changed += repoint(GenEntity.PERSON, goneId, Map.of("merged_into", keepId), reason);
-    genealogy.changed();
-    Map<String, Object> out = new LinkedHashMap<>();
-    out.put("keep", keepId);
-    out.put("gone", goneId);
-    out.put("changed", changed);
-    return out;
   }
 
   /** Restores what the write containing {@code changeId} replaced, if nothing has moved since. */
   @Transactional
   public Map<String, Object> undo(long changeId, String reason) {
     GenealogyService.requireReason(reason);
-    List<Map<String, Object>> write =
-        jdbc.queryForList(
-            "SELECT id, entity, entity_id, before::text AS before, after::text AS after"
-                + " FROM gen_change WHERE (changed_at, changed_by) ="
-                + " (SELECT changed_at, changed_by FROM gen_change WHERE id = ?)"
-                + " ORDER BY id DESC",
-            changeId);
+    List<Long> txids =
+        jdbc.queryForList("SELECT txid FROM gen_change WHERE id = ?", Long.class, changeId);
+    Long txid = txids.isEmpty() ? null : txids.get(0);
+    List<Map<String, Object>> write;
+    if (txid != null) {
+      write =
+          jdbc.queryForList(
+              "SELECT id, entity, entity_id, before::text AS before, after::text AS after"
+                  + " FROM gen_change WHERE txid = ? ORDER BY id DESC",
+              txid);
+    } else {
+      write =
+          jdbc.queryForList(
+              "SELECT id, entity, entity_id, before::text AS before, after::text AS after"
+                  + " FROM gen_change WHERE (changed_at, changed_by) ="
+                  + " (SELECT changed_at, changed_by FROM gen_change WHERE id = ?)"
+                  + " ORDER BY id DESC",
+              changeId);
+    }
     if (write.isEmpty()) {
       throw GenealogyException.notFound("change %d not found".formatted(changeId));
     }
@@ -186,6 +210,10 @@ public class GenealogyHistoryService {
     }
 
     List<Long> undone = new ArrayList<>();
+    java.util.Set<String> writeKeys = new java.util.HashSet<>();
+    for (Map<String, Object> r : write) {
+      writeKeys.add((String) r.get("entity") + "|" + r.get("entity_id"));
+    }
     try {
       for (Map<String, Object> row : write) {
         GenEntity entity = GenEntity.ofKey((String) row.get("entity"));
@@ -193,6 +221,12 @@ public class GenealogyHistoryService {
         Map<String, Object> before = Rows.json((String) row.get("before"));
         Map<String, Object> current = current(entity, id);
         if (before == null) {
+          List<String> refs = genealogy.externalReferences(entity, id, writeKeys);
+          if (!refs.isEmpty()) {
+            throw GenealogyException.conflict(
+                "%s %d is still referenced by %s"
+                    .formatted(entity.key(), id, String.join(", ", refs)));
+          }
           jdbc.update("DELETE FROM %s WHERE id = ?".formatted(entity.table()), id);
           genealogy.audit(entity, id, "undo", current, null, reason);
         } else if (current == null) {
@@ -201,6 +235,27 @@ public class GenealogyHistoryService {
                   .formatted(entity.table(), entity.table()),
               Rows.toJson(before));
           genealogy.audit(entity, id, "undo", null, current(entity, id), reason);
+          if (entity == GenEntity.PARENT_LINK) {
+            Map<String, Object> restored = current(entity, id);
+            int parent = ((Number) restored.get("parent_id")).intValue();
+            int child = ((Number) restored.get("child_id")).intValue();
+            if ("birth".equals(restored.get("type"))) {
+              Integer birthParents =
+                  jdbc.queryForObject(
+                      "SELECT count(*) FROM gen_parent_child WHERE child_id = ? AND type = 'birth'",
+                      Integer.class,
+                      child);
+              if (birthParents > 2) {
+                throw GenealogyException.conflict(
+                    "person %d already has two birth parents".formatted(child));
+              }
+            }
+            if (genealogy.isAncestor(child, parent, id)) {
+              throw GenealogyException.conflict(
+                  "person %d is an ancestor of %d; the link would make a cycle"
+                      .formatted(child, parent));
+            }
+          }
         } else {
           List<String> columns = new ArrayList<>(before.keySet());
           columns.removeAll(List.of("id", "created_at", "updated_at"));
@@ -222,6 +277,27 @@ public class GenealogyHistoryService {
             current.keySet().retainAll(before.keySet());
           }
           genealogy.audit(entity, id, "undo", current, now, reason);
+          if (entity == GenEntity.PARENT_LINK) {
+            Map<String, Object> restored = current(entity, id);
+            int parent = ((Number) restored.get("parent_id")).intValue();
+            int child = ((Number) restored.get("child_id")).intValue();
+            if ("birth".equals(restored.get("type"))) {
+              Integer birthParents =
+                  jdbc.queryForObject(
+                      "SELECT count(*) FROM gen_parent_child WHERE child_id = ? AND type = 'birth'",
+                      Integer.class,
+                      child);
+              if (birthParents > 2) {
+                throw GenealogyException.conflict(
+                    "person %d already has two birth parents".formatted(child));
+              }
+            }
+            if (genealogy.isAncestor(child, parent, id)) {
+              throw GenealogyException.conflict(
+                  "person %d is an ancestor of %d; the link would make a cycle"
+                      .formatted(child, parent));
+            }
+          }
         }
         undone.add(((Number) row.get("id")).longValue());
       }
@@ -251,7 +327,7 @@ public class GenealogyHistoryService {
     int n = 0;
     for (Map<String, Object> link :
         jdbc.queryForList(
-            "SELECT id, %s AS other FROM gen_parent_child WHERE %s = ?"
+            "SELECT id, %s AS other, type, couple_id FROM gen_parent_child WHERE %s = ?"
                 .formatted(otherSide, goneSide),
             goneId)) {
       long id = ((Number) link.get("id")).longValue();
@@ -269,6 +345,25 @@ public class GenealogyHistoryService {
           n +=
               repoint(
                   GenEntity.CITATION, citation, Map.of("parent_child_id", existing.get(0)), reason);
+        }
+        long surviving = existing.get(0);
+        Map<String, Object> before = current(GenEntity.PARENT_LINK, surviving);
+        String goneType = (String) link.get("type");
+        String keepType = before == null ? null : (String) before.get("type");
+        String newType = "birth".equals(goneType) || "birth".equals(keepType) ? "birth" : keepType;
+        Object newCouple = before == null ? null : before.get("couple_id");
+        if (newCouple == null) newCouple = link.get("couple_id");
+        boolean typeChanged = !java.util.Objects.equals(newType, keepType);
+        boolean coupleChanged =
+            !java.util.Objects.equals(newCouple, before == null ? null : before.get("couple_id"));
+        if (typeChanged || coupleChanged) {
+          jdbc.update(
+              "UPDATE gen_parent_child SET type = ?, couple_id = ?, updated_at = now() WHERE id = ?",
+              newType,
+              newCouple,
+              surviving);
+          Map<String, Object> after = current(GenEntity.PARENT_LINK, surviving);
+          genealogy.audit(GenEntity.PARENT_LINK, surviving, "merge", before, after, reason);
         }
         n += remove(GenEntity.PARENT_LINK, id, reason);
       }

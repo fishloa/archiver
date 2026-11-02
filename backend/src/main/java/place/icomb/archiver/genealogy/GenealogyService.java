@@ -533,7 +533,7 @@ public class GenealogyService {
   }
 
   /** True when {@code ancestor} is {@code person} or above them through any parent link. */
-  private boolean isAncestor(int ancestor, int person, Long ignoringLink) {
+  boolean isAncestor(int ancestor, int person, Long ignoringLink) {
     Deque<Integer> queue = new ArrayDeque<>(List.of(person));
     Set<Integer> seen = new HashSet<>();
     while (!queue.isEmpty()) {
@@ -681,7 +681,7 @@ public class GenealogyService {
     return removed + 1;
   }
 
-  private List<String> blockers(GenEntity entity, long id) {
+  List<String> blockers(GenEntity entity, long id) {
     List<String> out = new ArrayList<>();
     for (Ref ref : BLOCKING.getOrDefault(entity, List.of())) {
       Integer n =
@@ -694,7 +694,31 @@ public class GenealogyService {
     return out;
   }
 
-  /** Clears a one-per-person flag (primary name, portrait) on the person's other row. */
+  /**
+   * References (blocking + owned) to {@code id} that are not part of the write identified by {@code
+   * writeKeys} (formatted "entity|id"). Used by undo to refuse deleting a row others still depend
+   * on.
+   */
+  List<String> externalReferences(GenEntity entity, long id, java.util.Set<String> writeKeys) {
+    List<String> out = new ArrayList<>();
+    List<Ref> refs = new ArrayList<>();
+    refs.addAll(BLOCKING.getOrDefault(entity, List.of()));
+    refs.addAll(OWNED.getOrDefault(entity, List.of()));
+    for (Ref ref : refs) {
+      List<Long> refIds =
+          jdbc.queryForList(
+              "SELECT id FROM %s WHERE %s = ?".formatted(ref.entity().table(), ref.column()),
+              Long.class,
+              id);
+      int external = 0;
+      for (Long rid : refIds) {
+        if (!writeKeys.contains(ref.entity().key() + "|" + rid)) external++;
+      }
+      if (external > 0) out.add("%d %s (%s)".formatted(external, ref.entity().key(), ref.column()));
+    }
+    return out;
+  }
+
   private void demoteOther(
       GenEntity entity, String flag, String owner, Object ownerId, Long self, String reason) {
     for (Long other :
