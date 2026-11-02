@@ -299,4 +299,15 @@ class GedcomExportTest {
             HttpResponse.BodyHandlers.ofString());
     assertThat(r.statusCode()).isEqualTo(400);
   }
+
+  @Test
+  void anUndatedSpouseMarriedAfter1926IsTreatedAsLiving() throws Exception {
+    Integer spouseId =
+        jdbc.queryForObject(
+            "SELECT person_id FROM gen_name WHERE given ILIKE 'Larissa'", Integer.class);
+    String excluded = export("exclude");
+    assertThat(excluded).doesNotContain("0 @I" + spouseId + "@ INDI");
+    String included = export("include");
+    assertThat(included).contains("0 @I" + spouseId + "@ INDI");
+  }
 }

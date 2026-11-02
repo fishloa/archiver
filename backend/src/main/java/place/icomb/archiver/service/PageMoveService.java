@@ -414,6 +414,12 @@ public class PageMoveService {
     jdbc.update(
         "UPDATE text_chunk SET record_id = ? WHERE page_id IN " + moved, tgt, tgt, atSeq, lastAt);
     jdbc.update("UPDATE job SET record_id = ? WHERE page_id IN " + moved, tgt, tgt, atSeq, lastAt);
+    jdbc.update(
+        "UPDATE gen_person_record SET record_id = ? WHERE page_id IN " + moved,
+        tgt,
+        tgt,
+        atSeq,
+        lastAt);
 
     PageSequence.shift(jdbc, src, toSeq + 1, -n);
 

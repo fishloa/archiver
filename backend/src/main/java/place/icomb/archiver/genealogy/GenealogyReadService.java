@@ -16,18 +16,20 @@ public class GenealogyReadService {
     this.jdbc = jdbc;
   }
 
-  /**
-   * {@code names}, {@code couples} (with spouse id and name), {@code parentLinks} (with type),
-   * {@code recordLinks}, {@code media}, {@code portrait}, {@code sources}, and the person's own
-   * {@code sex}, {@code living}, {@code notes}, {@code needsReview} and {@code uid}. Null when no
-   * such person.
-   */
   public Map<String, Object> personDetail(int personId) {
+    return personDetail(personId, false);
+  }
+
+  public Map<String, Object> personDetail(int personId, boolean includePrivate) {
     List<Map<String, Object>> person =
         jdbc.queryForList(
             "SELECT uid, sex, living, notes, needs_review FROM gen_person WHERE id = ?", personId);
     if (person.isEmpty()) return null;
     Map<String, Object> out = new LinkedHashMap<>(Rows.camel(person.get(0)));
+    if (!includePrivate) {
+      out.remove("notes");
+      out.remove("needsReview");
+    }
     out.put(
         "names",
         Rows.camel(

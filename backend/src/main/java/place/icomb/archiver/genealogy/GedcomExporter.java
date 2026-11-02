@@ -43,13 +43,72 @@ public class GedcomExporter {
   private record Family(String xref, Integer husband, Integer wife, Long coupleId, boolean whole) {}
 
   public String export(boolean includeLiving) {
-    Map<Integer, Map<String, Object>> people = new LinkedHashMap<>();
-    for (Map<String, Object> p :
+    List<Map<String, Object>> personRows =
         jdbc.queryForList(
             "SELECT id, uid::text AS uid, sex, living, notes FROM gen_person"
-                + " WHERE merged_into IS NULL ORDER BY id")) {
-      if (includeLiving || !Boolean.TRUE.equals(p.get("living"))) {
-        people.put((Integer) p.get("id"), p);
+                + " WHERE merged_into IS NULL ORDER BY id");
+
+    Map<Integer, Set<Long>> couplesByPerson = new HashMap<>();
+    for (Map<String, Object> c :
+        jdbc.queryForList("SELECT id, person1_id, person2_id FROM gen_couple")) {
+      long coupleId = ((Number) c.get("id")).longValue();
+      for (String col : List.of("person1_id", "person2_id")) {
+        Object v = c.get(col);
+        if (v != null) {
+          couplesByPerson
+              .computeIfAbsent(((Number) v).intValue(), k -> new HashSet<>())
+              .add(coupleId);
+        }
+      }
+    }
+    List<Map<String, Object>> eventRows =
+        jdbc.queryForList("SELECT person_id, couple_id, type, date_to FROM gen_event");
+    java.time.LocalDate cutoff = java.time.LocalDate.parse("1926-01-01");
+    Set<Integer> living = new HashSet<>();
+    for (Map<String, Object> p : personRows) {
+      int id = (Integer) p.get("id");
+      boolean isLiving = Boolean.TRUE.equals(p.get("living"));
+      if (!isLiving) {
+        boolean hasDeath =
+            eventRows.stream()
+                .anyMatch(
+                    e -> {
+                      Object pid = e.get("person_id");
+                      return pid != null
+                          && id == ((Number) pid).intValue()
+                          && "DEAT".equals(e.get("type"));
+                    });
+        boolean hasOldEvent =
+            eventRows.stream()
+                .anyMatch(
+                    e -> {
+                      Object personId = e.get("person_id");
+                      Object coupleId = e.get("couple_id");
+                      boolean theirs =
+                          (personId != null && id == ((Number) personId).intValue())
+                              || (coupleId != null
+                                  && couplesByPerson
+                                      .getOrDefault(id, Set.of())
+                                      .contains(((Number) coupleId).longValue()));
+                      if (!theirs) return false;
+                      Object dateTo = e.get("date_to");
+                      if (dateTo == null) return false;
+                      java.time.LocalDate d =
+                          dateTo instanceof java.sql.Date sqlDate
+                              ? sqlDate.toLocalDate()
+                              : java.time.LocalDate.parse(String.valueOf(dateTo));
+                      return d.isBefore(cutoff);
+                    });
+        isLiving = !hasDeath && !hasOldEvent;
+      }
+      if (isLiving) living.add(id);
+    }
+
+    Map<Integer, Map<String, Object>> people = new LinkedHashMap<>();
+    for (Map<String, Object> p : personRows) {
+      int id = (Integer) p.get("id");
+      if (includeLiving || !living.contains(id)) {
+        people.put(id, p);
       }
     }
     Map<Long, String> places = placeNames();

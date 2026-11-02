@@ -87,6 +87,15 @@ public class ArchiverMcpTools {
     }
   }
 
+  private boolean isAdmin() {
+    var auth =
+        org.springframework.security.core.context.SecurityContextHolder.getContext()
+            .getAuthentication();
+    return auth != null
+        && auth.isAuthenticated()
+        && auth.getAuthorities().stream().anyMatch(a -> "ROLE_ADMIN".equals(a.getAuthority()));
+  }
+
   @McpTool(
       name = "list_archives",
       title = "List Archives",
@@ -546,7 +555,7 @@ public class ArchiverMcpTools {
 
     // Life events
     result.put("lifeEvents", familyTreeService.getLifeEvents(person));
-    Map<String, Object> detail = genealogyRead.personDetail(person.id);
+    Map<String, Object> detail = genealogyRead.personDetail(person.id, isAdmin());
     if (detail != null) {
       result.putAll(detail);
     }

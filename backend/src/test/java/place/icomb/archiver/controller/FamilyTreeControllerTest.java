@@ -44,6 +44,7 @@ class FamilyTreeControllerTest {
   private final ObjectMapper mapper = new ObjectMapper();
 
   private static final String TEST_EMAIL = "family-tree-test@example.com";
+  private static final String ADMIN_EMAIL = "family-tree-admin@example.com";
 
   @DynamicPropertySource
   static void configureProperties(DynamicPropertyRegistry registry) {
@@ -55,7 +56,11 @@ class FamilyTreeControllerTest {
   @BeforeEach
   void setUp() {
     jdbc.sql("DELETE FROM app_user_email WHERE email = :email").param("email", TEST_EMAIL).update();
+    jdbc.sql("DELETE FROM app_user_email WHERE email = :email")
+        .param("email", ADMIN_EMAIL)
+        .update();
     jdbc.sql("DELETE FROM app_user WHERE display_name = 'FamilyTreeTest User'").update();
+    jdbc.sql("DELETE FROM app_user WHERE display_name = 'FamilyTreeTest Admin'").update();
     Long userId =
         jdbc.sql(
                 "INSERT INTO app_user (display_name, role) VALUES ('FamilyTreeTest User', 'user')"
@@ -66,6 +71,16 @@ class FamilyTreeControllerTest {
         .param("uid", userId)
         .param("email", TEST_EMAIL)
         .update();
+    Long adminId =
+        jdbc.sql(
+                "INSERT INTO app_user (display_name, role) VALUES ('FamilyTreeTest Admin', 'admin')"
+                    + " RETURNING id")
+            .query(Long.class)
+            .single();
+    jdbc.sql("INSERT INTO app_user_email (user_id, email) VALUES (:uid, :email)")
+        .param("uid", adminId)
+        .param("email", ADMIN_EMAIL)
+        .update();
   }
 
   private String base() {
@@ -74,6 +89,10 @@ class FamilyTreeControllerTest {
 
   private HttpRequest.Builder authedGet(String url) {
     return HttpRequest.newBuilder(URI.create(url)).header("X-Auth-Email", TEST_EMAIL).GET();
+  }
+
+  private HttpRequest.Builder adminGet(String url) {
+    return HttpRequest.newBuilder(URI.create(url)).header("X-Auth-Email", ADMIN_EMAIL).GET();
   }
 
   private HttpRequest.Builder authedPost(String url) {
@@ -306,8 +325,7 @@ class FamilyTreeControllerTest {
             "recordLinks",
             "media",
             "portrait",
-            "sources",
-            "needsReview");
+            "sources");
     assertThat(body.get("spouses")).isEqualTo(List.of("Diana Zannick Hutton/Hulton"));
     List<Map<String, Object>> events = (List<Map<String, Object>>) body.get("events");
     assertThat(events.get(0))
@@ -392,5 +410,14 @@ class FamilyTreeControllerTest {
     assertThat(spouse.get("kinshipLabel")).isEqualTo("spouse");
     assertThat(inLaw.get("kinshipLabel")).isEqualTo("child-in-law");
     assertThat(grandmother.get("kinshipLabel")).isEqualTo("grandparent");
+  }
+
+  @Test
+  void anAdminPersonCarriesPrivateFacts() throws Exception {
+    var resp =
+        http.send(adminGet(base() + "/person/322").build(), HttpResponse.BodyHandlers.ofString());
+    assertThat(resp.statusCode()).isEqualTo(200);
+    Map<String, Object> body = mapper.readValue(resp.body(), Map.class);
+    assertThat(body).containsKeys("notes", "needsReview");
   }
 }

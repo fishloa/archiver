@@ -381,4 +381,34 @@ class GenealogyHistoryTest {
     assertThat(jdbc.queryForObject("SELECT count(*) FROM gen_change", Long.class))
         .isEqualTo(beforeChanges);
   }
+
+  @Test
+  void undoRefusesToRestoreARowNamingAMergedPerson() {
+    int keep = person("UndoKeep");
+    int gone = person("UndoGone");
+    long nameId =
+        ((Number)
+                genealogy
+                    .create(
+                        GenEntity.NAME,
+                        body(
+                            "personId",
+                            gone,
+                            "type",
+                            "alias",
+                            "given",
+                            "Alias",
+                            "surname",
+                            "Test",
+                            "isPrimary",
+                            false),
+                        "setup")
+                    .get("id"))
+            .longValue();
+    genealogy.update(GenEntity.NAME, (int) nameId, body("personId", keep), "repoint");
+    long change = lastChange();
+    history.mergePersons(keep, gone, "merge");
+
+    assertThat(kindOf(() -> history.undo(change, "undo"))).isEqualTo(Kind.CONFLICT);
+  }
 }

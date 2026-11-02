@@ -186,6 +186,15 @@ public class GenealogyHistoryService {
       throw GenealogyException.notFound("change %d not found".formatted(changeId));
     }
 
+    java.util.Set<Integer> unmerging = new java.util.HashSet<>();
+    for (Map<String, Object> row : write) {
+      if ("person".equals(row.get("entity"))) {
+        Map<String, Object> beforeRow = Rows.json((String) row.get("before"));
+        if (beforeRow != null && beforeRow.get("merged_into") == null) {
+          unmerging.add(((Number) row.get("entity_id")).intValue());
+        }
+      }
+    }
     for (Map<String, Object> row : write) {
       GenEntity entity = GenEntity.ofKey((String) row.get("entity"));
       long id = ((Number) row.get("entity_id")).longValue();
@@ -206,6 +215,24 @@ public class GenealogyHistoryService {
         throw GenealogyException.conflict(
             "%s %d has changed since change %d; undo the later change first"
                 .formatted(entity.key(), id, ((Number) row.get("id")).longValue()));
+      }
+      Map<String, Object> beforeRow = Rows.json((String) row.get("before"));
+      if (beforeRow != null) {
+        for (String col :
+            List.of("person_id", "person1_id", "person2_id", "parent_id", "child_id")) {
+          Object value = beforeRow.get(col);
+          if (value instanceof Number n) {
+            List<Map<String, Object>> person =
+                jdbc.queryForList("SELECT merged_into FROM gen_person WHERE id = ?", n.intValue());
+            if (!unmerging.contains(n.intValue())
+                && !person.isEmpty()
+                && person.get(0).get("merged_into") != null) {
+              throw GenealogyException.conflict(
+                  "change %d cannot be undone: it would restore a link to merged person %d"
+                      .formatted(changeId, n.intValue()));
+            }
+          }
+        }
       }
     }
 

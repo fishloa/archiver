@@ -152,12 +152,21 @@ public class FamilyTreeController {
     m.put("siblings", siblings);
     m.put("spouses", p.spouses);
     m.put("events", familyTreeService.getLifeEvents(p));
-    Map<String, Object> detail = genealogy.personDetail(p.id);
+    Map<String, Object> detail = genealogy.personDetail(p.id, isAdmin());
     if (detail != null) {
       m.putAll(detail);
     }
 
     return ResponseEntity.ok(m);
+  }
+
+  private boolean isAdmin() {
+    org.springframework.security.core.Authentication auth =
+        org.springframework.security.core.context.SecurityContextHolder.getContext()
+            .getAuthentication();
+    return auth != null
+        && auth.isAuthenticated()
+        && auth.getAuthorities().stream().anyMatch(a -> "ROLE_ADMIN".equals(a.getAuthority()));
   }
 
   private static Map<String, Object> personRef(Person p) {

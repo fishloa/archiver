@@ -105,8 +105,11 @@ public class FamilyTreeService {
   /** Drops the cached tree; the next read loads it again. */
   public void invalidate() {
     if (jdbc != null) {
-      generation.incrementAndGet();
-      snapshot = null;
+      synchronized (this) {
+        generation.incrementAndGet();
+        snapshot = null;
+        snapshotGen = 0L;
+      }
     }
   }
 
@@ -114,20 +117,28 @@ public class FamilyTreeService {
     while (true) {
       long g = generation.get();
       Snapshot cached = snapshot;
-      if (cached == null) {
-        synchronized (this) {
-          cached = snapshot;
-          if (cached == null) {
-            Snapshot loaded = load();
-            if (onLoadedHook != null) {
-              onLoadedHook.accept(loaded);
-            }
-            if (generation.get() == g && (snapshot == null || snapshotGen < g)) {
-              snapshot = loaded;
-              snapshotGen = g;
-            }
-            cached = loaded;
+      if (cached != null && snapshotGen == g) {
+        if (generation.get() != g) {
+          continue;
+        }
+        return cached;
+      }
+      synchronized (this) {
+        cached = snapshot;
+        if (cached == null || snapshotGen != g) {
+          if (generation.get() != g) {
+            continue;
           }
+          Snapshot loaded = load();
+          if (onLoadedHook != null) {
+            onLoadedHook.accept(loaded);
+          }
+          if (generation.get() == g && (snapshot == null || snapshotGen < g)) {
+            snapshot = loaded;
+            snapshotGen = g;
+          }
+          cached =
+              (generation.get() == g && snapshot != null && snapshotGen == g) ? snapshot : loaded;
         }
       }
       if (generation.get() != g) {

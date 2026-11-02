@@ -167,7 +167,11 @@ public class MediaImages {
     if (page.isEmpty()) {
       throw GenealogyException.notFound("page %d not found".formatted(pageId));
     }
-    long attachmentId = ((Number) page.get(0).get("attachment_id")).longValue();
+    Object attachmentIdValue = page.get(0).get("attachment_id");
+    if (attachmentIdValue == null) {
+      throw GenealogyException.notFound("page %d has no stored image".formatted(pageId));
+    }
+    long attachmentId = ((Number) attachmentIdValue).longValue();
     return attachments
         .findById(attachmentId)
         .orElseThrow(
