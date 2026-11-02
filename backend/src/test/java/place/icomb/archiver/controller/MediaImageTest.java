@@ -183,4 +183,39 @@ class MediaImageTest {
     assertThat(image(media).statusCode()).isEqualTo(409);
     assertThat(image(99999999L).statusCode()).isEqualTo(404);
   }
+
+  @Test
+  void aCropOfALargerFixtureStillPixelMatches() throws Exception {
+    byte[] original = GenealogyFixtures.png(120, 90);
+    long record = GenealogyFixtures.record(jdbc);
+    long page = GenealogyFixtures.page(jdbc, storage, record, 1, original, "image/png");
+
+    BufferedImage crop =
+        ImageIO.read(new ByteArrayInputStream(image(media(page, 50, 40, 30, 20)).body()));
+
+    assertSamePixels(crop, ImageIO.read(new ByteArrayInputStream(original)), 50, 40);
+  }
+
+  @Test
+  void anUndecodableScanIsReportedAsUnprocessable() throws Exception {
+    long record = GenealogyFixtures.record(jdbc);
+    long page =
+        GenealogyFixtures.page(
+            jdbc, storage, record, 1, GenealogyFixtures.png(40, 30), "image/png");
+    long media = media(page, 5, 6, 10, 8);
+    byte[] garbage = new byte[64];
+    new java.util.Random(1).nextBytes(garbage);
+    String stored = storage.storePageImage(garbage);
+    jdbc.update(
+        "UPDATE attachment SET path = ? WHERE id = (SELECT attachment_id FROM page WHERE id = ?)",
+        stored,
+        page);
+
+    HttpResponse<byte[]> r = image(media);
+
+    assertThat(r.statusCode()).isEqualTo(422);
+    String body = new String(r.body(), java.nio.charset.StandardCharsets.UTF_8);
+    assertThat(body).contains("this scan cannot be decoded for cropping");
+    assertThat(body).contains("the whole page is still available");
+  }
 }

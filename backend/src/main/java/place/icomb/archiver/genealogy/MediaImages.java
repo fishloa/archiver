@@ -1,5 +1,6 @@
 package place.icomb.archiver.genealogy;
 
+import java.awt.Rectangle;
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -9,6 +10,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import javax.imageio.ImageIO;
+import javax.imageio.ImageReadParam;
 import javax.imageio.ImageReader;
 import javax.imageio.stream.ImageInputStream;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -30,6 +32,13 @@ public class MediaImages {
   public record Dimensions(int width, int height) {}
 
   public record Image(byte[] bytes, String contentType) {}
+
+  /** Raised when a stored scan cannot be decoded for cropping. */
+  public static class UndecodableScanException extends RuntimeException {
+    public UndecodableScanException(String message) {
+      super(message);
+    }
+  }
 
   private final JdbcTemplate jdbc;
   private final AttachmentRepository attachments;
@@ -78,27 +87,78 @@ public class MediaImages {
       if (m.get("crop_left") == null) {
         String mime =
             attachment.getMime() != null ? attachment.getMime() : "application/octet-stream";
-        return new Image(Files.readAllBytes(file), mime);
-      }
-      BufferedImage full = ImageIO.read(file.toFile());
-      if (full == null) {
-        throw GenealogyException.conflict("the image of page %d cannot be read".formatted(pageId));
+        try {
+          return new Image(Files.readAllBytes(file), mime);
+        } catch (IOException e) {
+          throw GenealogyException.conflict(
+              "the image of page %d cannot be read".formatted(pageId));
+        }
       }
       int left = (Integer) m.get("crop_left");
       int top = (Integer) m.get("crop_top");
       int width = (Integer) m.get("crop_width");
       int height = (Integer) m.get("crop_height");
-      if (left + width > full.getWidth() || top + height > full.getHeight()) {
-        throw GenealogyException.conflict(
-            "media %d's crop lies outside page %d's current %dx%d image"
-                .formatted(mediaId, pageId, full.getWidth(), full.getHeight()));
+      try (ImageInputStream stream = ImageIO.createImageInputStream(file.toFile())) {
+        if (stream == null) {
+          throw new UndecodableScanException(
+              "this scan cannot be decoded for cropping (no ImageReader); the whole page is still available");
+        }
+        Iterator<ImageReader> readers = ImageIO.getImageReaders(stream);
+        if (readers == null || !readers.hasNext()) {
+          throw new UndecodableScanException(
+              "this scan cannot be decoded for cropping (no ImageReader for this format); the whole page is still available");
+        }
+        ImageReader reader = readers.next();
+        try {
+          reader.setInput(stream);
+          int fullWidth;
+          int fullHeight;
+          try {
+            fullWidth = reader.getWidth(0);
+            fullHeight = reader.getHeight(0);
+          } catch (IOException e) {
+            throw undecodable(e);
+          }
+          if (left + width > fullWidth || top + height > fullHeight) {
+            throw GenealogyException.conflict(
+                "media %d's crop lies outside page %d's current %dx%d image"
+                    .formatted(mediaId, pageId, fullWidth, fullHeight));
+          }
+          ImageReadParam param = reader.getDefaultReadParam();
+          param.setSourceRegion(new Rectangle(left, top, width, height));
+          BufferedImage region;
+          try {
+            region = reader.read(0, param);
+          } catch (IOException e) {
+            throw undecodable(e);
+          } catch (RuntimeException e) {
+            if (e instanceof GenealogyException) throw e;
+            throw undecodable(e);
+          }
+          ByteArrayOutputStream out = new ByteArrayOutputStream();
+          ImageIO.write(region, "png", out);
+          return new Image(out.toByteArray(), "image/png");
+        } finally {
+          reader.dispose();
+        }
       }
-      ByteArrayOutputStream out = new ByteArrayOutputStream();
-      ImageIO.write(full.getSubimage(left, top, width, height), "png", out);
-      return new Image(out.toByteArray(), "image/png");
     } catch (IOException e) {
-      throw GenealogyException.conflict("the image of page %d cannot be read".formatted(pageId));
+      throw undecodable(e);
+    } catch (RuntimeException e) {
+      if (e instanceof GenealogyException || e instanceof UndecodableScanException) throw e;
+      throw undecodable(e);
     }
+  }
+
+  private static UndecodableScanException undecodable(Throwable cause) {
+    String detail = cause == null ? null : cause.getMessage();
+    if (detail == null || detail.isBlank()) {
+      detail = cause == null ? "unknown" : cause.getClass().getSimpleName();
+    }
+    return new UndecodableScanException(
+        "this scan cannot be decoded for cropping ("
+            + detail
+            + "); the whole page is still available");
   }
 
   Attachment attachment(long pageId) {
