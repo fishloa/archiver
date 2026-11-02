@@ -211,6 +211,7 @@ class LegacyImportTest {
         .contains("conflicting birth dates: 16 APR 1766 vs 16 APR 1776");
     assertThat(review).anyMatch(r -> r.contains("uncertain name: z Gutštejna?"));
     assertThat(review).anyMatch(r -> r.contains("date not understood: 31.7./12.11.1787"));
+    assertThat(review).noneMatch(r -> r.contains("names no spouse"));
   }
 
   @Test

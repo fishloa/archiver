@@ -129,6 +129,9 @@ public final class LegacyImport {
       Long couple = null;
       if (order != null) {
         couple = couples.get(order);
+        if (couple == null) {
+          flag(child.id, "child of marriage " + order + ", which has no recorded spouse");
+        }
       } else if (distinct.size() == 1) {
         couple = distinct.iterator().next();
       } else if (distinct.size() > 1) {
@@ -235,7 +238,18 @@ public final class LegacyImport {
         couple = couples.get(m.sameAsOrder());
         spouses.put(m.order(), spouses.get(m.sameAsOrder()));
       } else if (m.spouse() == null) {
-        flag(personId, "marriage " + m.order() + " names no spouse");
+        Event w = m.wedding();
+        String date = w == null || w.date() == null ? "-" : w.date();
+        String place = w == null || w.place() == null ? "-" : w.place();
+        flag(
+            personId,
+            "marriage "
+                + m.order()
+                + " has no spouse name (date: "
+                + date
+                + ", place: "
+                + place
+                + ")");
         continue;
       } else {
         int spouseId = spouse(m.spouse());

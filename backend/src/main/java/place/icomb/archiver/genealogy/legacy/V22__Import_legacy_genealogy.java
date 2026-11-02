@@ -29,6 +29,10 @@ public class V22__Import_legacy_genealogy extends BaseJavaMigration {
     }
     JdbcTemplate jdbc =
         new JdbcTemplate(new SingleConnectionDataSource(context.getConnection(), true));
+    if (jdbc.queryForObject("SELECT count(*) FROM gen_person", Long.class) > 0) {
+      throw new IllegalStateException(
+          "gen_person is not empty; V22 imports only into empty tables");
+    }
     new LegacyImport(jdbc).run(lines);
   }
 }
