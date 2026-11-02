@@ -10,6 +10,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -22,8 +23,7 @@ import place.icomb.archiver.service.FamilyTreeService;
 
 /**
  * The only writer of the genealogy. Every write takes a reason, is validated, and appends one
- * {@code gen_change} row per row it changed, holding the row before and after; that is what {@link
- * #undo} restores from.
+ * {@code gen_change} row per row it changed, holding the row before and after.
  *
  * <p>Rows that belong to another (a person's names and events, an event's citations) are deleted
  * with it, each audited. Rows that merely point at it (a couple, a parent link, a match, a user's
@@ -132,78 +132,90 @@ public class GenealogyService {
 
   @Transactional
   public Map<String, Object> create(GenEntity entity, Map<String, Object> body, String reason) {
-    requireReason(reason);
-    requireWritable(entity);
-    Map<String, Object> values = coerce(entity, withPlace(entity, body, reason));
-    validate(entity, null, values, reason);
-    derive(entity, values);
-    List<String> columns = new ArrayList<>(values.keySet());
-    String sql =
-        columns.isEmpty()
-            ? "INSERT INTO %s AS t DEFAULT VALUES RETURNING to_jsonb(t.*)::text"
-                .formatted(entity.table())
-            : "INSERT INTO %s AS t (%s) VALUES (%s) RETURNING to_jsonb(t.*)::text"
-                .formatted(
-                    entity.table(),
-                    String.join(", ", columns),
-                    String.join(", ", Collections.nCopies(columns.size(), "?")));
-    Map<String, Object> after =
-        Rows.json(jdbc.queryForObject(sql, String.class, values.values().toArray()));
-    audit(entity, id(after), "create", null, after, reason);
-    changed();
-    return Rows.camel(after);
+    try {
+      requireReason(reason);
+      requireWritable(entity);
+      Map<String, Object> values = coerce(entity, withPlace(entity, body, reason));
+      validate(entity, null, values, reason);
+      derive(entity, values);
+      List<String> columns = new ArrayList<>(values.keySet());
+      String sql =
+          columns.isEmpty()
+              ? "INSERT INTO %s AS t DEFAULT VALUES RETURNING to_jsonb(t.*)::text"
+                  .formatted(entity.table())
+              : "INSERT INTO %s AS t (%s) VALUES (%s) RETURNING to_jsonb(t.*)::text"
+                  .formatted(
+                      entity.table(),
+                      String.join(", ", columns),
+                      String.join(", ", Collections.nCopies(columns.size(), "?")));
+      Map<String, Object> after =
+          Rows.json(jdbc.queryForObject(sql, String.class, values.values().toArray()));
+      audit(entity, id(after), "create", null, after, reason);
+      changed();
+      return Rows.camel(after);
+    } catch (DataIntegrityViolationException e) {
+      throw GenealogyException.badRequest(e.getMostSpecificCause().getMessage());
+    }
   }
 
   @Transactional
   public Map<String, Object> update(
       GenEntity entity, long id, Map<String, Object> body, String reason) {
-    requireReason(reason);
-    requireWritable(entity);
-    Map<String, Object> current = lock(entity, id);
-    Map<String, Object> values = coerce(entity, withPlace(entity, body, reason));
-    if (values.isEmpty()) {
-      throw GenealogyException.badRequest("nothing to change");
-    }
-    Map<String, Object> merged = new LinkedHashMap<>(current);
-    merged.putAll(values);
-    validate(entity, current, merged, reason);
-    derive(entity, merged);
-    if (values.containsKey("date_text")) {
-      for (String k :
-          entity == GenEntity.EVENT
-              ? List.of("date_text", "date_from", "date_to")
-              : List.of("date_text")) {
-        values.put(k, merged.get(k));
+    try {
+      requireReason(reason);
+      requireWritable(entity);
+      Map<String, Object> current = lock(entity, id);
+      Map<String, Object> values = coerce(entity, withPlace(entity, body, reason));
+      if (values.isEmpty()) {
+        throw GenealogyException.badRequest("nothing to change");
       }
+      Map<String, Object> merged = new LinkedHashMap<>(current);
+      merged.putAll(values);
+      validate(entity, current, merged, reason);
+      derive(entity, merged);
+      if (values.containsKey("date_text")) {
+        for (String k :
+            entity == GenEntity.EVENT
+                ? List.of("date_text", "date_from", "date_to")
+                : List.of("date_text")) {
+          values.put(k, merged.get(k));
+        }
+      }
+      Map<String, Object> after = write(entity, id, values);
+      audit(entity, id, "update", current, after, reason);
+      changed();
+      return Rows.camel(after);
+    } catch (DataIntegrityViolationException e) {
+      throw GenealogyException.badRequest(e.getMostSpecificCause().getMessage());
     }
-    Map<String, Object> after = write(entity, id, values);
-    audit(entity, id, "update", current, after, reason);
-    changed();
-    return Rows.camel(after);
   }
 
   @Transactional
   public Map<String, Object> delete(GenEntity entity, long id, String reason) {
-    requireReason(reason);
-    requireWritable(entity);
-    Map<String, Object> current = lock(entity, id);
-    if (entity == GenEntity.NAME && Boolean.TRUE.equals(current.get("is_primary"))) {
-      throw GenealogyException.conflict(
-          "name %d is the primary name; make another name primary first".formatted(id));
+    try {
+      requireReason(reason);
+      requireWritable(entity);
+      Map<String, Object> current = lock(entity, id);
+      if (entity == GenEntity.NAME && Boolean.TRUE.equals(current.get("is_primary"))) {
+        throw GenealogyException.conflict(
+            "name %d is the primary name; make another name primary first".formatted(id));
+      }
+      List<String> blockers = blockers(entity, id);
+      if (!blockers.isEmpty()) {
+        throw GenealogyException.conflict(
+            "%s %d is still referenced by %s%s"
+                .formatted(
+                    entity.key(),
+                    id,
+                    String.join(", ", blockers),
+                    entity == GenEntity.PERSON ? "; merge the person instead" : ""));
+      }
+      int removed = deleteWithOwned(entity, id, "delete", reason);
+      changed();
+      return Map.of("entity", entity.key(), "id", id, "deleted", removed);
+    } catch (DataIntegrityViolationException e) {
+      throw GenealogyException.badRequest(e.getMostSpecificCause().getMessage());
     }
-    List<String> blockers = blockers(entity, id);
-    if (!blockers.isEmpty()) {
-      throw GenealogyException.conflict(
-          "%s %d is still referenced by %s%s"
-              .formatted(
-                  entity.key(),
-                  id,
-                  String.join(", ", blockers),
-                  entity == GenEntity.PERSON ? "; merge the person instead" : ""));
-    }
-    int removed = deleteWithOwned(entity, id, "delete", reason);
-    changed();
-    return Map.of("entity", entity.key(), "id", id, "deleted", removed);
   }
 
   /**
@@ -471,9 +483,13 @@ public class GenealogyService {
     livePerson(row.get("child_id"), "childId", true);
     int parent = ((Number) row.get("parent_id")).intValue();
     int child = ((Number) row.get("child_id")).intValue();
+    jdbc.queryForList("SELECT id FROM gen_person WHERE id = ? FOR UPDATE", child);
     if (parent == child) {
       throw GenealogyException.badRequest("a person cannot be their own parent");
     }
+    Object t = row.get("type");
+    String type = t == null ? "birth" : t.toString();
+    if (t == null) row.put("type", "birth");
     oneOf("type", row.get("type"), LINK_TYPES, false);
     Integer duplicate =
         jdbc.queryForObject(
@@ -487,7 +503,7 @@ public class GenealogyService {
       throw GenealogyException.conflict(
           "person %d is already a parent of %d".formatted(parent, child));
     }
-    if ("birth".equals(row.getOrDefault("type", "birth"))) {
+    if ("birth".equals(type)) {
       Integer birthParents =
           jdbc.queryForObject(
               "SELECT count(*) FROM gen_parent_child WHERE child_id = ? AND type = 'birth'"

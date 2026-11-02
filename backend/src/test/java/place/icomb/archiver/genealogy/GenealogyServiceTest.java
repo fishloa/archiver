@@ -182,6 +182,29 @@ class GenealogyServiceTest {
   }
 
   @Test
+  void creatingAPersonWithAnExplicitNullRequiredValueIsBadRequest() {
+    assertThat(
+            kindOf(
+                () ->
+                    genealogy.createPerson(
+                        body("given", "Anna", "surname", "Novák", "sex", null), "test person")))
+        .isEqualTo(Kind.BAD_REQUEST);
+  }
+
+  @Test
+  void aParentLinkWithTypeNullIsTreatedAsBirthAndCountsTowardTheCap() {
+    int third = newPerson("Dora", "Dritte");
+    assertThat(
+            kindOf(
+                () ->
+                    genealogy.create(
+                        GenEntity.PARENT_LINK,
+                        body("parentId", third, "childId", ALEXANDER_HANNIBAL, "type", null),
+                        "a mistake")))
+        .isEqualTo(Kind.CONFLICT);
+  }
+
+  @Test
   void aParentLinkThatMakesACycleIsRefused() {
     assertThat(
             kindOf(
