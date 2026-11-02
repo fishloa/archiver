@@ -57,9 +57,12 @@
 						{#if ev.place}<span>{ev.place}</span>{/if}
 						{#if ev.description}<span class="muted">{ev.description}</span>{/if}
 						{#if ev.spouseId}
-							<button class="vui-btn vui-btn-ghost vui-btn-sm" onclick={() => onNavigate(ev.spouseId!)}>
-								{person.couples.find((c) => c.spouseId === ev.spouseId)?.spouseName}
-							</button>
+							{@const spouseName = person.couples.find((c) => c.spouseId === ev.spouseId)?.spouseName}
+							{#if spouseName}
+								<button class="vui-btn vui-btn-ghost vui-btn-sm" onclick={() => onNavigate(ev.spouseId!)}>
+									{spouseName}
+								</button>
+							{/if}
 						{/if}
 						{#each ev.citations as c (c.id)}
 							<span class="vui-badge vui-badge-info">{c.sourceTitle}{c.detail ? ` – ${c.detail}` : ''} · {$t(qualityLabel(c.quality))}</span>
