@@ -16,6 +16,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import place.icomb.archiver.genealogy.GedcomExporter;
 import place.icomb.archiver.genealogy.GenEntity;
 import place.icomb.archiver.genealogy.GenealogyException;
 import place.icomb.archiver.genealogy.GenealogyHistoryService;
@@ -49,12 +50,36 @@ public class AdminGenealogyController {
   private final GenealogyService genealogy;
   private final GenealogyHistoryService history;
   private final JdbcTemplate jdbc;
+  private final GedcomExporter gedcom;
 
   public AdminGenealogyController(
-      GenealogyService genealogy, GenealogyHistoryService history, JdbcTemplate jdbc) {
+      GenealogyService genealogy,
+      GenealogyHistoryService history,
+      JdbcTemplate jdbc,
+      GedcomExporter gedcom) {
     this.genealogy = genealogy;
     this.history = history;
     this.jdbc = jdbc;
+    this.gedcom = gedcom;
+  }
+
+  /** The whole tree as GEDCOM 7; living people are left out unless {@code living=include}. */
+  @GetMapping("/export.ged")
+  public ResponseEntity<byte[]> export(@RequestParam(defaultValue = "exclude") String living) {
+    if (!living.equals("exclude") && !living.equals("include")) {
+      throw GenealogyException.badRequest("living must be exclude or include");
+    }
+    return ResponseEntity.ok()
+        .contentType(
+            org.springframework.http.MediaType.parseMediaType(
+                "text/vnd.familysearch.gedcom;charset=UTF-8"))
+        .header(
+            org.springframework.http.HttpHeaders.CONTENT_DISPOSITION,
+            "attachment; filename=\"czernin.ged\"")
+        .body(
+            gedcom
+                .export(living.equals("include"))
+                .getBytes(java.nio.charset.StandardCharsets.UTF_8));
   }
 
   @PostMapping("/{kind}")
