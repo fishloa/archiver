@@ -1,8 +1,9 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
 	import { goto, invalidateAll } from '$app/navigation';
-	import { Search, ChevronRight, Baby, X, HandHeart, UserCheck } from 'lucide-svelte';
-	import { language, t } from '$lib/i18n';
+	import { Search, ChevronRight, UserCheck } from 'lucide-svelte';
+	import { t } from '$lib/i18n';
+	import PersonFacts from '$lib/components/genealogy/PersonFacts.svelte';
 
 	let { data } = $props();
 	let query = $state('');
@@ -32,20 +33,6 @@
 	const user = $derived(data.user);
 	const hasRefPerson = $derived(!!user?.familyTreePersonId);
 	let settingMe = $state(false);
-
-	const eventColor: Record<string, string> = {
-		birth: 'var(--vui-accent)',
-		death: '#f87171',
-		marriage: '#a78bfa',
-		'marriage & divorce': '#fbbf24'
-	};
-
-	const eventIconComponent: Record<string, typeof Baby> = {
-		birth: Baby,
-		death: X,
-		marriage: HandHeart,
-		'marriage & divorce': HandHeart
-	};
 </script>
 
 <svelte:head>
@@ -98,35 +85,7 @@
 					{/if}
 				</div>
 
-				<!-- Timeline -->
-				{#if p.events && p.events.length > 0}
-					<div class="timeline">
-						{#each p.events as ev, i}
-							<div class="tl-row" style:--event-color={eventColor[ev.type] ?? 'var(--vui-text-muted)'}>
-								<div class="tl-dot-col">
-									<span class="tl-dot">
-										{#if eventIconComponent[ev.type]}
-											{@const EvIcon = eventIconComponent[ev.type]}
-											<EvIcon size={14} strokeWidth={2.5} />
-										{/if}
-									</span>
-									{#if i < p.events.length - 1}
-										<span class="tl-line"></span>
-									{/if}
-								</div>
-								<div class="tl-content">
-									<span class="tl-type">
-										{ev.type === 'marriage & divorce' ? 'Marriage (divorced)' : ev.type.charAt(0).toUpperCase() + ev.type.slice(1)}
-									</span>
-									{#if ev.year}
-										<span class="tl-year">{ev.year}</span>
-									{/if}
-									<div class="tl-text">{ev.text}</div>
-								</div>
-							</div>
-						{/each}
-					</div>
-				{/if}
+				<PersonFacts person={p} onNavigate={navigatePerson} />
 
 				<!-- Family links -->
 				<div class="detail-family">
@@ -408,77 +367,6 @@
 		margin: 0;
 		padding-top: 12px;
 		border-top: 1px solid color-mix(in srgb, var(--vui-border) 60%, transparent);
-	}
-
-	/* ── Timeline ── */
-	.timeline {
-		display: flex;
-		flex-direction: column;
-		margin-bottom: 16px;
-	}
-
-	.tl-row {
-		display: flex;
-		gap: 14px;
-		min-height: 48px;
-	}
-
-	.tl-dot-col {
-		display: flex;
-		flex-direction: column;
-		align-items: center;
-		width: 28px;
-		flex-shrink: 0;
-	}
-
-	.tl-dot {
-		background: var(--event-color, var(--vui-text-muted));
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		width: 28px;
-		height: 28px;
-		border-radius: 50%;
-		font-size: 14px;
-		font-weight: 700;
-		color: var(--vui-bg-deep);
-		flex-shrink: 0;
-	}
-
-	.tl-line {
-		flex: 1;
-		width: 2px;
-		background: color-mix(in srgb, var(--vui-border) 80%, transparent);
-		min-height: 12px;
-	}
-
-	.tl-content {
-		padding-bottom: 14px;
-		flex: 1;
-		min-width: 0;
-	}
-
-	.tl-type {
-		color: var(--event-color, var(--vui-text-muted));
-		font-size: 11px;
-		font-weight: 700;
-		text-transform: uppercase;
-		letter-spacing: 0.05em;
-	}
-
-	.tl-year {
-		font-size: 11px;
-		font-weight: 600;
-		color: var(--vui-text);
-		margin-left: 8px;
-	}
-
-	.tl-text {
-		font-size: 14px;
-		color: var(--vui-text);
-		margin-top: 2px;
-		line-height: 1.5;
-		word-break: break-word;
 	}
 
 	/* ── Family links ── */
