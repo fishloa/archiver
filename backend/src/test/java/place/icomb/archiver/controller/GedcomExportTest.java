@@ -259,6 +259,32 @@ class GedcomExportTest {
   }
 
   @Test
+  void aMarriageToALivingPersonKeepsItsDetailsPrivate() throws Exception {
+    int living =
+        ((Number) genealogy.createPerson(Map.of("given", "Spouse", "living", true), "x").get("id"))
+            .intValue();
+    long couple =
+        ((Number)
+                genealogy
+                    .create(GenEntity.COUPLE, Map.of("person1Id", 322, "person2Id", living), "x")
+                    .get("id"))
+            .longValue();
+    genealogy.create(
+        GenEntity.EVENT, Map.of("coupleId", couple, "type", "MARR", "dateText", "2 FEB 2002"), "x");
+
+    assertThat(export("include")).contains("2 DATE 2 FEB 2002");
+    String excluded = export("exclude");
+    assertWellFormed(excluded);
+    assertThat(excluded).doesNotContain("2 FEB 2002");
+  }
+
+  @Test
+  void continuationLinesNeverCarryACarriageReturn() throws Exception {
+    genealogy.update(GenEntity.PERSON, 322, Map.of("notes", "first\r\nsecond"), "x");
+    assertThat(export("include")).doesNotContain("\r").contains("first\n");
+  }
+
+  @Test
   void livingMustBeExcludeOrInclude() throws Exception {
     HttpResponse<String> r =
         http.send(

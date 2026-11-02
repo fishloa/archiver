@@ -40,7 +40,7 @@ public class GedcomExporter {
     this.jdbc = jdbc;
   }
 
-  private record Family(String xref, Integer husband, Integer wife, Long coupleId) {}
+  private record Family(String xref, Integer husband, Integer wife, Long coupleId, boolean whole) {}
 
   public String export(boolean includeLiving) {
     Map<Integer, Map<String, Object>> people = new LinkedHashMap<>();
@@ -64,7 +64,10 @@ public class GedcomExporter {
       boolean aFemale = a != null && "F".equals(people.get(a).get("sex"));
       Integer husband = aFemale ? b : a;
       Integer wife = aFemale ? a : b;
-      Family f = new Family("F" + c.get("id"), husband, wife, ((Number) c.get("id")).longValue());
+      boolean whole =
+          (c.get("person1_id") == null || a != null) && (c.get("person2_id") == null || b != null);
+      Family f =
+          new Family("F" + c.get("id"), husband, wife, ((Number) c.get("id")).longValue(), whole);
       byCouple.put(f.coupleId(), f);
       families.add(f);
     }
@@ -86,7 +89,8 @@ public class GedcomExporter {
                 parent,
                 p -> {
                   boolean female = "F".equals(people.get(p).get("sex"));
-                  Family made = new Family("F_P" + p, female ? null : p, female ? p : null, null);
+                  Family made =
+                      new Family("F_P" + p, female ? null : p, female ? p : null, null, true);
                   families.add(made);
                   return made;
                 });
@@ -119,6 +123,8 @@ public class GedcomExporter {
     g.tag(0, "HEAD");
     g.tag(1, "GEDC");
     g.value(2, "VERS", "7.0");
+    g.tag(1, "SCHMA");
+    g.value(2, "TAG", "_UID https://archive.czernin.eu/gedcom/_UID");
     g.value(1, "SOUR", "CZERNIN_ARCHIVE");
     g.value(2, "NAME", "Czernin family archive");
 
@@ -200,7 +206,7 @@ public class GedcomExporter {
       if (f.husband() != null) g.pointer(1, "HUSB", "I" + f.husband());
       if (f.wife() != null) g.pointer(1, "WIFE", "I" + f.wife());
       for (Object[] kid : kids) g.pointer(1, "CHIL", "I" + kid[0]);
-      if (f.coupleId() != null) {
+      if (f.coupleId() != null && f.whole()) {
         for (Map<String, Object> e : coupleEvents.getOrDefault(f.coupleId(), List.of())) {
           event(g, e, places, citations, usedSources);
         }
@@ -347,7 +353,7 @@ public class GedcomExporter {
 
     void value(int level, String tag, String payload) {
       if (payload == null || payload.isEmpty()) return;
-      String[] parts = payload.split("\n", -1);
+      String[] parts = payload.split("\r\n|\r|\n", -1);
       emit(level, tag, parts[0]);
       for (int i = 1; i < parts.length; i++) emit(level + 1, "CONT", parts[i]);
     }
