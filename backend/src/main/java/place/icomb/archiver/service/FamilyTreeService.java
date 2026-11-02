@@ -260,7 +260,7 @@ public class FamilyTreeService {
     if (externalFilePath != null && !externalFilePath.isBlank()) {
       return Files.readAllLines(Path.of(externalFilePath));
     }
-    var resource = new ClassPathResource("czernin-genealogy.txt");
+    var resource = new ClassPathResource("db/legacy/czernin-genealogy.txt");
     return new String(resource.getInputStream().readAllBytes()).lines().toList();
   }
 

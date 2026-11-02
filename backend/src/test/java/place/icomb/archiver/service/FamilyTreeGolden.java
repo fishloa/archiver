@@ -13,6 +13,7 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 import place.icomb.archiver.service.FamilyTreeService.Person;
 import place.icomb.archiver.service.FamilyTreeService.RelationshipResult;
 
@@ -29,6 +30,8 @@ public final class FamilyTreeGolden {
   static final Path DIR = Path.of("src/test/resources/genealogy/golden");
 
   static final List<Integer> REFERENCE_PEOPLE = List.of(1, 76, 128, 324);
+
+  static final int ALEXANDER = 322;
 
   static final List<String> QUERIES =
       List.of(
@@ -53,7 +56,124 @@ public final class FamilyTreeGolden {
   static final Map<Integer, String> BIRTH_PLACE_EXCEPTIONS =
       Map.of(91, "legacy '/after' artefact", 200, "legacy 'and +' artefact");
 
+  /**
+   * Descendants through a daughter whose legacy name already ends in their father's line's surname
+   * (Phillips, Beckett): the database keeps that surname instead of adding Czernin.
+   */
+  static final Set<Integer> INHERITED_SURNAME_IDS = Set.of(277, 278, 289, 290, 291, 292, 293, 294);
+
   private FamilyTreeGolden() {}
+
+  /**
+   * The name the database shows for a legacy person: the legacy name plus the family surname
+   * Czernin. A name already holding a Czernin form is shown as it was, less a trailing remark in
+   * parentheses; so is a name already ending in an inherited surname. This is the only intended
+   * difference between the in-memory tree and the database tree.
+   */
+  public static String expectedDisplay(int id, String legacyName) {
+    if (legacyName.contains("Czernin") || INHERITED_SURNAME_IDS.contains(id)) {
+      return legacyName.replaceAll("(\\s*\\([^)]*\\))+\\s*$", "").trim();
+    }
+    return legacyName + " Czernin";
+  }
+
+  /** {@link #assertPeopleMatch}, with the name column compared as {@link #expectedDisplay}. */
+  static void assertPeopleMatchAfterMove(List<String> actual, List<String> golden) {
+    List<String> expected = new ArrayList<>();
+    for (String line : golden) {
+      String[] c = line.split("\t", -1);
+      c[8] = expectedDisplay(Integer.parseInt(c[0]), c[8]);
+      expected.add(String.join("\t", c));
+    }
+    assertPeopleMatch(actual, expected);
+  }
+
+  /**
+   * Labels, ids and steps exactly as captured; every name, including those inside the path
+   * description, as {@link #expectedDisplay}.
+   */
+  static void assertKinshipMatchAfterMove(
+      List<String> actual, List<String> golden, List<String> people) {
+    Map<Integer, String> names = new java.util.HashMap<>();
+    Map<Integer, Integer> parents = new java.util.HashMap<>();
+    for (String line : people) {
+      String[] c = line.split("\t", -1);
+      names.put(Integer.parseInt(c[0]), c[8]);
+      if (!c[1].equals("-")) parents.put(Integer.parseInt(c[0]), Integer.parseInt(c[1]));
+    }
+    assertThat(actual).hasSameSizeAs(golden);
+    for (int i = 0; i < golden.size(); i++) {
+      String[] want = golden.get(i).split("\t", -1);
+      if (want.length == 3) {
+        assertThat(actual.get(i)).isEqualTo(golden.get(i));
+        continue;
+      }
+      String[] got = actual.get(i).split("\t", -1);
+      int person = Integer.parseInt(want[0]);
+      int ancestor = Integer.parseInt(want[5]);
+      int ref = want[1].equals("default") ? ALEXANDER : Integer.parseInt(want[1]);
+      String row = "kinship row " + golden.get(i);
+      for (int col : new int[] {0, 1, 5, 6, 7}) {
+        assertThat(got[col]).as(row).isEqualTo(want[col]);
+      }
+      String label = person == ref ? "This is " + expectedDisplay(ref, names.get(ref)) : want[2];
+      assertThat(got[2]).as(row).isEqualTo(label);
+      assertThat(got[8]).as(row).isEqualTo(expectedDisplay(person, names.get(person)));
+      assertThat(got[9]).as(row).isEqualTo(expectedDisplay(ref, names.get(ref)));
+      assertThat(got[4]).as(row).isEqualTo(expectedDisplay(ancestor, names.get(ancestor)));
+      String path;
+      if (person == ref) {
+        path = ref == ALEXANDER ? want[3] : label;
+      } else {
+        List<Integer> involved = new ArrayList<>(List.of(person, ref, ancestor));
+        for (int from : new int[] {person, ref}) {
+          if (from == ancestor) continue;
+          Integer cur = from;
+          while (cur != null && parents.get(cur) != null && parents.get(cur) != ancestor) {
+            cur = parents.get(cur);
+          }
+          if (cur != null && cur != ancestor) involved.add(cur);
+        }
+        path = renamed(want[3], involved, names);
+      }
+      assertThat(got[3]).as(row).isEqualTo(path);
+    }
+  }
+
+  /** Each involved person's legacy name in the text, longest first, as its display name. */
+  private static String renamed(String text, List<Integer> ids, Map<Integer, String> names) {
+    List<Integer> order =
+        ids.stream()
+            .distinct()
+            .sorted(Comparator.comparingInt((Integer id) -> names.get(id).length()).reversed())
+            .toList();
+    String out = text;
+    for (int k = 0; k < order.size(); k++) {
+      out = out.replace(names.get(order.get(k)), "\u0000" + k + "\u0001");
+    }
+    for (int k = 0; k < order.size(); k++) {
+      int id = order.get(k);
+      out = out.replace("\u0000" + k + "\u0001", expectedDisplay(id, names.get(id)));
+    }
+    return out;
+  }
+
+  /**
+   * Search results as captured, names as {@link #expectedDisplay}. Queries containing "czernin" are
+   * left out: every family member now carries the surname, so they rank differently by design.
+   */
+  static void assertSearchMatchAfterMove(List<String> actual, List<String> golden) {
+    List<String> want = new ArrayList<>();
+    for (String line : golden) {
+      String[] c = line.split("\t", -1);
+      if (c[0].contains("czernin")) continue;
+      c[3] = expectedDisplay(Integer.parseInt(c[2]), c[3]);
+      want.add(String.join("\t", c));
+    }
+    List<String> got =
+        actual.stream().filter(l -> !l.split("\t", -1)[0].contains("czernin")).toList();
+    assertThat(got).isEqualTo(want);
+  }
 
   static List<String> people(FamilyTreeService tree) {
     List<String> out = new ArrayList<>();
