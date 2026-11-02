@@ -80,6 +80,7 @@
 		display: block;
 		max-width: 100%;
 		user-select: none;
+		image-orientation: none;
 	}
 	.overlay {
 		position: absolute;

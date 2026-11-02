@@ -33,6 +33,11 @@
 
 	let mediaPage: PageResponse | null = $state(null);
 	let crop: Crop | null = $state(null);
+
+	$effect(() => {
+		mediaPage?.id;
+		crop = null;
+	});
 </script>
 
 {#snippet reason()}

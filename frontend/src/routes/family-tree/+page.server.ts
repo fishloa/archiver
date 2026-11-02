@@ -7,7 +7,8 @@ import {
 	fetchFamilyPerson,
 	updateProfile,
 	genealogyWrite,
-	fetchGenealogyAdmin
+	fetchGenealogyAdmin,
+	fetchCurrentUser
 } from '$lib/server/api';
 import { formToBody, type Change, type Source } from '$lib/genealogy';
 
@@ -41,9 +42,9 @@ export const load: PageServerLoad = async ({ url, parent, locals }) => {
 	let sources: Source[] = [];
 	if (editing && locals.userEmail) {
 		[history, places, sources] = await Promise.all([
-			fetchGenealogyAdmin<Change[]>(locals.userEmail, `changes?personId=${person.id}&limit=50`),
-			fetchGenealogyAdmin<{ id: number; name: string }[]>(locals.userEmail, 'places?limit=1000'),
-			fetchGenealogyAdmin<Source[]>(locals.userEmail, 'sources?limit=1000')
+			fetchGenealogyAdmin<Change[]>(locals.userEmail, `changes?personId=${person.id}&limit=50`).catch(() => []),
+			fetchGenealogyAdmin<{ id: number; name: string }[]>(locals.userEmail, 'places?limit=1000').catch(() => []),
+			fetchGenealogyAdmin<Source[]>(locals.userEmail, 'sources?limit=1000').catch(() => [])
 		]);
 	}
 
@@ -72,6 +73,8 @@ export const actions = {
 	},
 	edit: async ({ request, locals }: RequestEvent) => {
 		if (!locals.userEmail) return fail(401, { error: 'Not authenticated' });
+		const currentUser = await fetchCurrentUser(locals.userEmail);
+		if (currentUser.role !== 'admin') return fail(403, { error: 'administrators only' });
 		let write;
 		try {
 			write = formToBody(await request.formData());
@@ -84,6 +87,8 @@ export const actions = {
 	},
 	merge: async ({ request, locals }: RequestEvent) => {
 		if (!locals.userEmail) return fail(401, { error: 'Not authenticated' });
+		const currentUser = await fetchCurrentUser(locals.userEmail);
+		if (currentUser.role !== 'admin') return fail(403, { error: 'administrators only' });
 		const form = await request.formData();
 		const keep = Number(form.get('keep'));
 		const gone = Number(form.get('gone'));

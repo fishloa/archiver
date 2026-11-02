@@ -498,16 +498,18 @@ export async function genealogyWrite(
     method,
     headers: { "Content-Type": "application/json", ...authHeaders(email) },
     body: JSON.stringify(body),
+    redirect: "manual",
   });
   const data = await res.json().catch(() => ({}));
-  return { ok: res.ok, status: res.status, data };
+  return { ok: res.status >= 200 && res.status < 300, status: res.status, data };
 }
 
 export async function fetchGenealogyAdmin<T>(email: string, path: string): Promise<T> {
   const res = await fetch(`${backendUrl()}/api/admin/genealogy/${path}`, {
     headers: authHeaders(email),
+    redirect: "manual",
   });
-  if (!res.ok) throw new Error(`Backend error: ${res.status}`);
+  if (res.status < 200 || res.status >= 300) throw new Error(`Backend error: ${res.status}`);
   return res.json();
 }
 
