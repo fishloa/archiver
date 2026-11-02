@@ -10,7 +10,9 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import place.icomb.archiver.genealogy.GenealogyException;
 import place.icomb.archiver.genealogy.GenealogyReadService;
+import place.icomb.archiver.genealogy.MediaImages;
 import place.icomb.archiver.model.PagePersonMatch;
 import place.icomb.archiver.service.FamilyTreeService;
 import place.icomb.archiver.service.FamilyTreeService.Person;
@@ -24,14 +26,36 @@ public class FamilyTreeController {
   private final FamilyTreeService familyTreeService;
   private final PersonMatchService personMatchService;
   private final GenealogyReadService genealogy;
+  private final MediaImages images;
 
   public FamilyTreeController(
       FamilyTreeService familyTreeService,
       PersonMatchService personMatchService,
-      GenealogyReadService genealogy) {
+      GenealogyReadService genealogy,
+      MediaImages images) {
     this.familyTreeService = familyTreeService;
     this.personMatchService = personMatchService;
     this.genealogy = genealogy;
+    this.images = images;
+  }
+
+  /** A media item's image: the stored original, or its crop as lossless PNG. */
+  @GetMapping("/media/{mediaId}/image")
+  public ResponseEntity<?> mediaImage(@PathVariable long mediaId) {
+    try {
+      MediaImages.Image image = images.image(mediaId);
+      return ResponseEntity.ok()
+          .contentType(org.springframework.http.MediaType.parseMediaType(image.contentType()))
+          .header(org.springframework.http.HttpHeaders.CONTENT_DISPOSITION, "inline")
+          .body(image.bytes());
+    } catch (GenealogyException e) {
+      return ResponseEntity.status(
+              e.kind() == GenealogyException.Kind.NOT_FOUND
+                  ? org.springframework.http.HttpStatus.NOT_FOUND
+                  : org.springframework.http.HttpStatus.CONFLICT)
+          .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+          .body(Map.of("error", e.getMessage()));
+    }
   }
 
   @GetMapping("/search")
