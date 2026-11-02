@@ -109,11 +109,6 @@ public class PersonMatchService {
     log.info("Record {} person matching: {}/{} pages had matches", recordId, matched, pages.size());
   }
 
-  public void invalidateAll() {
-    matchRepo.truncateAll();
-    log.info("Cleared all cached person matches");
-  }
-
   private List<PagePersonMatch> matchPage(Long pageId) {
     String text = getBestText(pageId);
     if (text == null || text.isBlank()) {

@@ -3,6 +3,7 @@ package place.icomb.archiver.service;
 import java.text.Normalizer;
 import java.time.LocalDate;
 import java.util.*;
+import java.util.concurrent.atomic.AtomicLong;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
@@ -63,6 +64,9 @@ public class FamilyTreeService {
 
   private final JdbcTemplate jdbc;
   private volatile Snapshot snapshot;
+  private volatile long snapshotGen;
+  private final AtomicLong generation = new AtomicLong();
+  volatile java.util.function.Consumer<Object> onLoadedHook;
 
   private record Snapshot(
       List<Person> members,
@@ -101,22 +105,41 @@ public class FamilyTreeService {
   /** Drops the cached tree; the next read loads it again. */
   public void invalidate() {
     if (jdbc != null) {
+      generation.incrementAndGet();
       snapshot = null;
     }
   }
 
   private Snapshot tree() {
-    Snapshot s = snapshot;
-    if (s == null) {
-      synchronized (this) {
-        s = snapshot;
-        if (s == null) {
-          s = load();
-          snapshot = s;
+    while (true) {
+      long g = generation.get();
+      Snapshot cached = snapshot;
+      if (cached == null) {
+        synchronized (this) {
+          cached = snapshot;
+          if (cached == null) {
+            Snapshot loaded = load();
+            if (onLoadedHook != null) {
+              onLoadedHook.accept(loaded);
+            }
+            if (generation.get() == g && (snapshot == null || snapshotGen < g)) {
+              snapshot = loaded;
+              snapshotGen = g;
+            }
+            cached = loaded;
+          }
         }
       }
+      if (generation.get() != g) {
+        continue;
+      }
+      return cached;
     }
-    return s;
+  }
+
+  /** Package-private test seam: forces a load and returns the snapshot as an opaque value. */
+  Object treeSnapshot() {
+    return tree();
   }
 
   // --- Public API ---
@@ -818,8 +841,9 @@ public class FamilyTreeService {
 
     /**
      * The name person matching scores on: the legacy name for people imported from the text file
-     * (their forenames, never the Czernin surname the tree now adds), the given names otherwise,
-     * and {@link #name} when nothing else is set, as for people built by hand in tests.
+     * (their forenames, never the Czernin surname the tree now adds); the given names only when the
+     * surname is Czernin, otherwise the display name; and {@link #name} when nothing else is set,
+     * as for people built by hand in tests.
      */
     public String matchName() {
       return matchingName != null ? matchingName : name;

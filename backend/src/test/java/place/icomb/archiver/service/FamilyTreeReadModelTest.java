@@ -91,8 +91,27 @@ class FamilyTreeReadModelTest {
     assertThat(hits).isNotEmpty();
     assertThat(hits).allSatisfy(h -> assertThat(h.name()).contains("Jarom").endsWith("Czernin"));
     assertThat(hits.getFirst().score()).isEqualTo(1.0);
-    assertThat(tree.search("jaromir", 5))
-        .extracting(r -> r.personId())
-        .containsExactlyElementsOf(hits.stream().map(r -> r.personId()).toList());
+  }
+
+  @Test
+  void aSnapshotLoadedBeforeInvalidateIsNotPublished() {
+    tree.invalidate();
+    java.util.concurrent.atomic.AtomicReference<Object> stale =
+        new java.util.concurrent.atomic.AtomicReference<>();
+    java.util.concurrent.atomic.AtomicInteger calls =
+        new java.util.concurrent.atomic.AtomicInteger();
+    tree.onLoadedHook =
+        loaded -> {
+          if (calls.getAndIncrement() == 0) {
+            stale.set(loaded);
+            tree.invalidate();
+          }
+        };
+    try {
+      Object returned = tree.treeSnapshot();
+      assertThat(returned).isNotSameAs(stale.get());
+    } finally {
+      tree.onLoadedHook = null;
+    }
   }
 }

@@ -67,7 +67,12 @@ public final class Rows {
     if (v instanceof java.sql.Date d) return d.toLocalDate().toString();
     if (v instanceof UUID u) return u.toString();
     if (v instanceof PGobject o && o.getType() != null && o.getType().startsWith("json")) {
-      return o.getValue() == null ? null : json(o.getValue());
+      if (o.getValue() == null) return null;
+      try {
+        return JSON.readValue(o.getValue(), Object.class);
+      } catch (Exception e) {
+        throw new IllegalStateException("not JSON: " + o.getValue(), e);
+      }
     }
     if (v instanceof PGobject o) return o.getValue();
     return v;
