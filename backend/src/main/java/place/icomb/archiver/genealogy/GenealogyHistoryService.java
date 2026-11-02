@@ -236,25 +236,7 @@ public class GenealogyHistoryService {
               Rows.toJson(before));
           genealogy.audit(entity, id, "undo", null, current(entity, id), reason);
           if (entity == GenEntity.PARENT_LINK) {
-            Map<String, Object> restored = current(entity, id);
-            int parent = ((Number) restored.get("parent_id")).intValue();
-            int child = ((Number) restored.get("child_id")).intValue();
-            if ("birth".equals(restored.get("type"))) {
-              Integer birthParents =
-                  jdbc.queryForObject(
-                      "SELECT count(*) FROM gen_parent_child WHERE child_id = ? AND type = 'birth'",
-                      Integer.class,
-                      child);
-              if (birthParents > 2) {
-                throw GenealogyException.conflict(
-                    "person %d already has two birth parents".formatted(child));
-              }
-            }
-            if (genealogy.isAncestor(child, parent, id)) {
-              throw GenealogyException.conflict(
-                  "person %d is an ancestor of %d; the link would make a cycle"
-                      .formatted(child, parent));
-            }
+            recheckParentLink(id);
           }
         } else {
           List<String> columns = new ArrayList<>(before.keySet());
@@ -278,25 +260,7 @@ public class GenealogyHistoryService {
           }
           genealogy.audit(entity, id, "undo", current, now, reason);
           if (entity == GenEntity.PARENT_LINK) {
-            Map<String, Object> restored = current(entity, id);
-            int parent = ((Number) restored.get("parent_id")).intValue();
-            int child = ((Number) restored.get("child_id")).intValue();
-            if ("birth".equals(restored.get("type"))) {
-              Integer birthParents =
-                  jdbc.queryForObject(
-                      "SELECT count(*) FROM gen_parent_child WHERE child_id = ? AND type = 'birth'",
-                      Integer.class,
-                      child);
-              if (birthParents > 2) {
-                throw GenealogyException.conflict(
-                    "person %d already has two birth parents".formatted(child));
-              }
-            }
-            if (genealogy.isAncestor(child, parent, id)) {
-              throw GenealogyException.conflict(
-                  "person %d is an ancestor of %d; the link would make a cycle"
-                      .formatted(child, parent));
-            }
+            recheckParentLink(id);
           }
         }
         undone.add(((Number) row.get("id")).longValue());
@@ -420,5 +384,26 @@ public class GenealogyHistoryService {
 
   private List<Long> ids(String sql, Object arg) {
     return jdbc.queryForList(sql, Long.class, arg);
+  }
+
+  private void recheckParentLink(long id) {
+    Map<String, Object> restored = current(GenEntity.PARENT_LINK, id);
+    int parent = ((Number) restored.get("parent_id")).intValue();
+    int child = ((Number) restored.get("child_id")).intValue();
+    if ("birth".equals(restored.get("type"))) {
+      Integer birthParents =
+          jdbc.queryForObject(
+              "SELECT count(*) FROM gen_parent_child WHERE child_id = ? AND type = 'birth'",
+              Integer.class,
+              child);
+      if (birthParents > 2) {
+        throw GenealogyException.conflict(
+            "person %d already has two birth parents".formatted(child));
+      }
+    }
+    if (genealogy.isAncestor(child, parent, id)) {
+      throw GenealogyException.conflict(
+          "person %d is an ancestor of %d; the link would make a cycle".formatted(child, parent));
+    }
   }
 }

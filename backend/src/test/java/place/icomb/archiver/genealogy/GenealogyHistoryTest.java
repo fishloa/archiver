@@ -342,11 +342,31 @@ class GenealogyHistoryTest {
         genealogy.create(
             GenEntity.PARENT_LINK, body("parentId", a, "childId", child, "type", "birth"), "x");
     long linkId = id(link);
-    long deleted = lastChange();
     genealogy.delete(GenEntity.PARENT_LINK, linkId, "x");
+    long deleted = lastChange();
     genealogy.create(
         GenEntity.PARENT_LINK, body("parentId", b, "childId", child, "type", "birth"), "x");
     assertThat(kindOf(() -> history.undo(deleted, "restore"))).isEqualTo(Kind.CONFLICT);
+  }
+
+  @Test
+  void undoFallsBackToTheTimeAndAuthorKeyForRowsWithoutATransactionId() {
+    int p = person("Legacy");
+    long created = lastChange();
+    jdbc.update("UPDATE gen_change SET txid = NULL WHERE id = ?", created);
+    history.undo(created, "created by mistake");
+    assertThat(count("SELECT count(*) FROM gen_person WHERE id = ?", p)).isZero();
+  }
+
+  @Test
+  void newChangesGetTheirTransactionIdByDefault() {
+    assertThat(
+            jdbc.queryForObject(
+                "SELECT pg_get_expr(adbin, adrelid) FROM pg_attrdef d JOIN pg_attribute a"
+                    + " ON a.attrelid = d.adrelid AND a.attnum = d.adnum"
+                    + " WHERE d.adrelid = 'gen_change'::regclass AND a.attname = 'txid'",
+                String.class))
+        .contains("txid_current()");
   }
 
   @Test
