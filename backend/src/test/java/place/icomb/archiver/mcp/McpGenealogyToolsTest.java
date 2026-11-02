@@ -211,4 +211,23 @@ class McpGenealogyToolsTest {
         .isInstanceOf(IllegalStateException.class);
     assertThat(lastChange()).isEqualTo(before);
   }
+
+  @Test
+  void getPersonHidesThePrivateFactsFromReadersAndShowsThemToAnAdministrator() {
+    jdbc.update(
+        "UPDATE gen_person SET notes = 'private', needs_review = 'check me' WHERE id = ?",
+        ALEXANDER);
+    try {
+      signIn("ROLE_USER");
+      assertThat(readTools.getPerson(ALEXANDER)).doesNotContainKeys("notes", "needsReview");
+
+      signIn("ROLE_USER", "ROLE_ADMIN");
+      assertThat(readTools.getPerson(ALEXANDER))
+          .containsEntry("notes", "private")
+          .containsEntry("needsReview", "check me");
+    } finally {
+      jdbc.update(
+          "UPDATE gen_person SET notes = NULL, needs_review = NULL WHERE id = ?", ALEXANDER);
+    }
+  }
 }

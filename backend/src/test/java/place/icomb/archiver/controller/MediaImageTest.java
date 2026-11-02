@@ -218,4 +218,20 @@ class MediaImageTest {
     assertThat(body).contains("this scan cannot be decoded for cropping");
     assertThat(body).contains("the whole page is still available");
   }
+
+  @Test
+  void aMediaItemOnAPageWithNoStoredScanIsNotFound() throws Exception {
+    long record = GenealogyFixtures.record(jdbc);
+    long page =
+        GenealogyFixtures.page(
+            jdbc, storage, record, 1, GenealogyFixtures.png(40, 30), "image/png");
+    long media =
+        jdbc.queryForObject(
+            "INSERT INTO gen_media (page_id) VALUES (?) RETURNING id", Long.class, page);
+    jdbc.update("ALTER TABLE page ALTER COLUMN attachment_id DROP NOT NULL");
+    jdbc.update("UPDATE page SET attachment_id = NULL WHERE id = ?", page);
+
+    assertThat(image(media).statusCode()).isEqualTo(404);
+    assertThat(image(media).body()).isNotEmpty();
+  }
 }

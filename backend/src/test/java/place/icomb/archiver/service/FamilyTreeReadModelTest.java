@@ -37,6 +37,7 @@ class FamilyTreeReadModelTest {
   }
 
   @Autowired private FamilyTreeService tree;
+  @Autowired private org.springframework.jdbc.core.JdbcTemplate jdbc;
 
   @Test
   void theTreeStillHas346People() {
@@ -91,6 +92,23 @@ class FamilyTreeReadModelTest {
     assertThat(hits).isNotEmpty();
     assertThat(hits).allSatisfy(h -> assertThat(h.name()).contains("Jarom").endsWith("Czernin"));
     assertThat(hits.getFirst().score()).isEqualTo(1.0);
+  }
+
+  @Test
+  void aNameChangedInTheDatabaseIsReadAfterInvalidate() {
+    tree.getPerson(1);
+    String original =
+        jdbc.queryForObject(
+            "SELECT given FROM gen_name WHERE person_id = ? AND is_primary", String.class, 1);
+    try {
+      jdbc.update(
+          "UPDATE gen_name SET given = 'Humprecht Renamed' WHERE person_id = ? AND is_primary", 1);
+      tree.invalidate();
+      assertThat(tree.getPerson(1).name).isEqualTo("Humprecht Renamed Czernin z Chudenic");
+    } finally {
+      jdbc.update("UPDATE gen_name SET given = ? WHERE person_id = ? AND is_primary", original, 1);
+      tree.invalidate();
+    }
   }
 
   @Test

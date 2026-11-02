@@ -413,6 +413,20 @@ class FamilyTreeControllerTest {
   }
 
   @Test
+  void aReaderPersonCarriesNoPrivateFacts() throws Exception {
+    jdbc.sql("UPDATE gen_person SET notes = 'private', needs_review = 'check me' WHERE id = 322")
+        .update();
+
+    var resp =
+        http.send(authedGet(base() + "/person/322").build(), HttpResponse.BodyHandlers.ofString());
+
+    assertThat(resp.statusCode()).isEqualTo(200);
+    Map<String, Object> body = mapper.readValue(resp.body(), Map.class);
+    assertThat(body).doesNotContainKeys("notes", "needsReview");
+    assertThat(body.get("id")).isEqualTo(322);
+  }
+
+  @Test
   void anAdminPersonCarriesPrivateFacts() throws Exception {
     var resp =
         http.send(adminGet(base() + "/person/322").build(), HttpResponse.BodyHandlers.ofString());

@@ -75,14 +75,7 @@ public class ArchiverMcpTools {
   }
 
   private void requireAdmin() {
-    var auth =
-        org.springframework.security.core.context.SecurityContextHolder.getContext()
-            .getAuthentication();
-    boolean admin =
-        auth != null
-            && auth.isAuthenticated()
-            && auth.getAuthorities().stream().anyMatch(a -> "ROLE_ADMIN".equals(a.getAuthority()));
-    if (!admin) {
+    if (!isAdmin()) {
       throw new IllegalStateException("this tool is available to administrators only");
     }
   }

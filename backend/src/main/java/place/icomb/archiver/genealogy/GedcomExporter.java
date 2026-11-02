@@ -246,6 +246,7 @@ public class GedcomExporter {
       }
       cite(g, 1, citations.get("person_id:" + id), usedSources);
       g.value(1, "NOTE", (String) p.get("notes"));
+      g.value(1, "UID", (String) p.get("uid"));
       g.value(1, "_UID", (String) p.get("uid"));
     }
 

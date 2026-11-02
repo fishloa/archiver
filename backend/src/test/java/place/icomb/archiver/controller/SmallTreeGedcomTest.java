@@ -153,9 +153,16 @@ class SmallTreeGedcomTest {
   }
 
   private static String normalize(String ged) {
-    return ged.lines()
-            .map(l -> l.startsWith("1 _UID ") ? "1 _UID 00000000-0000-0000-0000-000000000000" : l)
-            .collect(Collectors.joining("\n"))
+    return ged.lines().map(SmallTreeGedcomTest::normalizeUid).collect(Collectors.joining("\n"))
         + (ged.endsWith("\n") ? "\n" : "");
+  }
+
+  private static String normalizeUid(String line) {
+    for (String tag : new String[] {"UID", "_UID"}) {
+      if (line.startsWith("1 " + tag + " ")) {
+        return "1 " + tag + " 00000000-0000-0000-0000-000000000000";
+      }
+    }
+    return line;
   }
 }

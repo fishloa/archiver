@@ -225,7 +225,7 @@ class GedcomExportTest {
             "0 @I"
                 + id
                 + "@ INDI\n1 NAME Nobody /Known/\n2 TYPE BIRTH\n2 GIVN Nobody\n2 SURN Known\n"
-                + "1 SEX U\n1 _UID [0-9a-f-]{36}\n");
+                + "1 SEX U\n1 UID [0-9a-f-]{36}\n1 _UID [0-9a-f-]{36}\n");
   }
 
   @Test

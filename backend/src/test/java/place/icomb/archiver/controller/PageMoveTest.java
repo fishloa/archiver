@@ -1128,4 +1128,20 @@ class PageMoveTest {
     assertThat(one("SELECT record_id FROM job WHERE page_id = ? AND status = 'pending'", moved))
         .isEqualTo(b);
   }
+
+  @Test
+  void aPersonLinkFollowsItsPageIntoTheTargetRecord() throws Exception {
+    long a = recordWithPages("a", 2);
+    long b = recordWithPages("b", 1);
+    long moving = pageIds(a).get(0);
+    jdbc.sql("INSERT INTO gen_person_record (person_id, record_id, page_id) VALUES (1, :r, :p)")
+        .param("r", a)
+        .param("p", moving)
+        .update();
+
+    ok(post(movePath(a, moving), "{\"targetRecordId\":" + b + "}"));
+
+    assertThat(one("SELECT record_id FROM gen_person_record WHERE page_id = ?", moving))
+        .isEqualTo(b);
+  }
 }
