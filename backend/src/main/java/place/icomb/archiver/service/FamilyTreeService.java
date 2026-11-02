@@ -1,24 +1,24 @@
 package place.icomb.archiver.service;
 
-import jakarta.annotation.PostConstruct;
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.text.Normalizer;
+import java.time.LocalDate;
 import java.util.*;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.context.annotation.Lazy;
-import org.springframework.core.io.ClassPathResource;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
+import place.icomb.archiver.genealogy.legacy.LegacyTreeParser;
 
+/**
+ * The family tree as the rest of the archive reads it: search, kinship and people, over the
+ * genealogy tables. {@code GenealogyService} is the only writer and calls {@link #invalidate()}
+ * after each commit; the next read rebuilds the tree.
+ *
+ * <p>"Tree members" are the people the in-memory tree held (a legacy section) and anyone descended
+ * from them by birth. Search and {@link #getAllPeople()} cover members only, so person matching and
+ * search answer exactly as they did; spouses are reachable by id and by {@code search(q, n, true)}.
+ */
 @Service
 public class FamilyTreeService {
-  private static final Logger log = LoggerFactory.getLogger(FamilyTreeService.class);
 
   private static final Set<String> TITLE_WORDS =
       Set.of(
@@ -39,67 +39,102 @@ public class FamilyTreeService {
           "hon",
           "hon.");
 
-  private static final Pattern CODE_PREFIX = Pattern.compile("^([A-Z]\\d+)\\.\\s+");
-  private static final Pattern BIRTH_PATTERN = Pattern.compile("\\*([^;]+?)(?=;|$)");
-  private static final Pattern DEATH_PATTERN = Pattern.compile("\\+([^;]+?)(?=;|$)");
-  private static final Pattern YEAR_PATTERN = Pattern.compile("\\b(1[0-9]{3}|20[0-9]{2})\\b");
-  private static final Pattern SPOUSE_PATTERN =
-      Pattern.compile("(?:^|;)\\s*(?:\\d?m[\\.:]|m\\.)\\s*(.+?)(?=;\\s*\\dm|$)");
+  private static final String ALEXANDER = "Alexander Friedrich Josef Paul Maria";
+  private static final String FAMILY_SURNAME = "Czernin";
 
-  @Autowired @Lazy private PersonMatchService personMatchService;
+  private static final Map<String, String> EVENT_WORDS =
+      Map.ofEntries(
+          Map.entry("BIRT", "birth"),
+          Map.entry("CHR", "christening"),
+          Map.entry("BAPM", "baptism"),
+          Map.entry("DEAT", "death"),
+          Map.entry("BURI", "burial"),
+          Map.entry("MARR", "marriage"),
+          Map.entry("DIV", "divorce"),
+          Map.entry("ADOP", "adoption"),
+          Map.entry("OCCU", "occupation"),
+          Map.entry("TITL", "title"),
+          Map.entry("RESI", "residence"),
+          Map.entry("NATU", "naturalisation"),
+          Map.entry("EMIG", "emigration"),
+          Map.entry("IMMI", "immigration"),
+          Map.entry("EDUC", "education"),
+          Map.entry("EVEN", "event"));
 
-  @Value("${archiver.family-tree.file:}")
-  private String externalFilePath;
+  private final JdbcTemplate jdbc;
+  private volatile Snapshot snapshot;
 
-  private volatile List<Person> allPeople = List.of();
-  private volatile Map<Integer, Person> peopleById = Map.of();
-  private volatile Person alexander;
+  private record Snapshot(
+      List<Person> members,
+      Map<Integer, Person> byId,
+      Map<Integer, Integer> mergedInto,
+      Person alexander,
+      Map<Integer, List<Integer>> birthParents,
+      Map<Integer, List<Integer>> partners) {}
 
-  @PostConstruct
-  public void init() {
-    reload();
+  @Autowired
+  public FamilyTreeService(JdbcTemplate jdbc) {
+    this.jdbc = jdbc;
   }
 
-  public synchronized void reload() {
-    try {
-      List<String> lines = readFile();
-      List<Person> parsed = parse(lines);
-      mergeCrossSections(parsed);
+  private FamilyTreeService(Snapshot fixed) {
+    this.jdbc = null;
+    this.snapshot = fixed;
+  }
 
-      Map<Integer, Person> byId = new LinkedHashMap<>();
-      for (Person p : parsed) byId.put(p.id, p);
-
-      this.allPeople = List.copyOf(parsed);
-      this.peopleById = Map.copyOf(byId);
-      this.alexander = findAlexander(parsed);
-
-      log.info(
-          "Family tree loaded: {} people, alexander={}",
-          parsed.size(),
-          alexander != null ? alexander.id + " " + alexander.name : "NOT FOUND");
-
-      // Clear cached person matches since the family tree data changed
-      try {
-        personMatchService.invalidateAll();
-      } catch (Exception e) {
-        // May fail during startup when DB is not ready yet — that's fine
-        log.debug(
-            "Could not invalidate person matches (expected during startup): {}", e.getMessage());
+  /** A tree over a fixed list of people, for tests that need no database. */
+  static FamilyTreeService forPeople(List<Person> people) {
+    Map<Integer, Person> byId = new LinkedHashMap<>();
+    Map<Integer, List<Integer>> parents = new HashMap<>();
+    Person alexander = null;
+    for (Person p : people) {
+      byId.put(p.id, p);
+      if (p.parent != null) parents.put(p.id, List.of(p.parent.id));
+      if (alexander == null && p.fullEntry != null && p.fullEntry.contains(ALEXANDER)) {
+        alexander = p;
       }
-    } catch (IOException e) {
-      log.error("Failed to load genealogy file", e);
     }
+    return new FamilyTreeService(
+        new Snapshot(List.copyOf(people), byId, Map.of(), alexander, parents, Map.of()));
+  }
+
+  /** Drops the cached tree; the next read loads it again. */
+  public void invalidate() {
+    if (jdbc != null) {
+      snapshot = null;
+    }
+  }
+
+  private Snapshot tree() {
+    Snapshot s = snapshot;
+    if (s == null) {
+      synchronized (this) {
+        s = snapshot;
+        if (s == null) {
+          s = load();
+          snapshot = s;
+        }
+      }
+    }
+    return s;
   }
 
   // --- Public API ---
 
   public List<SearchResult> search(String query, int limit) {
+    return search(query, limit, false);
+  }
+
+  /** With {@code everyone}, spouses and other people outside the tree are searched too. */
+  public List<SearchResult> search(String query, int limit, boolean everyone) {
     if (query == null || query.isBlank()) return List.of();
     List<String> qTokens = tokenize(normalize(query));
     if (qTokens.isEmpty()) return List.of();
 
+    Snapshot t = tree();
+    Collection<Person> pool = everyone ? t.byId().values() : t.members();
     List<SearchResult> results = new ArrayList<>();
-    for (Person p : allPeople) {
+    for (Person p : pool) {
       double score = score(qTokens, p);
       if (score > 0.1) {
         results.add(
@@ -119,21 +154,23 @@ public class FamilyTreeService {
   }
 
   public RelationshipResult relate(int personId) {
+    Person alexander = tree().alexander();
     if (alexander == null) return null;
     return relate(personId, alexander.id);
   }
 
   public RelationshipResult relate(int personId, int referencePersonId) {
-    Person person = peopleById.get(personId);
-    Person ref = peopleById.get(referencePersonId);
+    Snapshot t = tree();
+    Person person = resolve(t, personId);
+    Person ref = resolve(t, referencePersonId);
     if (person == null || ref == null) return null;
     if (person.id == ref.id) {
       String desc =
-          ref.id == (alexander != null ? alexander.id : -1)
+          ref.id == (t.alexander() != null ? t.alexander().id : -1)
               ? "Alexander Friedrich Josef Paul Maria Czernin, nicknamed Lucki/Papi"
               : "This is " + ref.name;
       return new RelationshipResult(
-          personId,
+          person.id,
           person.name,
           "This is " + ref.name,
           desc,
@@ -143,107 +180,83 @@ public class FamilyTreeService {
           0,
           ref.name);
     }
-
-    // Collect ancestors of the queried person with step count
-    Map<Integer, Integer> personAncestors = new LinkedHashMap<>();
-    Person cur = person;
-    int steps = 0;
-    while (cur != null) {
-      personAncestors.put(cur.id, steps);
-      cur = cur.parent;
-      steps++;
-    }
-
-    // Walk up from reference person to find LCA
-    cur = ref;
-    int refSteps = 0;
-    while (cur != null) {
-      if (personAncestors.containsKey(cur.id)) {
-        // Found LCA
-        Person lca = cur;
-        int dA = personAncestors.get(cur.id); // steps from person to LCA
-        int dB = refSteps; // steps from reference to LCA
-
-        String kinship = kinshipLabel(dA, dB);
-        String path = buildPathDescription(person, ref, lca, dA, dB);
-
-        return new RelationshipResult(
-            personId, person.name, kinship, path, lca.name, lca.id, dA, dB, ref.name);
-      }
-      cur = cur.parent;
-      refSteps++;
-    }
-
-    return null; // no common ancestor found
+    RelationshipResult blood = blood(t, person, ref);
+    if (blood != null) return blood;
+    return byMarriage(t, person, ref);
   }
 
+  /** A person merged into another resolves to the one they were merged into. */
   public Person getPerson(int id) {
-    return peopleById.get(id);
+    return resolve(tree(), id);
   }
 
+  /**
+   * A person's events in date order, their couples' marriages and divorces included. Each keeps the
+   * keys the text-file tree gave ({@code type}, {@code text}, {@code year}) and adds the stored
+   * fact: {@code id}, {@code tag}, {@code date}, {@code dateFrom}, {@code dateTo}, {@code place},
+   * {@code placeId}, {@code description}, {@code coupleId}, {@code spouseId}, {@code citations}.
+   */
   public List<Map<String, Object>> getLifeEvents(Person p) {
+    if (jdbc == null) return List.of();
+    List<Map<String, Object>> rows =
+        jdbc.queryForList(
+            """
+            SELECT e.id, e.type, e.date_text, e.date_from, e.date_to, e.place_id,
+                   pl.name AS place, e.description, e.couple_id, e.sort_order,
+                   CASE WHEN c.person1_id = ? THEN c.person2_id ELSE c.person1_id END AS spouse_id,
+                   EXISTS (SELECT 1 FROM gen_event d
+                           WHERE d.couple_id = e.couple_id AND d.type = 'DIV') AS divorced
+            FROM gen_event e
+            LEFT JOIN gen_place pl ON pl.id = e.place_id
+            LEFT JOIN gen_couple c ON c.id = e.couple_id
+            WHERE e.person_id = ? OR c.person1_id = ? OR c.person2_id = ?
+            """,
+            p.id,
+            p.id,
+            p.id,
+            p.id);
+    Map<Long, List<Map<String, Object>>> citations = citationsByEvent(rows);
     List<Map<String, Object>> events = new ArrayList<>();
-
-    String text = CODE_PREFIX.matcher(p.fullEntry).replaceFirst("");
-    text = text.replaceFirst("^\\[\\d?m\\.?\\]\\s*", "");
-
-    String[] segments = text.split(";");
-    for (String seg : segments) {
-      String s = seg.trim();
-      if (s.isEmpty() || s.startsWith("all children")) continue;
-
-      int starIdx = idxOutsideParens(s, '*');
-      int plusIdx = idxOutsideParens(s, '+');
-
-      if (starIdx >= 0) {
-        String afterStar = s.substring(starIdx + 1);
-        int plusInBirth = idxOutsideParens(afterStar, '+');
-        if (plusInBirth >= 0) {
-          events.add(
-              lifeEvent(
-                  "birth", afterStar.substring(0, plusInBirth).replaceAll(",\\s*$", "").trim()));
-          events.add(lifeEvent("death", afterStar.substring(plusInBirth + 1).trim()));
-        } else {
-          events.add(lifeEvent("birth", afterStar.trim()));
-        }
-      } else if (plusIdx >= 0) {
-        events.add(lifeEvent("death", s.substring(plusIdx + 1).trim()));
-      } else if (s.matches("^\\d?m[\\.:].*") || s.startsWith("m.")) {
-        String mt = s.replaceFirst("^\\d?m[\\.:]\\s*", "").trim();
-        events.add(lifeEvent(s.contains("(div") ? "marriage & divorce" : "marriage", mt));
+    for (Map<String, Object> r : rows) {
+      String tag = (String) r.get("type");
+      Integer spouseId = r.get("couple_id") == null ? null : (Integer) r.get("spouse_id");
+      Person spouse = spouseId == null ? null : getPerson(spouseId);
+      String word = EVENT_WORDS.getOrDefault(tag, "event");
+      if (tag.equals("MARR") && Boolean.TRUE.equals(r.get("divorced"))) {
+        word = "marriage & divorce";
       }
+      LocalDate from = toDate(r.get("date_from"));
+      LocalDate to = toDate(r.get("date_to"));
+      Integer year = yearOf(from, to);
+      Map<String, Object> m = new LinkedHashMap<>();
+      m.put("type", word);
+      m.put("text", text(r, spouse));
+      m.put("year", year);
+      m.put("id", ((Number) r.get("id")).longValue());
+      m.put("tag", tag);
+      m.put("date", r.get("date_text"));
+      m.put("dateFrom", from == null ? null : from.toString());
+      m.put("dateTo", to == null ? null : to.toString());
+      m.put("place", r.get("place"));
+      m.put("placeId", r.get("place_id"));
+      m.put("description", r.get("description"));
+      m.put("coupleId", r.get("couple_id"));
+      m.put("spouseId", spouseId);
+      m.put("sortOrder", r.get("sort_order"));
+      m.put("citations", citations.getOrDefault(((Number) r.get("id")).longValue(), List.of()));
+      events.add(m);
     }
-
     events.sort(
-        Comparator.comparingInt(
-            e -> {
-              Object y = e.get("year");
-              return y instanceof Integer ? (Integer) y : 9999;
-            }));
+        Comparator.<Map<String, Object>>comparingInt(
+                e -> e.get("year") instanceof Integer y ? y : 9999)
+            .thenComparingInt(e -> (Integer) e.get("sortOrder"))
+            .thenComparingLong(e -> (Long) e.get("id")));
+    events.forEach(e -> e.remove("sortOrder"));
     return events;
   }
 
-  private int idxOutsideParens(String s, char target) {
-    int depth = 0;
-    for (int i = 0; i < s.length(); i++) {
-      char c = s.charAt(i);
-      if (c == '(') depth++;
-      else if (c == ')') depth = Math.max(0, depth - 1);
-      else if (c == target && depth == 0) return i;
-    }
-    return -1;
-  }
-
-  private Map<String, Object> lifeEvent(String type, String text) {
-    Map<String, Object> m = new LinkedHashMap<>();
-    m.put("type", type);
-    m.put("text", text);
-    m.put("year", extractYear(text));
-    return m;
-  }
-
   public List<Person> getAllPeople() {
-    return allPeople;
+    return tree().members();
   }
 
   Set<String> getTitleWords() {
@@ -251,286 +264,217 @@ public class FamilyTreeService {
   }
 
   public int getPersonCount() {
-    return allPeople.size();
+    return tree().members().size();
   }
 
-  // --- Parsing ---
+  // --- Loading ---
 
-  private List<String> readFile() throws IOException {
-    if (externalFilePath != null && !externalFilePath.isBlank()) {
-      return Files.readAllLines(Path.of(externalFilePath));
+  private Snapshot load() {
+    Map<Integer, Person> all = new LinkedHashMap<>();
+    Map<Integer, Integer> mergedInto = new HashMap<>();
+    jdbc.query(
+        """
+        SELECT p.id, p.legacy_entry, p.legacy_section, p.legacy_code, p.legacy_depth,
+               p.merged_into, n.given, n.surname
+        FROM gen_person p
+        LEFT JOIN gen_name n ON n.person_id = p.id AND n.is_primary
+        ORDER BY p.id
+        """,
+        rs -> {
+          int id = rs.getInt("id");
+          int into = rs.getInt("merged_into");
+          if (!rs.wasNull()) {
+            mergedInto.put(id, into);
+            return;
+          }
+          Person p = new Person();
+          p.id = id;
+          String given = rs.getString("given");
+          String surname = rs.getString("surname");
+          p.name = displayName(given, surname);
+          p.surname = surname;
+          String entry = rs.getString("legacy_entry");
+          p.matchingName =
+              entry != null
+                  ? LegacyTreeParser.legacyName(entry)
+                  : FAMILY_SURNAME.equals(surname) ? displayName(given, null) : p.name;
+          p.fullEntry = entry != null ? entry : p.name;
+          p.section = rs.getString("legacy_section");
+          p.code = rs.getString("legacy_code");
+          p.depth = rs.getInt("legacy_depth");
+          p.children = new ArrayList<>();
+          p.spouses = new ArrayList<>();
+          all.put(id, p);
+        });
+
+    Set<Integer> born = new HashSet<>();
+    Set<Integer> died = new HashSet<>();
+    jdbc.query(
+        """
+        SELECT e.person_id, e.type, e.date_from, e.date_to, pl.name AS place
+        FROM gen_event e LEFT JOIN gen_place pl ON pl.id = e.place_id
+        WHERE e.person_id IS NOT NULL AND e.type IN ('BIRT', 'DEAT')
+        ORDER BY e.sort_order, e.id
+        """,
+        rs -> {
+          Person p = all.get(rs.getInt("person_id"));
+          if (p == null) return;
+          Integer year =
+              yearOf(
+                  rs.getObject("date_from", LocalDate.class),
+                  rs.getObject("date_to", LocalDate.class));
+          if (rs.getString("type").equals("BIRT")) {
+            if (born.add(p.id)) {
+              p.birthYear = year;
+              p.birthPlace = rs.getString("place");
+            }
+          } else if (died.add(p.id)) {
+            p.deathYear = year;
+          }
+        });
+
+    Map<Integer, List<Integer>> birthParents = new HashMap<>();
+    jdbc.query(
+        "SELECT parent_id, child_id FROM gen_parent_child WHERE type = 'birth'"
+            + " ORDER BY child_id, parent_id",
+        rs -> {
+          int parent = rs.getInt("parent_id");
+          int child = rs.getInt("child_id");
+          if (all.containsKey(parent) && all.containsKey(child)) {
+            birthParents.computeIfAbsent(child, k -> new ArrayList<>()).add(parent);
+          }
+        });
+    for (var e : birthParents.entrySet()) {
+      Person child = all.get(e.getKey());
+      Person parent = all.get(e.getValue().get(0));
+      child.parent = parent;
     }
-    var resource = new ClassPathResource("db/legacy/czernin-genealogy.txt");
-    return new String(resource.getInputStream().readAllBytes()).lines().toList();
-  }
-
-  private List<Person> parse(List<String> lines) {
-    List<Person> people = new ArrayList<>();
-    String section = null;
-    // depthStack[d] = most recent person at depth d
-    Map<Integer, Person> depthStack = new HashMap<>();
-    int nextId = 1;
-
-    for (String line : lines) {
-      String trimmed = line.trim();
-      if (trimmed.isEmpty()) continue;
-      if (isSkipLine(trimmed)) continue;
-
-      // Detect section headers
-      if (trimmed.startsWith("CZERNIN 1")) {
-        section = "CZERNIN 1";
-        depthStack.clear();
-        continue;
-      }
-      if (trimmed.startsWith("CZERNIN 2")) {
-        section = "CZERNIN 2";
-        depthStack.clear();
-        continue;
-      }
-      if (trimmed.startsWith("CZERNIN 3")) {
-        section = "CZERNIN 3";
-        depthStack.clear();
-        continue;
-      }
-      if (section == null) continue;
-
-      int spaces = countLeadingSpaces(line);
-      int depth = spaces / 2;
-
-      Person p = parsePerson(trimmed, section, depth, nextId);
-      if (p == null) continue;
-      nextId++;
-
-      // Build parent-child from depth
-      if (depth > 0) {
-        Person parent = depthStack.get(depth - 1);
-        if (parent != null) {
-          p.parent = parent;
-          parent.children.add(p);
-          // Build accumulated code
-          p.parentCode = parent.fullCode();
-        }
-      }
-
-      depthStack.put(depth, p);
-      // Clear deeper entries
-      depthStack.entrySet().removeIf(e -> e.getKey() > depth);
-
-      people.add(p);
-    }
-
-    return people;
-  }
-
-  private boolean isSkipLine(String trimmed) {
-    return trimmed.startsWith("=")
-        || trimmed.startsWith("Source:")
-        || trimmed.startsWith("Notation:")
-        || trimmed.startsWith("Indentation")
-        || trimmed.startsWith("END OF FILE")
-        || trimmed.startsWith("CZERNIN FAMILY")
-        || trimmed.startsWith("---")
-        || trimmed.contains("THIS IS ALEXANDER");
-  }
-
-  private int countLeadingSpaces(String line) {
-    int n = 0;
-    for (int i = 0; i < line.length() && line.charAt(i) == ' '; i++) n++;
-    return n;
-  }
-
-  /**
-   * Blanks out everything inside parentheses, keeping the string's length.
-   *
-   * <p>A genealogy line carries the spouse's own dates in brackets, and those brackets contain a
-   * {@code +}: "D6. Alexander Friedrich Josef Paul Maria, *Wien 30.4.1913; m. Haywards Heath
-   * 9.7.1949 Diana Zannick Hutton/Hulton (*London 12.12.1922, +Iver Heath, Bucks 30.8.1982)". The
-   * death pattern found that {@code +} and gave Alexander his wife's death year, so the tree said
-   * he died in 1982 when he died at Oxford in 2002 — and the line records no death for him at all.
-   * Masking rather than deleting keeps every other offset in the line intact.
-   */
-  static String maskParenthesised(String text) {
-    char[] out = text.toCharArray();
-    int depth = 0;
-    for (int i = 0; i < out.length; i++) {
-      if (out[i] == '(') {
-        depth++;
-        out[i] = ' ';
-      } else if (out[i] == ')') {
-        if (depth > 0) depth--;
-        out[i] = ' ';
-      } else if (depth > 0) {
-        out[i] = ' ';
-      }
-    }
-    return new String(out);
-  }
-
-  Person parsePerson(String line, String section, int depth, int id) {
-    Person p = new Person();
-    p.id = id;
-    p.section = section;
-    p.depth = depth;
-    p.fullEntry = line;
-    p.children = new ArrayList<>();
-    p.spouses = new ArrayList<>();
-
-    String rest = line;
-
-    // Extract code prefix like "A1. " or "B2. "
-    Matcher cm = CODE_PREFIX.matcher(rest);
-    if (cm.find()) {
-      p.code = cm.group(1);
-      rest = rest.substring(cm.end());
-    }
-
-    // Handle marriage-number prefixed children like "[1m.] " or "[2m.] "
-    if (rest.startsWith("[")) {
-      int bracket = rest.indexOf(']');
-      if (bracket > 0) {
-        rest = rest.substring(bracket + 1).trim();
+    for (Person p : all.values()) {
+      for (int parentId : birthParents.getOrDefault(p.id, List.of())) {
+        all.get(parentId).children.add(p);
       }
     }
 
-    // Extract name: text up to first comma, semicolon, or '*'
-    int nameEnd = rest.length();
-    for (int i = 0; i < rest.length(); i++) {
-      char c = rest.charAt(i);
-      if (c == ',' || c == ';' || c == '*') {
-        nameEnd = i;
-        break;
+    Map<Integer, List<Integer>> partners = new HashMap<>();
+    jdbc.query(
+        "SELECT person1_id, person2_id FROM gen_couple ORDER BY sort_order, id",
+        rs -> {
+          int a = rs.getInt("person1_id");
+          int b = rs.getInt("person2_id");
+          if (all.containsKey(a) && all.containsKey(b)) {
+            partners.computeIfAbsent(a, k -> new ArrayList<>()).add(b);
+            partners.computeIfAbsent(b, k -> new ArrayList<>()).add(a);
+            all.get(a).spouses.add(all.get(b).name);
+            all.get(b).spouses.add(all.get(a).name);
+          }
+        });
+
+    Set<Integer> members = new LinkedHashSet<>();
+    Deque<Person> queue = new ArrayDeque<>();
+    for (Person p : all.values()) {
+      if (p.section != null) {
+        members.add(p.id);
+        queue.add(p);
       }
     }
-    p.name = rest.substring(0, nameEnd).trim();
-    if (p.name.isEmpty()) return null;
-
-    // Remove ">>> CONTINUES..." suffix from name
-    int contIdx = p.name.indexOf(">>>");
-    if (contIdx >= 0) {
-      p.name = p.name.substring(0, contIdx).trim();
-    }
-
-    // Parse birth and death from this person's own text only: a spouse's dates live inside
-    // parentheses and carry their own * and +.
-    String own = maskParenthesised(rest);
-
-    Matcher bm = BIRTH_PATTERN.matcher(own);
-    if (bm.find()) {
-      String birthInfo = bm.group(1).trim();
-      p.birthYear = extractYear(birthInfo);
-      p.birthPlace = extractPlace(birthInfo);
-    }
-
-    Matcher dm = DEATH_PATTERN.matcher(own);
-    if (dm.find()) {
-      String deathInfo = dm.group(1).trim();
-      p.deathYear = extractYear(deathInfo);
-    }
-
-    // Parse spouses — simple: find text after "m. " or "Nm:" patterns
-    extractSpouses(rest, p);
-
-    return p;
-  }
-
-  private void extractSpouses(String text, Person p) {
-    // Split by semicolons and look for marriage markers
-    String[] parts = text.split(";");
-    for (String part : parts) {
-      String t = part.trim();
-      // Match "m. date Name" or "1m: date Name" etc.
-      if (t.matches("^\\d?m[\\.:].*") || t.startsWith("m.")) {
-        // Remove the marriage prefix and optional date
-        String spouse = t.replaceFirst("^\\d?m[\\.:]\\s*", "");
-        // Remove leading date like "1594 " or "ca 1594 "
-        spouse = spouse.replaceFirst("^(?:ca\\s+)?\\d{4}\\s+", "");
-        // Remove trailing parenthetical death info
-        spouse = spouse.replaceAll("\\([^)]*\\)\\s*$", "").trim();
-        // Remove >>> continues
-        int ci = spouse.indexOf(">>>");
-        if (ci >= 0) spouse = spouse.substring(0, ci).trim();
-        if (!spouse.isEmpty()) p.spouses.add(spouse);
+    while (!queue.isEmpty()) {
+      for (Person child : queue.poll().children) {
+        if (members.add(child.id)) queue.add(child);
       }
     }
+    List<Person> memberList = new ArrayList<>();
+    Person alexander = null;
+    for (Person p : all.values()) {
+      if (members.contains(p.id)) memberList.add(p);
+      if (alexander == null && p.fullEntry.contains(ALEXANDER)) alexander = p;
+    }
+    return new Snapshot(
+        List.copyOf(memberList),
+        Collections.unmodifiableMap(all),
+        Map.copyOf(mergedInto),
+        alexander,
+        birthParents,
+        partners);
   }
 
-  private Integer extractYear(String text) {
-    Matcher m = YEAR_PATTERN.matcher(text);
-    return m.find() ? Integer.parseInt(m.group(1)) : null;
+  private static String displayName(String given, String surname) {
+    if (given == null) return surname == null ? "" : surname;
+    return surname == null ? given : given + " " + surname;
   }
 
-  private String extractPlace(String birthInfo) {
-    // Birth info is like "Wien 30.4.1913" or "Praha 1.8.1833" or just "1447"
-    // Place is text before the first digit sequence that looks like a date
-    String cleaned = birthInfo.replaceAll("\\(.*\\)", "").trim();
-    // Remove "ca " prefix
-    cleaned = cleaned.replaceFirst("^ca\\s+", "");
-    // Try to get text before the first date-like pattern
-    String place = cleaned.replaceAll("\\d+[\\./]\\d+[\\./]?\\d*", "").replaceAll("\\d{4}", "");
-    place = place.replaceAll("[,.]\\s*$", "").trim();
-    return place.isEmpty() ? null : place;
+  private Map<Long, List<Map<String, Object>>> citationsByEvent(List<Map<String, Object>> events) {
+    Map<Long, List<Map<String, Object>>> out = new HashMap<>();
+    if (events.isEmpty()) return out;
+    List<Long> ids = events.stream().map(e -> ((Number) e.get("id")).longValue()).toList();
+    String in = String.join(",", Collections.nCopies(ids.size(), "?"));
+    jdbc.query(
+        "SELECT c.id, c.event_id, c.source_id, s.title, c.page_id, c.detail, c.quality"
+            + " FROM gen_citation c JOIN gen_source s ON s.id = c.source_id"
+            + " WHERE c.event_id IN ("
+            + in
+            + ") ORDER BY c.id",
+        rs -> {
+          Map<String, Object> c = new LinkedHashMap<>();
+          c.put("id", rs.getLong("id"));
+          c.put("sourceId", rs.getLong("source_id"));
+          c.put("sourceTitle", rs.getString("title"));
+          long page = rs.getLong("page_id");
+          c.put("pageId", rs.wasNull() ? null : page);
+          c.put("detail", rs.getString("detail"));
+          int q = rs.getInt("quality");
+          c.put("quality", rs.wasNull() ? null : q);
+          out.computeIfAbsent(rs.getLong("event_id"), k -> new ArrayList<>()).add(c);
+        },
+        ids.toArray());
+    return out;
   }
 
-  // --- Cross-section merging ---
-
-  private void mergeCrossSections(List<Person> people) {
-    // Find I5 and I9 in CZERNIN 1 that have ">>> CONTINUES"
-    Person i5 = null, i9 = null;
-    for (Person p : people) {
-      if (!"CZERNIN 1".equals(p.section)) continue;
-      if (p.fullEntry.contains(">>> CONTINUES IN CZERNIN 2")) i5 = p;
-      if (p.fullEntry.contains(">>> CONTINUES IN CZERNIN 3")) i9 = p;
+  private static String text(Map<String, Object> r, Person spouse) {
+    List<String> parts = new ArrayList<>();
+    for (String key : List.of("description", "date_text", "place")) {
+      if (r.get(key) != null) parts.add((String) r.get(key));
     }
-
-    // Find CZERNIN 2 root and CZERNIN 3 root (depth 0)
-    Person c2root = null, c3root = null;
-    for (Person p : people) {
-      if ("CZERNIN 2".equals(p.section) && p.depth == 0 && p.parent == null) c2root = p;
-      if ("CZERNIN 3".equals(p.section) && p.depth == 0 && p.parent == null) c3root = p;
-    }
-
-    // Merge: move children of c2root/c3root to i5/i9
-    if (i5 != null && c2root != null) {
-      for (Person child : c2root.children) {
-        child.parent = i5;
-        i5.children.add(child);
-      }
-      people.remove(c2root);
-      log.info("Merged CZERNIN 2 ({} children) under I5 ({})", c2root.children.size(), i5.name);
-    }
-    if (i9 != null && c3root != null) {
-      for (Person child : c3root.children) {
-        child.parent = i9;
-        i9.children.add(child);
-      }
-      people.remove(c3root);
-      log.info("Merged CZERNIN 3 ({} children) under I9 ({})", c3root.children.size(), i9.name);
-    }
+    if (spouse != null && "MARR".equals(r.get("type"))) parts.add(spouse.name);
+    return String.join(", ", parts);
   }
 
-  // --- Alexander lookup ---
-
-  private Person findAlexander(List<Person> people) {
-    for (Person p : people) {
-      if (p.fullEntry.contains("Alexander Friedrich Josef Paul Maria")) {
-        return p;
-      }
-    }
+  private static Integer yearOf(LocalDate from, LocalDate to) {
+    if (from != null) return from.getYear();
+    if (to != null) return to.getYear();
     return null;
+  }
+
+  private static LocalDate toDate(Object value) {
+    if (value == null) return null;
+    if (value instanceof java.sql.Date d) return d.toLocalDate();
+    return (LocalDate) value;
+  }
+
+  private static Person resolve(Snapshot t, int id) {
+    Integer into = t.mergedInto().get(id);
+    for (int hops = 0; into != null && hops < 32; hops++) {
+      id = into;
+      into = t.mergedInto().get(id);
+    }
+    return t.byId().get(id);
   }
 
   // --- Fuzzy search ---
 
+  /**
+   * Forenames score as they always did; a query word that matches none of them may still match the
+   * surname exactly, so "Czernin Rudolf" finds the Rudolfs.
+   */
   private double score(List<String> queryTokens, Person person) {
-    List<String> nameTokens = tokenize(normalize(person.name));
-    // Also search the fullEntry for broader matching
+    List<String> nameTokens = tokenize(normalize(person.matchName()));
+    List<String> surnameTokens =
+        person.surname == null ? List.of() : tokenize(normalize(person.surname));
     List<String> entryTokens = tokenize(normalize(person.fullEntry));
 
     double exactMatches = 0, substringMatches = 0, fuzzyMatches = 0;
 
     for (String qt : queryTokens) {
       boolean matched = false;
-      // Check name tokens first (higher value)
       for (String nt : nameTokens) {
         if (nt.equals(qt)) {
           exactMatches++;
@@ -558,7 +502,15 @@ public class FamilyTreeService {
       }
       if (matched) continue;
 
-      // Fall back to entry tokens with lower weight
+      for (String st : surnameTokens) {
+        if (st.equals(qt)) {
+          exactMatches++;
+          matched = true;
+          break;
+        }
+      }
+      if (matched) continue;
+
       for (String et : entryTokens) {
         if (et.equals(qt)) {
           exactMatches += 0.3;
@@ -598,6 +550,147 @@ public class FamilyTreeService {
   }
 
   // --- Kinship ---
+
+  /** Distances from {@code from} up its birth parents, lowest parent id explored first. */
+  private static Map<Integer, Integer> ancestors(Snapshot t, int from, Map<Integer, Integer> via) {
+    Map<Integer, Integer> dist = new LinkedHashMap<>();
+    Deque<Integer> queue = new ArrayDeque<>();
+    dist.put(from, 0);
+    queue.add(from);
+    while (!queue.isEmpty()) {
+      int cur = queue.poll();
+      for (int parent : t.birthParents().getOrDefault(cur, List.of())) {
+        if (!dist.containsKey(parent)) {
+          dist.put(parent, dist.get(cur) + 1);
+          via.put(parent, cur);
+          queue.add(parent);
+        }
+      }
+    }
+    return dist;
+  }
+
+  private RelationshipResult blood(Snapshot t, Person person, Person ref) {
+    Map<Integer, Integer> viaPerson = new HashMap<>();
+    Map<Integer, Integer> viaRef = new HashMap<>();
+    Map<Integer, Integer> up = ancestors(t, person.id, viaPerson);
+    Map<Integer, Integer> refUp = ancestors(t, ref.id, viaRef);
+    Integer best = null;
+    for (var e : up.entrySet()) {
+      Integer dB = refUp.get(e.getKey());
+      if (dB == null) continue;
+      if (best == null) {
+        best = e.getKey();
+        continue;
+      }
+      int dA = e.getValue();
+      int bA = up.get(best);
+      int bB = refUp.get(best);
+      if (dA + dB < bA + bB
+          || (dA + dB == bA + bB && dB < bB)
+          || (dA + dB == bA + bB && dB == bB && e.getKey() < best)) {
+        best = e.getKey();
+      }
+    }
+    if (best == null) return null;
+    Person lca = t.byId().get(best);
+    int dA = up.get(best);
+    int dB = refUp.get(best);
+    return new RelationshipResult(
+        person.id,
+        person.name,
+        kinshipLabel(dA, dB),
+        buildPathDescription(
+            person, ref, lca, dA, dB, path(t, viaPerson, best), path(t, viaRef, best)),
+        lca.name,
+        lca.id,
+        dA,
+        dB,
+        ref.name);
+  }
+
+  /** The line from the ancestor back down to where the walk started, the ancestor first. */
+  private static List<Person> path(Snapshot t, Map<Integer, Integer> via, int ancestor) {
+    List<Person> down = new ArrayList<>();
+    Integer cur = ancestor;
+    while (cur != null) {
+      down.add(t.byId().get(cur));
+      cur = via.get(cur);
+    }
+    return down;
+  }
+
+  private RelationshipResult byMarriage(Snapshot t, Person person, Person ref) {
+    List<Integer> personPartners = t.partners().getOrDefault(person.id, List.of());
+    if (personPartners.contains(ref.id)) {
+      return new RelationshipResult(
+          person.id,
+          person.name,
+          "spouse",
+          person.name + " is the spouse of " + ref.name,
+          null,
+          0,
+          0,
+          0,
+          ref.name);
+    }
+    RelationshipResult best = null;
+    String bestLabel = null;
+    String bestPath = null;
+    for (int x : personPartners) {
+      RelationshipResult r = blood(t, t.byId().get(x), ref);
+      if (r != null && better(r, best)) {
+        best = r;
+        bestLabel = spouseOf(r.kinshipLabel());
+        bestPath =
+            person.name + " is married to " + t.byId().get(x).name + "; " + r.pathDescription();
+      }
+    }
+    for (int y : t.partners().getOrDefault(ref.id, List.of())) {
+      RelationshipResult r = blood(t, person, t.byId().get(y));
+      if (r != null && better(r, best)) {
+        best = r;
+        bestLabel = ofSpouse(r.kinshipLabel());
+        bestPath = ref.name + " is married to " + t.byId().get(y).name + "; " + r.pathDescription();
+      }
+    }
+    if (best == null) return null;
+    return new RelationshipResult(
+        person.id,
+        person.name,
+        bestLabel,
+        bestPath,
+        best.commonAncestorName(),
+        best.commonAncestorId(),
+        best.stepsFromPerson(),
+        best.stepsFromRef(),
+        ref.name);
+  }
+
+  private static boolean better(RelationshipResult r, RelationshipResult best) {
+    if (best == null) return true;
+    return r.stepsFromPerson() + r.stepsFromRef() < best.stepsFromPerson() + best.stepsFromRef();
+  }
+
+  /** The person is married to someone who is the reference's {@code label}. */
+  static String spouseOf(String label) {
+    return switch (label) {
+      case "sibling" -> "sibling-in-law";
+      case "child" -> "child-in-law";
+      case "parent" -> "step-parent";
+      default -> "spouse of " + label;
+    };
+  }
+
+  /** The reference is married to someone whose {@code label} the person is. */
+  static String ofSpouse(String label) {
+    return switch (label) {
+      case "sibling" -> "sibling-in-law";
+      case "parent" -> "parent-in-law";
+      case "child" -> "step-child";
+      default -> label + " of spouse";
+    };
+  }
 
   private String kinshipLabel(int dA, int dB) {
     if (dA == 1 && dB == 1) return "sibling";
@@ -641,16 +734,17 @@ public class FamilyTreeService {
   }
 
   private String buildPathDescription(
-      Person person, Person ref, Person lca, int dPerson, int dRef) {
+      Person person,
+      Person ref,
+      Person lca,
+      int dPerson,
+      int dRef,
+      List<Person> personLine,
+      List<Person> refLine) {
     var sb = new StringBuilder();
     String refName = ref.name;
 
-    // Collect path from person to LCA
-    List<Person> personPath = pathToAncestor(person, lca);
-    List<Person> refPath = pathToAncestor(ref, lca);
-
     if (dPerson == 1 && dRef == 1) {
-      // Siblings
       sb.append(person.name)
           .append(" and ")
           .append(refName)
@@ -658,8 +752,8 @@ public class FamilyTreeService {
           .append(lca.name)
           .append(")");
     } else if (dPerson >= 2 && dRef >= 2) {
-      Person personBranch = personPath.size() >= 2 ? personPath.get(personPath.size() - 2) : person;
-      Person refBranch = refPath.size() >= 2 ? refPath.get(refPath.size() - 2) : ref;
+      Person personBranch = personLine.size() >= 2 ? personLine.get(1) : person;
+      Person refBranch = refLine.size() >= 2 ? refLine.get(1) : ref;
 
       if (dPerson == 2 && dRef == 2) {
         sb.append(person.name)
@@ -697,33 +791,39 @@ public class FamilyTreeService {
     return sb.toString();
   }
 
-  private List<Person> pathToAncestor(Person from, Person ancestor) {
-    List<Person> path = new ArrayList<>();
-    Person cur = from;
-    while (cur != null) {
-      path.add(cur);
-      if (cur.id == ancestor.id) break;
-      cur = cur.parent;
-    }
-    return path;
-  }
-
   // --- Inner types ---
 
   public static class Person {
     public int id;
+
+    /** Given names and surname, as shown everywhere. */
     public String name;
+
+    public String surname;
+
+    /** What person matching scores on; see {@link #matchName()}. */
+    public String matchingName;
+
     public String fullEntry;
     public Integer birthYear;
     public Integer deathYear;
     public String birthPlace;
     public String section;
-    public String code; // local code like "D6"
-    public String parentCode; // accumulated parent code like "C6"
+    public String code;
+    public String parentCode;
     public Person parent;
     public List<Person> children;
     public List<String> spouses;
     public int depth;
+
+    /**
+     * The name person matching scores on: the legacy name for people imported from the text file
+     * (their forenames, never the Czernin surname the tree now adds), the given names otherwise,
+     * and {@link #name} when nothing else is set, as for people built by hand in tests.
+     */
+    public String matchName() {
+      return matchingName != null ? matchingName : name;
+    }
 
     public String fullCode() {
       if (parentCode != null && code != null) return parentCode + "." + code;
