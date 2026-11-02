@@ -127,6 +127,26 @@ class ProfileControllerTest {
   }
 
   @Test
+  void aMergedAwayPersonIsStoredAsTheSurvivor() throws Exception {
+    var putReq =
+        HttpRequest.newBuilder(URI.create(base() + "/profile"))
+            .header("X-Auth-Email", TEST_EMAIL)
+            .header("Content-Type", "application/json")
+            .PUT(HttpRequest.BodyPublishers.ofString("{\"familyTreePersonId\": 122}"))
+            .build();
+    assertThat(http.send(putReq, HttpResponse.BodyHandlers.ofString()).statusCode()).isEqualTo(200);
+
+    var getReq =
+        HttpRequest.newBuilder(URI.create(base() + "/profile"))
+            .header("X-Auth-Email", TEST_EMAIL)
+            .GET()
+            .build();
+    var getBody =
+        mapper.readValue(http.send(getReq, HttpResponse.BodyHandlers.ofString()).body(), Map.class);
+    assertThat(getBody.get("familyTreePersonId")).isEqualTo(76);
+  }
+
+  @Test
   void putProfileClearsFamilyTreePersonId() throws Exception {
     // First set it
     var setReq =
