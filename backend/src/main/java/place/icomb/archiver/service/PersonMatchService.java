@@ -109,11 +109,6 @@ public class PersonMatchService {
     log.info("Record {} person matching: {}/{} pages had matches", recordId, matched, pages.size());
   }
 
-  public void invalidateAll() {
-    matchRepo.truncateAll();
-    log.info("Cleared all cached person matches");
-  }
-
   private List<PagePersonMatch> matchPage(Long pageId) {
     String text = getBestText(pageId);
     if (text == null || text.isBlank()) {
@@ -227,7 +222,7 @@ public class PersonMatchService {
             mc ->
                 new MatchResult(
                     mc.person.id,
-                    mc.person.name,
+                    mc.person.matchName(),
                     mc.bestScore,
                     extractContext(
                         text,
@@ -495,7 +490,7 @@ public class PersonMatchService {
   /** Family surname — every person in the tree is a Czernin. */
   private List<String> getPersonNameTokens(Person person, Set<String> titleWords) {
     List<String> tokens = new ArrayList<>();
-    String normalized = familyTreeService.normalize(person.name);
+    String normalized = familyTreeService.normalize(person.matchName());
     for (String t : normalized.split("[\\s,;.()]+")) {
       if (!t.isEmpty() && t.length() > 1 && !titleWords.contains(t)) {
         tokens.add(t);
@@ -523,12 +518,12 @@ public class PersonMatchService {
   }
 
   /**
-   * Returns the given names from person.name in their original order, excluding title words. Used
-   * for name-position bonus scoring.
+   * Returns the given names from person.matchName() in their original order, excluding title words.
+   * Used for name-position bonus scoring.
    */
   List<String> getOrderedGivenNames(Person person, Set<String> titleWords) {
     List<String> givenNames = new ArrayList<>();
-    String normalized = familyTreeService.normalize(person.name);
+    String normalized = familyTreeService.normalize(person.matchName());
     for (String t : normalized.split("[\\s,;.()]+")) {
       if (!t.isEmpty() && t.length() > 1 && !titleWords.contains(t)) {
         givenNames.add(t);

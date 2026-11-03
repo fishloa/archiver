@@ -44,6 +44,7 @@ class FamilyTreeControllerTest {
   private final ObjectMapper mapper = new ObjectMapper();
 
   private static final String TEST_EMAIL = "family-tree-test@example.com";
+  private static final String ADMIN_EMAIL = "family-tree-admin@example.com";
 
   @DynamicPropertySource
   static void configureProperties(DynamicPropertyRegistry registry) {
@@ -55,7 +56,11 @@ class FamilyTreeControllerTest {
   @BeforeEach
   void setUp() {
     jdbc.sql("DELETE FROM app_user_email WHERE email = :email").param("email", TEST_EMAIL).update();
+    jdbc.sql("DELETE FROM app_user_email WHERE email = :email")
+        .param("email", ADMIN_EMAIL)
+        .update();
     jdbc.sql("DELETE FROM app_user WHERE display_name = 'FamilyTreeTest User'").update();
+    jdbc.sql("DELETE FROM app_user WHERE display_name = 'FamilyTreeTest Admin'").update();
     Long userId =
         jdbc.sql(
                 "INSERT INTO app_user (display_name, role) VALUES ('FamilyTreeTest User', 'user')"
@@ -66,6 +71,16 @@ class FamilyTreeControllerTest {
         .param("uid", userId)
         .param("email", TEST_EMAIL)
         .update();
+    Long adminId =
+        jdbc.sql(
+                "INSERT INTO app_user (display_name, role) VALUES ('FamilyTreeTest Admin', 'admin')"
+                    + " RETURNING id")
+            .query(Long.class)
+            .single();
+    jdbc.sql("INSERT INTO app_user_email (user_id, email) VALUES (:uid, :email)")
+        .param("uid", adminId)
+        .param("email", ADMIN_EMAIL)
+        .update();
   }
 
   private String base() {
@@ -74,6 +89,10 @@ class FamilyTreeControllerTest {
 
   private HttpRequest.Builder authedGet(String url) {
     return HttpRequest.newBuilder(URI.create(url)).header("X-Auth-Email", TEST_EMAIL).GET();
+  }
+
+  private HttpRequest.Builder adminGet(String url) {
+    return HttpRequest.newBuilder(URI.create(url)).header("X-Auth-Email", ADMIN_EMAIL).GET();
   }
 
   private HttpRequest.Builder authedPost(String url) {
@@ -268,26 +287,151 @@ class FamilyTreeControllerTest {
     assertThat(results).isEmpty();
   }
 
-  // ── Reload ──
+  // ── Reload is gone: the tree is the database, and edits go through the admin API ──
 
   @Test
-  void reloadReturnsCount() throws Exception {
-    var req = authedPost(base() + "/reload").build();
-    var resp = http.send(req, HttpResponse.BodyHandlers.ofString());
+  void reloadIsGone() throws Exception {
+    var resp =
+        http.send(authedPost(base() + "/reload").build(), HttpResponse.BodyHandlers.ofString());
 
-    assertThat(resp.statusCode()).isEqualTo(200);
-    Map<String, Object> body = mapper.readValue(resp.body(), Map.class);
-    assertThat(body.get("status")).isEqualTo("ok");
-    assertThat(((Number) body.get("count")).intValue()).isGreaterThan(0);
+    assertThat(resp.statusCode()).isEqualTo(404);
   }
 
   @Test
-  void invalidateMatchesReturnsOk() throws Exception {
-    var req = authedPost(base() + "/invalidate-matches").build();
-    var resp = http.send(req, HttpResponse.BodyHandlers.ofString());
+  void invalidateMatchesIsGone() throws Exception {
+    var resp =
+        http.send(
+            authedPost(base() + "/invalidate-matches").build(),
+            HttpResponse.BodyHandlers.ofString());
+
+    assertThat(resp.statusCode()).isEqualTo(404);
+  }
+
+  // ── Read model over the database ──
+
+  @Test
+  void aPersonCarriesTheStoredFacts() throws Exception {
+    var resp =
+        http.send(authedGet(base() + "/person/322").build(), HttpResponse.BodyHandlers.ofString());
 
     assertThat(resp.statusCode()).isEqualTo(200);
     Map<String, Object> body = mapper.readValue(resp.body(), Map.class);
-    assertThat(body.get("status")).isEqualTo("ok");
+    assertThat(body)
+        .containsKeys(
+            "names",
+            "events",
+            "couples",
+            "parentLinks",
+            "recordLinks",
+            "media",
+            "portrait",
+            "sources");
+    assertThat(body.get("spouses")).isEqualTo(List.of("Diana Zannick Hutton/Hulton"));
+    List<Map<String, Object>> events = (List<Map<String, Object>>) body.get("events");
+    assertThat(events.get(0))
+        .containsEntry("type", "birth")
+        .containsEntry("tag", "BIRT")
+        .containsEntry("date", "30 APR 1913")
+        .containsEntry("year", 1913)
+        .containsEntry("place", "Wien");
+    assertThat(events)
+        .anySatisfy(
+            e ->
+                assertThat(e)
+                    .containsEntry("type", "marriage")
+                    .containsEntry("date", "9 JUL 1949"));
+    assertThat((List<?>) ((Map<String, Object>) events.get(0)).get("citations")).hasSize(1);
+  }
+
+  @Test
+  void aFoldedSectionRootResolvesToItsTwin() throws Exception {
+    var resp =
+        http.send(authedGet(base() + "/person/122").build(), HttpResponse.BodyHandlers.ofString());
+
+    assertThat(resp.statusCode()).isEqualTo(200);
+    assertThat(mapper.readValue(resp.body(), Map.class).get("id")).isEqualTo(76);
+  }
+
+  @Test
+  void spousesAreFoundOnlyWhenAskedFor() throws Exception {
+    var tree =
+        http.send(
+            authedGet(base() + "/search?q=diana+zannick&limit=3").build(),
+            HttpResponse.BodyHandlers.ofString());
+    var everyone =
+        http.send(
+            authedGet(base() + "/search?q=diana+zannick&limit=3&all=true").build(),
+            HttpResponse.BodyHandlers.ofString());
+
+    List<Map<String, Object>> inTree =
+        mapper.readValue(tree.body(), new TypeReference<List<Map<String, Object>>>() {});
+    List<Map<String, Object>> all =
+        mapper.readValue(everyone.body(), new TypeReference<List<Map<String, Object>>>() {});
+    assertThat(inTree.getFirst().get("personId")).isEqualTo(322);
+    assertThat(all.getFirst().get("name")).isEqualTo("Diana Zannick Hutton/Hulton");
+  }
+
+  @Test
+  void aSpouseIsRelatedByMarriage() throws Exception {
+    var search =
+        http.send(
+            authedGet(base() + "/search?q=diana+zannick&limit=1&all=true").build(),
+            HttpResponse.BodyHandlers.ofString());
+    int diana =
+        ((Number)
+                mapper
+                    .readValue(search.body(), new TypeReference<List<Map<String, Object>>>() {})
+                    .getFirst()
+                    .get("personId"))
+            .intValue();
+
+    Map<String, Object> spouse =
+        mapper.readValue(
+            http.send(
+                    authedGet(base() + "/relate?personId=" + diana + "&refId=322").build(),
+                    HttpResponse.BodyHandlers.ofString())
+                .body(),
+            Map.class);
+    Map<String, Object> inLaw =
+        mapper.readValue(
+            http.send(
+                    authedGet(base() + "/relate?personId=" + diana + "&refId=296").build(),
+                    HttpResponse.BodyHandlers.ofString())
+                .body(),
+            Map.class);
+    Map<String, Object> grandmother =
+        mapper.readValue(
+            http.send(
+                    authedGet(base() + "/relate?personId=" + diana + "&refId=324").build(),
+                    HttpResponse.BodyHandlers.ofString())
+                .body(),
+            Map.class);
+
+    assertThat(spouse.get("kinshipLabel")).isEqualTo("spouse");
+    assertThat(inLaw.get("kinshipLabel")).isEqualTo("child-in-law");
+    assertThat(grandmother.get("kinshipLabel")).isEqualTo("grandparent");
+  }
+
+  @Test
+  void aReaderPersonCarriesNoPrivateFacts() throws Exception {
+    jdbc.sql("UPDATE gen_person SET notes = 'private', needs_review = 'check me' WHERE id = 322")
+        .update();
+
+    var resp =
+        http.send(authedGet(base() + "/person/322").build(), HttpResponse.BodyHandlers.ofString());
+
+    assertThat(resp.statusCode()).isEqualTo(200);
+    Map<String, Object> body = mapper.readValue(resp.body(), Map.class);
+    assertThat(body).doesNotContainKeys("notes", "needsReview");
+    assertThat(body.get("id")).isEqualTo(322);
+  }
+
+  @Test
+  void anAdminPersonCarriesPrivateFacts() throws Exception {
+    var resp =
+        http.send(adminGet(base() + "/person/322").build(), HttpResponse.BodyHandlers.ofString());
+    assertThat(resp.statusCode()).isEqualTo(200);
+    Map<String, Object> body = mapper.readValue(resp.body(), Map.class);
+    assertThat(body).containsKeys("notes", "needsReview");
   }
 }

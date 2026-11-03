@@ -107,10 +107,11 @@ public class ProfileController {
         user.setFamilyTreePersonId(null);
       } else {
         int personId = ((Number) val).intValue();
-        if (familyTreeService.getPerson(personId) == null) {
+        FamilyTreeService.Person person = familyTreeService.getPerson(personId);
+        if (person == null) {
           return ResponseEntity.badRequest().body(Map.of("error", "Person not found"));
         }
-        user.setFamilyTreePersonId(personId);
+        user.setFamilyTreePersonId(person.id);
       }
     }
     userRepository.save(user);

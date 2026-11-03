@@ -480,6 +480,39 @@ export async function fetchFamilyPerson(email: string | undefined, personId: num
   return res.json();
 }
 
+// ── Genealogy editing (admin; the browser cannot reach /api/admin) ──
+
+export interface GenealogyWriteResult {
+  ok: boolean;
+  status: number;
+  data: Record<string, unknown>;
+}
+
+export async function genealogyWrite(
+  email: string,
+  method: "POST" | "PUT" | "DELETE",
+  path: string,
+  body: Record<string, unknown>,
+): Promise<GenealogyWriteResult> {
+  const res = await fetch(`${backendUrl()}/api/admin/genealogy/${path}`, {
+    method,
+    headers: { "Content-Type": "application/json", ...authHeaders(email) },
+    body: JSON.stringify(body),
+    redirect: "manual",
+  });
+  const data = await res.json().catch(() => ({}));
+  return { ok: res.status >= 200 && res.status < 300, status: res.status, data };
+}
+
+export async function fetchGenealogyAdmin<T>(email: string, path: string): Promise<T> {
+  const res = await fetch(`${backendUrl()}/api/admin/genealogy/${path}`, {
+    headers: authHeaders(email),
+    redirect: "manual",
+  });
+  if (res.status < 200 || res.status >= 300) throw new Error(`Backend error: ${res.status}`);
+  return res.json();
+}
+
 export interface PagePersonMatch {
   personId: number;
   personName: string;

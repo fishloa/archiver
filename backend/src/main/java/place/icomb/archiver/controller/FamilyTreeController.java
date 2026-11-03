@@ -4,13 +4,18 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import place.icomb.archiver.genealogy.GenealogyException;
+import place.icomb.archiver.genealogy.GenealogyReadService;
+import place.icomb.archiver.genealogy.MediaImages;
 import place.icomb.archiver.model.PagePersonMatch;
 import place.icomb.archiver.service.FamilyTreeService;
 import place.icomb.archiver.service.FamilyTreeService.Person;
@@ -23,17 +28,52 @@ public class FamilyTreeController {
 
   private final FamilyTreeService familyTreeService;
   private final PersonMatchService personMatchService;
+  private final GenealogyReadService genealogy;
+  private final MediaImages images;
 
   public FamilyTreeController(
-      FamilyTreeService familyTreeService, PersonMatchService personMatchService) {
+      FamilyTreeService familyTreeService,
+      PersonMatchService personMatchService,
+      GenealogyReadService genealogy,
+      MediaImages images) {
     this.familyTreeService = familyTreeService;
     this.personMatchService = personMatchService;
+    this.genealogy = genealogy;
+    this.images = images;
+  }
+
+  /** A media item's image: the stored original, or its crop as lossless PNG. */
+  @GetMapping("/media/{mediaId}/image")
+  public ResponseEntity<?> mediaImage(@PathVariable long mediaId) {
+    try {
+      MediaImages.Image image = images.image(mediaId);
+      return ResponseEntity.ok()
+          .contentType(MediaType.parseMediaType(image.contentType()))
+          .header(HttpHeaders.CONTENT_DISPOSITION, "inline")
+          .body(image.bytes());
+    } catch (GenealogyException e) {
+      HttpStatus status =
+          switch (e.kind()) {
+            case NOT_FOUND -> HttpStatus.NOT_FOUND;
+            case BAD_REQUEST -> HttpStatus.BAD_REQUEST;
+            case CONFLICT -> HttpStatus.CONFLICT;
+          };
+      return ResponseEntity.status(status)
+          .contentType(MediaType.APPLICATION_JSON)
+          .body(Map.of("error", e.getMessage()));
+    } catch (MediaImages.UndecodableScanException e) {
+      return ResponseEntity.status(HttpStatus.valueOf(422))
+          .contentType(MediaType.APPLICATION_JSON)
+          .body(Map.of("error", e.getMessage()));
+    }
   }
 
   @GetMapping("/search")
   public ResponseEntity<List<Map<String, Object>>> search(
-      @RequestParam String q, @RequestParam(defaultValue = "10") int limit) {
-    var results = familyTreeService.search(q, limit);
+      @RequestParam String q,
+      @RequestParam(defaultValue = "10") int limit,
+      @RequestParam(defaultValue = "false") boolean all) {
+    var results = familyTreeService.search(q, limit, all);
     List<Map<String, Object>> response = new ArrayList<>();
     for (var r : results) {
       Map<String, Object> m = new LinkedHashMap<>();
@@ -112,8 +152,21 @@ public class FamilyTreeController {
     m.put("siblings", siblings);
     m.put("spouses", p.spouses);
     m.put("events", familyTreeService.getLifeEvents(p));
+    Map<String, Object> detail = genealogy.personDetail(p.id, isAdmin());
+    if (detail != null) {
+      m.putAll(detail);
+    }
 
     return ResponseEntity.ok(m);
+  }
+
+  private boolean isAdmin() {
+    org.springframework.security.core.Authentication auth =
+        org.springframework.security.core.context.SecurityContextHolder.getContext()
+            .getAuthentication();
+    return auth != null
+        && auth.isAuthenticated()
+        && auth.getAuthorities().stream().anyMatch(a -> "ROLE_ADMIN".equals(a.getAuthority()));
   }
 
   private static Map<String, Object> personRef(Person p) {
@@ -170,18 +223,5 @@ public class FamilyTreeController {
       response.add(map);
     }
     return ResponseEntity.ok(response);
-  }
-
-  @PostMapping("/reload")
-  public ResponseEntity<Map<String, Object>> reload() {
-    familyTreeService.reload();
-    personMatchService.invalidateAll();
-    return ResponseEntity.ok(Map.of("status", "ok", "count", familyTreeService.getPersonCount()));
-  }
-
-  @PostMapping("/invalidate-matches")
-  public ResponseEntity<Map<String, String>> invalidateMatches() {
-    personMatchService.invalidateAll();
-    return ResponseEntity.ok(Map.of("status", "ok"));
   }
 }

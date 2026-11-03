@@ -26,6 +26,7 @@ public class ArchiverMcpTools {
   private final place.icomb.archiver.service.JobService jobService;
   private final place.icomb.archiver.controller.PdfExportController pdfExportController;
   private final place.icomb.archiver.service.IngestService ingestService;
+  private final place.icomb.archiver.genealogy.GenealogyReadService genealogyRead;
 
   /**
    * Largest slice of a PDF returned in one reply; the default is what a client reliably carries.
@@ -44,6 +45,7 @@ public class ArchiverMcpTools {
       place.icomb.archiver.service.JobService jobService,
       place.icomb.archiver.controller.PdfExportController pdfExportController,
       place.icomb.archiver.service.IngestService ingestService,
+      place.icomb.archiver.genealogy.GenealogyReadService genealogyRead,
       @org.springframework.beans.factory.annotation.Value(
               "${archiver.mcp.download-part-bytes:8388608}")
           int downloadPartBytes) {
@@ -55,6 +57,7 @@ public class ArchiverMcpTools {
     this.jobService = jobService;
     this.pdfExportController = pdfExportController;
     this.ingestService = ingestService;
+    this.genealogyRead = genealogyRead;
     this.downloadPartBytes = downloadPartBytes;
   }
 
@@ -72,16 +75,18 @@ public class ArchiverMcpTools {
   }
 
   private void requireAdmin() {
+    if (!isAdmin()) {
+      throw new IllegalStateException("this tool is available to administrators only");
+    }
+  }
+
+  private boolean isAdmin() {
     var auth =
         org.springframework.security.core.context.SecurityContextHolder.getContext()
             .getAuthentication();
-    boolean admin =
-        auth != null
-            && auth.isAuthenticated()
-            && auth.getAuthorities().stream().anyMatch(a -> "ROLE_ADMIN".equals(a.getAuthority()));
-    if (!admin) {
-      throw new IllegalStateException("this tool is available to administrators only");
-    }
+    return auth != null
+        && auth.isAuthenticated()
+        && auth.getAuthorities().stream().anyMatch(a -> "ROLE_ADMIN".equals(a.getAuthority()));
   }
 
   @McpTool(
@@ -494,8 +499,11 @@ public class ArchiverMcpTools {
       title = "Get Person",
       description =
           "Get full details for a person in the Czernin family tree by their ID. Returns name,"
-              + " birth/death info, life events (birth, death, marriages), children, spouses, and"
-              + " kinship relationship to Alexander Friedrich Josef Czernin.",
+              + " birth/death info, life events with their citations, children, spouses, and"
+              + " kinship relationship to Alexander Friedrich Josef Czernin; plus the stored"
+              + " facts: names, couples (with spouse id), parentLinks (with type), recordLinks,"
+              + " media, portrait, sources and needsReview. Ids in these are what the tree"
+              + " editing tools take.",
       annotations =
           @McpTool.McpAnnotations(
               title = "Get Person",
@@ -540,6 +548,10 @@ public class ArchiverMcpTools {
 
     // Life events
     result.put("lifeEvents", familyTreeService.getLifeEvents(person));
+    Map<String, Object> detail = genealogyRead.personDetail(person.id, isAdmin());
+    if (detail != null) {
+      result.putAll(detail);
+    }
 
     // Kinship to Alexander
     var rel = familyTreeService.relate(personId);

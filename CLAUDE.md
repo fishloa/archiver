@@ -120,9 +120,34 @@ field — retrieval simply got worse. Only a search with a known-correct answer 
 - Scraper sets both independently; don't assume they're the same
 - Translation skipped if lang = "en"
 
-## Common Commands
+### Genealogy
 
-### Build / Run / Test / Lint (via Makefile)
+The family tree lives in the `gen_*` tables (V21–V24). It follows the GEDCOM X conceptual model and
+the Gramps schema, in GEDCOM 7 vocabulary. The tables hold:
+
+- people, names, couples, and parent links (birth, adopted, step, foster);
+- places, and events with GEDCOM tags. `date_text` is a GEDCOM 7 date; `date_from` and `date_to`
+  are derived from it for sorting;
+- sources, and citations (`QUAY` 0–3, each proving exactly one fact);
+- record links, and media (a page scan, whole or cropped).
+
+- Person ids 1–348 are the parse-order ids of the old text file. Migration V22, a Java migration
+  in `genealogy/legacy/`, imported them once. 122 and 227 are the folded section roots, kept with
+  `merged_into`. Never renumber them: `page_person_match` and `app_user.family_tree_person_id`
+  point at them, as foreign keys since V23.
+- `GenealogyService` is the only writer. Every write needs a reason and appends one `gen_change`
+  row per row it changed, holding the row before and after. `GenealogyHistoryService` merges
+  duplicates and undoes a whole write, refusing if the row has changed since.
+- `FamilyTreeService` is a cached read model over the tables (search, kinship, people), rebuilt
+  after each commit. Its answers are pinned to golden files captured from the old in-memory tree
+  (`backend/src/test/resources/genealogy/golden`), and `FamilyTreeReadModelTest` guards them. Do
+  not regenerate the files to make a change pass.
+- Edit through `/api/admin/genealogy/**`, the MCP tree tools, or the admin edit mode on
+  `/family-tree`. Read through `/api/family-tree/**`. `GET /api/admin/genealogy/export.ged` is
+  the GEDCOM 7 export. Media crops are copied from the stored original pixel for pixel, never
+  scaled.
+
+## Common Commands
 
 ```bash
 make dev-backend          # cd backend && ./gradlew bootRun
@@ -164,11 +189,12 @@ Config: `backend/src/test/resources/application-test.yml`.
 
 ## Backend Details
 
-- **Package**: `place.icomb.archiver` — `controller/`, `service/`, `model/`, `dto/`, `repository/`, `config/`
+- **Package**: `place.icomb.archiver` — `controller/`, `service/`, `genealogy/`, `mcp/`, `model/`, `dto/`, `repository/`, `config/`
 - Spring Data JDBC (not JPA) — entities use `@Table`, no `@Entity`
 - MapStruct for DTO mapping
 - `BeanPropertyRowMapper` maps snake_case columns to camelCase Java fields
-- Flyway migrations in `backend/src/main/resources/db/migration/V*.sql`. V1..V26 were squashed into `V1__baseline.sql` on 2026-09-08, generated from production's verified schema; the originals remain in git history. Existing databases are baselined at V1 rather than running it. **Never edit an applied migration** — add a new one.
+- Flyway migrations in `backend/src/main/resources/db/migration/V*.sql`. V1..V26 were squashed into `V1__baseline.sql` on 2026-09-08, generated from production's verified schema; the originals remain in git history. Existing databases are baselined at V1 rather than running it. **Never edit an applied migration** — add a new one. V22 is a Java migration
+  (`genealogy/legacy/V22__Import_legacy_genealogy.java`), a Spring bean that Spring Boot hands to Flyway.
 - SpringDoc OpenAPI at `/swagger-ui.html`
 - `--enable-preview` Java flag enabled for compilation and tests
 - Spotless with Google Java Format for code formatting
@@ -183,6 +209,8 @@ Config: `backend/src/test/resources/application-test.yml`.
 | `ViewerController` | `/api/viewer` | Frontend-specific API (search, pipeline stats) |
 | `ApiController` | `/api/v1` | Machine-readable API for LLM tools |
 | `SemanticSearchController` | `/api/semantic-search` | Vector similarity search |
+| `FamilyTreeController` | `/api/family-tree` | Tree search, kinship, a person's stored facts, media images |
+| `AdminGenealogyController` | `/api/admin/genealogy` | Tree edits, merge, history and undo, review list, GEDCOM export |
 
 ### Key service files
 
@@ -194,6 +222,11 @@ Config: `backend/src/test/resources/application-test.yml`.
 - `service/PdfExportService.java` — all three PDF exports (original scans, English translation, side-by-side); every PDF is built on demand (`PdfExportQueue`/`PdfExportWorker`), nothing is stored per record
 - `service/MarkdownPdfRenderer.java` — markdown → PDF: headings, tables, bold runs, OCR figures
 - `service/OcrImageService.java` — crops the figures Mistral found (signatures, stamps) out of the scan
+- `service/FamilyTreeService.java` — read model of the family tree: search, kinship, people
+- `genealogy/GenealogyService.java` — the only writer of the genealogy: validation and the `gen_change` audit
+- `genealogy/GenealogyHistoryService.java` — merges duplicate people, undoes a write
+- `genealogy/GedcomExporter.java` — GEDCOM 7 export
+- `genealogy/MediaImages.java` — a media item's image: the stored original or its lossless crop
 
 ## Frontend Details
 

@@ -1,0 +1,346 @@
+1	-	CZERNIN 1		0	1447	1501	, +after	Humprecht Czernin z Chudenic	Humprecht Czernin z Chudenic, *1447, +after 1501; m. Marjana z Doupova	2
+2	1	CZERNIN 1	.A1	1	null	1548	null	Diviš	A1. Diviš, +after 1548; m. ca 1519 Eliška Bohuchvalová z Hrádku (+after 1549)	3,4,5,6,53,54,55
+3	2	CZERNIN 1	.A1.B1	2	null	null	null	Markéta	B1. Markéta	
+4	2	CZERNIN 1	.A1.B2	2	null	null	null	Majdalena	B2. Majdalena	
+5	2	CZERNIN 1	.A1.B3	2	null	null	null	Kateřina	B3. Kateřina	
+6	2	CZERNIN 1	.A1.B4	2	null	1601	null	Humprecht	B4. Humprecht, Golden Fleece Order, +1601; m. Lidmila Kotzová z Dobrze (+1583)	7,8,10,18
+7	6	CZERNIN 1	.A1.B4.C1	3	null	null	null	Anna	C1. Anna	
+8	6	CZERNIN 1	.A1.B4.C2	3	null	1599	null	Jan	C2. Jan, +ca 1599; m. Lidmila Byšická z Byšic (+1601)	9
+9	8	CZERNIN 1	.A1.B4.C2.D1	4	null	1637	null	Humprecht	D1. Humprecht, +ca 1637	
+10	6	CZERNIN 1	.A1.B4.C3	3	null	1640	null	Jindřich	C3. Jindřich, cr Freiherr 1629, hejtman plzeňského kraje, +1640; 1m: Kryzelda Kokorzowská z Kokorzowa (+ca 1614); 2m: Veronika Šejková z Olbramovic; all children by 1m.	11,12,17
+11	10	CZERNIN 1	.A1.B4.C3.D1	4	null	null	null	Anna Eliška	D1. Anna Eliška; 1m: Jindřich Petr z Gutštejna (+1648); 2m: after 1648 Maximilian Jiří Kotz z Dobrze (+1656)	
+12	10	CZERNIN 1	.A1.B4.C3.D2	4	null	1657	null	Jan Maximilian	D2. Jan Maximilian, +1657/64; m. Eliška Johanka Švihovská z Rýzmberka (+as Ursuline nun, Prague 1672)	13,14,15,16
+13	12	CZERNIN 1	.A1.B4.C3.D2.E1	5	null	null	null	Bedřich	E1. Bedřich, +young	
+14	12	CZERNIN 1	.A1.B4.C3.D2.E2	5	null	null	null	Veronika	E2. Veronika, +young	
+15	12	CZERNIN 1	.A1.B4.C3.D2.E3	5	null	null	null	Amalia	E3. Amalia, +young	
+16	12	CZERNIN 1	.A1.B4.C3.D2.E4	5	null	1721	null	Františka Maximiliana	E4. Františka Maximiliana, Ursuline nun, +Prague 1721	
+17	10	CZERNIN 1	.A1.B4.C3.D3	4	null	1666	null	Humprecht Protiva	D3. Humprecht Protiva, +25.4.1666; m. 1645 Anna Kateřina z Gutštejna (+24.12.1671)	
+18	6	CZERNIN 1	.A1.B4.C4	3	null	1622	null	Adam	C4. Adam, +1622; m. Johanka z Lokšan (+after 1622)	19,20,49,50,51,52
+19	18	CZERNIN 1	.A1.B4.C4.D1	4	null	null	null	Kryzelda Ludmila	D1. Kryzelda Ludmila	
+20	18	CZERNIN 1	.A1.B4.C4.D2	4	null	1660	null	Děpolt Protiva	D2. Děpolt Protiva, +2.12.1660; m. Anna Majdaléna Hrzánová z Harasova (+1683)	21,23,26
+21	20	CZERNIN 1	.A1.B4.C4.D2.E1	5	null	1664	null	Adam Jindřich	E1. Adam Jindřich, +5.5.1664; m. Markéta Lidmila Lapáčková ze Rzavého (+after 1666)	22
+22	21	CZERNIN 1	.A1.B4.C4.D2.E1.F1	6	1664	1664	and +	Jan Václav	F1. Jan Václav, *and +1664	
+23	20	CZERNIN 1	.A1.B4.C4.D2.E2	5	null	1707	null	Jan Heřman	E2. Jan Heřman, +1707; m. Eliška Saloména (z Gutštejna?) (+1699)	24,25
+24	23	CZERNIN 1	.A1.B4.C4.D2.E2.F1	6	null	null	null	Anna Veronika	F1. Anna Veronika	
+25	23	CZERNIN 1	.A1.B4.C4.D2.E2.F2	6	null	1701	null	Majdalena Justina	F2. Majdalena Justina, +1701	
+26	20	CZERNIN 1	.A1.B4.C4.D2.E3	5	1642	1699	, +Švihov	František Maximilian	E3. František Maximilian, *13.10.1642, +Švihov 1699/1701; 1m: Anna Kateřina z Gutštejna (+24.12.1671); 2m: Eva Františka Příchovsky z Příchovic	27,43,44,45,46,47
+27	26	CZERNIN 1	.A1.B4.C4.D2.E3.F1	6	1667	1743	, +	Jan Václav	F1. [1m.] Jan Václav, *1667, +28.5.1743; 1m: ca 1685 Maria Theresia von Morzin (*ca 1670); 2m: ca 1708 Maria Theresia Frn von Knoringen zü Kressburg	28,29,30,31,32,33,40,41,42
+28	27	CZERNIN 1	.A1.B4.C4.D2.E3.F1.G1	7	1686	1736	, +	Viktorie Josefa	G1. [1m.] Viktorie Josefa, *1686, +15.1.1736; m. 19.8.1708 Siegfried Adam Johann Gf von Thurn und Valsassina (*17.6.1675 +1749)	
+29	27	CZERNIN 1	.A1.B4.C4.D2.E3.F1.G2	7	1689	null	, +young	František Josef	G2. [1m.] František Josef, *ca 1689, +young	
+30	27	CZERNIN 1	.A1.B4.C4.D2.E3.F1.G3	7	1692	null	, +young	a daughter	G3. [1m.] a daughter, *ca 1692, +young	
+31	27	CZERNIN 1	.A1.B4.C4.D2.E3.F1.G4	7	1709	null	, +young	František Václav	G4. [2m.] František Václav, *ca 1709, +young	
+32	27	CZERNIN 1	.A1.B4.C4.D2.E3.F1.G5	7	1711	null	null	Maria Barbora	G5. [2m.] Maria Barbora, *ca 1711; m. Heinrich Wenzel Frhr Kfeller von Sachsengrün (*1707)	
+33	27	CZERNIN 1	.A1.B4.C4.D2.E3.F1.G6	7	1706	1784	, +	Heřman Jakub	G6. [2m.] Heřman Jakub, *1706/15, +15.11.1784; 1m: 1740 Gfn Marie Ernestina ze Šternberka (*9.5.1718 +7.2.1747); 2m: 1.7.1747 Gfn Maria Barbora Schaffgotsch (*11.5.1725, +11.11.1789); all children by 1m.	34,35,36,37,38
+34	33	CZERNIN 1	.A1.B4.C4.D2.E3.F1.G6.H1	8	1741	null	, +young	Maria Anna Johanka	H1. Maria Anna Johanka, *1741, +young	
+35	33	CZERNIN 1	.A1.B4.C4.D2.E3.F1.G6.H2	8	1742	null	, +young	Prokop Jan František	H2. Prokop Jan František, *1742, +young	
+36	33	CZERNIN 1	.A1.B4.C4.D2.E3.F1.G6.H3	8	1743	null	, +young	Maria Josefa Františka	H3. Maria Josefa Františka, *1743, +young	
+37	33	CZERNIN 1	.A1.B4.C4.D2.E3.F1.G6.H4	8	1744	1805	Prague , +Prague	Maria Antonia Josefa	H4. Maria Antonia Josefa, *Prague 29.7.1744, +Prague 16.11.1805; m. Stará Boleslav 25.8.1767 Gf Franz Anton I Desfours (*23.6.1730 +24.3.1822)	
+38	33	CZERNIN 1	.A1.B4.C4.D2.E3.F1.G6.H5	8	1746	1816	, +	Jan Vojtěch	H5. Jan Vojtěch, *10.4.1746, +1816; 1m: 3.2.1770 Gfn Maria Theresia von Thun-Hohenstein (*30.1.1746); 2m: ca 1802 Eleonore von Hackelberg (*14.5.1786 +29.6.1858)	39
+39	38	CZERNIN 1	.A1.B4.C4.D2.E3.F1.G6.H5.I1	9	1803	null	null	Marie	I1. Marie, *1803	
+40	27	CZERNIN 1	.A1.B4.C4.D2.E3.F1.G7	7	1722	1753	, +	Maria Philippina	G7. [2m.] Maria Philippina, *ca 1722, +1753	
+41	27	CZERNIN 1	.A1.B4.C4.D2.E3.F1.G8	7	1724	null	null	Maria Theresia	G8. [2m.] Maria Theresia, *16.10.1724; m. 23.1.1745 Sebastian Joseph Gf von Königl (*11.12.1720, +20.9.1793)	
+42	27	CZERNIN 1	.A1.B4.C4.D2.E3.F1.G9	7	1730	1760	, +	Maria Josepha (Josephine)	G9. [2m.] Maria Josepha (Josephine), *1730, +1760/68; m. Gf Peter Veit Morzin (*18.6.1728, +1815)	
+43	26	CZERNIN 1	.A1.B4.C4.D2.E3.F2	6	1670	1713	, +?	Jan Rudolf	F2. [1m.] Jan Rudolf, *ca 1670, +1713?	
+44	26	CZERNIN 1	.A1.B4.C4.D2.E3.F3	6	1673	1713	, +Heidelberg	Josef Rudolf	F3. [2m.] Josef Rudolf, *ca 1673, +Heidelberg 1713 (possibly same as F2)	
+45	26	CZERNIN 1	.A1.B4.C4.D2.E3.F4	6	1675	1738	, +	Maria Barbora	F4. [2m.] Maria Barbora, *ca 1675, +1738	
+46	26	CZERNIN 1	.A1.B4.C4.D2.E3.F5	6	1678	1685	, +	Jakub	F5. [2m.] Jakub, *ca 1678, +1685	
+47	26	CZERNIN 1	.A1.B4.C4.D2.E3.F6	6	1680	1755	, +	Děpolt Martin Protiva	F6. [2m.] Děpolt Martin Protiva, *ca 1680, +3.7.1755; m. ca 1737 Maria Antonia (*ca 1715, +12.11.1753)	48
+48	47	CZERNIN 1	.A1.B4.C4.D2.E3.F6.G1	7	1744	1793	, +after	Maria Lidmila	G1. Maria Lidmila, *1744, +after 24.10.1793; m. 29.7.1769 Michael Josef Gf Chorinsky z Ledské (*4.12.1736 +1806)	
+49	18	CZERNIN 1	.A1.B4.C4.D3	4	null	null	null	Jindřich Vilém	D3. Jindřich Vilém	
+50	18	CZERNIN 1	.A1.B4.C4.D4	4	null	1629	null	Humprecht Diviš	D4. Humprecht Diviš, +before 1629	
+51	18	CZERNIN 1	.A1.B4.C4.D5	4	null	null	null	Heřman	D5. Heřman	
+52	18	CZERNIN 1	.A1.B4.C4.D6	4	null	null	null	Václav Bedřich	D6. Václav Bedřich	
+53	2	CZERNIN 1	.A1.B5	2	null	1564	null	Protiva	B5. Protiva, +before 1564	
+54	2	CZERNIN 1	.A1.B6	2	null	1564	null	Drslav	B6. Drslav, +before 1564	
+55	2	CZERNIN 1	.A1.B7	2	1554	1580	, +	Jan	B7. Jan, *1554, +24.8.1580; m. Marianna z Říčan	56,57,58,97,98,99,100,121
+56	55	CZERNIN 1	.A1.B7.C1	3	null	1597	null	Kateřina Eva	C1. Kateřina Eva, +1597; m. 1588 Kryštof Harant z Polžic a Bezdružic (*1564, +beheaded Prague 21.6.1621)	
+57	55	CZERNIN 1	.A1.B7.C2	3	null	1621	null	Diviš	C2. Diviš, Hetman of Prague Castle, +beheaded Prague 21.6.1621; m. 1593 Anna Czerninová z Chudenic (+1631)	
+58	55	CZERNIN 1	.A1.B7.C3	3	1570	1632	IV., +, bur Radenín	Humprecht III	C3. Humprecht III, cr Graf in Bohemia 8.6.1627, *IV.1570, +22.5.1632, bur Radenín; m. IV.1594 Eva Polyxena Woracziczky z Pabienitz (+2.6.1632)	59
+59	58	CZERNIN 1	.A1.B7.C3.D1	4	1597	1642	, +, bur Radenín	Jan Baptist Adam	D1. Jan Baptist Adam, *16.8.1597, +22.11.1642, bur Radenín; m. 1621 Zuzana Homutová z Harasova (*25.9.1600, +Radenín 22.2.1654)	60,61,62,63
+60	59	CZERNIN 1	.A1.B7.C3.D1.E1	5	1622	1688	, +	Eva Polyxena	E1. Eva Polyxena, *ca 1622, +15.4.1688; 1m: 1643 Albrecht Kapoun ze Svojkova (*1609 +1664); 2m: 1683 Frhr Georg Wilhelm von Walterskirchen (*19.6.1641 +15.5.1704)	
+61	59	CZERNIN 1	.A1.B7.C3.D1.E2	5	1624	null	null	Alžběta Johanka	E2. Alžběta Johanka, *ca 1624	
+62	59	CZERNIN 1	.A1.B7.C3.D1.E3	5	1626	1674	, +	Heřman Václav František	E3. Heřman Václav František, *ca 1626, +1674/75; m. 1658 Marie Markéta Des Fours (*21.7.1645 +2.9.1672)	
+63	59	CZERNIN 1	.A1.B7.C3.D1.E4	5	1628	1682	Radenín , +Prague	Humprecht Jan	E4. Humprecht Jan, Highest Chamberlain in Kingdom of Bohemia, envoy to Venice, *Radenín 14.2.1628, +Prague 3.3.1682; m. 31.3.1655 Diana Maria (*Frassino, Mantua 2.9.1636, +Mantua 22.9.1688)	64,91
+64	63	CZERNIN 1	.A1.B7.C3.D1.E4.F1	6	1659	1710	Wien , +Prague	Heřman Jakub Gottlieb	F1. Heřman Jakub Gottlieb, *Wien 21.1.1659, +Prague 28.8.1710; 1m: Prague 13.1.1686 Marie Josefa Slavatová (*Wien 2.2.1667, +Jindřichův Hradec 10.8.1708); 2m: 1.9.1709 Anna Josefa von Khünburg (*11.6.1685 +4.3.1755)	65,66,88,89
+65	64	CZERNIN 1	.A1.B7.C3.D1.E4.F1.G1	7	1689	1725	, +	Marie Markéta	G1. [1m.] Marie Markéta, *11.7.1689, +4.7.1725; m. 17.11.1704 Gf František Josef z Valdštejna (*25.10.1680, +19.2.1722)	
+66	64	CZERNIN 1	.A1.B7.C3.D1.E4.F1.G2	7	1696	1733	Wien , +Wien	František Josef	G2. [1m.] František Josef, Bohemian Chief Justice, *Wien 6.3.1696, +Wien 4.3.1733; m. Bruxelles 12.5.1717 Marie Isabella Johanna Css de Merode-Westerloo (*13.10.1703, +1.4.1780)	67,68,69,70,71
+67	66	CZERNIN 1	.A1.B7.C3.D1.E4.F1.G2.H1	8	null	null	null	Marie Desiderie	H1. Marie Desiderie	
+68	66	CZERNIN 1	.A1.B7.C3.D1.E4.F1.G2.H2	8	1719	1786	, +	Marie Terezie	H2. Marie Terezie, *18.4.1719, +4.3.1786; m. 20.8.1738 Gf František Ferdinand Novohradský z Kolowrat (*10.9.1714 +10.12.1763)	
+69	66	CZERNIN 1	.A1.B7.C3.D1.E4.F1.G2.H3	8	1722	1772	, +	Marie Josefa Anna	H3. Marie Josefa Anna, *19.6.1722, +15.1.1772; m. 9.4.1741 Franz II von Mansfeld-Vorderort, Fürst von Fondi (*6.7.1712, +15.2.1780)	
+70	66	CZERNIN 1	.A1.B7.C3.D1.E4.F1.G2.H4	8	1724	1731	, +	Václav Jan	H4. Václav Jan, *5.1.1724, +1731/33	
+71	66	CZERNIN 1	.A1.B7.C3.D1.E4.F1.G2.H5	8	1726	1777	, +	Prokop Vojtěch František	H5. Prokop Vojtěch František, *23.3.1726, +30.1.1777; 1m: 28.6.1746 Maria Antonia von Colloredo (*21.4.1728, +2.10.1757); 2m: 18.8.1759 Maria Theresa Frn Rajská z Dubnic (*17.5.1736, +5.2.1780)	72,73,74,75,76,77,78,79,80,81,82,83,84,85,86,87
+72	71	CZERNIN 1	.A1.B7.C3.D1.E4.F1.G2.H5.I1	9	1747	1807	, +Wien	Marie Gabriela	I1. Marie Gabriela, *25.5.1747, +Wien 31.7.1807; 1m: 28.10.1766 Gf Josef Wenzel von Trauttmansdorff (*20.7.1739 +4.12.1769); 2m: 22.9.1772 Heinrich Franz Gf von Rottenhan (*3.9.1738, +14.2.1809)	
+73	71	CZERNIN 1	.A1.B7.C3.D1.E4.F1.G2.H5.I2	9	1748	1811	, +	Marie Josefa	I2. Marie Josefa, *21.12.1748, +9.7.1811; m. 12.5.1777 Alois Gf von Ugarte (*15.12.1749, +18.11.1817)	
+74	71	CZERNIN 1	.A1.B7.C3.D1.E4.F1.G2.H5.I3	9	1750	1801	Wien , +Wien	Marie Antonie	I3. Marie Antonie, *Wien 30.3.1750, +Wien 25.4.1801; m. 28.4.1773 Johann Nepomuk Gf von Lützow (*Doupov 4.8.1742, +Salzburg 7.2.1822)	
+75	71	CZERNIN 1	.A1.B7.C3.D1.E4.F1.G2.H5.I4	9	1755	1763	, +	Maria Isabella	I4. Maria Isabella, *20.10.1755, +16.6.1763	
+76	71	CZERNIN 1	.A1.B7.C3.D1.E4.F1.G2.H5.I5	9	1757	1845	Wien , +Wien	Johann Rudolf	I5. Johann Rudolf, *Wien 9.6.1757, +Wien 23.4.1845; m. Wien 22.10.1781 Gfn Maria Theresia Josefa von Schönborn-Heussenstamm (*Wien 7.6.1758, +Wien 23.2.1838) >>> CONTINUES IN CZERNIN 2	123,124,125,126,127
+77	71	CZERNIN 1	.A1.B7.C3.D1.E4.F1.G2.H5.I6	9	1761	1784	, +after	Marie Terezie	I6. Marie Terezie, *14.5.1761, +after 1784; m. 1784 Karl von Overichies	
+78	71	CZERNIN 1	.A1.B7.C3.D1.E4.F1.G2.H5.I7	9	1763	1794	, +	František de Paula Josef	I7. František de Paula Josef, *25.10.1763, +9.9.1794	
+79	71	CZERNIN 1	.A1.B7.C3.D1.E4.F1.G2.H5.I8	9	1765	1765	, +young ca	Walpurga	I8. Walpurga, *9.2.1765, +young ca 1765	
+80	71	CZERNIN 1	.A1.B7.C3.D1.E4.F1.G2.H5.I9	9	1766	1813	, +	Wolfgang Maria	I9. Wolfgang Maria, *2.2.1766, +21.12.1813; m. 7.10.1795 Gfn Maria Antonia zu Salm-Neuburg (*16.4.1776, +31.3.1840) >>> CONTINUES IN CZERNIN 3 (VINAŘ BRANCH)	228,229,230
+81	71	CZERNIN 1	.A1.B7.C3.D1.E4.F1.G2.H5.I10	9	1767	1768	, +young ca	Aloysia Johanna Gabriella	I10. Aloysia Johanna Gabriella, *24.3.1767, +young ca 1768	
+82	71	CZERNIN 1	.A1.B7.C3.D1.E4.F1.G2.H5.I11	9	1768	1771	, +	Jan Prokop Camillo	I11. Jan Prokop Camillo, *2.3.1768, +10.5.1771	
+83	71	CZERNIN 1	.A1.B7.C3.D1.E4.F1.G2.H5.I12	9	1769	1796	, +on woundings after battle of Leipzig	Petr Vojtěch Jan Nepomuk	I12. Petr Vojtěch Jan Nepomuk, *17.2.1769, +on woundings after battle of Leipzig 1796	
+84	71	CZERNIN 1	.A1.B7.C3.D1.E4.F1.G2.H5.I13	9	1770	null	, +young	Maria Anna	I13. Maria Anna, *13.3.1770, +young	
+85	71	CZERNIN 1	.A1.B7.C3.D1.E4.F1.G2.H5.I14	9	1772	1842	, +	Maria Carolina Ludmilla	I14. Maria Carolina Ludmilla, *15.4.1772, +16.12.1842; m. 17.7.1797 Carl Frhr Thyfibiart auf Königsbrack (*15.9.1763, +3.3.1850)	
+86	71	CZERNIN 1	.A1.B7.C3.D1.E4.F1.G2.H5.I15	9	1773	null	, +young	Prokop Jan	I15. Prokop Jan, *15.3.1773, +young	
+87	71	CZERNIN 1	.A1.B7.C3.D1.E4.F1.G2.H5.I16	9	1775	1847	, +IV	Maria Franziska	I16. Maria Franziska, a nun at Prague, *9.3.1775, +IV.1847	
+88	64	CZERNIN 1	.A1.B7.C3.D1.E4.F1.G3	7	1699	null	null	Marie Gabriela	G3. [1m.] Marie Gabriela, *ca 1699	
+89	64	CZERNIN 1	.A1.B7.C3.D1.E4.F1.G4	7	1710	1739	, +	František Antonín	G4. [2m.] František Antonín, *30.6.1710, +20.12.1739; m. 31.5.1735 Marie Isabella Johanna Css de Merode-Westerloo (*13.10.1703, +1.4.1780) [same woman as G2's wife]	90
+90	89	CZERNIN 1	.A1.B7.C3.D1.E4.F1.G4.H1	8	1738	1790	Prague , +Prague	Marie Josefa Ludmila	H1. Marie Josefa Ludmila, heiress of Hořín and Mělník, *Prague 21.4.1738, +Prague 20.6.1790; m. Hořín 16.9.1763 Pr August Antonín Josef z Lobkowicz (*21.9.1729, +28.1.1803)	
+91	63	CZERNIN 1	.A1.B7.C3.D1.E4.F2	6	1651	1700	/after , +	Tomáš Zaccharius	F2. Tomáš Zaccharius, *1651/after 1660/1666, +14.2.1700; m. 28.3.1685 Gfn Zuzana Renata Bořitová z Martinitz (*1670, +3.2.1717)	92,93,94,95,96
+92	91	CZERNIN 1	.A1.B7.C3.D1.E4.F2.G1	7	1686	1698	, +	František Ignatius	G1. František Ignatius, *1686, +1698	
+93	91	CZERNIN 1	.A1.B7.C3.D1.E4.F2.G2	7	1687	1733	, +	Antonia Renata	G2. Antonia Renata, *ca 1687, +7.9.1733; m. 29.9.1703/29.7.1705 Frhr Albert de Longueval, Gf von Buquoy (+5.10.1714)	
+94	91	CZERNIN 1	.A1.B7.C3.D1.E4.F2.G3	7	1688	1758	, +Prague	Maria Gabriella	G3. Maria Gabriella, *ca 1688, +Prague 29.7.1758; m. Wien 30.6.1707 Václav Josef Gf Lazanský z Bukové (*9.4.1673 +1.3.1715)	
+95	91	CZERNIN 1	.A1.B7.C3.D1.E4.F2.G4	7	1690	1726	, +	Marie Josefa	G4. Marie Josefa, *4.2.1690, +12.11.1726; m. 18.8.1712 Leopold Josef Gf von Königl (*12.6.1688 +13.11.1727)	
+96	91	CZERNIN 1	.A1.B7.C3.D1.E4.F2.G5	7	1692	null	null	Marie Aloisie	G5. Marie Aloisie, *ca 1692	
+97	55	CZERNIN 1	.A1.B7.C4	3	null	null	null	Ludmila	C4. Ludmila	
+98	55	CZERNIN 1	.A1.B7.C5	3	null	null	null	Anna	C5. Anna	
+99	55	CZERNIN 1	.A1.B7.C6	3	null	null	null	Protiva	C6. Protiva	
+100	55	CZERNIN 1	.A1.B7.C7	3	null	1629	null	Vilém	C7. Vilém, +1629; m. Anna Budkovská z Budkova	101,102,103,104,105,115
+101	100	CZERNIN 1	.A1.B7.C7.D1	4	null	null	null	Voršila	D1. Voršila	
+102	100	CZERNIN 1	.A1.B7.C7.D2	4	null	null	null	Regina	D2. Regina	
+103	100	CZERNIN 1	.A1.B7.C7.D3	4	null	null	null	Anna Kateřina Barbora	D3. Anna Kateřina Barbora	
+104	100	CZERNIN 1	.A1.B7.C7.D4	4	null	null	null	Ludmila	D4. Ludmila	
+105	100	CZERNIN 1	.A1.B7.C7.D5	4	null	1633	null	Jan Vilém	D5. Jan Vilém, +1633; m. Eliška Wratislavová z Mitrowicz (+after 1639)	106,107,108,109,113,114
+106	105	CZERNIN 1	.A1.B7.C7.D5.E1	5	null	null	null	Regina	E1. Regina	
+107	105	CZERNIN 1	.A1.B7.C7.D5.E2	5	null	null	null	Ludmila	E2. Ludmila	
+108	105	CZERNIN 1	.A1.B7.C7.D5.E3	5	null	null	null	Kateřina	E3. Kateřina	
+109	105	CZERNIN 1	.A1.B7.C7.D5.E4	5	null	1634	null	Protiva	E4. Protiva, +1634; m. Christine Kordula von Helmegk	110,111,112
+110	109	CZERNIN 1	.A1.B7.C7.D5.E4.F1	6	null	null	null	Maria Anna	F1. Maria Anna	
+111	109	CZERNIN 1	.A1.B7.C7.D5.E4.F2	6	null	null	null	František Vilém	F2. František Vilém, +young	
+112	109	CZERNIN 1	.A1.B7.C7.D5.E4.F3	6	null	null	null	Jan Vilém	F3. Jan Vilém, +young	
+113	105	CZERNIN 1	.A1.B7.C7.D5.E5	5	null	null	null	Jiří Václav	E5. Jiří Václav	
+114	105	CZERNIN 1	.A1.B7.C7.D5.E6	5	null	null	null	Heřman Maximilian	E6. Heřman Maximilian	
+115	100	CZERNIN 1	.A1.B7.C7.D6	4	null	1660	null	Václav Diviš	D6. Václav Diviš, +1660; m. Sophia Barbara von Heidelsdorf	116
+116	115	CZERNIN 1	.A1.B7.C7.D6.E1	5	1627	1687	, +Praha	Jiří Václav	E1. Jiří Václav, cr Freiherr 1650, *1627, +Praha 30.5.1687; 1m: 1651 Maximiliana Alžběta Bukovanská Pintovna z Bukovan; 2m: ca 1662 Salomena Maximiliana Wratislavová z Mitrowicz; 3m: 1675 Anna Ludmila Mitrovská z Nemyšle	117,118,119,120
+117	116	CZERNIN 1	.A1.B7.C7.D6.E1.F1	6	1652	1698	, +	Václav Vilém	F1. [1m.] Václav Vilém, *22.11.1652, +1698	
+118	116	CZERNIN 1	.A1.B7.C7.D6.E1.F2	6	1676	1733	, +	Antonia Renata	F2. [2m.] Antonia Renata, *1676, +7.9.1733; m. 29.9.1703 Albert de Longueval, Gf von Buquoy (+5.10.1714) [also listed as dau of Tomáš Zaccharius]	
+119	116	CZERNIN 1	.A1.B7.C7.D6.E1.F3	6	1678	1697	, +	Humprecht	F3. [2m.] Humprecht, *ca 1678, +1697	
+120	116	CZERNIN 1	.A1.B7.C7.D6.E1.F4	6	1680	1736	, +	Viktoria Isabela	F4. [2m.] Viktoria Isabela, *ca 1680, +15.1.1736; m. 19.8.1708 Franz Gf von Thurn und Valsassina (*17.6.1675, +1749)	
+121	55	CZERNIN 1	.A1.B7.C8	3	1576	1651	, +	Heřman Václav "Turečiek"	C8. Heřman Václav "Turečiek", cr Freiherr 15.3.1623, cr Reichsgraf 20.5.1627, cr Graf in Bohemia 8.6.1627, *24.7.1576, +7.3.1651; 1m: 1606 Mariana Karlová ze Svárova (+1625); 2m: 1625 Anna Saloména Hradišťská z Hořovic (+1632); 3m: 18.4.1633 Gfn Anna Sylvie Kateřina dell Caretto-Millessimo (+29.2.1664)	
+123	76	CZERNIN 2	.A1	1	1782	1787	, +/	Gabrielle Maria Anna	A1. Gabrielle Maria Anna, *15.12.1782, +31.7./12.11.1787	
+124	76	CZERNIN 2	.A2	1	1784	1784	, +ca	Maria Josepha Franziska	A2. Maria Josepha Franziska, *11.3.1784, +ca 1784	
+125	76	CZERNIN 2	.A3	1	1785	1787	II., +	Maria Theresia	A3. Maria Theresia, *II.1785, +23.11.1787	
+126	76	CZERNIN 2	.A4	1	1786	1786	I., +ca	Christine Elisabeth	A4. Christine Elisabeth, *I.1786, +ca 1786	
+127	76	CZERNIN 2	.A5	1	1796	1868	Wien , +Petrohrad	Evžen Karel	A5. Evžen Karel, *Wien 4.11.1796, +Petrohrad 11.7.1868; m. Wien 27.5.1817 Marie Theresie Gfn von Orsini-Rosenberg (*Wien 25.9.1798, +Wien 18.4.1866)	128,135,217,218,225,226
+128	127	CZERNIN 2	.A5.B1	2	1818	1908	Wien , +zámek Petrohrad u Podbořan	Jaromír	B1. Jaromír, *Wien 13.3.1818, +zámek Petrohrad u Podbořan 26.11.1908; 1m: Brno 26.2.1843 Gfn Karoline Schaffgotsch (*Brno 13.9.1820, +Petrohrad 9.10.1876); 2m: Wien 19.3.1879 Gfn Josephine Paar (*1.1.1839 +6.2.1916)	129,130,131,132,133,134
+129	128	CZERNIN 2	.A5.B1.C1	3	1843	1910	, +Wien	Marie Therese	C1. Marie Therese, *19.12.1843, +Wien 20.4.1910; m. Wien 30.1.1869 Friedrich Erwein Gf Schönborn-Buchheim-Wolfsthal (*Praha 10.9.1841, +Wien 21.12.1907)	
+130	128	CZERNIN 2	.A5.B1.C2	3	1845	1922	Wien , +Salzburg	Marie Rudolfina	C2. Marie Rudolfina, *Wien 6.3.1845, +Salzburg 17.4.1922; m. Wien 10.5.1864 Altgraf Siegfried zu Salm-Reifferscheidt-Krautheim (*10.6.1835 +14.8.1898)	
+131	128	CZERNIN 2	.A5.B1.C3	3	1847	1907	Wien , +Praha	Karoline	C3. Karoline, *Wien 15.2.1847, +Praha 14.4.1907; m. Wien 7.1.1868 Johann Gf von Lederbur-Wicheln (*Krzemusch 30.5.1842, +Praha 14.5.1903)	
+132	128	CZERNIN 2	.A5.B1.C4	3	1848	1908	Petrohrad , +Wien	Ernestine	C4. Ernestine, *Petrohrad 13.11.1848, +Wien 22.6.1908; m. Praha 19.8.1867 Fst Karl von Öttingen-Öttingen (*16.9.1840 +22.12.1905)	
+133	128	CZERNIN 2	.A5.B1.C5	3	1851	1925	Wien , +zámek Petrohrad u Podbořan	Eugen Jaromír František de Paula Wolfgang	C5. Eugen Jaromír František de Paula Wolfgang, K.u.K. Chamberlain 1881, Privy counsellor 1907, *Wien 13.2.1851, +zámek Petrohrad u Podbořan 5.11.1925; m. Wien 26.4.1876 Gfn Franziska von Schönburg-Hartenstein (*28.8.1857, +20.1.1926)	
+134	128	CZERNIN 2	.A5.B1.C6	3	1857	1932	Wien , +Jindřichův Hradec	František Jaromír Evžen	C6. František Jaromír Evžen, *Wien 3.3.1857, +Jindřichův Hradec 9.4.1932; adopted Eugen František Czernin-Morzin 1927	
+135	127	CZERNIN 2	.A5.B2	2	1819	1892	Wien , +Dresden	Heřman Zdenko	B2. Heřman Zdenko, adopted surname Czernin von Chudenitz und Morzin, *Wien 20.2.1819, +Dresden 2.8.1892; m. Praha 13.11.1853 Gfn Marie Aloisie von Morzin (*6.5.1832 +26.7.1907)	136,216
+136	135	CZERNIN 2	.A5.B2.C1	3	1855	1927	Praha , +Vrchlabí	Rudolf	C1. Rudolf, Graf Czernin von Chudenitz und Morzin 1908, *Praha 8.1.1855, +Vrchlabí 5.9.1927; 1m: Praha 22.6.1878 Emma Gfn von Orsini-Rosenberg (*Graz 8.7.1858, +Hořín 6.7.1905); 2m: Černá Hora 5.8.1907 Theresia Gfn Fries von Friesberg (*Černá Hora 21.3.1874, +Černá Hora 14.11.1946); all children by 1m.	137,138,166,167,168,201,202
+137	136	CZERNIN 2	.A5.B2.C1.D1	4	1879	1963	Benešov nad Ploučnicí , +Gauting bei München	Maria Aloysia Josefine	D1. Maria Aloysia Josefine, *Benešov nad Ploučnicí 10.5.1879, +Gauting bei München 9.1.1963; m. Praha 13.5.1899 Frhr Karl von Bronn, cr Fürst von Weikersheim (*25.1.1862 +28.9.1925)	
+138	136	CZERNIN 2	.A5.B2.C1.D2	4	1881	1928	Praha , +Wien	Rudolf Heřman Maria Josef	D2. Rudolf Heřman Maria Josef, Graf Czernin von Chudenitz und Morzin, *Praha 15.2.1881, +Wien 24.3.1928; m. Praha 7.6.1903 (div 1920) Pss Vera zu Hohenlohe-Waldenburg-Schillingfürst-Kaunitz (*22.5.1882 +1.12.1940)	139,140,141,161,162,163,164,165
+139	138	CZERNIN 2	.A5.B2.C1.D2.E1	5	1904	1959	Munich , +Kirkwood, Missouri	Vera Aloysia	E1. Vera Aloysia, *Munich 4.6.1904, +Kirkwood, Missouri 18.9.1959; 1m: Wien 23.2.1924 (annulled 1936) Gf Leopold Heinrich Fugger von Babenhausen (*18.7.1893 +8.7.1966); 2m: Wien 1.6.1938 Kurt von Schuschnigg, Austrian Chancellor (*Riva 14.12.1897, +Mutters bei Innsbruck 18.11.1977)	
+140	138	CZERNIN 2	.A5.B2.C1.D2.E2	5	1906	1994	Strušná , +Rekawinkel	Alexia	E2. Alexia, *Strušná 6.7.1906, +Rekawinkel 1.4.1994; 1m: Wien 11.6.1927 (div 1937) Gf Erwein Sigmund von Thun und Hohenstein (*4.4.1896 +12.2.1946); 2m: Moravské Budějovice 29.12.1943 (div 1956) Eduard Gf Larisch von Mönnich (*4.1.1916, +31.7.1987)	
+141	138	CZERNIN 2	.A5.B2.C1.D2.E3	5	1908	1966	Praha , +Munich	Jaromír Egon Rudolf	E3. Jaromír Egon Rudolf, Graf Czernin von Chudenitz und Morzin, *Praha 30.1.1908, +Munich 1.2.1966; 1m: Budapest 23.2.1929 (div 1938) Márta Gfn Széchényi (*15.12.1905, +Wien 24.9.1977); 2m: Starnberg 7.5.1938 (div) Alix-May von Frankenberg (*20.9.1907, +19.12.1979); 3m: Altaussee 27.11.1944 (div) same 2nd wife; 4m: Zürich 6.11.1951 (div 1955) Gertrud Liebl (*2.9.1922, +26.10.1998); 5m: Salzburg 5.5.1960 Margaritha Seyffert (*Riga 5.6.1911)	142,148,155,159,160
+142	141	CZERNIN 2	.A5.B2.C1.D2.E3.F1	6	1930	null	Vrchlabí	Alexander Rudolf Christophorus	F1. Alexander Rudolf Christophorus, Graf Czernin von Chudenitz und Morzin, *Vrchlabí 24.3.1930; 1m: Vancouver 9.6.1951 (div 1981) Aleida Koelewijn (*Baarn 20.12.1925); 2m: Wien 9.7.1981 Marie Christine Frn von Sacken (*Wien 12.2.1935)	143,144,145,146,147
+143	142	CZERNIN 2	.A5.B2.C1.D2.E3.F1.G1	7	1952	1953	Vancouver , +Vancouver	Victor Krishna Alexander	G1. Victor Krishna Alexander, *Vancouver 16.12.1952, +Vancouver 20.6.1953	
+144	142	CZERNIN 2	.A5.B2.C1.D2.E3.F1.G2	7	1956	null	Vancouver	Jacqueline Valerie Caroline	G2. Jacqueline Valerie Caroline, *Vancouver 8.5.1956	
+145	142	CZERNIN 2	.A5.B2.C1.D2.E3.F1.G3	7	1958	null	Vancouver	Lukia Alexis Georgina	G3. Lukia Alexis Georgina, *Vancouver 28.1.1958; m. Vancouver 25.8.1990 Brenton Spencer (*Halifax 22.11.1953)	
+146	142	CZERNIN 2	.A5.B2.C1.D2.E3.F1.G4	7	1963	1964	Vancouver , +North Vancouver	Astrid Angela Alexandra	G4. Astrid Angela Alexandra, *Vancouver 3.12.1963, +North Vancouver 18.2.1964	
+147	142	CZERNIN 2	.A5.B2.C1.D2.E3.F1.G5	7	1969	null	Vancouver	Michelle Leoma Alexandra	G5. Michelle Leoma Alexandra, *Vancouver 12.1.1969; m. White Horse 5.9.1992 (div 1993) Andrew Embleton-Emson (*Edmonton 23.7.1966)	
+148	141	CZERNIN 2	.A5.B2.C1.D2.E3.F2	6	1932	null	Vrchlabí	Jan Ladislav	F2. Jan Ladislav, *Vrchlabí 2.5.1932; 1m: Wien 3.8.1957 (div 1977) Marie Christine Frn von Sacken (*Wien 12.2.1935); 2m: St. Margarethen 31.12.1982 Edeltraud Glocker (*Hollabrunn 11.2.1954)	149,152
+149	148	CZERNIN 2	.A5.B2.C1.D2.E3.F2.G1	7	1958	null	Wien	Michael Johannes Ladislaus Maria	G1. Michael Johannes Ladislaus Maria, *Wien 30.3.1958; 1m: Wien 21.7.1986 (div 1996) Silvia Pleschl (*Wien 8.12.1960); 2m: Dürnstein 12.12.1998 Susanne Kramml (*26.3.1963)	150,151
+150	149	CZERNIN 2	.A5.B2.C1.D2.E3.F2.G1.H1	8	1987	null	Wien	Sebastian Humbert Ludwig Maria	H1. Sebastian Humbert Ludwig Maria, *Wien 10.2.1987	
+151	149	CZERNIN 2	.A5.B2.C1.D2.E3.F2.G1.H2	8	1996	null	Wien	Maximilian Karl Johannes	H2. Maximilian Karl Johannes, *Wien 30.12.1996	
+152	148	CZERNIN 2	.A5.B2.C1.D2.E3.F2.G2	7	1960	null	Salzburg	Christoph Karl Johannes Maria	G2. Christoph Karl Johannes Maria, *Salzburg 28.5.1960; m. Feuerkogel 19.8.1995 Katharina Spitzer (*Wien 2.4.1965)	153,154
+153	152	CZERNIN 2	.A5.B2.C1.D2.E3.F2.G2.H1	8	1996	null	Wien	Nikolaus Leopold Johannes Maria	H1. Nikolaus Leopold Johannes Maria, *Wien 22.10.1996	
+154	152	CZERNIN 2	.A5.B2.C1.D2.E3.F2.G2.H2	8	1998	null	Vienna	Laura Theresa Marie-Christine Elisabeth	H2. Laura Theresa Marie-Christine Elisabeth, *Vienna 12.10.1998	
+155	141	CZERNIN 2	.A5.B2.C1.D2.E3.F3	6	1935	null	Trutnov	František Rudolf Heřman	F3. František Rudolf Heřman, *Trutnov 12.9.1935; 1m: Wien 17.2.1962 (div 1963) Ingrid Weirich; 2m: Wien 30.12.1963 (div 1968) Hermine Schlager; 3m: Wien 31.10.1973 Marlene Merlé (*18.10.1933)	156,157
+156	155	CZERNIN 2	.A5.B2.C1.D2.E3.F3.G1	7	1964	null	Wien	Alexandra Christine Maria	G1. Alexandra Christine Maria, *Wien 29.12.1964	
+157	155	CZERNIN 2	.A5.B2.C1.D2.E3.F3.G2	7	1966	null	Wien	Thomas Maria Franz	G2. Thomas Maria Franz, *Wien 16.6.1966; m. Pisz, Poland 17.4.1999 Edyta Joanna Galenzka (*Pisz 17.6.1969)	158
+158	157	CZERNIN 2	.A5.B2.C1.D2.E3.F3.G2.H1	8	2000	null	Warszawa	Viktor Maximilian	H1. Viktor Maximilian, *Warszawa 24.7.2000	
+159	141	CZERNIN 2	.A5.B2.C1.D2.E3.F4	6	1938	1962	Trutnov , +Gräfelfing bei München	Petr Otmar Rudolf	F4. Petr Otmar Rudolf, *Trutnov 6.9.1938, +Gräfelfing bei München 24.8.1962	
+160	141	CZERNIN 2	.A5.B2.C1.D2.E3.F5	6	1945	null	Graz	Sophie Alix Maria	F5. Sophie Alix Maria, *Graz 7.8.1945; 1m: Syburg 25.4.1969 (div 1971) Ernst Frhr Schenk von Geyern; 2m: Athinai 5.5.1973 (div 1979) William Wheeler; 3m: New York 19.12.1989 George P. Huvos (*Wien 9.8.1930)	
+161	138	CZERNIN 2	.A5.B2.C1.D2.E4	5	1909	1998	Praha , +Porta Westfalica	Emma Philippine	E4. Emma Philippine, *Praha 27.4.1909, +Porta Westfalica 14.3.1998; m. Vrchlabí 23.5.1935 (div 1936) Gerhard Honemeyer	
+162	138	CZERNIN 2	.A5.B2.C1.D2.E5	5	1911	1929	, +car accident Jičín	Egon Alexander Rudolf	E5. Egon Alexander Rudolf, *31.8.1911, +car accident Jičín 4.8.1929	
+163	138	CZERNIN 2	.A5.B2.C1.D2.E6	5	1913	1992	Praha , +Gauting	Eleonore Vera	E6. Eleonore Vera, *Praha 31.1.1913, +Gauting 7.1.1992; m. Špindlerův Mlýn 30.4.1938 Wilhelm Möhwald (*1.9.1908, +Gauting 15.5.1975)	
+164	138	CZERNIN 2	.A5.B2.C1.D2.E7	5	1916	1979	Praha , +Klagenfurt	Sylvia Franziska	E7. Sylvia Franziska, *Praha 15.1.1916, +Klagenfurt 21.2.1979; m. Vrchlabí 23.5.1935 Othmar Frhr Nádherný von Borutin (*21.5.1910, +Klagenfurt 23.9.1988)	
+165	138	CZERNIN 2	.A5.B2.C1.D2.E8	5	1918	1944	Praha , +Praha	Maria del Rosario	E8. Maria del Rosario, *Praha 22.7.1918, +Praha 25.2.1944; 1m: Windischgarsten 14.8.1937 (div 1939) Otto Prexl (*Praha 7.5.1912, +Frankfurt 1984); 2m: Praha 8.2.1941 Roland Penka (*8.6.1908, +Salzburg 3.3.1986)	
+166	136	CZERNIN 2	.A5.B2.C1.D3	4	1882	1886	Benešov nad Ploučnicí , +	Arthur	D3. Arthur, *Benešov nad Ploučnicí 19.6.1882, +1886	
+167	136	CZERNIN 2	.A5.B2.C1.D4	4	1885	1954	Horní Maršov , +Uberaba, Brasilia	František de Sales Maria Josef	D4. František de Sales Maria Josef, Benedictine, Páter Wolfgang, *Horní Maršov 24.5.1885, +Uberaba, Brasilia 22.10.1954	
+168	136	CZERNIN 2	.A5.B2.C1.D5	4	1886	1978	Praha , +Schloss Rain, Kärnten	Karel Maria Josef	D5. Karel Maria Josef, *Praha 24.12.1886, +Schloss Rain, Kärnten 3.9.1978; m. Lysá nad Labem 2.7.1912 Gfn Vilemína Kinská z Vchynic a Tetova (*6.7.1891 +17.6.1971)	169,170,171,172,181,182,183,184,189,190,194
+169	168	CZERNIN 2	.A5.B2.C1.D5.E1	5	1913	1993	Turnov , +Schloss Rain nr Klagenfurt	Emma Maria Josefa	E1. Emma Maria Josefa, *Turnov 17.11.1913, +Schloss Rain nr Klagenfurt 31.5.1993	
+170	168	CZERNIN 2	.A5.B2.C1.D5.E2	5	1915	1942	Lysá nad Labem , +m.i.a. nr Kerstch, Crimea	Heřman Maria Rudolf Josef	E2. Heřman Maria Rudolf Josef, *Lysá nad Labem 12.4.1915, +m.i.a. nr Kerstch, Crimea 28.2.1942	
+171	168	CZERNIN 2	.A5.B2.C1.D5.E3	5	1919	1988	Horní Maršov , +Schloss Rain nr Klagenfurt	Marie Elisabeth Josefa	E3. Marie Elisabeth Josefa, *Horní Maršov 13.3.1919, +Schloss Rain nr Klagenfurt 13.8.1988	
+172	168	CZERNIN 2	.A5.B2.C1.D5.E4	5	1920	null	Horní Maršov	Josef Maria Rudolf Ferdinand Czernin-Kinsky (adopted 1954)	E4. Josef Maria Rudolf Ferdinand Czernin-Kinsky (adopted 1954), *Horní Maršov 16.6.1920; m. 's Gravenhage 14.2.1957 Maria Theresia Adriana Boelaert van Blokland (*'s Gravenhage 23.1.1931); issue bore surname Czernin von Chudenitz-Kinsky	173,174,175,180
+173	172	CZERNIN 2	.A5.B2.C1.D5.E4.F1	6	1957	null	Linz	Johanna Maria	F1. Johanna Maria, *Linz 7.12.1957; m. Sandl 25.10.1987 Jose Maria Maranon Barreras (*Madrid 24.9.1951)	
+174	172	CZERNIN 2	.A5.B2.C1.D5.E4.F2	6	1959	null	Linz	Wilhelmine Theresia	F2. Wilhelmine Theresia, *Linz 30.1.1959; m. Sandl 24.11.1984 Karl Steineck (*Sandl 17.12.1960)	
+175	172	CZERNIN 2	.A5.B2.C1.D5.E4.F3	6	1961	null	Linz	Stanislas Carl Maria Josef	F3. Stanislas Carl Maria Josef, adopted 1964, *Linz 6.8.1961; m. Stronsdorf 12.8.1989 Gfn Andrea Révay (*13.7.1963)	176,177,178,179
+176	175	CZERNIN 2	.A5.B2.C1.D5.E4.F3.G1	7	1990	null	Freistadt	Benno Maria	G1. Benno Maria, *Freistadt 8.9.1990	
+177	175	CZERNIN 2	.A5.B2.C1.D5.E4.F3.G2	7	1992	null	Freistadt	Margarethe Maria	G2. Margarethe Maria, *Freistadt 6.10.1992	
+178	175	CZERNIN 2	.A5.B2.C1.D5.E4.F3.G3	7	1995	null	Freistadt	Agnes Maria	G3. Agnes Maria, *Freistadt 6.4.1995	
+179	175	CZERNIN 2	.A5.B2.C1.D5.E4.F3.G4	7	1998	null	Freistadt	Leopold Maria	G4. Leopold Maria, *Freistadt 28.1.1998	
+180	172	CZERNIN 2	.A5.B2.C1.D5.E4.F4	6	1965	null	Linz	Philippine Theresia	F4. Philippine Theresia, *Linz 3.4.1965; m. Sandl 12.9.1987 Jörg Johannes Jakobljevich (*Wien 5.5.1958)	
+181	168	CZERNIN 2	.A5.B2.C1.D5.E5	5	1921	1942	Horní Maršov , +k.a. Voroniezh, Russia	Stanislav Jan Nepomuk	E5. Stanislav Jan Nepomuk, *Horní Maršov 31.10.1921, +k.a. Voroniezh, Russia 25.7.1942	
+182	168	CZERNIN 2	.A5.B2.C1.D5.E6	5	1923	null	Horní Maršov	Benedikta Theresia Maria	E6. Benedikta Theresia Maria, *Horní Maršov 2.5.1923; m. Grafenstein 11.10.1950 Otto Maria Georg Zeno Gf von Manzano (*22.12.1907, +Wien 27.9.1992)	
+183	168	CZERNIN 2	.A5.B2.C1.D5.E7	5	1924	null	Horní Maršov	Aloysia Philippine Maria	E7. Aloysia Philippine Maria, *Horní Maršov 23.8.1924; m. Grafenstein 14.8.1946 August Lovrek (*20.5.1911, +Salzburg 18.1.2003)	
+184	168	CZERNIN 2	.A5.B2.C1.D5.E8	5	1927	2002	Horní Maršov , +Wien	František Karel Maria Josef	E8. František Karel Maria Josef, *Horní Maršov 30.3.1927, +Wien 27.5.2002; 1m: Maria-Saal 2.7.1954 Gfn Isabelle von Thun und Hohenstein (*29.3.1931 +6.2.1966); 2m: Wien 22.5.1982 Marta Moser Zimprich (*11.9.1931, +Wien 25.8.1989)	185,186,187,188
+185	184	CZERNIN 2	.A5.B2.C1.D5.E8.F1	6	1955	2006	Wien , +	Erwein Carl Maria Joseph	F1. Erwein Carl Maria Joseph, Benedictine monk Fra Wolfgang, *Wien 17.7.1955, +2006	
+186	184	CZERNIN 2	.A5.B2.C1.D5.E8.F2	6	1957	2001	Wien , +Wien	Hemma Maria Josepha	F2. Hemma Maria Josepha, *Wien 3.10.1957, +Wien 3.5.2001	
+187	184	CZERNIN 2	.A5.B2.C1.D5.E8.F3	6	1959	null	Wien	Elisabeth Wilhelmine Maria	F3. Elisabeth Wilhelmine Maria, *Wien 5.10.1959	
+188	184	CZERNIN 2	.A5.B2.C1.D5.E8.F4	6	1966	1966	and +	Franz-Wolfgang	F4. Franz-Wolfgang, *and +1966	
+189	168	CZERNIN 2	.A5.B2.C1.D5.E9	5	1928	null	Klagenfurt	Anna Maria Josefa	E9. Anna Maria Josefa, *Klagenfurt 16.10.1928	
+190	168	CZERNIN 2	.A5.B2.C1.D5.E10	5	1930	null	Klagenfurt	Karl Wilhelm Rudolf Eugen	E10. Karl Wilhelm Rudolf Eugen, *Klagenfurt 28.5.1930; m. Klagenfurt 18.7.1962 Erna Weinzierl (*Eisenkappel 3.9.1932)	191,192,193
+191	190	CZERNIN 2	.A5.B2.C1.D5.E10.F1	6	1963	null	Salzburg	Hermann Christian Paul	F1. Hermann Christian Paul, *Salzburg 1.1.1963	
+192	190	CZERNIN 2	.A5.B2.C1.D5.E10.F2	6	1964	null	Salzburg	Christiane Emma Angela	F2. Christiane Emma Angela, *Salzburg 2.10.1964; m. Salzburg-Aigen 1.6.1996 Georg Züchbauer (*Salzburg 2.12.1954)	
+193	190	CZERNIN 2	.A5.B2.C1.D5.E10.F3	6	1967	null	Salzburg	Eugen Franz Carl Maria	F3. Eugen Franz Carl Maria, *Salzburg 22.12.1967	
+194	168	CZERNIN 2	.A5.B2.C1.D5.E11	5	1932	null	Klagenfurt	Vincenz Maria Josef	E11. Vincenz Maria Josef, *Klagenfurt 19.6.1932; m. Karneid bei Bozen 14.9.1963 Veronika von Miller (*München 13.4.1938)	195,196,197,198,199,200
+195	194	CZERNIN 2	.A5.B2.C1.D5.E11.F1	6	1965	null	Klagenfurt	Monika Maria	F1. Monika Maria, *Klagenfurt 18.2.1965; m. Maria-Saal 16.6.1996 Rikolt Frhr von Gagern (*Salzburg 2.11.1965)	
+196	194	CZERNIN 2	.A5.B2.C1.D5.E11.F2	6	1966	null	Klagenfurt	Sophie Christiane Maria	F2. Sophie Christiane Maria, *Klagenfurt 22.4.1966; m. Maria-Saal 26.9.1993 Christoph Ladanyi (*6.1.1956)	
+197	194	CZERNIN 2	.A5.B2.C1.D5.E11.F3	6	1969	null	Klagenfurt	Maximilian "Max" Josef Carl Rudolf	F3. Maximilian "Max" Josef Carl Rudolf, *Klagenfurt 3.5.1969	
+198	194	CZERNIN 2	.A5.B2.C1.D5.E11.F4	6	1971	null	Klagenfurt	Marie Wilhelmine Aloysia	F4. Marie Wilhelmine Aloysia, *Klagenfurt 18.7.1971	
+199	194	CZERNIN 2	.A5.B2.C1.D5.E11.F5	6	1974	null	Klagenfurt	Christoph Johannes Franz Josef	F5. Christoph Johannes Franz Josef, *Klagenfurt 16.5.1974; m. 17.1.2004 Larissa von Watzdorf	
+200	194	CZERNIN 2	.A5.B2.C1.D5.E11.F6	6	1976	1976	and +Klagenfurt	Anna Amabilia	F6. Anna Amabilia, *and +Klagenfurt 14.12.1976	
+201	136	CZERNIN 2	.A5.B2.C1.D6	4	1888	1965	Horní Maršov , +Wien	Ida Alfonsa Maria Josefine	D6. Ida Alfonsa Maria Josefine, *Horní Maršov 30.8.1888, +Wien 16.5.1965; m. Wien 26.2.1916 Gf Matthäus von Thun und Hohenstein (*17.6.1882 +23.11.1945)	
+202	136	CZERNIN 2	.A5.B2.C1.D7	4	1892	1955	Praha , +Wien	Eugen Alfonsus Maria Josef	D7. Eugen Alfonsus Maria Josef, adopted by František Czernin 1927, *Praha 3.1.1892, +Wien 16.6.1955; m. Hluboká nad Vltavou 23.10.1919 Pss Josephine Gabriele zu Schwarzenberg (*3.10.1895 +14.10.1965)	203,204,205
+203	202	CZERNIN 2	.A5.B2.C1.D7.E1	5	1920	1940	Jem?ina , +k.a. Le Chêsne, France	Karel Eugen Rudolf	E1. Karel Eugen Rudolf, *Jem?ina 27.9.1920, +k.a. Le Chêsne, France 18.5.1940	
+204	202	CZERNIN 2	.A5.B2.C1.D7.E2	5	1921	2000	Třeboň , +Wien	Therese Emma	E2. Therese Emma, *Třeboň 19.10.1921, +Wien 19.3.2000; m. Wien 10.4.1947 Emil Gf Spannocchi (*1.9.1916, +Wiener Neustadt 29.8.1992)	
+205	202	CZERNIN 2	.A5.B2.C1.D7.E3	5	1924	2004	Praha , +	Rudolf Gabriel Adolf	E3. Rudolf Gabriel Adolf, *Praha 18.2.1924, +22.6.2004; 1m: Wien 3.11.1955 Lucia Hauser (*Wien 27.2.1929, +Wien 23.12.1970); 2m: Wien 1.3.1982 Charlotte Preisinger (*2.2.1948)	206,215
+206	205	CZERNIN 2	.A5.B2.C1.D7.E3.F1	6	1956	null	Wien	Karl Eugen Maria Josef	F1. Karl Eugen Maria Josef, *Wien 25.7.1956; m. Wien 25.4.1985 Gfn Fiona Pia von Rechberg und Rothenlöwen (*Munich 8.3.1958)	207,208,209,210,211,212,213,214
+207	206	CZERNIN 2	.A5.B2.C1.D7.E3.F1.G1	7	1986	null	Wien	Wenzel Maria Karl	G1. Wenzel Maria Karl, *Wien 30.7.1986	
+208	206	CZERNIN 2	.A5.B2.C1.D7.E3.F1.G2	7	1987	null	Wien	Lucia Maria Anna	G2. Lucia Maria Anna, *Wien 21.11.1987	
+209	206	CZERNIN 2	.A5.B2.C1.D7.E3.F1.G3	7	1989	null	Wien	Anna-Teresa	G3. Anna-Teresa, *Wien 3.10.1989	
+210	206	CZERNIN 2	.A5.B2.C1.D7.E3.F1.G4	7	1989	null	Wien	Leo Santiago Franz	G4. Leo Santiago Franz, *Wien 3.10.1989	
+211	206	CZERNIN 2	.A5.B2.C1.D7.E3.F1.G5	7	1992	null	Wien	Maria Fátima	G5. Maria Fátima, *Wien 27.12.1992	
+212	206	CZERNIN 2	.A5.B2.C1.D7.E3.F1.G6	7	1995	1996	Wien , +Wien	Felix von Cantalice	G6. Felix von Cantalice, *Wien 29.3.1995, +Wien 16.4.1996	
+213	206	CZERNIN 2	.A5.B2.C1.D7.E3.F1.G7	7	1997	null	Wien	Maria da Gloria	G7. Maria da Gloria, *Wien 25.1.1997	
+214	206	CZERNIN 2	.A5.B2.C1.D7.E3.F1.G8	7	2002	null	null	Lorenz	G8. Lorenz, *22.3.2002	
+215	205	CZERNIN 2	.A5.B2.C1.D7.E3.F2	6	1959	null	Wien	Caroline Eleonore Maria	F2. Caroline Eleonore Maria, *Wien 25.10.1959; m. Wien 25.2.1985 Peter Laussner (*Wien 3.5.1959)	
+216	135	CZERNIN 2	.A5.B2.C2	3	1858	1937	Praha , +Rožmberk	Philippine Theresia Czernin-Morzin	C2. Philippine Theresia Czernin-Morzin, *Praha 29.11.1858, +Rožmberk 6.8.1937; m. Praha 1.5.1878 Karl Bonaventura de Longueval Gf von Buquoy (*24.9.1854 +9.8.1917)	
+217	127	CZERNIN 2	.A5.B3	2	1821	1873	, +	Rudolf	B3. Rudolf, *13.4.1821, +31.7.1873	
+218	127	CZERNIN 2	.A5.B4	2	1827	1910	Wien , +Graz	Humbert	B4. Humbert, *Wien 15.1.1827, +Graz 30.11.1910; m. Wien 19.11.1864 Therese Gfn von Grünne (*Saaz 1.8.1840, +Graz 17.3.1911)	219,220,221
+219	218	CZERNIN 2	.A5.B4.C1	3	1865	1926	, +	Eugen	C1. Eugen, *11.10.1865, +12.6.1926	
+220	218	CZERNIN 2	.A5.B4.C2	3	1868	1889	, +	Caroline	C2. Caroline, *25.6.1868, +6.6.1889	
+221	218	CZERNIN 2	.A5.B4.C3	3	1874	1949	Graz , +Graz	Rudolf	C3. Rudolf, *Graz 21.10.1874, +Graz 12.5.1949; m. Graz 20.11.1901 Anna Frn Kopfinger von Trebbienau (*Praha 8.8.1880, +Graz 4.4.1947)	222,223,224
+222	221	CZERNIN 2	.A5.B4.C3.D1	4	1902	1988	Graz , +Stockholm	Theresia	D1. Theresia, *Graz 21.12.1902, +Stockholm 10.6.1988; 1m: Graz 15.1.1927 (div 1936) Bruno Frhr di Albori; 2m: Stockholm 4.12.1937 Martin Linderoth; 3m: Stockholm 5.6.1966 Kurt Englich (*28.2.1907, +Stockholm 20.5.1986)	
+223	221	CZERNIN 2	.A5.B4.C3.D2	4	1903	1987	Graz , +Wien	Humbert	D2. Humbert, *Graz 24.12.1903, +Wien 4.2.1987; m. Wien 28.12.1979 Dorothea Marker (*Wien 1.2.1926, +Wien 17.4.1998)	
+224	221	CZERNIN 2	.A5.B4.C3.D3	4	1906	1982	Leipnitz , +Graz	Maria Anna "Yan"	D3. Maria Anna "Yan", *Leipnitz 19.8.1906, +Graz 7.1.1982; m. Graz 24.7.1938 Max Frhr von Röling (*Brixen 25.5.1906, +Graz 15.10.1986)	
+225	127	CZERNIN 2	.A5.B5	2	1829	1916	Wien , +Hadersdorf	Maria Theresia	B5. Maria Theresia, *Wien 27.4.1829, +Hadersdorf 29.11.1916; m. Wien 20.6.1857 Gf Ladislas Pejasevich de Veröcze (*14.11.1828 +30.1.1916)	
+226	127	CZERNIN 2	.A5.B6	2	1830	1852	, +	Caroline	B6. Caroline, *31.12.1830, +15.7.1852	
+228	80	CZERNIN 3	.A1	1	1802	1879	, +	Octavie	A1. Octavie, *13.12.1802, +11.5.1879; m. 1.6.1837 Maximilian Gf von Merveldt (*8.3.1797, +24.5.1849)	
+229	80	CZERNIN 3	.A2	1	1806	1872	Praha , +Kostelec nad Orlicí	Marie Henrietta	A2. Marie Henrietta, *Praha 12.8.1806, +Kostelec nad Orlicí 20.12.1872; m. Wien 10.11.1828 Gf Josef Ervin Sidonius Kinský z Vchynic a Tetova (*25.10.1806 +17.7.1862)	
+230	80	CZERNIN 3	.A3	1	1809	1886	Wien , +Vinoř	Otakar Evžen	A3. Otakar Evžen, *Wien 3.10.1809, +Vinoř 29.6.1886; m. Praha 1.8.1833 Rosina Gfn von Colloredo-Wallsee (*Praha 1.8.1815, +Praha 12.2.1874)	231,232,331,332,333,347,348
+231	230	CZERNIN 3	.A3.B1	2	1834	1857	, +	Octavie	B1. Octavie, *5.12.1834, +5.12.1857	
+232	230	CZERNIN 3	.A3.B2	2	1836	1893	Praha , +Dymokury	Děpolt "Theobald"	B2. Děpolt "Theobald", c.k. komoří, *Praha 1.5.1836, +Dymokury 6.11.1893; m. Praha 10.8.1870 Anna Maria Gfn von Westphalen zu Fürstenberg (*Laër 13.3.1850, +Velké Hlušice 15.5.1924)	233,259,271,272,295,296,330
+233	232	CZERNIN 3	.A3.B2.C1	3	1871	1931	Dymokury , +Praha	Děpolt Josef Ottokar Otto Maria	C1. Děpolt Josef Ottokar Otto Maria, c.k. komoří, *Dymokury 3.6.1871, +Praha 24.12.1931; m. Wien 31.8.1903 Gfn Marie Anna Kinská z Vchynic a Tetova (*21.5.1885 +3.7.1952)	234,253,254,255,256,257,258
+234	233	CZERNIN 3	.A3.B2.C1.D1	4	1904	1984	Dymokury , +Wien	Rudolf Děpolt Maria Josef Ludvík ("Rudobald")	D1. Rudolf Děpolt Maria Josef Ludvík ("Rudobald"), *Dymokury 25.8.1904, +Wien 16.5.1984; m. Budapest 17.9.1935 Gfn Friderike von Wenckheim (*Budapest 6.1.1911, +Wien 5.7.1991)	235,248,249
+235	234	CZERNIN 3	.A3.B2.C1.D1.E1	5	1936	null	Praha	Děpolt Josef Maria Rudolf Bedřich	E1. Děpolt Josef Maria Rudolf Bedřich, *Praha 7.7.1936; m. Vejprnice 22.4.1961 Pss Polyxena z Lobkowicz (*Praha 28.4.1941)	236,241,242,246,247
+236	235	CZERNIN 3	.A3.B2.C1.D1.E1.F1	6	1962	null	Plzeň	Tomáš Zachariáš	F1. Tomáš Zachariáš, *Plzeň 4.3.1962; m. Praha 11.8.1990 Ursula Pirringer (*Wien 14.7.1959)	237,238,239,240
+237	236	CZERNIN 3	.A3.B2.C1.D1.E1.F1.G1	7	1991	null	Wien	Zuzana Maria	G1. Zuzana Maria, *Wien 16.7.1991	
+238	236	CZERNIN 3	.A3.B2.C1.D1.E1.F1.G2	7	1993	null	Wien	Anna Maria	G2. Anna Maria, *Wien 16.4.1993	
+239	236	CZERNIN 3	.A3.B2.C1.D1.E1.F1.G3	7	1995	null	Wien	Wolfgang Leopold Maria Franz	G3. Wolfgang Leopold Maria Franz, *Wien 28.3.1995	
+240	236	CZERNIN 3	.A3.B2.C1.D1.E1.F1.G4	7	1997	null	Městec Králové	Maximilian Maria Děpold	G4. Maximilian Maria Děpold, *Městec Králové 22.7.1997	
+241	235	CZERNIN 3	.A3.B2.C1.D1.E1.F2	6	1964	null	Plzeň	Terezie	F2. Terezie, *Plzeň 1.12.1964; m. Nejdek-Rudné 18.6.1988 Hartwig Koch (*Würzburg 4.1.1960)	
+242	235	CZERNIN 3	.A3.B2.C1.D1.E1.F3	6	1969	null	Plzeň	Děpold Jaroslav	F3. Děpold Jaroslav, *Plzeň 7.11.1969; m. Stanovice 25.7.1991 Štěpánka Štoffová (*Ostrov nad Ohří 30.4.1970)	243,244,245
+243	242	CZERNIN 3	.A3.B2.C1.D1.E1.F3.G1	7	1991	null	Ostrov nad Ohří	Štěpánka	G1. Štěpánka, *Ostrov nad Ohří 8.2.1991	
+244	242	CZERNIN 3	.A3.B2.C1.D1.E1.F3.G2	7	1993	null	Městec Králové	Vojtěch Maria	G2. Vojtěch Maria, *Městec Králové 26.5.1993	
+245	242	CZERNIN 3	.A3.B2.C1.D1.E1.F3.G3	7	1998	null	Nový Bydžov	Prokop Maria	G3. Prokop Maria, *Nový Bydžov 24.8.1998	
+246	235	CZERNIN 3	.A3.B2.C1.D1.E1.F4	6	1972	null	Plzeň	Jan Nepomuk Maria	F4. Jan Nepomuk Maria, *Plzeň 29.12.1972	
+247	235	CZERNIN 3	.A3.B2.C1.D1.E1.F5	6	1975	null	Ostrov nad Ohří	Gabriella Marie	F5. Gabriella Marie, *Ostrov nad Ohří 19.6.1975	
+248	234	CZERNIN 3	.A3.B2.C1.D1.E2	5	1939	null	Praha	Rosina Marie Cecilie	E2. Rosina Marie Cecilie, *Praha 26.1.1939; 1m: Praha 4.8.1956 (div 1965) František Machek (*Praha 29.4.1936, +Benešov VIII.1987); 2m: Wien 30.4.1970 (div 1983) Franz Hösch (*Wien 5.9.1932)	
+249	234	CZERNIN 3	.A3.B2.C1.D1.E3	5	1942	null	Dymokury	Diviš Humprecht Maria Děpolt Bedřich	E3. Diviš Humprecht Maria Děpolt Bedřich, *Dymokury 21.5.1942; m. Tannenmühle 14.9.1985 Helene von Blaas (*Wien 16.9.1959)	250,251,252
+250	249	CZERNIN 3	.A3.B2.C1.D1.E3.F1	6	1990	null	Wien	Anniebel Elisabeth	F1. Anniebel Elisabeth, *Wien 22.2.1990	
+251	249	CZERNIN 3	.A3.B2.C1.D1.E3.F2	6	1991	null	Wien	Marie Elisabeth	F2. Marie Elisabeth, *Wien 11.1.1991	
+252	249	CZERNIN 3	.A3.B2.C1.D1.E3.F3	6	1992	null	Wien	Karl Borromäus Maria	F3. Karl Borromäus Maria, *Wien 24.1.1992	
+253	233	CZERNIN 3	.A3.B2.C1.D2	4	1905	1993	Dymokury , +Wien	Anna Maria Emma Ignatia Josefa	D2. Anna Maria Emma Ignatia Josefa, *Dymokury 31.7.1905, +Wien 10.11.1993; m. Dymokury 9.7.1929 Hugo Gf Strachwitz von Groß-Zauche (*Zdounky 26.2.1900, +Wien 21.2.1978)	
+254	233	CZERNIN 3	.A3.B2.C1.D3	4	1906	1994	Dymokury , +Wien	Maria Felicitas Rosine	D3. Maria Felicitas Rosine, *Dymokury 20.11.1906, +Wien 5.12.1994	
+255	233	CZERNIN 3	.A3.B2.C1.D4	4	1909	1944	Dymokury , +sanatorium Pleš u Prahy	Humprecht Ottokar Paul Theobald Rudolf Johannes Ignatius Josef Maria	D4. Humprecht Ottokar Paul Theobald Rudolf Johannes Ignatius Josef Maria, *Dymokury 9.2.1909, +sanatorium Pleš u Prahy 19.9.1944; m. Praha 3.5.1939 Pss Maria Ida z Lobkowicz (*15.10.1917, +VI.2002)	
+256	233	CZERNIN 3	.A3.B2.C1.D5	4	1911	1911	Wien , +Dymokury	Emma	D5. Emma, *Wien 15.3.1911, +Dymokury 6.10.1911	
+257	233	CZERNIN 3	.A3.B2.C1.D6	4	1913	1995	Dymokury , +Wetaskiwin, Alberta, Canada	Gabriele Maria Anna Emma	D6. Gabriele Maria Anna Emma, *Dymokury 18.1.1913, +Wetaskiwin, Alberta, Canada 28.9.1995; 1m: Praha 29.8.1940 Pr Josef Ferdinand z Lobkowicz (*20.12.1918 +24.4.1946); 2m: Praha 30.8.1952 Stanislav Staffa (*Pustimíř 10.5.1924)	
+258	233	CZERNIN 3	.A3.B2.C1.D7	4	1915	1967	Dymokury , +Wien	Jan Nepomuk Děpold Rudolf Ferdinand	D7. Jan Nepomuk Děpold Rudolf Ferdinand, Premonstrát-Páter Václav, *Dymokury 26.7.1915, +Wien 27.9.1967	
+259	232	CZERNIN 3	.A3.B2.C2	3	1872	1932	Dymokury , +Wien	Otakar Děpolt Otto Maria	C2. Otakar Děpolt Otto Maria, c.k. komoří, c.k. tajný rada, *Dymokury 26.9.1872, +Wien 4.4.1932; m. Heřmanův Městec 1.7.1897 Gfn Marie Klotilda Kinská z Vchynic a Tetova (*30.5.1878 +19.7.1945)	260,264,265,268,269,270
+260	259	CZERNIN 3	.A3.B2.C2.D1	4	1898	1975	Vinoř , +Wien	Děpold Petr Ottokar Ferdinand Maria	D1. Děpold Petr Ottokar Ferdinand Maria, *Vinoř 29.4.1898, +Wien 14.5.1975; m. Wien 7.6.1942 Margarete Rous (*Leipzig 18.6.1909, +Weiz, Styria 29.12.1998)	261
+261	260	CZERNIN 3	.A3.B2.C2.D1.E1	5	1943	null	Wien	Christian Theobald Peter	E1. Christian Theobald Peter, *Wien 7.5.1943; m. Salzburg 6.8.1967 Anna Hoffmann (*Dienten am Hochkönig 18.12.1944)	262,263
+262	261	CZERNIN 3	.A3.B2.C2.D1.E1.F1	6	1967	null	Salzburg	Peter Christian Theobald	F1. Peter Christian Theobald, *Salzburg 23.12.1967	
+263	261	CZERNIN 3	.A3.B2.C2.D1.E1.F2	6	1974	null	Salzburg	Michael	F2. Michael, *Salzburg 23.9.1974	
+264	259	CZERNIN 3	.A3.B2.C2.D2	4	1899	1965	Paris , +Bad Aussee	Marie Anna Bibiana	D2. Marie Anna Bibiana, *Paris 2.12.1899, +Bad Aussee 28.8.1965; m. Grundlsee 13.1.1921 Maria Jan Adolf Fst von Lobkowicz (*Praha 6.11.1885, +Wolfegg 11.1.1952)	
+265	259	CZERNIN 3	.A3.B2.C2.D3	4	1903	1965	Heřmanův Městec , +New York XI	Ferdinand Karel Ottokar Děpolt Maria	D3. Ferdinand Karel Ottokar Děpolt Maria, *Heřmanův Městec 25.11.1903, +New York XI.1965; 1m: Caslano, Tessin 29.8.1934 (div after 1941) Beatrix Merton (*Frankfurt a.Main 18.6.1910); 2m: London 17.2.1948 Helen Mamoulini (*New York 13.9.1921)	266,267
+266	265	CZERNIN 3	.A3.B2.C2.D3.E1	5	1935	1966	Wien , +Frankfurt a.M	Karl	E1. Karl, *Wien 4.11.1935, +Frankfurt a.M. 24.6.1966; m. XI.1965 Benita N (+Frankfurt 24.6.1966)	
+267	265	CZERNIN 3	.A3.B2.C2.D3.E2	5	1941	null	New York	Marie-Clothilde	E2. Marie-Clothilde, *New York 23.4.1941	
+268	259	CZERNIN 3	.A3.B2.C2.D4	4	1905	1980	Vinoř , +Salzburg	Jan Nepomuk Rudolf	D4. Jan Nepomuk Rudolf, *Vinoř 20.6.1905, +Salzburg 16.8.1980; m. Chanute Field, Illinois 15.5.1945 Gertrude Kurmayer (*Wien 12.12.1906, +Paris 23.4.1980)	
+269	259	CZERNIN 3	.A3.B2.C2.D5	4	1907	1967	Vinoř , +Wien	Petr Rudolf	D5. Petr Rudolf, *Vinoř 25.11.1907, +Wien 31.10.1967; m. Wien 3.9.1938 Melanie von Kragl (*Graz 16.8.1907, +Baden bei Wien 1983)	
+270	259	CZERNIN 3	.A3.B2.C2.D6	4	1914	1988	Wien , +Hosskirch bei Alendorf	Anna Maria Viktorie	D6. Anna Maria Viktorie, *Wien 21.10.1914, +Hosskirch bei Alendorf 19.12.1988; m. Grundlsee 21.8.1934 Gf Karl Erwin zu Hohenlohe-Langenburg (*1.12.1903 +4.5.1983)	
+271	232	CZERNIN 3	.A3.B2.C3	3	1874	1918	Dymokury , +Hlušice	Marie Rosina	C3. Marie Rosina, *Dymokury 9.8.1874, +Hlušice 28.7.1918	
+272	232	CZERNIN 3	.A3.B2.C4	3	1875	1962	Dymokury , +Salzburg	Otto Rudolf Diepold Ottokar Maria	C4. Otto Rudolf Diepold Ottokar Maria, *Dymokury 27.8.1875, +Salzburg 14.6.1962; 1m: London 27.7.1903 (div 1916) Hon. Lucy Katherine Beckett (*Kirkstall 10.6.1884, +Lisboa 25.3.1979); 2m: Bratislava 15.2.1939 Maria Lisa Pfeiffer (*Wien 10.11.1899, +Salzburg 15.9.1983)	273,280,281,288
+273	272	CZERNIN 3	.A3.B2.C4.D1	4	1904	1955	Roma , +Graz	Paul Otto Ernst Diepold Maria	D1. Paul Otto Ernst Diepold Maria, *Roma 6.5.1904, +Graz 6.7.1955; m. Thannhausen 10.9.1935 Frn Elisabeth von Gudenus (*27.12.1914 +30.11.1980)	274,275,276,279
+274	273	CZERNIN 3	.A3.B2.C4.D1.E1	5	1936	null	Graz	Jaromir Otto	E1. Jaromir Otto, *Graz 23.6.1936; m. Munich 16.2.1979 Barbara Bosse (*Berlin 24.8.1946)	
+275	273	CZERNIN 3	.A3.B2.C4.D1.E2	5	1940	null	Graz	Maria Sidonia	E2. Maria Sidonia, *Graz 20.4.1940; m. Salzburg 3.10.1970 Francois de Suarez d'Aulan (*Paris 5.1.1931)	
+276	273	CZERNIN 3	.A3.B2.C4.D1.E3	5	1941	null	Graz	Maria-Lucia	E3. Maria-Lucia, *Graz 16.5.1941; m. Salzburg 18.10.1975 Nicholas Harold Phillips (*London 23.8.1947, +committed suicide, Luton Hoo 28.2.1991)	277,278
+277	276	CZERNIN 3	.A3.B2.C4.D1.E3.F1	6	1976	null	Paris	Charlotte Sonia Phillips	F1. Charlotte Sonia Phillips, *Paris 22.12.1976	
+278	276	CZERNIN 3	.A3.B2.C4.D1.E3.F2	6	1981	null	London	Edward Paul Phillips	F2. Edward Paul Phillips, *London 2.11.1981	
+279	273	CZERNIN 3	.A3.B2.C4.D1.E4	5	1944	null	Graz	Maria Elisabeth	E4. Maria Elisabeth, *Graz 14.11.1944; m. Graz/Wien 13.6.1966 (div 1983) Gf Alexander Hoyos, Frhr zu Stichsenstein (*Berlin 5.3.1941)	
+280	272	CZERNIN 3	.A3.B2.C4.D2	4	1905	1921	in Italy , +Viterbo, Italy VII	Eugen Jaromir	D2. Eugen Jaromir, *in Italy 20.9.1905, +Viterbo, Italy VII.1921	
+281	272	CZERNIN 3	.A3.B2.C4.D3	4	1907	1994	Sofia , +Salzburg	Edmund Diepold Douglas Friedrich Ferdinand	D3. Edmund Diepold Douglas Friedrich Ferdinand, *Sofia 31.5.1907, +Salzburg 13.10.1994; m. Evora, Portugal 12.11.1957 Maria del Carmo de Almeida (*Cascais 18.9.1927)	282,287
+282	281	CZERNIN 3	.A3.B2.C4.D3.E1	5	1957	null	Gmunden	Otto Louis Marie	E1. Otto Louis Marie, *Gmunden 1.12.1957; m. Sintra, Portugal 12.10.1985 Maria Alexandra Burnay (*Sintra 21.10.1966)	283,284,285,286
+283	282	CZERNIN 3	.A3.B2.C4.D3.E1.F1	6	1986	null	Cascais	Lorenzo Edmund Maria	F1. Lorenzo Edmund Maria, *Cascais 23.2.1986	
+284	282	CZERNIN 3	.A3.B2.C4.D3.E1.F2	6	1987	null	Cascais	Matilde	F2. Matilde, *Cascais 23.11.1987	
+285	282	CZERNIN 3	.A3.B2.C4.D3.E1.F3	6	1988	null	Cascais	Maria	F3. Maria, *Cascais 23.12.1988	
+286	282	CZERNIN 3	.A3.B2.C4.D3.E1.F4	6	1994	null	Cascais	Afonso	F4. Afonso, *Cascais 23.5.1994	
+287	281	CZERNIN 3	.A3.B2.C4.D3.E2	5	1959	null	Espinho, Portugal	Anna Marie	E2. Anna Marie, *Espinho, Portugal 25.3.1959; m. Cascais 17.2.1990 João Fernandes de Olivera (*Estoril 18.10.1950)	
+288	272	CZERNIN 3	.A3.B2.C4.D4	4	1913	1962	Berlin , +London	Manfred Maria Edmund	D4. Manfred Maria Edmund, assumed surname Beckett, *Berlin 18.1.1913, +London 6.10.1962; m. London 4.11.1939 (div 1947) Maud Sarah Hamilton (*4.4.1917 +6.10.1995)	289,290
+289	288	CZERNIN 3	.A3.B2.C4.D4.E1	5	1941	null	Windsor	Carolyn Lucile Beckett	E1. Carolyn Lucile Beckett, *Windsor 9.5.1941; m. London 9.7.1966 Charles Peploe (*Edinburgh 1.9.1930)	
+290	288	CZERNIN 3	.A3.B2.C4.D4.E2	5	1942	null	Tunbridge Wells	Nicholas Manfred Beckett	E2. Nicholas Manfred Beckett, *Tunbridge Wells 12.10.1942; 1m: 1970 (div 1982) Daniella Alligier; 2m: 1987 Orapin Champanich	291,293,294
+291	290	CZERNIN 3	.A3.B2.C4.D4.E2.F1	6	1963	null	null	Nicholas Beckett	F1. Nicholas Beckett, *1963; m. NN	292
+292	291	CZERNIN 3	.A3.B2.C4.D4.E2.F1.G1	7	null	null	null	Rubin Beckett	G1. Rubin Beckett	
+293	290	CZERNIN 3	.A3.B2.C4.D4.E2.F2	6	1970	null	null	Sarah Moon Beckett	F2. Sarah Moon Beckett, *1970	
+294	290	CZERNIN 3	.A3.B2.C4.D4.E2.F3	6	1989	null	null	Pawau Beckett	F3. Pawau Beckett, *1989	
+295	232	CZERNIN 3	.A3.B2.C5	3	1877	1907	Dymokury , +Hlušice	Bedřich Karel	C5. Bedřich Karel, *Dymokury 8.5.1877, +Hlušice 23.6.1907	
+296	232	CZERNIN 3	.A3.B2.C6	3	1879	1938	Dymokury , +Krásný Dvůr	Pavel Bedřich Děpolt Otto Ottokar Maria	C6. Pavel Bedřich Děpolt Otto Ottokar Maria, *Dymokury 4.6.1879, +Krásný Dvůr 17.1.1938; m. Praha 22.4.1901 Maria Gabriele Gfn von Orsini-Rosenberg (*Wien 21.5.1879, +Salzburg 4.5.1951)	297,313,317,318,319,322
+297	296	CZERNIN 3	.A3.B2.C6.D1	4	1902	1968	Hlušice , +Wien	Felix Theobald Paul Anton Maria	D1. Felix Theobald Paul Anton Maria, *Hlušice 7.3.1902, +Wien 3.1.1968; 1m: Merano 19.9.1933 (div 1950) Anna Leopoldine Gfn Ceshi di Santa Croce (*Trento 8.4.1914); 2m: Wien 20.1.1951 Franziska "Sissy" Mayer von Gunthof (*Wien 18.12.1926, +Wien 20.3.1987)	298,303,304,306,309
+298	297	CZERNIN 3	.A3.B2.C6.D1.E1	5	1934	null	Trutnov	Pavel František Felix Jaromír	E1. Pavel František Felix Jaromír, *Trutnov 18.7.1934; m. Wien 20.2.1965 Brigitte Frn von Seiler (*Wien 19.9.1941)	299,300,301,302
+299	298	CZERNIN 3	.A3.B2.C6.D1.E1.F1	6	1965	null	Wien	Theresa Anna Christina	F1. Theresa Anna Christina, *Wien 8.8.1965	
+300	298	CZERNIN 3	.A3.B2.C6.D1.E1.F2	6	1966	1966	, +	Stephanie	F2. Stephanie, *1966, +1966	
+301	298	CZERNIN 3	.A3.B2.C6.D1.E1.F3	6	1967	null	Wien	Gabrielle Marina Johanna	F3. Gabrielle Marina Johanna, *Wien 5.11.1967	
+302	298	CZERNIN 3	.A3.B2.C6.D1.E1.F4	6	1972	null	Wien	Katharina Franziska	F4. Katharina Franziska, *Wien 4.11.1972	
+303	297	CZERNIN 3	.A3.B2.C6.D1.E2	5	1952	null	Wien	Franz Josef Otto Felix Maria	E2. Franz Josef Otto Felix Maria, *Wien 7.1.1952; m. Wien 16.9.1994 Adriana Pentcheva (*Sofia 16.5.1969)	
+304	297	CZERNIN 3	.A3.B2.C6.D1.E3	5	1953	null	Wien	Peter Alfred Wolfgang Franz Maria	E3. Peter Alfred Wolfgang Franz Maria, *Wien 25.9.1953; m. Prissian, Tyrol 25.7.1978 Isabel Patricia Brummel (*Buenos Aires 10.7.1954)	305
+305	304	CZERNIN 3	.A3.B2.C6.D1.E3.F1	6	1990	null	New York	Johannes Bartholomäus Wenzel	F1. Johannes Bartholomäus Wenzel, *New York 19.9.1990	
+306	297	CZERNIN 3	.A3.B2.C6.D1.E4	5	1954	null	Wien	Johannes Christian Wolfgang Felix Maria	E4. Johannes Christian Wolfgang Felix Maria, *Wien 23.10.1954; m. Altaussee 9.9.1978 Gertraud Sobalik (*Wien 18.6.1955)	307,308
+307	306	CZERNIN 3	.A3.B2.C6.D1.E4.F1	6	1979	null	Wien	Philipp Felix Franz Peter	F1. Philipp Felix Franz Peter, *Wien 13.7.1979	
+308	306	CZERNIN 3	.A3.B2.C6.D1.E4.F2	6	1983	null	Wien	Julius Maximilian Franz Josef	F2. Julius Maximilian Franz Josef, *Wien 24.11.1983	
+309	297	CZERNIN 3	.A3.B2.C6.D1.E5	5	1956	null	Wien	Hubertus Alexander Felix Franz Maria	E5. Hubertus Alexander Felix Franz Maria, *Wien 17.1.1956; 1m: Wien 29.8.1979 (div 15.3.1981) Christina Teresa Gfn Szapáry (*Wien 19.6.1958); 2m: Wien 17.9.1984 Valerie Frn Baratta-Dragono (*Wien 19.1.1961)	310,311,312
+310	309	CZERNIN 3	.A3.B2.C6.D1.E5.F1	6	1985	null	Wien	Marie Sophie Elisabeth	F1. Marie Sophie Elisabeth, *Wien 14.8.1985	
+311	309	CZERNIN 3	.A3.B2.C6.D1.E5.F2	6	1987	null	Wien	Johanna Franziska Alix	F2. Johanna Franziska Alix, *Wien 8.4.1987	
+312	309	CZERNIN 3	.A3.B2.C6.D1.E5.F3	6	1988	null	Wien	Antonia Stephanie Alexandra	F3. Antonia Stephanie Alexandra, *Wien 1.6.1988	
+313	296	CZERNIN 3	.A3.B2.C6.D2	4	1903	1982	Hlušice , +Wien	Wolfgang Otto Paul Dominikus Maria	D2. Wolfgang Otto Paul Dominikus Maria, *Hlušice 4.8.1903, +Wien 10.10.1982; 1m: Berlin 6.5.1932 Alexandra von Maltitz (*Berlin 25.8.1908, +Wien 24.4.1974); 2m: Wien 28.4.1975 Franziska "Sissy" Mayer von Gunthof (*Wien 18.12.1926, +Wien 20.3.1987)	314
+314	313	CZERNIN 3	.A3.B2.C6.D2.E1	5	1934	null	Berlin	Nikolaus Felix Paul Hans Maria	E1. Nikolaus Felix Paul Hans Maria, *Berlin 5.4.1934; m. Wien 30.11.1967 Waldtraud Pfaller (*Hexenagger, Ober Pfalz 23.5.1941)	315,316
+315	314	CZERNIN 3	.A3.B2.C6.D2.E1.F1	6	1968	null	Wien	Alexander Jaromir Peter Paul	F1. Alexander Jaromir Peter Paul, *Wien 20.3.1968	
+316	314	CZERNIN 3	.A3.B2.C6.D2.E1.F2	6	1971	null	Wien	Nikole Brigitte Eleonore	F2. Nikole Brigitte Eleonore, *Wien 17.7.1971; m. Gaming 22.5.1994 Walter Hildebrand (*16.4.1971)	
+317	296	CZERNIN 3	.A3.B2.C6.D3	4	1907	1993	Brno-Královo Pole , +Altaussee	Anna Maria Franziska Gabriele	D3. Anna Maria Franziska Gabriele, *Brno-Královo Pole 26.5.1907, +Altaussee 25.10.1993; m. Staudach 27.12.1948 Paul Frhr von Handel (*Bzenec 30.1.1901, +Salzburg 27.4.1981)	
+318	296	CZERNIN 3	.A3.B2.C6.D4	4	1910	2000	Hodonín , +Salzburg	Franziska Paula Gabriele Johanna Maria	D4. Franziska Paula Gabriele Johanna Maria, *Hodonín 8.3.1910, +Salzburg 10.4.2000; m. Aigen bei Salzburg 9.6.1934 Johann Frhr Koblitz von Willmburg (*Wien 25.9.1895, +Japanese prison, Bodowoso, Java XII.1944)	
+319	296	CZERNIN 3	.A3.B2.C6.D5	4	1910	1996	Hodonín , +Salzburg	Jan Felix Jaroslav Pavel Maria	D5. Jan Felix Jaroslav Pavel Maria, *Hodonín 8.3.1910, +Salzburg 24.5.1996; m. Wien 30.4.1940 Osterheldis Frn von der Lippe (*Wien 28.3.1917)	320,321
+320	319	CZERNIN 3	.A3.B2.C6.D5.E1	5	1942	null	Wien	Maria Johanna Viktoria	E1. Maria Johanna Viktoria, *Wien 26.1.1942; m. Salzburg 6.5.1967 Alexander Frhr von Wolff (*Berlin 25.12.1942)	
+321	319	CZERNIN 3	.A3.B2.C6.D5.E2	5	1943	null	Wien	Maria Christina Anna	E2. Maria Christina Anna, *Wien 13.3.1943; m. Maria Plain 2.9.1967 Gf Johannes Demetrius von und zu Trauttmansdorff-Weinsberg (*16.8.1934)	
+322	296	CZERNIN 3	.A3.B2.C6.D6	4	1913	2002	Wien , +Oxford	Alexander Friedrich Josef Paul Maria	D6. Alexander Friedrich Josef Paul Maria, *Wien 30.4.1913, +Oxford 5.4.2002; m. Haywards Heath 9.7.1949 Diana Zannick Hutton/Hulton (*London 12.12.1922, +Iver Heath, Bucks 30.8.1982)	323,328,329
+323	322	CZERNIN 3	.A3.B2.C6.D6.E1	5	1951	null	London	Alexandra Gabriele Maria	E1. Alexandra Gabriele Maria, *London 12.3.1951; m. Windsor 15.7.1972 Richard Fishlock (*Kampala, Uganda 17.8.1936)	324,325,326,327
+324	323	CZERNIN 3	.A3.B2.C6.D6.E1.F1	6	1973	null	London	Alexander Hannibal Czernin Fishlock	F1. Alexander Hannibal Czernin Fishlock, *London 18.4.1973	
+325	323	CZERNIN 3	.A3.B2.C6.D6.E1.F2	6	1975	null	Swindon	Nicholas Laurence Czernin Fishlock	F2. Nicholas Laurence Czernin Fishlock, *Swindon 3.3.1975	
+326	323	CZERNIN 3	.A3.B2.C6.D6.E1.F3	6	1985	null	Swindon	Isabel Anna-Marie Czernin Fishlock Orr-Ewing	F3. Isabel Anna-Marie Czernin Fishlock Orr-Ewing, *Swindon 5.6.1985	
+327	323	CZERNIN 3	.A3.B2.C6.D6.E1.F4	6	1987	null	London	Frederick Charles Czernin Fishlock	F4. Frederick Charles Czernin Fishlock, *London 14.2.1987	
+328	322	CZERNIN 3	.A3.B2.C6.D6.E2	5	1953	null	London	Antonia Elisabeth Maria	E2. Antonia Elisabeth Maria, *London 1.2.1953; 1m: London 16.2.1974 (div 1984) Antony Braitwaite (*London 16.4.1949); 2m: London 22.8.1986 Colin Ian Charles MacGregor (*Malacca, Malaysia 2.11.1953)	
+329	322	CZERNIN 3	.A3.B2.C6.D6.E3	5	1955	null	London	Stephanie Anna Maria	E3. Stephanie Anna Maria, *London 11.11.1955; 1m: London 28.10.1978 (div 1996) Charles William Beauclerk MacClure (*London 15.9.1954); 2m: London 11.10.1996 Richard Morton Stanley (*Lucknow, India 4.4.1944)	
+330	232	CZERNIN 3	.A3.B2.C7	3	1888	1907	Chomutov , +Hlušice	Josef Děpold	C7. Josef Děpold, *Chomutov 21.1.1888, +Hlušice 6.11.1907	
+331	230	CZERNIN 3	.A3.B3	2	1837	1904	Praha , +Kulm	Rosine Josefa	B3. Rosine Josefa, *Praha 15.12.1837, +Kulm 18.1.1904; m. Praha 5.5.1863 Friedrich Joseph Wilhelm Gf Westphalen zu Fürstenberg (*Münster 21.4.1830, +Kulm 9.5.1900)	
+332	230	CZERNIN 3	.A3.B4	2	1841	1874	, +	Marie Antonie	B4. Marie Antonie, *3.1.1841, +6.1.1874; m. 19/29.10.1871 Gf Ferdinand von Fünfkirchen (*20.9.1834, +18.12.1898)	
+333	230	CZERNIN 3	.A3.B5	2	1842	1923	Praha , +Praha	Josef	B5. Josef, c.k. tajný rada, *Praha 20.2.1842, +Praha 27.1.1923; m. Praha 18.1.1870 Maria Gfn Des Fours-Walderode (*Praha 25.6.1850, +Praha 22.5.1923)	334,346
+334	333	CZERNIN 3	.A3.B5.C1	3	1878	1963	Praha , +London	František Josef Theodor Ottokar Maria	C1. František Josef Theodor Ottokar Maria, *Praha 24.5.1878, +London 17.10.1963; m. Praha 24.9.1917 Wilhelmine Clanner von Engelshofen (*Hoštakov 10.9.1894, +London 5.8.1974)	335,336,345
+335	334	CZERNIN 3	.A3.B5.C1.D1	4	1920	1985	Praha , +Washington D.C	Františka Romana Maria	D1. Františka Romana Maria, *Praha 25.12.1920, +Washington D.C. 10.1.1985; m. La Habana, Cuba 28.4.1953/55 Juan Manuel Menrego (*Santiago de Cuba 3.11.1913, +La Habana 6.4.1956)	
+336	334	CZERNIN 3	.A3.B5.C1.D2	4	1924	null	Praha	Josef Vincenc Vojtěch Maria	D2. Josef Vincenc Vojtěch Maria, *Praha 9.8.1924; m. London 20.11.1957 Hon. Hazel Scott-Ellis (*London 12.8.1935)	337,338,339,340,341,344
+337	336	CZERNIN 3	.A3.B5.C1.D2.E1	5	1958	null	London	Charlotte Mary Sidonia	E1. Charlotte Mary Sidonia, *London 28.11.1958; m. London 12.4.1986 Neil Girkins (*London 5.7.1948)	
+338	336	CZERNIN 3	.A3.B5.C1.D2.E2	5	1960	null	London	Henrietta Mary Rosario	E2. Henrietta Mary Rosario, *London 10.1.1960; m. London 12.11.1985 Alistair Currey (*Waterlooville 6.11.1947)	
+339	336	CZERNIN 3	.A3.B5.C1.D2.E3	5	1961	null	London	Alexandra Mary Romana	E3. Alexandra Mary Romana, *London 6.11.1961; m. London 16.5.1992 David Mark Noel Kelly (*Pulborough 8.5.1959)	
+340	336	CZERNIN 3	.A3.B5.C1.D2.E4	5	1963	null	London	Philippa Mary Loretta	E4. Philippa Mary Loretta, *London 3.7.1963; m. London 7.11.1998 Alexander William Rainger Mitchell (*Winchester 30.4.1963)	
+341	336	CZERNIN 3	.A3.B5.C1.D2.E5	5	1966	null	London	Peter John Joseph	E5. Peter John Joseph, *London 1.1.1966; m. Cambridge 17.9.1994 Lucinda Suzanne Wright (*Cambridge 9.1.1965)	342,343
+342	341	CZERNIN 3	.A3.B5.C1.D2.E5.F1	6	1997	null	Los Angeles	Audrey Serena Angela	F1. Audrey Serena Angela, *Los Angeles 13.8.1997	
+343	341	CZERNIN 3	.A3.B5.C1.D2.E5.F2	6	1999	null	Los Angeles	Alexander John Peter	F2. Alexander John Peter, *Los Angeles 2.10.1999	
+344	336	CZERNIN 3	.A3.B5.C1.D2.E6	5	1967	null	London	Isabella Mary Benedicta	E6. Isabella Mary Benedicta, *London 27.12.1967; m. London 30.4.1999 Mark Nicholas Straker Burnell (*Cambridge 12.11.1964)	
+345	334	CZERNIN 3	.A3.B5.C1.D3	4	1925	null	Praha	Monika Anna Maria Flavia	D3. Monika Anna Maria Flavia, *Praha 5.10.1925; m. Praha 5.9.1946 John Malcolm George (*Caerleon 25.10.1918, +Olney, Bucks. 17.12.1987)	
+346	333	CZERNIN 3	.A3.B5.C2	3	1880	1926	Praha , +accident Skočice u Vodňan	Rosina	C2. Rosina, *Praha 14.10.1880, +accident Skočice u Vodňan 23.9.1926; m. zámek Hoříkov 18.6.1907 Gf Maria Adalbert von Schönborn (*Malesice 16.8.1881, +Klatovy 18.1.1946)	
+347	230	CZERNIN 3	.A3.B6	2	1844	1935	Praha , +Bístvina	Marie	B6. Marie, *Praha 12.10.1844, +Bístvina 2.2.1935; m. Praha 2.7.1867 August Pierre Picot de Peccaduc, Frhr von Herzogenberg (*Litoměřice 3.11.1840, +Bístvina 22.7.1906)	
+348	230	CZERNIN 3	.A3.B7	2	1851	1907	, +	Eugen	B7. Eugen, *1.1.1851, +12.5.1907	

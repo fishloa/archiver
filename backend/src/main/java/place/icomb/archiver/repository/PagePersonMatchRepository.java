@@ -20,8 +20,4 @@ public interface PagePersonMatchRepository extends CrudRepository<PagePersonMatc
   void deleteByPageId(@Param("pageId") Long pageId);
 
   boolean existsByPageId(Long pageId);
-
-  @Modifying
-  @Query("TRUNCATE page_person_match")
-  void truncateAll();
 }

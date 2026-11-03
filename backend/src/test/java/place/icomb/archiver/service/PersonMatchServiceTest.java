@@ -21,9 +21,8 @@ class PersonMatchServiceTest {
   static List<Person> allPeople;
 
   @BeforeAll
-  static void setup() {
-    treeService = new FamilyTreeService();
-    treeService.reload();
+  static void setup() throws Exception {
+    treeService = FamilyTreeService.forPeople(FamilyTreeGolden.legacyPeople());
     allPeople = treeService.getAllPeople();
     matchService = new PersonMatchService(treeService, null, null, null, null, null, "");
   }

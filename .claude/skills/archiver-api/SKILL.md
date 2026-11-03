@@ -20,10 +20,11 @@ guidance with it.
 | `cancel_job` | one queued job, by id |
 | `reocr_page` | read one page again on a chosen engine |
 | `delete_page` | remove one page (a blank or duplicate sheet) by `recordId` and `seq`; the pages after it close the gap. Cannot be undone; a reason is required |
+| `add_person`, `update_person`, `add_name`, `add_event`, `update_event`, `link_parent`, `add_couple`, `cite`, `link_record`, `add_media`, `merge_persons`, `undo_change`, `tree_changes` | edit the family tree. Every call needs a reason and is one undoable write; `get_person` shows the ids they take |
 | `get_page` | one page's text, translation, content type and the address of its scan |
 | `export_pdf`, `get_pdf_export`, `download_pdf` | ask for a PDF of a record or chosen pages (`pages: "14"`), poll it, then `download_pdf` returns the file itself as an embedded resource a client can save to disk. Up to 8 MB it comes whole; a larger PDF is refused with its number of parts and fetched with `part=1`, `part=2`, … (8 MB each; save in order and `cat` them into one file, then check the SHA-256 given with every part). Anything above about 12 MB in one reply used to die as "session expired" |
 
-The last three are administrators only and fail closed: no provable
+The last three, and every tree-editing tool, are administrators only and fail closed: no provable
 `ROLE_ADMIN`, no action. `reocr_page` also refuses a record that is on hold,
 rather than queueing work that would run the moment the hold lifts.
 
@@ -260,6 +261,25 @@ a correction cannot touch more than intended (`409` if absent or ambiguous, `400
 | `GET /api/admin/records/{id}/corrections` | The audit, newest first |
 
 Nothing is re-run and no embedding is recomputed, so correct a few characters, not a passage.
+
+## Editing the family tree
+
+The tree is in the database; the text file is only V22's input. Prefer the MCP tools. The REST
+API under `/api/admin/genealogy` (admin token) does the same. Every write carries `"reason"` in
+its JSON body (on `DELETE` too).
+
+| Call | Does |
+|---|---|
+| `POST /persons` `{"given":…,"surname":…,"sex":"M"\|"F"\|"U","reason":…}` | a new person (ids from 349) with their primary name |
+| `POST /persons/{id}/names` | another name (birth, married, alias, religious, title, other) |
+| `POST`, `PUT /{id}`, `DELETE /{id}` on `names`, `events`, `couples`, `parent-links`, `places`, `place-names`, `sources`, `citations`, `record-links`, `media`, `media-people` | create, change, delete. Events take a GEDCOM 7 `dateText` (`12 MAR 1890`, `ABT 1890`, `BET 1657 AND 1664`) and `placeName` or `placeId`. `media` takes `pageId`, an optional crop in pixels of the stored scan, and `personId`/`isPortrait` |
+| `POST /persons/{keep}/merge/{gone}` | moves every link of the duplicate to `keep` |
+| `GET /changes?personId=…` · `POST /changes/{id}/undo` | the audit; undo the whole write that a change belongs to (409 if anything it touched has changed since) |
+| `GET /review` | what the import or later editing left to check (`needs_review`) |
+| `GET /export.ged?living=exclude\|include` | GEDCOM 7 (living people left out by default) |
+
+Refusals are `{"error":…}`: 400 for bad input, 404 when something is missing, 409 for a conflict
+(a cycle, a third birth parent, deleting someone still linked: merge instead).
 
 ## PDFs
 
