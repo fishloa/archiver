@@ -3608,3 +3608,17 @@ Same day, pages 3–11 added (all verified byte-identical): a portrait labelled 
 
 **Family testimony, 3 Nov 2026: Manfred Czernin.** The applicant passes on his grandfather Alexander's view that his first cousin Count Manfred Beckett Czernin (b. 18.1.1913; Battle of Britain pilot with 17 and 85 Squadrons; later SOE, HS 9/386/6) was "a show off". Recorded as family recollection, undated and unattributed beyond Alexander; it is not documented in any record held.
 Same testimony: Alexander's **best friend was Josef Czernin** (b. Prague 9.8.1924, 2nd cousin; see the 23 Oct entry), "who married the richest woman in England", i.e. the Hon. Hazel Scott-Ellis (m. London 20.11.1957). From public sources, not yet in the archive: she was a daughter of Thomas Scott-Ellis, 8th Baron Howard de Walden, whose family's Howard de Walden Estate owns much of Marylebone. She became Baroness Howard de Walden in her own right after the barony was called out of abeyance. Their son Peter John Joseph (b. 1966) appears to be the film producer Peter Czernin. Each of these points needs a source before it is relied on.
+
+**3 Nov 2026: portrait of Maria Antonia Czernin, née Salm-Neuburg (1776–1840), and Academia finds.**
+- **The portrait:** Wilnitsky Fine Arts (Vienna) offers a Weikert portrait of her, dated 1796, for €8,000. Tiberius sold the same canvas on 26 Nov 2024 (lot 100) as an anonymous "Österreichischer Maler um 1800", for €1,000 hammer. The back carries an inscription with her name and her birth and death dates.
+- **Her dates and parents, from the registers:**
+  - Vienna, St Michael death register, 31 Mar 1840: aged 63, "gebürtig von Brünn", body taken to Vinoř.
+  - Brno, St James: baptised 18 Apr 1776, born on the 16th.
+  - So her birth year is **1776**, not 1766.
+  - She married Wolfgang Maria on **11 Oct 1795** at Jemčina, according to the Roseč register.
+  - Her parents were Karl Vinzenz Salm-Neuburg and Maria Anna Khevenhüller-Metsch.
+- **No pendant of Wolfgang Maria** was found in the sale, nor any portrait of him anywhere.
+- **Provenance:** most likely the painting went to Austria with the Vinoř branch when it left Bohemia in 1917. This is an inference.
+- **Juffinger and Walderdorff,** *Czernin. Verzeichnis der Gemälde* (2015), is ingested as **record 4084**. It covers the Old Master gallery and contains no family portraits.
+- **Kubeš,** *Prokop Vojtěch Černín z Chudenic (1726–1777)*, FHB 37/1 (2022), is ingested as **record 4085**. It is a biography of the applicant's 5×-great-grandfather.
+- **The Academia login** is blocked by Cloudflare's bot check, so downloads are done by the applicant or through the Claude in Chrome extension.
