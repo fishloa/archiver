@@ -51,12 +51,41 @@ describe('PersonFacts', () => {
 		);
 		expect(screen.getByText(/Lucki/)).toBeTruthy();
 		expect(screen.getByText('30 APR 1913')).toBeTruthy();
-		expect(screen.getByText(/Legacy file · questionable/)).toBeTruthy();
+		expect(screen.getByText('Legacy file', { selector: '.vui-badge' })).toBeTruthy();
+		expect(screen.queryByText(/questionable/)).toBeNull();
 		expect(screen.getByRole('link', { name: 'Marriage certificate' }).getAttribute('href')).toBe(
 			'/records/4082/pages/1'
 		);
 		await fireEvent.click(screen.getAllByRole('button', { name: 'Diana Zannick Hutton/Hulton' })[0]);
 		expect(onNavigate).toHaveBeenCalledWith(400);
+	});
+
+	it('grades only citations of archive documents', () => {
+		const birth = alexander.events[0];
+		render(PersonFacts, {
+			person: {
+				...alexander,
+				events: [
+					{
+						...birth,
+						citations: [
+							{ id: 5, sourceId: 1, sourceTitle: 'Legacy file', pageId: null, detail: null, quality: 1 },
+							{ id: 6, sourceId: 2, sourceTitle: 'Taufbuch', pageId: 9, detail: 'fol. 3', quality: 3 },
+							{ id: 7, sourceId: 3, sourceTitle: 'Heiratsakt', pageId: null, detail: null, quality: 2 }
+						]
+					}
+				],
+				sources: [
+					alexander.sources[0],
+					{ id: 2, title: 'Taufbuch', author: null, recordId: null, url: null },
+					{ id: 3, title: 'Heiratsakt', author: null, recordId: 4082, url: null }
+				]
+			},
+			onNavigate: vi.fn()
+		});
+		expect(screen.getByText('Legacy file', { selector: '.vui-badge' })).toBeTruthy();
+		expect(screen.getByText('Taufbuch – fol. 3 · primary evidence')).toBeTruthy();
+		expect(screen.getByText('Heiratsakt · secondary evidence')).toBeTruthy();
 	});
 
 	it('says so when nothing is recorded', () => {

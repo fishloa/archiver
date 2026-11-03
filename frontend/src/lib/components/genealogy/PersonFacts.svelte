@@ -8,6 +8,7 @@
 		eventLabel,
 		fullName,
 		qualityLabel,
+		type Citation,
 		type PersonDetail
 	} from '$lib/genealogy';
 
@@ -19,6 +20,10 @@
 		person.parentLinks.filter((l) => l.relation === 'parent' && l.type !== 'birth')
 	);
 	const gallery = $derived(person.media.filter((m) => !m.isPortrait));
+	const recordSources = $derived(
+		new Set(person.sources.filter((s) => s.recordId != null).map((s) => s.id))
+	);
+	const citesDocument = (c: Citation) => c.pageId != null || recordSources.has(c.sourceId);
 </script>
 
 <div class="facts">
@@ -65,7 +70,7 @@
 							{/if}
 						{/if}
 						{#each ev.citations as c (c.id)}
-							<span class="vui-badge vui-badge-info">{c.sourceTitle}{c.detail ? ` – ${c.detail}` : ''} · {$t(qualityLabel(c.quality))}</span>
+							<span class="vui-badge vui-badge-info">{c.sourceTitle}{c.detail ? ` – ${c.detail}` : ''}{citesDocument(c) ? ` · ${$t(qualityLabel(c.quality))}` : ''}</span>
 						{/each}
 					</li>
 				{/each}
