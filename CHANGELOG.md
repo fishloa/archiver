@@ -9,6 +9,31 @@ new revision, no build is triggered, and the release silently never happens —
 which is exactly what v1.0.0 did on its first attempt. Add the entry below,
 commit, then tag that commit.
 
+## v1.1.27 — 3 November 2026
+
+**The family tree is stored in the database and can be edited.** The tree used to be parsed from a
+text file at every start, with person ids that were only positions in that file; editing one line
+renumbered everyone, and a reload wiped every document match. It now lives in `gen_*` tables after
+the GEDCOM X and Gramps models, using GEDCOM 7 vocabulary: people with several names, couples with
+marriage and divorce events, parent links typed birth/adopted/step/foster, places with their names
+in each language, sources and citations with GEDCOM's 0–3 quality, links from a person to the
+records they appear in, and portraits cut losslessly from page scans. Migrations V21–V24 import the
+legacy file once (ids 1–348 kept exactly, spouses become people from 349, the Czernin surname is
+added to the blood line, every imported fact cites the legacy source at quality 1, 30 entries are
+flagged for review), give the document matches and the profile link real foreign keys, and add the
+audit's transaction id. Rehearsed on a full copy of production: all four applied in 1.4 s, 10,703
+matches kept.
+
+Administrators edit through `/api/admin/genealogy/**`, new MCP tools (`add_person`, `add_name`,
+`add_event`, `link_parent`, `add_couple`, `cite`, `link_record`, `add_media`, `merge_persons`,
+`undo_change`, `tree_changes`) and an Edit mode on the person page with a crop selector. Every write
+needs a reason and is audited; undo reverses one write and refuses if later work depends on it;
+merge re-points every link and refuses to make anyone their own ancestor. `GET
+/api/admin/genealogy/export.ged` writes GEDCOM 7, leaving out the living by default (anyone with no
+death and no dated event before 1926). Notes and review flags are shown to administrators only.
+`POST /api/family-tree/reload` and `/invalidate-matches`, which any signed-in user could call, are
+gone. Person matching is unchanged and is the next piece of work.
+
 ## v1.1.26 — 30 October 2026
 
 **A page with no words is never translated.** A photograph comes back from Mistral OCR as figure
