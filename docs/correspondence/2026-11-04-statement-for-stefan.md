@@ -29,6 +29,26 @@ Against this he puts a single reason: Alexander was supposedly working on a war-
 
 A reasonable person in Alexander's position had grounds to fear persecution, on two separate grounds.
 
+> ### ★ The key document: Heydrich's own words
+>
+> Heydrich's 20th situation report to Bormann, Prague, 16 May 1942, marked "Geheime Reichssache" (Národní archiv 114-3-17, fol. 66; P5, filed 15.09.2026), under the heading "Enteignung des tschechischen Adels". This is the measure that fell on the Czernins of Dymokury.
+>
+> **1. The declaration of loyalty was only the occasion:**
+> > "Als **Anlaß** wurde eine Treueerklärung genommen, die diese Adligen am 17.9.1938 … Benesch gegenüber abgegeben hatten."
+> > (The occasion taken was a declaration of loyalty that these nobles had made to Beneš on 17.9.1938.)
+>
+> **2. The real reasons were the property and the families' links into Austria:**
+> > "Es handelt sich um Grundbesitz …, der für die spätere deutsche Unterwanderung und Besiedlung von großem Wert sein wird. Gerade diese Adligen waren es, die … z.T. aufgrund ihrer deutschen Namen und **adliger Verbindungen ins Reich und in die Ostmark** sowie nach Ungarn nachrichtendienstliche, politisch sehr gefährliche Faktoren waren."
+> > (This is landed property that will be of great value for later German infiltration and settlement. It was precisely these nobles who, partly because of their German names and their noble connections into the Reich and into the Ostmark, and to Hungary, were factors dangerous to intelligence and politically very dangerous.)
+>
+> **Why it matters:**
+> - MA 35's whole case on the cousins (27.05, 12.08) is that they were persecuted *because of* the declaration, and so the persecution could not touch the Austrian branch.
+> - The man who ordered the measure says the opposite. The declaration was the "Anlaß" (occasion). The reasons were the land and the nobles' family connections, named expressly as connections "in die Ostmark".
+> - In 1942 the Czernins' connection in the Ostmark was Paul's family in Vienna: Alexander, his brothers Felix and Wolfgang, and their mother.
+> - MA 35 has held this page since 15.09.2026. Its 24.09 opinion summarises the letter only as the "Zwangsverwaltung der Güter", and no opinion has ever addressed either sentence.
+>
+> ⚠ The letter does not order any measure against relatives in the Ostmark. The argument is that it gave the Austrian branch **objective grounds to fear**, which is the § 58c test, not that they were targeted.
+
 ### A. The Bohemian cousins: fear from 1942
 
 1. **He was one of the family.**
@@ -41,7 +61,7 @@ A reasonable person in Alexander's position had grounds to fear persecution, on 
 3. **The cousins were persecuted, and not only for their declaration of loyalty to Czechoslovakia.**
    - Rudolf's estate was placed under compulsory administration in February 1942 and confiscated in April 1942. He was sentenced to three years and nine months.
    - Humprecht was arrested on 9.6.1942 on a planted-weapon charge and died after his imprisonment (P5; E8).
-   - Heydrich himself called the loyalty declaration a mere pretext ("Anlaß"). He put the danger in the nobles' family "Verbindungen … in die Ostmark", which is where Alexander's branch lived (P5).
+   - **Heydrich himself called the loyalty declaration only the "Anlaß" (occasion). He put the real reasons in the land and in the nobles' "Verbindungen ins Reich und in die Ostmark", which is where Alexander's branch lived (P5; see ★ above).**
 4. **The persecution reached his immediate family.**
    - On 11.04.1943 his brother Wolfgang visited Humprecht in Brandenburg-Görden penitentiary. Wolfgang applied to visit again in September (P4).
    - This was a wartime journey from Vienna to Brandenburg, to see a political prisoner whose file was marked "Tscheche!". It had to be arranged through a relative who was a Reich German (E9).
@@ -83,7 +103,7 @@ Each correction gives the historian's statement, why it is wrong, and the eviden
 | **C1** | Kinship with Humprecht and Rudolf "nicht mit Sicherheit bestätigt" (27.05) | Proved by parish registers: Alexander's father Paul and the cousins' father Děpolt were brothers. MA 35 itself calls them "seine Cousins" (notice p. 2; 12.08; 24.09) | E1, E2, E3; P6 (Hořejš p. 31) |
 | **C2** | "Kein Hinweis … dass Alexander Czernin … ein enges Verhältnis hatte" (27.05) | MA 35's own file says the opposite: "I think we felt closer to them than to our other cousins". Godparent links; Wolfgang's prison visit 1943; the 1963 visit to Rudolf in Prague and at Dymokury | P1 pp. 23, 27–30; P4; E2, E3, E5 |
 | **C3** | "Ein enger Bezug dieses Familienzweigs zur Tschechoslowakei konnte nicht festgestellt werden" (27.05) | Lived in Bohemia for much of 1919–38. Registered in Vienna as arriving "from Schönhof, ČSR". Father born and buried at Dymokury. MA 35's own 2023 opinion records his file being checked under the ČSSR compensation law | P1 pp. 24, 27, 29; E4, E6; 2023 opinion |
-| **C4** | The cousins were persecuted because they publicly supported Czechoslovakia, not as Czernins (27.05, 12.08) | Heydrich calls the declaration only the "Anlaß" and names the families' links "in die Ostmark" as the danger. The Gestapo's motive against Humprecht was his property, and the weapon was planted. 24.09 itself says the measure fell on "Familien" | P5 (rec. 3796 fol. 66; rec. 3801 p. 44); E8 |
+| **C4** | The cousins were persecuted because they publicly supported Czechoslovakia, not as Czernins (27.05, 12.08) | **The key correction (★ Part 1).** Heydrich calls the declaration only the "Anlaß"; the reasons he gives are the land ("für die spätere deutsche Unterwanderung und Besiedlung von großem Wert") and the nobles' "Verbindungen ins Reich und in die Ostmark". Never addressed by MA 35, though held since 15.09. The Gestapo's motive against Humprecht was his property, and the weapon was planted. 24.09 itself says the measure fell on "Familien" | P5 (rec. 3796 fol. 66; rec. 3801 p. 44); E8 |
 | **C5** | "Sämtliche … Verfolgungshandlungen beziehen sich auf den tschechoslowakischen Teil der Familie" (12.08) | His own brother Felix was held by the Gestapo in Vienna for high treason, which MA 35 accepts (22.10) | P3, P7 |
 | **C6** | The new documents "enthalten … keinen Hinweis" (12.08), though footnote 1 of the same report says the Czech texts "können … nicht beurteilt werden" | No assessment was made, so there is no basis for the conclusion. English translations are now provided | E17; P6 |
 | **C7** | Felix's arrest "durch keinerlei Dokumente bestätigt"; an "Endphasenverbrechen" (24.09) | Withdrawn on 22.10 (custody confirmed, victim status accepted). Yet the 24.09 conclusion is still carried forward as "bereits festgestellt" without being re-examined | P7 pp. 1, 3–5, 16, 24, 26, 34 |
@@ -105,7 +125,7 @@ Each correction gives the historian's statement, why it is wrong, and the eviden
 | O1 | Kinship not proven (27.05) | Proved | C1 |
 | O2 | No close relationship (27.05) | In his own words, in MA 35's file | C2 |
 | O3 | No tie of the branch to Czechoslovakia; Heimatrecht in Vienna since 1916 (27.05) | Lived there, father born and buried there, compensation check. **We accept** that the family held Austrian citizenship from 1918. We do not claim he was Czechoslovak | C3 |
-| O4 | The cousins were persecuted for the declaration, not as Czernins (27.05, 12.08) | The declaration was the pretext. The motive was property, and the danger was the family links into the Ostmark. **We accept** that Alexander's branch did not sign | C4 |
+| O4 | The cousins were persecuted for the declaration, not as Czernins (27.05, 12.08) | **Heydrich's own words (★ Part 1):** the declaration was only the "Anlaß". The motive was property, and the danger was the family links into the Ostmark. **We accept** that Alexander's branch did not sign | C4 |
 | O5 | Nothing shows Alexander or his branch spoke out publicly (27.05) | **Accepted** for Alexander himself. For the branch: Felix was charged as an "österr. Legitimist" and was in O5 from 1943. The test is grounds to fear, not his own activity: the historian's own Cupal and Raasch examples were persecuted with no activity of their own | C5, C11; P3; P7 p. 16 |
 | O6 | All persecution concerns the Czechoslovak part (12.08) | His brother in Vienna | C5 |
 | O7 | The Czech documents contain nothing (12.08) | Never assessed (fn. 1); translations provided | C6 |
