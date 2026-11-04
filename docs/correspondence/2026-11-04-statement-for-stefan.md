@@ -216,7 +216,7 @@ Each correction gives the historian's statement, why it is wrong, and the eviden
 - **Felix:** NSDAP candidate from December 1938 (MA 35 has found the card), and his Dresdner Bank role in Belgium and Hungary (3920). E12 must be an extract only, because the same set contains the Dresdner Bank papers.
 - **Peter Czernin.** MA 35 says "Obersturmbannführer"; the rank was Obersturmführer. Correct the rank only if it has to be mentioned; never discuss him on the facts.
 - **Family accounts of 1944–45.**
-  - Desertion: family lore, unproven. His daughter says he "never said he deserted". The desertion in our papers is Felix's, on 7.4.1945.
+  - Desertion: the family account, not yet documented. His daughter says he "never said he deserted". Sources being sought: Abt. PA, Freiburg, Gendarmerie chronicles of Aussee.
   - Jaundice: documented in 1942 only (WASt cards).
   - His daughter also says he "was wanted for a friend's factory". That phrase could be read as Doblhoff.
   - Nothing of this is to be put to MA 35 as fact.
