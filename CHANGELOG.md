@@ -9,6 +9,18 @@ new revision, no build is triggered, and the release silently never happens —
 which is exactly what v1.0.0 did on its first attempt. Add the entry below,
 commit, then tag that commit.
 
+## v1.1.28 — 4 November 2026
+
+**Access requests.** Someone who signs in with an address that is not on the access list can now ask
+for access from the No-access page: a name and an optional message. Administrators see pending
+requests at the top of Admin → Users, and either approve them (creating a new user with a chosen
+name and role, or adding the address to an existing user) or deny them. A pending request is
+updated in place if sent again; a denied address cannot ask again until its request is removed.
+Every decision records who made it and when. Migration V25 adds `access_request`; the endpoints
+are `GET`/`POST /api/auth/access-request` and `/api/admin/access-requests/**`.
+
+**Family tree:** the citation grade is shown only for archive documents.
+
 ## v1.1.27 — 3 November 2026
 
 **The family tree is stored in the database and can be edited.** The tree used to be parsed from a
