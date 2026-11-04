@@ -26,6 +26,9 @@ public class ProxyAuthFilter extends OncePerRequestFilter {
   /** Request attribute holding the email of a caller who signed in but is not on the allowlist. */
   public static final String SIGNED_IN_AS_ATTRIBUTE = "archiver.signedInAs";
 
+  /** Request attribute holding the {@link AppUser} authenticated through the proxy header. */
+  public static final String PROXY_USER_ATTRIBUTE = "archiver.proxyUser";
+
   private final AppUserRepository appUserRepository;
   private final TrustedPeerResolver trustedPeerResolver;
 
@@ -52,6 +55,7 @@ public class ProxyAuthFilter extends OncePerRequestFilter {
         var auth =
             new UsernamePasswordAuthenticationToken(normalised, null, buildAuthorities(user));
         auth.setDetails(user);
+        request.setAttribute(PROXY_USER_ATTRIBUTE, user);
         SecurityContextHolder.getContext().setAuthentication(auth);
       } else {
         // Authenticated with the identity provider, but not on the allowlist. Record it so the
