@@ -10,7 +10,7 @@ The historian's opinions answered here are Bernhard Bardach's of 27.05, 12.08, 2
 - **Part 1:** summary of the case.
 - **Part 2:** corrections to MA 35's reading of the facts (C1–C17).
 - **Part 3:** each objection MA 35 raises, in its own German words, with our answer (O1–O22).
-- **Appendix A:** new evidence, to be filed ([E1](https://archive.czernin.eu/records/4005)–E17).
+- **Appendix A:** new evidence, to be filed ([E1](https://archive.czernin.eu/records/4005)–E19).
 - **Appendix B:** evidence MA 35 already holds ([P1](https://archive.czernin.eu/records/4019)–P9).
 - **Appendix C:** for counsel only (weak points, adverse material, open enquiries, decisions).
 
