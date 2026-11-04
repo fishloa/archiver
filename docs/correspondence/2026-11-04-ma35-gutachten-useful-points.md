@@ -30,6 +30,44 @@ All five reports are by Bernhard Bardach.
    - The 2026 reports read the same work as a sign of the regime's trust.
    - The documents support compulsion. Record 3505 says he was "als Arbeitsurlauber zu den Wiener-Neustädter Flugzeugwerken kommandiert", i.e. ordered there as a soldier from 7.1.1943, and the secondment ended 31.10.1943.
 
+## Closeness to Humprecht and Rudolf, in Alexander's own words
+
+Source: record 4019, Alexander's family history (Iver Heath, January 1987).
+
+- MA 35 already holds this document. On 27.05.2026 it describes it as a family history "durch den Onkel von Alexander Czernin verfasst".
+- The same report says "aus den im Akt vorliegenden Dokumenten [geht] kein Hinweis hervor, dass Alexander Czernin zu Humprecht Czernin oder zu Rudolf Czernin ein enges Verhältnis hatte". The answer is in its own file.
+
+Quotations:
+
+- **p. 23:** "Uncle Theobald lived in Dymokur, and as we lived for several years with my grandmother in Hluschitz, only 15 kms away, we saw his family quite often. His six children, three girls and three boys, were roughly the same age as we were and I think we felt closer to them than to our other cousins."
+  - Theobald (Děpolt) was the father of Rudolf and Humprecht (records 4078 and 4079).
+  - Who "his six children" were is evident from pp. 25–30: Rudobald, Humprecht, Hansobald, Aina, Elele and Mimi.
+- **p. 24:** "During the inter-war years, 1919-1937, we lived partly in Bohemia, in Hluschitz and Schönhof, and partly in Austria, in Salzburg."
+  - This rebuts 27.05.2026, which says no close tie of the branch to Czechoslovakia could be established.
+- **p. 27:** "Schönhof … It was here that I had lived from 1935 to 1938."
+- **p. 29:** "Hluschitz … Here we had lived from 1922 to 1927."
+- **pp. 25–26:** on Rudobald at Dymokur and Humprecht at Hluschitz: "German 'Zwangsverwalter' … took over the running of the estates … Eventually, on trumped up charges, both were put into prison. Humprecht did not survive his ordeal".
+- **p. 30:** Dymokur in 1963 "so utterly different from my last one some twenty five years earlier". That places his last visit around 1938.
+- **pp. 27–30, the 1963 journey:** he visited Rudobald's Prague flat ("During the next few days we saw a lot of my cousins"), went with Rudobald to Dymokur, and visited his father's grave there.
+  - This shows a continuing close relationship, kept up across the Iron Curtain.
+
+Corroborating sources:
+
+- Record 4067, Wolfgang's memoir of summer 1916: a train journey to Hluschitz "with his cousins and grandmother". Alexander translated it.
+- Record 4079: Paul Czernin, Alexander's father, stood proxy godfather at Humprecht's baptism, 1909.
+
+Caution: p. 24 also says that, living in Austria, "we had to watch from outside, without being directly involved, how the drama unfolded, engulfing in stages our relatives in Bohemia". MA 35 has the document but has not quoted that line. Cite pp. 23–24 on closeness without drawing attention to it.
+
+## Ties to Czechoslovakia: the father's citizenship file
+
+- Records 3965 and 3966 (Národní archiv, NA-2660-2/03-2021):
+  - 1930: Paul certified as a Czechoslovak citizen by Poděbrady.
+  - 1931: ruled to have lost that status by Vienna domicile.
+  - 1932–34: fought to regain it, with Dymokury domicile. The ministry called the case "repatriace".
+  - 11.6.1934: Landesamt assurance of citizenship, extending to his wife and minor children (3965/52–53).
+- 1925: Felix (b. 7.3.1902) told the Czech authorities that all other family members had remained Czechoslovak citizens (3966/46).
+- No application by Alexander himself has been found.
+
 ## Conceded in the 2026 reports
 
 - 27.05.2026: Humprecht and Rudolf were persecuted, "unbestritten".
