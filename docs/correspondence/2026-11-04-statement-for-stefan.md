@@ -231,11 +231,6 @@ Filing status checked on 4.11.2026 against every filing (16.02, 13–19.03, 22.0
 - **His NSBDT (Nazi engineers' association) application of March–April 1940** ([4060](https://archive.czernin.eu/records/4060)), and 15 weeks' voluntary work at the Steyr works (Gauakt).
 - **Felix:** NSDAP candidate from December 1938 (MA 35 has found the card), and his Dresdner Bank role in Belgium and Hungary ([3920](https://archive.czernin.eu/records/3920)). [E12](https://archive.czernin.eu/records/3922) must be an extract only, because the same set contains the Dresdner Bank papers.
 - **Peter Czernin.** MA 35 says "Obersturmbannführer"; the rank was Obersturmführer. Correct the rank only if it has to be mentioned; never discuss him on the facts.
-- **Family accounts of 1944–45.**
-  - Desertion: the family account, not yet documented. His daughter says he "never said he deserted". Sources being sought: Abt. PA, Freiburg, Gendarmerie chronicles of Aussee.
-  - Jaundice: documented in 1942 only (WASt cards).
-  - His daughter also says he "was wanted for a friend's factory". That phrase could be read as Doblhoff.
-  - Nothing of this is to be put to MA 35 as fact.
 - **The forester was never convicted.** František Dvořák was acquitted three times:
   - by the Kutná Hora people's court in 1947/48, "pro nedostatek důkazů" (for lack of evidence);
   - by the Regional Court in Prague on 24.5.1977, which the Supreme Court set aside on 2.11.1977;
@@ -259,8 +254,6 @@ Filing status checked on 4.11.2026 against every filing (16.02, 13–19.03, 22.0
 | Enquiry | Sent | Status |
 |---|---|---|
 | Bundesarchiv Abt. PA: Wehrstammkarten and supplement | 19.09, 13.10.2026 | auto-acknowledged only |
-| Bundesarchiv: hospital records re-check | 13.10.2026 | no reply |
-| Freiburg military archive: court and desertion files | 01.11.2025 | no reply |
 | Ober-Grafendorf: registration 1943–45 | 04.11.2026 | sent |
 | Zell am See: registration 1944–47 | 04.11.2026 | sent |
 | Bundesarchiv R 3/3882 (Doblhoff paper) and RL 3/5071 (WNF board report, Apr–Jun 1944) | 04.11.2026 | cost estimate requested |
@@ -273,3 +266,5 @@ Filing status checked on 4.11.2026 against every filing (16.02, 13–19.03, 22.0
 3. Whether to ask MA 35 to assess the Czech material itself, or rely on our translations (C7).
 4. Whether the statement deadline should run from 3.11.2026. The opinions were disclosed only then, and our request under § 17 AVG of 28.07 for access to the file (Akteneinsicht) went unanswered.
 5. How far to argue the departure point (C-1.1), and whether to concede it if the case law does not support feared persecution with a continuing effect.
+6. **Duty of disclosure and § 69(1) Z 1 AVG.** C-2 lists adverse material we have not filed. Please confirm: that we may leave it out so long as nothing we file says the opposite; and how to guard against any later claim that the grant was "erschlichen" (obtained by deception).
+7. **Correcting our own 22.07 letter.** Should the reply correct the two statements in C-2 (the move to Alt-Aussee in 1943; "voluntarily gives up his protected position") before MA 35 notices them?
