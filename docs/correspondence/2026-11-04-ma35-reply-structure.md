@@ -182,3 +182,57 @@ So Paul and Děpolt were brothers, and Alexander, Rudolf and Humprecht were firs
 3. **#5 and #11.** No public stand by Alexander, and NSDAP relatives. Answerable only by logic and by what happened to Felix.
 
 Everything else can be answered from documents.
+
+---
+
+## Part 4: Felix in O5 and Alexander's proximity (4 November 2026)
+
+### The documents
+
+| Date | Felix | Alexander | Source |
+|---|---|---|---|
+| 13.1–22.2.1943 | — | **Wien IV, Wohllebengasse 11**, subtenant of Schmidtmann | Meldekarte, record 4021 (not filed) |
+| from 22.2.1943 | — | Wien III, Metternichgasse 10 | 4021 |
+| **1943** | **joins Thurn-Taxis's O5 resistance group**, tasked with "Nachrichtenbeschaffung aus dem Auslande" | — | Thurn-Taxis, sworn, 28.8.1945 (4061 p. 16, filed 16.10) |
+| **July 1943** | moves to **Wien IV, Wohllebengasse 9/10**, the building next to Alexander's sublet of that spring (no. 11; about 30 m apart) | — | Meldeblatt 6.11.1945 (4061 p. 1, filed) |
+| August 1943 | the "defeatist statements" later charged | — | diary, 3507 p. 1 (filed) |
+| autumn 1943 | in Turkey, on O5's orders, contacts the Austrian resistance group there; this "letzten Endes" leads to his arrest | — | 4061 p. 16 |
+| 20.11.1943 | — | Wien III, **Metternichgasse 10/4** (registered there until 6.5.1946) | 4021 |
+| Aug 1944–20.3.1945 | in the Wehrmacht (Sillein/Pressburg) | — | 4061 p. 1; 3507 p. 1 |
+| 27–28.3.1945 | the Gestapo seeks him, then arrests him on RSHA orders; it declines his offer of a house search; on 5.4 he asks himself "Ob Gestapo in der Wohnung war?" | — | 3507 pp. 1, 5 |
+| 30.4.1945 | "Luckis Geburtstag. Hoffentlich ist er in Aussee bei Mami" | whereabouts unknown | 3507 p. 11 |
+
+**Distance:** Wohllebengasse 9 to Metternichgasse 10 is about **600 m in a straight line** (OpenStreetMap coordinates). The two addresses lie either side of the Belvedere and Schwarzenbergplatz area, in adjoining districts IV and III. Wohllebengasse 9 to no. 11 is about 30 m.
+
+### The argument this supports
+
+1. **Both brothers were in Vienna throughout Felix's O5 period.**
+   - From July 1943, when Felix's O5 activity and the August 1943 "defeatist statements" begin, the two were registered about 600 m apart.
+   - That continued until Felix's arrest in March 1945.
+   - Alexander had himself lived at Wohllebengasse 11 in early 1943, next door to the building Felix moved into.
+2. **Why this matters legally:**
+   - **§ 139 RStGB** (failure to report treason) and **§ 83(2) RStGB**, both discussed by MA 35's own historian on 22.10, reached people who knew, or were presumed to know, of a treasonable undertaking.
+   - A brother living a few streets away is the first person the Gestapo would presume to know.
+   - The historian's own examples (Haas, the Cupal siblings, the Raasch mother) are relatives arrested because they were close to the person charged.
+3. **The Gestapo's approach** in 1945 shows it treated the case as a political high-treason matter on RSHA orders, not as an ordinary end-phase arrest:
+   - It came looking for Felix the day before his arrest.
+   - It interrogated him for five hours on contacts going back to 1943.
+   - It refused a search of his flat.
+4. **The case to put:** from 1943 Alexander lived within walking distance of a brother who was active in the Austrian resistance and was eventually arrested for high treason. He had grounds to fear that he would be drawn in as a relative presumed to know. That is the very mechanism MA 35 accepts.
+
+### Limits: state them before MA 35 does
+
+- **Registration is not proof of presence.**
+  - The TH Wien file has him seconded to the WNF at Wiener Neustadt in 1943, writing from "Wiener Neustadt, Wienerstr. 67" on 4.8.1943 (record 3505 p. 35).
+  - Felix was away with the Wehrmacht from August 1944 to March 1945.
+  - Felix's diary, covering 26.3 to 6.5.1945, never mentions Alexander's flat. On 30.4.1945 he hopes Alexander is in Aussee.
+  - So the two were registered neighbours. Daily contact is not documented.
+- **No document shows that Alexander knew of Felix's O5 role,** or that the Gestapo asked about him. The argument is reasonable fear, not actual targeting.
+- **Felix's flat** was in the IV. Bezirk; his § 27 file was handled there (M.Nr. 3315/IV. Bez.). Alexander's was in the III. The districts adjoin.
+- **The police enquiry of July 1950** (Polizeidirektion Abt. I to the BMI) still used Metternichgasse 10/4 for Alexander. That confirms the address but not his presence in 1944–45.
+
+### To file
+
+- Record 4021 (Meldekarte: Wohllebengasse 11 in 1943, Metternichgasse 10/4 from 1943 to 1946). Not yet filed.
+- MA 35 already holds the Meldeblatt (4061 p. 1: Wohllebengasse 9/10 since July 1943) and Thurn-Taxis (4061 p. 16).
+- A map or a simple statement of the distance.

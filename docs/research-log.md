@@ -3647,3 +3647,13 @@ Stefan Huber forwarded the historian's reports on 3 November (Zimbra 474846: 202
   - Felix's charges (Falkenhausen circle; Falkenhausen to replace Hitler) put him in the 20 July milieu. The post-20-July Sippenhaft is the closest precedent, and the historian does not discuss it. A citable source is needed.
   - The Gauakt shows the regime refused Alexander's UK-Stellung in 1941.
 - **Instruction from the applicant (4.11):** ignore errors in our own filings unless MA 35 relies on them.
+
+**4 Nov 2026: Felix and Alexander were neighbours in Vienna during Felix's O5 period.**
+- **Felix:** Wien IV, Wohllebengasse 9/10 from July 1943 (Meldeblatt, 4061 p. 1). In O5 from 1943, and in Turkey on O5's orders in autumn 1943 (Thurn-Taxis, 4061 p. 16).
+- **Alexander:** Wohllebengasse 11 from 13.1 to 22.2.1943, the building next door. Then Wien III, Metternichgasse 10, and 10/4 from 20.11.1943 to 6.5.1946 (4021).
+- **Distance:** about 600 m apart (Nominatim coordinates); nos. 9 and 11 are about 30 m apart.
+- **Limits:**
+  - Registration is not proof of presence: Alexander was at Wiener Neustadt in 1943, and Felix was in the Wehrmacht from Aug 1944 to Mar 1945.
+  - The diary never mentions Alexander's flat.
+  - Nothing shows Alexander knew of O5.
+- Written up in `docs/correspondence/2026-11-04-ma35-reply-structure.md`, Part 4.
