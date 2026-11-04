@@ -60,7 +60,7 @@ A reasonable person in Alexander's position had grounds to fear persecution, on 
    - The families stood godparent to each other's children (E2, E3).
 3. **The cousins were persecuted, and not only for their declaration of loyalty to Czechoslovakia.**
    - Rudolf's estate was placed under compulsory administration in February 1942 and confiscated in April 1942. He was sentenced to three years and nine months.
-   - Humprecht was arrested on 9.6.1942 when a pistol was "found" on his forester. On 30.6.1942 a Gestapo summary court sentenced him to death for possessing it; the hearing lasted at most 45 minutes. The sentence was commuted the same day to life in Brandenburg penitentiary. He was released dying and died on 19.9.1944 (P6; E8).
+   - Humprecht was arrested on 9.6.1942 when a pistol was "found" on his forester. On 30.6.1942 a Gestapo summary court sentenced him to death for possessing it; the hearing lasted at most 45 minutes. The sentence was commuted the same day to life in Brandenburg penitentiary. He was released dying and died on 19.9.1944 (P6; E8). The 45 minutes are from Krýlová 2014, citing Kyncl 2012 (rec. 3518; ⚠ check whether filed).
    - **Two independent sources, 30 years apart, give the same motive.**
      - Heydrich in 1942 values the confiscated land "für die spätere deutsche Unterwanderung und Besiedlung" (for later German infiltration and settlement) (P5).
      - In 1972 Paul Feustel, the Kolín Gestapo chief who prosecuted Humprecht, testified that the Prague Gestapo chief Geschke wanted Humprecht before the summary court because of an "interest in seizing his property" (E8).
