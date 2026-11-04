@@ -3624,3 +3624,26 @@ Same testimony: Alexander's **best friend was Josef Czernin** (b. Prague 9.8.192
 - **The Academia login** is blocked by Cloudflare's bot check, so downloads are done by the applicant or through the Claude in Chrome extension.
 
 **3 Nov 2026: four Czernin papers from academia.edu (records 4086–4089, text-pdf).** Downloaded free through the applicant's logged-in Academia account (paid "PDF pack" offers declined), ingested byte-identical: 4086 Walderdorff, *Die Czernin'sche Gemäldegalerie in Wien unter Eugen Czernin-Chudenitz (1892–1955)* (in *Die verkaufte Malkunst*, 2012, 241–262; 20 pp.; SHA-256 3b22aa3c…7d37c); 4087 Brandhuber, *Johann Rudolph Graf Czernin von Chudenitz (1757–1845). Ein Leben für die Künste* (Residenzgalerie Salzburg, Gesamtverzeichnis 2, 2010, 434–459; 29 pp.; 5025df73…b69d); 4088 Vácha, *Mathey delineavit: Náhrobek hraběte Humprechta Jana Černína* (Sepulchralia et epigraphica 5, 2014; 23 pp.; 4b9aafa0…9d6e); 4089 Vávra, *Mezi Vídní a Prahou: Komunikace Františka Josefa Černína se správcem jeho vídeňských paláců* (MA thesis, Pardubice 2018; 145 pp.; 7a72195e…d37c). The thesis PDF's font mapping drops ě/ř/ů and swaps digits (Ň=2, ň=3, Ř=8, ř=9) on 122 of 145 pages; the first translation inherited the errors (1720s became "17th–18th centuries", fol. 335v became 105v). All 145 pages re-OCR'd with Mistral on the applicant's instruction after page 10 was checked.
+
+### 4 November 2026 — MA 35's historian reports disclosed; analysis begun
+
+Stefan Huber forwarded the historian's reports on 3 November (Zimbra 474846: 2026 reports of 27.05, 12.08, 24.09, 22.10, all by Bernhard Bardach; 474850: the 2023 report of 04.08.2023). Both emails are filed in /Citizenship. The PDFs are saved in `docs/correspondence/` as `2026-11-03-ma35-historische-gutachten.pdf` and `2023-08-04-ma35-historisches-gutachten.pdf`. Stefan's view: "the reasoning appears quite convincing"; a call is to follow.
+
+- **What the reports add to the notice of 23 October:**
+  - 12.08, footnote 1: the historian cannot read Czech, so the Czech sources were not assessed. The same report nonetheless concludes they contain nothing.
+  - 24.09 found Felix's NSDAP card itself, searched the DÖW (nil) and Peter Czernin's biography online.
+  - 24.09 says Alexander's leaving date is unknown and that no post-war registration was found. Wrong: record 4021, and MA 35 says it searched MA 8. Yet it calls the job motive certain.
+  - 22.10 concedes Sippenhaft-type risk (§§ 83(2), 139 RStGB) and that the fear was "grundsätzlich möglich". Its only counterweight is the war-project premise, which turned from "dürfte" (24.09 body) into fact (24.09 conclusion; 22.10) without any new source.
+- **The 2023 report:** a database search with nil results. Points still useful:
+  - Alexander's STE was checked under the ČSSR Compensation Act (a tie to Bohemia).
+  - The historian then attributed the move to Britain to "Bestrebungen der britischen Regierung".
+  - He then called Vertipedia unverifiable.
+- **Closeness to the cousins in Alexander's own words** (record 4019 p. 23): "we saw his family quite often … I think we felt closer to them than to our other cousins". Also pp. 24, 27 and 29 (Bohemia 1919–37; Hlušice 1922–27; Schönhof 1935–38) and pp. 27–30 (the 1963 visit to Rudobald). MA 35 has held the document since 16 Feb.
+- **Czech citizenship:** no application by Alexander exists in records 3965 or 3966 (both read in full by a subagent). Paul's 1934 assurance covered his wife and "minor children", unnamed; Alexander was 21 on 30.4.1934, six weeks before it. The optant Felix in 3966 is Alexander's brother (b. 7.3.1902).
+- **Notes written:**
+  - `docs/correspondence/2026-11-04-ma35-gutachten-useful-points.md`: points in our favour.
+  - `docs/correspondence/2026-11-04-ma35-gutachten-analysis.md`: B1–B16 inconsistencies, merged with evidence note v3.2, plus procedure, the overall argument, gaps, and the counsel-only list.
+- **New lines of argument:**
+  - Felix's charges (Falkenhausen circle; Falkenhausen to replace Hitler) put him in the 20 July milieu. The post-20-July Sippenhaft is the closest precedent, and the historian does not discuss it. A citable source is needed.
+  - The Gauakt shows the regime refused Alexander's UK-Stellung in 1941.
+- **Instruction from the applicant (4.11):** ignore errors in our own filings unless MA 35 relies on them.
