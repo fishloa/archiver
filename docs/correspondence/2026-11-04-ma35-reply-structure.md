@@ -211,14 +211,19 @@ Everything else can be answered from documents.
    - That continued until Felix's arrest in March 1945.
    - Alexander had himself lived at Wohllebengasse 11 in early 1943, next door to the building Felix moved into.
 2. **Why this matters legally:**
-   - **§ 139 RStGB** (failure to report treason) and **§ 83(2) RStGB**, both discussed by MA 35's own historian on 22.10, reached people who knew, or were presumed to know, of a treasonable undertaking.
-   - A brother living a few streets away is the first person the Gestapo would presume to know.
-   - The historian's own examples (Haas, the Cupal siblings, the Raasch mother) are relatives arrested because they were close to the person charged.
+   - MA 35's own historian (22.10, quoting Lojowsky) sets out the two provisions:
+     - **§ 139 RStGB**: "Hierbei war es strafbar, wenn eine Person über staatsfeindliche Aktionen Bescheid wusste und dies nicht an die Behörden meldete" (up to life in Zuchthaus).
+     - **§ 83(2) RStGB**: meant to allow "selbst die entferntesten Vorbereitungshandlungen zum Hochverrat bestrafen zu können, wobei hierbei auch jene gemeint waren, die lediglich mittelbar dienten". And: "Zahlreiche Personen wurden angeklagt, obwohl kein Hinweis vorlag aus dem hervorging, dass sie irgendeiner Gruppe oder Organisation angehörten."
+   - On relatives, his own words: "Es gibt zahlreiche bekannte Fälle, bei denen im Zuge der Verhaftung von Widerstandskämpfern auch enge Verwandte verhaftet wurden, die mit Sicherheit nicht an deren Widerstandstätigkeiten beteiligt gewesen sind."
+   - His examples:
+     - The Cupal siblings: "unterstellt", i.e. alleged, to have known of their brother's plans, and sentenced to death.
+     - Hedwig Raasch: "überhaupt nichts zu tun" with her daughter's resistance, and arrested anyway.
+   - So on the historian's own account, knowledge was imputed to close relatives, not proved. A brother living a few streets away fits that pattern.
 3. **The Gestapo's approach** in 1945 shows it treated the case as a political high-treason matter on RSHA orders, not as an ordinary end-phase arrest:
    - It came looking for Felix the day before his arrest.
    - It interrogated him for five hours on contacts going back to 1943.
    - It refused a search of his flat.
-4. **The case to put:** from 1943 Alexander lived within walking distance of a brother who was active in the Austrian resistance and was eventually arrested for high treason. He had grounds to fear that he would be drawn in as a relative presumed to know. That is the very mechanism MA 35 accepts.
+4. **The case to put:** from 1943 Alexander lived within walking distance of a brother who was active in the Austrian resistance and was eventually arrested for high treason. He had grounds to fear that he would be drawn in as one of the "enge Verwandte … die mit Sicherheit nicht an deren Widerstandstätigkeiten beteiligt gewesen sind". The historian accepts that mechanism.
 
 ### Limits: state them before MA 35 does
 
