@@ -3,11 +3,15 @@
 	import { invalidateAll } from '$app/navigation';
 	import { tick } from 'svelte';
 	import { t } from '$lib/i18n';
-	import { Plus, Trash2, Pencil, X, Check, Users, Mail } from 'lucide-svelte';
-	import type { AdminUser } from '$lib/server/api';
+	import { Plus, Trash2, Pencil, X, Check, Users, Mail, UserPlus } from 'lucide-svelte';
+	import type { AdminUser, AccessRequest } from '$lib/server/api';
 
 	let { data, form } = $props();
 	let users = $derived(data.users ?? []) as AdminUser[];
+	let requests = $derived(data.requests ?? []) as AccessRequest[];
+	let pending = $derived(requests.filter((r) => r.status === 'pending'));
+	let decided = $derived(requests.filter((r) => r.status !== 'pending'));
+	let approveTarget = $state<Record<number, string>>({});
 
 	// Mode: null = list only, 'new' = creating, number = editing that user
 	let mode = $state<number | 'new' | null>(null);
@@ -55,6 +59,100 @@
 </script>
 
 <div>
+	<!-- Access requests -->
+	<div class="list-card requests-card">
+		<div class="list-header">
+			<h2 class="list-title">
+				<UserPlus size={18} strokeWidth={2} />
+				{$t('admin.requests')}
+				{#if pending.length > 0}<span class="count-badge">{pending.length}</span>{/if}
+			</h2>
+		</div>
+
+		{#if pending.length === 0}
+			<p class="empty">{$t('admin.requestsNone')}</p>
+		{:else}
+			<div class="user-list">
+				{#each pending as req (req.id)}
+					<div class="request-row">
+						<div class="user-info">
+							<span class="user-name">{req.name}</span>
+							<span class="user-email">{req.email}</span>
+							{#if req.message}<p class="request-message">{req.message}</p>{/if}
+							<span class="request-date">{new Date(req.created_at).toLocaleString()}</span>
+						</div>
+						<form method="POST" action="?/approveRequest" class="request-approve" use:enhance={() => {
+							return async ({ update }) => {
+								await update();
+								await invalidateAll();
+							};
+						}}>
+							<input type="hidden" name="id" value={req.id} />
+							<select name="userId" class="field-input field-select"
+								bind:value={approveTarget[req.id]}>
+								<option value="">{$t('admin.requestAsNew')}</option>
+								<optgroup label={$t('admin.requestAddTo')}>
+									{#each users as u}
+										<option value={String(u.id)}>{u.display_name ?? u.emails[0]?.email ?? u.id}</option>
+									{/each}
+								</optgroup>
+							</select>
+							{#if !approveTarget[req.id]}
+								<input type="text" name="displayName" value={req.name}
+									placeholder={$t('admin.displayName')} class="field-input" />
+								<select name="role" class="field-input field-select">
+									<option value="user">User</option>
+									<option value="admin">Admin</option>
+								</select>
+							{/if}
+							<div class="request-buttons">
+								<button type="submit" class="btn-submit">
+									<Check size={14} strokeWidth={2.5} />
+									{$t('admin.requestApprove')}
+								</button>
+								<button type="submit" formaction="?/denyRequest" class="btn-cancel"
+									onclick={(e) => { if (!confirm($t('admin.requestDenyConfirm'))) e.preventDefault(); }}>
+									<X size={14} strokeWidth={2.5} />
+									{$t('admin.requestDeny')}
+								</button>
+							</div>
+						</form>
+					</div>
+				{/each}
+			</div>
+		{/if}
+
+		{#if decided.length > 0}
+			<details class="decided">
+				<summary>{$t('admin.requestDecided')} ({decided.length})</summary>
+				<div class="user-list">
+					{#each decided as req (req.id)}
+						<div class="user-row">
+							<div class="user-info">
+								<span class="user-name">{req.name}</span>
+								<span class="user-email">{req.email}</span>
+							</div>
+							<span class="user-role" class:role-admin={req.status === 'approved'}>
+								{req.status === 'approved' ? $t('admin.requestStatus.approved') : $t('admin.requestStatus.denied')}
+							</span>
+							<form method="POST" action="?/deleteRequest" class="inline" use:enhance={() => {
+								return async ({ update }) => {
+									await update();
+									await invalidateAll();
+								};
+							}}>
+								<input type="hidden" name="id" value={req.id} />
+								<button type="submit" class="action-btn" title={$t('admin.requestRemove')}>
+									<Trash2 size={18} />
+								</button>
+							</form>
+						</div>
+					{/each}
+				</div>
+			</details>
+		{/if}
+	</div>
+
 	<!-- Form panel: shown when creating or editing -->
 	{#if mode !== null}
 		<div class="form-card">
@@ -651,5 +749,69 @@
 
 	.inline {
 		display: inline;
+	}
+	/* ── Access requests ── */
+	.requests-card {
+		margin-bottom: 24px;
+	}
+
+	.count-badge {
+		padding: 1px 8px;
+		border-radius: 999px;
+		background: var(--vui-accent);
+		color: var(--vui-bg-deep);
+		font-size: 12px;
+		font-weight: 700;
+	}
+
+	.request-row {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 16px;
+		padding: 14px;
+		border-radius: 8px;
+		border: 1px solid var(--vui-border);
+	}
+
+	.request-message {
+		margin: 6px 0 4px;
+		font-size: 13px;
+		color: var(--vui-text);
+		white-space: pre-wrap;
+	}
+
+	.request-date {
+		display: block;
+		font-size: 11px;
+		color: var(--vui-text-muted);
+	}
+
+	.request-approve {
+		display: flex;
+		flex-direction: column;
+		gap: 8px;
+		min-width: 220px;
+	}
+
+	.request-buttons {
+		display: flex;
+		gap: 8px;
+	}
+
+	.request-buttons .btn-cancel {
+		display: flex;
+		align-items: center;
+		gap: 6px;
+	}
+
+	.decided {
+		margin-top: 16px;
+	}
+
+	.decided summary {
+		cursor: pointer;
+		font-size: 13px;
+		color: var(--vui-text-muted);
+		margin-bottom: 8px;
 	}
 </style>

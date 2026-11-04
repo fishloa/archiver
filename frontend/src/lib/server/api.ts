@@ -736,6 +736,93 @@ export async function removeUserEmail(
   if (!res.ok) throw new Error(`Backend error: ${res.status}`);
 }
 
+export type AccessRequestStatus = "none" | "pending" | "approved" | "denied";
+
+export interface MyAccessRequest {
+  email: string;
+  status: AccessRequestStatus;
+  name?: string;
+  message?: string;
+}
+
+export interface AccessRequest {
+  id: number;
+  email: string;
+  name: string;
+  message: string;
+  status: AccessRequestStatus;
+  created_at: string;
+  decided_at: string | null;
+  decided_by: string | null;
+  user_id: number | null;
+}
+
+export async function fetchMyAccessRequest(
+  email: string,
+): Promise<MyAccessRequest | null> {
+  const res = await fetch(`${backendUrl()}/api/auth/access-request`, {
+    headers: authHeaders(email),
+  });
+  if (!res.ok) return null;
+  return res.json();
+}
+
+export async function submitAccessRequest(
+  email: string,
+  body: { name: string; message: string },
+): Promise<number> {
+  const res = await fetch(`${backendUrl()}/api/auth/access-request`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...authHeaders(email) },
+    body: JSON.stringify(body),
+  });
+  return res.status;
+}
+
+export async function fetchAccessRequests(
+  email: string,
+  status: "pending" | "all" = "pending",
+): Promise<AccessRequest[]> {
+  const res = await fetch(
+    `${backendUrl()}/api/admin/access-requests?status=${status}`,
+    { headers: authHeaders(email) },
+  );
+  if (!res.ok) throw new Error(`Backend error: ${res.status}`);
+  return res.json();
+}
+
+export async function approveAccessRequest(
+  email: string,
+  id: number,
+  body: { displayName?: string; role?: string; userId?: number },
+): Promise<void> {
+  const res = await fetch(
+    `${backendUrl()}/api/admin/access-requests/${id}/approve`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...authHeaders(email) },
+      body: JSON.stringify(body),
+    },
+  );
+  if (!res.ok) throw new Error(`Backend error: ${res.status}`);
+}
+
+export async function denyAccessRequest(email: string, id: number): Promise<void> {
+  const res = await fetch(`${backendUrl()}/api/admin/access-requests/${id}/deny`, {
+    method: "POST",
+    headers: authHeaders(email),
+  });
+  if (!res.ok) throw new Error(`Backend error: ${res.status}`);
+}
+
+export async function deleteAccessRequest(email: string, id: number): Promise<void> {
+  const res = await fetch(`${backendUrl()}/api/admin/access-requests/${id}`, {
+    method: "DELETE",
+    headers: authHeaders(email),
+  });
+  if (!res.ok) throw new Error(`Backend error: ${res.status}`);
+}
+
 /** One model, from one provider, doing one job. */
 export interface AiImplementation {
   id: string;

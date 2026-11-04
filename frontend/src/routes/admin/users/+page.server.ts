@@ -4,13 +4,20 @@ import {
 	updateUser,
 	deleteUser,
 	addUserEmail,
-	removeUserEmail
+	removeUserEmail,
+	fetchAccessRequests,
+	approveAccessRequest,
+	denyAccessRequest,
+	deleteAccessRequest
 } from '$lib/server/api';
 import type { PageServerLoad, Actions } from './$types';
 
 export const load: PageServerLoad = async ({ locals }) => {
-	const users = await fetchUsers(locals.userEmail!).catch(() => []);
-	return { users };
+	const [users, requests] = await Promise.all([
+		fetchUsers(locals.userEmail!).catch(() => []),
+		fetchAccessRequests(locals.userEmail!, 'all').catch(() => [])
+	]);
+	return { users, requests };
 };
 
 export const actions: Actions = {
@@ -55,5 +62,28 @@ export const actions: Actions = {
 		const emailId = Number(data.get('emailId'));
 		await removeUserEmail(locals.userEmail!, userId, emailId);
 		return { userAction: 'emailRemoved' };
+	},
+	approveRequest: async ({ request, locals }) => {
+		const data = await request.formData();
+		const id = Number(data.get('id'));
+		const existing = Number(data.get('userId'));
+		const body = existing
+			? { userId: existing }
+			: {
+					displayName: String(data.get('displayName') ?? '').trim(),
+					role: String(data.get('role') ?? 'user')
+				};
+		await approveAccessRequest(locals.userEmail!, id, body);
+		return { userAction: 'requestApproved' };
+	},
+	denyRequest: async ({ request, locals }) => {
+		const data = await request.formData();
+		await denyAccessRequest(locals.userEmail!, Number(data.get('id')));
+		return { userAction: 'requestDenied' };
+	},
+	deleteRequest: async ({ request, locals }) => {
+		const data = await request.formData();
+		await deleteAccessRequest(locals.userEmail!, Number(data.get('id')));
+		return { userAction: 'requestDeleted' };
 	}
 };
