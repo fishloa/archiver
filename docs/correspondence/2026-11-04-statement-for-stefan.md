@@ -60,7 +60,13 @@ A reasonable person in Alexander's position had grounds to fear persecution, on 
    - The families stood godparent to each other's children (E2, E3).
 3. **The cousins were persecuted, and not only for their declaration of loyalty to Czechoslovakia.**
    - Rudolf's estate was placed under compulsory administration in February 1942 and confiscated in April 1942. He was sentenced to three years and nine months.
-   - Humprecht was arrested on 9.6.1942 on a planted-weapon charge and died after his imprisonment (P5; E8).
+   - Humprecht was arrested on 9.6.1942 when a pistol was "found" on his forester. On 30.6.1942 a Gestapo summary court sentenced him to death for possessing it; the hearing lasted at most 45 minutes. The sentence was commuted the same day to life in Brandenburg penitentiary. He was released dying and died on 19.9.1944 (P6; E8).
+   - **Two independent sources, 30 years apart, give the same motive.**
+     - Heydrich in 1942 values the confiscated land "für die spätere deutsche Unterwanderung und Besiedlung" (for later German infiltration and settlement) (P5).
+     - In 1972 Paul Feustel, the Kolín Gestapo chief who prosecuted Humprecht, testified that the Prague Gestapo chief Geschke wanted Humprecht before the summary court because of an "interest in seizing his property" (E8).
+   - **A Czechoslovak state investigation in the 1970s concluded that the pistol had been planted** to create the conditions for his "likvidace" (liquidation). The Regional Prosecutor in Prague indicted the forester on that basis on 30.8.1974 (E8).
+   - **Alexander's own words, written in January 1987:** "on trumped up charges, both were put into prison. Humprecht did not survive his ordeal" (P1 pp. 25–26). This was 21 years before the state files were declassified (2008), from family knowledge alone.
+   - **Even on the regime's own version, a Czernin cousin was sentenced to death for one pistol.** A member of the Austrian branch had every reason to fear what the regime would do to the family.
    - **Heydrich himself called the loyalty declaration only the "Anlaß" (occasion). He put the real reasons in the land and in the nobles' "Verbindungen ins Reich und in die Ostmark", which is where Alexander's branch lived (P5; see ★ above).**
 4. **The persecution reached his immediate family.**
    - On 11.04.1943 his brother Wolfgang visited Humprecht in Brandenburg-Görden penitentiary. Wolfgang applied to visit again in September (P4).
@@ -103,7 +109,7 @@ Each correction gives the historian's statement, why it is wrong, and the eviden
 | **C1** | Kinship with Humprecht and Rudolf "nicht mit Sicherheit bestätigt" (27.05) | Proved by parish registers: Alexander's father Paul and the cousins' father Děpolt were brothers. MA 35 itself calls them "seine Cousins" (notice p. 2; 12.08; 24.09) | E1, E2, E3; P6 (Hořejš p. 31) |
 | **C2** | "Kein Hinweis … dass Alexander Czernin … ein enges Verhältnis hatte" (27.05) | MA 35's own file says the opposite: "I think we felt closer to them than to our other cousins". Godparent links; Wolfgang's prison visit 1943; the 1963 visit to Rudolf in Prague and at Dymokury | P1 pp. 23, 27–30; P4; E2, E3, E5 |
 | **C3** | "Ein enger Bezug dieses Familienzweigs zur Tschechoslowakei konnte nicht festgestellt werden" (27.05) | Lived in Bohemia for much of 1919–38. Registered in Vienna as arriving "from Schönhof, ČSR". Father born and buried at Dymokury. MA 35's own 2023 opinion records his file being checked under the ČSSR compensation law | P1 pp. 24, 27, 29; E4, E6; 2023 opinion |
-| **C4** | The cousins were persecuted because they publicly supported Czechoslovakia, not as Czernins (27.05, 12.08) | **The key correction (★ Part 1).** Heydrich calls the declaration only the "Anlaß"; the reasons he gives are the land ("für die spätere deutsche Unterwanderung und Besiedlung von großem Wert") and the nobles' "Verbindungen ins Reich und in die Ostmark". Never addressed by MA 35, though held since 15.09. The Gestapo's motive against Humprecht was his property, and the weapon was planted. 24.09 itself says the measure fell on "Familien" | P5 (rec. 3796 fol. 66; rec. 3801 p. 44); E8 |
+| **C4** | The cousins were persecuted because they publicly supported Czechoslovakia, not as Czernins (27.05, 12.08) | **The key correction (★ Part 1).** Heydrich calls the declaration only the "Anlaß"; the reasons he gives are the land ("für die spätere deutsche Unterwanderung und Besiedlung von großem Wert") and the nobles' "Verbindungen ins Reich und in die Ostmark". Never addressed by MA 35, though held since 15.09. Feustel, the prosecuting Gestapo officer, testified that the motive against Humprecht was his property (Geschke). A 1970s state investigation concluded that the pistol was planted. 24.09 itself says the measure fell on "Familien" | P5 (rec. 3796 fol. 66; rec. 3801 p. 44); E8 |
 | **C5** | "Sämtliche … Verfolgungshandlungen beziehen sich auf den tschechoslowakischen Teil der Familie" (12.08) | His own brother Felix was held by the Gestapo in Vienna for high treason, which MA 35 accepts (22.10) | P3, P7 |
 | **C6** | The new documents "enthalten … keinen Hinweis" (12.08), though footnote 1 of the same report says the Czech texts "können … nicht beurteilt werden" | No assessment was made, so there is no basis for the conclusion. English translations are now provided | E17; P6 |
 | **C7** | Felix's arrest "durch keinerlei Dokumente bestätigt"; an "Endphasenverbrechen" (24.09) | Withdrawn on 22.10 (custody confirmed, victim status accepted). Yet the 24.09 conclusion is still carried forward as "bereits festgestellt" without being re-examined | P7 pp. 1, 3–5, 16, 24, 26, 34 |
@@ -158,7 +164,7 @@ Each correction gives the historian's statement, why it is wrong, and the eviden
 | **E5** | Wolfgang Czernin's memoir of summer 1916, translated by Alexander | 4067 | Hlušice "with his cousins and grandmother" |
 | **E6** | Vienna registration records, 1936–40 | 3504 | Arrival in Vienna "from Schönhof, ČSR". ⚠ Check whether filed |
 | **E7** | Paul's Czechoslovak citizenship application, 1930–35 | 3965, 3966 | Application with domicile at Dymokury. ⚠ Counsel's decision (Appendix C) |
-| **E8** | StB (Czechoslovak state security) final report on Humprecht's case | 4012 p. 69; 4009 p. 87 | Prague Gestapo chief Geschke wanted Humprecht tried "because there was an interest in seizing his property"; no evidence; the weapon was planted |
+| **E8** | Czechoslovak state investigation of Humprecht's case (StB, 1970s): final report, and the Regional Prosecutor's indictment of 30.8.1974 | 4008 p. 126; 4012 pp. 69–70; 4009 pp. 85, 87 | Feustel: Geschke wanted Humprecht tried "because there was an interest in seizing his property". The StB found that the pistol was "podvržena" (planted) "a tím vytvořeny podmínky pro jeho likvidaci" (to create the conditions for his liquidation). The indictment charges a "policejní provokace … usvědčit podvrženými důkazy" (a police provocation to convict him with planted evidence). Also the servants' evidence that the weapon was unknown at the house (4012 p. 70). ⚠ File these pages only; see Appendix C on the acquittals |
 | **E9** | Chládková protocol; Humprecht's prison file cover | 4009 p. 45; 4025 | Wolfgang's visit was arranged through "a relative who was a Reich German"; the file cover is marked "Tscheche!". ⚠ Check whether the cover was in the Arolsen filing |
 | **E10** | Alexander's Vienna registration card (Meldekarte), 1943–46 | 4021 | Wohllebengasse 11, 13.1–22.2.1943; Metternichgasse 10/4, 20.11.1943–6.5.1946, then deregistered to Alt-Aussee |
 | **E11** | Statement of distances with a map | prepared from OpenStreetMap | Wohllebengasse 9 to no. 11 about 30 m; Wohllebengasse 9 to Metternichgasse 10 about 600 m |
@@ -214,6 +220,15 @@ Each correction gives the historian's statement, why it is wrong, and the eviden
   - Jaundice: documented in 1942 only (WASt cards).
   - His daughter also says he "was wanted for a friend's factory". That phrase could be read as Doblhoff.
   - Nothing of this is to be put to MA 35 as fact.
+- **The forester was never convicted.** František Dvořák was acquitted three times:
+  - by the Kutná Hora people's court in 1947/48, "pro nedostatek důkazů" (for lack of evidence);
+  - by the Regional Court in Prague on 24.5.1977, which the Supreme Court set aside on 2.11.1977;
+  - by the Regional Court in Prague on 23.9.1978, under § 226(a) tr.ř. (the act was not proven).
+
+  The retrial had to proceed without the 1947–48 court files, which were lost before 1961 (4012 pp. 78–79; 4008 pp. 19, 24). So no court has found that the pistol was planted. Our wording is always "a state investigation concluded", never "it was established".
+  - In 1972 Rudolf's son Theobald told the StB that the family only speculated about a set-up after 1945: "Nic konkrétního však řečeno nebylo" (4009 p. 43). This also shows that the belief was current in the family from 1945, which is consistent with Alexander's 1987 words.
+  - Feustel was sentenced to death in East Berlin on 11.12.1972. The case files note that Czernin was to be named before that court as one of his victims (4016). ⚠ Whether the judgment covers Humprecht is not verified.
+  - The archive's English translations of the 1948 and 1978 acquittals had both rendered "zprošťuje se" (is acquitted) as "is charged" or "finds him guilty". They were corrected on 4.11.2026 (corrections 286–290).
 - **Two historians' views.**
   - Dr Dita Homolová (ÚSTR, 21.10.2026) calls a link between Alexander and Heydrich's letter "pure deduction".
   - The Wimmer thesis (4076) describes the Czernins as a family split between supporters and opponents of the regime.
