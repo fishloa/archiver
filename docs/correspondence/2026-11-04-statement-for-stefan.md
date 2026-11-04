@@ -191,7 +191,7 @@ The German text is quoted from MA 35's notice of 23.10.2026 (`2026-10-23-ma35-pa
 | **P5** | Heydrich to Bormann, 16.05.1942 ("Als Anlaß wurde eine Treueerklärung genommen"; "Verbindungen ins Reich und in die Ostmark"); SD report 1942 on Humprecht | [3796](https://archive.czernin.eu/records/3796) fol. 66; [3801](https://archive.czernin.eu/records/3801) p. [44](https://archive.czernin.eu/records/3801/pages/44) | 15.09.2026 |
 | **P6** | Hazdra; Hořejš, *Paměť a dějiny* 2014/4 | [3495](https://archive.czernin.eu/records/3495); [3519](https://archive.czernin.eu/records/3519) | 22.07.2026 |
 | **P7** | Felix's § 27 file: Meldeblatt (Wohllebengasse 9/10 from July 1943; "von der Gestapo wegen Hochverrat und Widerstandstätigkeit verhaftet"), victim registration, Thurn-Taxis's sworn statement on O5 | [4061](https://archive.czernin.eu/records/4061) pp. [1](https://archive.czernin.eu/records/4061/pages/1), [3–5](https://archive.czernin.eu/records/4061/pages/3), [16](https://archive.czernin.eu/records/4061/pages/16), [24](https://archive.czernin.eu/records/4061/pages/24), [26](https://archive.czernin.eu/records/4061/pages/26), [34](https://archive.czernin.eu/records/4061/pages/34) | 16.10.2026 |
-| **P8** | Heydrich letter (Sternberg transcript) and negative archive replies | [3513](https://archive.czernin.eu/records/3513) | 22.07.2026 |
+| **P8** | Heydrich letter: a transcript filed 22.07.2026, since superseded by the Prague original, Národní archiv 114-3-17 fol. 66 (P5, filed 15.09.2026). Cite the original only | [3796 p. 5](https://archive.czernin.eu/records/3796/pages/5) | 22.07.2026 (transcript); 15.09.2026 (original) |
 | **P9** | Our own submissions: statement of 05.03.2026; documents of 25.03, 22.07, 28.07, 15.09 and 16.10.2026 | — | as dated |
 
 ---
