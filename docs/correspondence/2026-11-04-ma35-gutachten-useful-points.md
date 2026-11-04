@@ -28,7 +28,7 @@ All five reports are by Bernhard Bardach.
 
 4. **The 2023 caseworker's note records the war work as compulsion: "gezwungen den Kriegseinsatz zu unterstützen".**
    - The 2026 reports read the same work as a sign of the regime's trust.
-   - The documents support compulsion. Record 3505 says he was "als Arbeitsurlauber zu den Wiener-Neustädter Flugzeugwerken kommandiert", i.e. ordered there as a soldier from 7.1.1943, and the secondment ended 31.10.1943.
+   - The documents support compulsion. Record 3505 says he was "als Arbeitsurlauber zu den Wiener-Neustädter Flugzeugwerken kommandiert", i.e. ordered there as a soldier from 7.1.1943. The secondment was extended to 31.12.1943 (pp. 107, 110), and the assistant post was vacated on 1.10.1943 (p. 111).
 
 ## Closeness to Humprecht and Rudolf, in Alexander's own words
 
