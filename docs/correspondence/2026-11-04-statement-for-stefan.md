@@ -47,6 +47,11 @@ A reasonable person in Alexander's position had grounds to fear persecution, on 
 > - In 1942 the Czernins' connection in the Ostmark was Paul's family in Vienna: Alexander, his brothers Felix and Wolfgang, and their mother.
 > - MA 35 has held this page since 15.09.2026. Its 24.09 opinion summarises the letter only as the "Zwangsverwaltung der Güter", and no opinion has ever addressed either sentence.
 >
+> **MA 35 has been reading a faulty copy.** The notice says Heydrich called the Czernins "in Hinsicht auf Spionage besonders schädlich" (N p. 3). That wording is not in the original. It comes from the transcript we filed on 22.07 ([3513](https://archive.czernin.eu/records/3513), from a post-war copy published in the Sternberg memoir), which differs from the original at the decisive point:
+> - **Transcript:** "*Der Grund*, warum ich mich dazu veranlaßt fühle, war ein Treuebekenntnis …" (the *reason* was the declaration); "cca. 50.000 ha"; "besonders schädlich … besonders, was die Spionage betrifft".
+> - **Original** ([3796 fol. 66](https://archive.czernin.eu/records/3796/pages/5), filed 15.09): "Als *Anlaß* wurde eine Treueerklärung genommen" (the declaration was taken as the *occasion*); "etwa 35.000 ha"; "nachrichtendienstliche, politisch sehr gefährliche Faktoren".
+> The transcript is evidently a back-translation, and it turns Heydrich's "occasion" into his "reason". The historian's reading, that the cousins were persecuted *because of* the declaration, matches the transcript and not the original. We ask MA 35 to rely on the original only.
+>
 > ⚠ The letter does not order any measure against relatives in the Ostmark. The argument is that it gave the Austrian branch **objective grounds to fear**, which is the § 58c test, not that they were targeted.
 
 ### A. The Bohemian cousins: fear from 1942
@@ -191,7 +196,7 @@ The German text is quoted from MA 35's notice of 23.10.2026 (`2026-10-23-ma35-pa
 | **P5** | Heydrich to Bormann, 16.05.1942 ("Als Anlaß wurde eine Treueerklärung genommen"; "Verbindungen ins Reich und in die Ostmark"); SD report 1942 on Humprecht | [3796 fol. 66 (p. 5)](https://archive.czernin.eu/records/3796/pages/5); [3801](https://archive.czernin.eu/records/3801) p. [44](https://archive.czernin.eu/records/3801/pages/44) | 15.09.2026 |
 | **P6** | Hazdra; Hořejš, *Paměť a dějiny* 2014/4 | [3495](https://archive.czernin.eu/records/3495); [3519](https://archive.czernin.eu/records/3519) | 22.07.2026 |
 | **P7** | Felix's § 27 file: Meldeblatt (Wohllebengasse 9/10 from July 1943; "von der Gestapo wegen Hochverrat und Widerstandstätigkeit verhaftet"), victim registration, Thurn-Taxis's sworn statement on O5 | [4061](https://archive.czernin.eu/records/4061) pp. [1](https://archive.czernin.eu/records/4061/pages/1), [3–5](https://archive.czernin.eu/records/4061/pages/3), [16](https://archive.czernin.eu/records/4061/pages/16), [24](https://archive.czernin.eu/records/4061/pages/24), [26](https://archive.czernin.eu/records/4061/pages/26), [34](https://archive.czernin.eu/records/4061/pages/34) | 16.10.2026 |
-| **P8** | Heydrich letter: a transcript filed 22.07.2026, since superseded by the Prague original, Národní archiv 114-3-17 fol. 66 (P5, filed 15.09.2026). Cite the original only | [3796 p. 5](https://archive.czernin.eu/records/3796/pages/5) | 22.07.2026 (transcript); 15.09.2026 (original) |
+| **P8** | Heydrich letter: a transcript filed 22.07.2026, with the archives' replies of that time saying they could not then locate the original. Both are superseded by the Prague original, Národní archiv 114-3-17 fol. 66 (P5, filed 15.09.2026). The transcript differs from the original ("Grund" for "Anlaß"; 50,000 for 35,000 ha; see ★ Part 1). Cite the original only | [3796 p. 5](https://archive.czernin.eu/records/3796/pages/5) | 22.07.2026 (transcript); 15.09.2026 (original) |
 | **P9** | Our own submissions: statement of 05.03.2026; documents of 25.03, 22.07, 28.07, 15.09 and 16.10.2026 | — | as dated |
 
 ---
