@@ -52,17 +52,18 @@ So, from 1942 at the latest, and certainly from the prison visit of April 1943, 
 ### B. His brother Felix: fear from 1943, and acute in 1944–45
 
 1. **Felix was in the resistance.** He belonged to the O5 resistance group from 1943 and was sent to Turkey on its behalf in autumn 1943 (P7 p. 16). The Gestapo later charged him with defeatist remarks dating from August 1943, links to the "Falkenhausen-Clique", "Feindverbindung" with Turkey and Austrian legitimism (P3).
-2. **The brothers lived next to each other.**
+2. **The brothers were close.** On 30.04.1945 Felix wrote: "Luckis Geburtstag. Hoffentlich ist er in Aussee bei Mami" (Lucki's birthday; hopefully he is in Aussee with Mother) (P3 p. 11). This was three weeks after his release from Gestapo custody, with Vienna just taken by the Red Army. Even then Felix remembered his brother's birthday, used his family nickname and worried for his safety.
+3. **The brothers lived next to each other.**
    - From July 1943 Felix lived at Wien IV, Wohllebengasse 9/10 (P7 p. 1).
    - Alexander had sublet a room at Wohllebengasse 11, the building next door, from January to February 1943. From 20.11.1943 he was registered at Wien III, Metternichgasse 10/4, about 600 m from Felix, and he stayed there until May 1946 (E10, E11).
-3. **Alexander had no protected position after 1943.**
+4. **Alexander had no protected position after 1943.**
    - His secondment to the Wiener Neustädter Flugzeugwerke ran from 7.1.1943 and was extended to 31.12.1943. His university post was vacated on 1.10.1943 (E13).
    - No document places him on any war project after 31.12.1943 (C9).
    - The regime had already refused to declare him indispensable ("UK-Stellung") in 1941 (E13).
-4. **Usefulness to the war effort protected no one.**
+5. **Usefulness to the war effort protected no one.**
    - Felix was a serving soldier in 1944–45. He was arrested when he reported to the Wehrkreiskommando, and held "da ich Soldat sei" (P3).
    - After 20 July 1944 the regime punished the relatives of suspected conspirators as a matter of policy. That included brothers who were themselves serving soldiers, such as Alexander von Stauffenberg (E14, E15).
-5. **The fear is the very mechanism the historian accepts.**
+6. **The fear is the very mechanism the historian accepts.**
    - § 139 RStGB punished anyone who knew of treasonable activity and did not report it.
    - The historian's own examples are close relatives presumed to know and arrested anyway: the Cupal siblings were "unterstellt", and Hedwig Raasch had "überhaupt nichts zu tun" with her daughter's resistance.
    - A brother registered a few streets away is exactly such a relative.
@@ -114,7 +115,7 @@ Each correction gives the historian's statement, why it is wrong, and the eviden
 | O11 | Many Czernins were in the NSDAP, so distant relatives were not at risk (24.09) | Our case is not membership of a large family. It is a brother held for high treason, and close first cousins persecuted. Humprecht and Rudolf had the same NSDAP relatives and were persecuted anyway. We ask MA 35 to name the "zahlreiche Familienmitglieder" | C5, C11 |
 | O12 | Felix's arrest is undocumented (24.09) | Overtaken: accepted on 22.10 | C7 |
 | O13 | Felix's arrest was possibly unconnected end-phase violence (24.09) | Charges from 1943; O5; the 20 July context. **We accept** that no document links Felix's arrest to Humprecht and Rudolf. Ground B does not need one | C11 |
-| O14 | Relatives' risk "grundsätzlich möglich" but unlikely (22.10) | The historian's own mechanism (§ 139, § 83(2) RStGB; Haas, Cupal, Raasch). Kin liability as policy after 20 July 1944, whose purpose was fear (Loeffel) | Part 1 B5; E14, E15 |
+| O14 | Relatives' risk "grundsätzlich möglich" but unlikely (22.10) | The historian's own mechanism (§ 139, § 83(2) RStGB; Haas, Cupal, Raasch). Kin liability as policy after 20 July 1944, whose purpose was fear (Loeffel). A close brother (P3 p. 11) living a few streets away | Part 1 B2, B3, B6; E14, E15 |
 | O15 | At the time of Felix's persecution he worked on a war-important project (24.09, 22.10) | Not after 31.12.1943 on any document. The only source is undated and was unverifiable on the historian's own 2023 view. Felix's diary of 30.04.1945 hopes he is "in Aussee bei Mami". **We accept** that he worked at the WNF in 1943 | C9 |
 | O16 | War work is incompatible with a threat (24.09, 22.10) | Felix and Stauffenberg, soldiers arrested or detained anyway | C10 |
 | O17 | He went to Britain for a job, so persecution was certainly not the motive (24.09, 22.10) | Departure in 1947 is inside the § 58c window. The job was the means, the fear the reason (VGW-152/099/8601/2022). The British initiative (2023 opinion). No date and no document behind "mit Sicherheit". **We accept** that he went to work for Fairey | C14; E16; Part 1 C |
@@ -154,7 +155,7 @@ Each correction gives the historian's statement, why it is wrong, and the eviden
 |---|---|---|---|
 | **P1** | Alexander's family history, Iver Heath, 1987 (his own work, not his uncle's): pp. 23, 24, 25–26, 27, 29, 30 | 4019 | 16.02.2026 |
 | **P2** | Gauakt 232.006 | 3499 / 4024 | 13.03.2026 |
-| **P3** | Felix's diary, 26.03–06.05.1945: the charges (p. 1), "da ich Soldat sei" (pp. 1–2), the Gestapo and his flat (p. 5), "Hoffentlich ist er in Aussee bei Mami" (p. 11) | 3507 | 13.03.2026 |
+| **P3** | Felix's diary, 26.03–06.05.1945: the charges (p. 1), "da ich Soldat sei" (pp. 1–2), the Gestapo and his flat (p. 5), "Luckis Geburtstag. Hoffentlich ist er in Aussee bei Mami" (p. 11): the brothers' closeness, and Alexander's presumed whereabouts | 3507 | 13.03.2026 |
 | **P4** | Wolfgang's visit to Humprecht, Brandenburg-Görden, 11.04.1943, and his second application | Arolsen 12120657 pp. 32–33 (= 4025 p. 51) | 22.07.2026 |
 | **P5** | Heydrich to Bormann, 16.05.1942 ("Als Anlaß wurde eine Treueerklärung genommen"; "Verbindungen ins Reich und in die Ostmark"); SD report 1942 on Humprecht | 3796 fol. 66; 3801 p. 44 | 15.09.2026 |
 | **P6** | Hazdra; Hořejš, *Paměť a dějiny* 2014/4 | 3495; 3519 | 22.07.2026 |
