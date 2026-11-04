@@ -3657,3 +3657,4 @@ Stefan Huber forwarded the historian's reports on 3 November (Zimbra 474846: 202
   - The diary never mentions Alexander's flat.
   - Nothing shows Alexander knew of O5.
 - Written up in `docs/correspondence/2026-11-04-ma35-reply-structure.md`, Part 4.
+- Peter Czernin (Felix's son), 4.11.2026 (475006): no recollection or document of Alexander knowing of O5. He assumes the brothers talked, given the proximity, and says they got on very well later in life. Opinion only.

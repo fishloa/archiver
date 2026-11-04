@@ -233,6 +233,7 @@ Everything else can be answered from documents.
   - Felix's diary, covering 26.3 to 6.5.1945, never mentions Alexander's flat. On 30.4.1945 he hopes Alexander is in Aussee.
   - So the two were registered neighbours. Daily contact is not documented.
 - **No document shows that Alexander knew of Felix's O5 role,** or that the Gestapo asked about him. The argument is reasonable fear, not actual targeting.
+  - Peter Czernin (Felix's son) was asked on 4.11.2026 (Zimbra 475006). He has no recollection or document. His view: "Given that they lived pretty close to each other I would assume that they did talk about these matters. They seemed to get along very well later in their lives." That is opinion, not evidence, and not to be filed as testimony.
 - **Felix's flat** was in the IV. Bezirk; his § 27 file was handled there (M.Nr. 3315/IV. Bez.). Alexander's was in the III. The districts adjoin.
 - **The police enquiry of July 1950** (Polizeidirektion Abt. I to the BMI) still used Metternichgasse 10/4 for Alexander. That confirms the address but not his presence in 1944–45.
 
