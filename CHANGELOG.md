@@ -9,6 +9,17 @@ new revision, no build is triggered, and the release silently never happens —
 which is exactly what v1.0.0 did on its first attempt. Add the entry below,
 commit, then tag that commit.
 
+## v1.1.29 — 4 November 2026
+
+**User activity log.** Admin → Activity lists the sessions of people signed in with role user or
+admin: who, when the session started and ended (a gap of more than 30 minutes starts a new one),
+how long, and how many records and pages they viewed and changes they made. Opening a session shows
+its timeline, linking each record, page, family-tree person and search. Only browser sign-ins
+(`X-Auth-Email`) are recorded, never bearer-token, MCP or not-allowlisted callers; polling, live
+updates, images and files are filtered out. Writes are asynchronous and never fail a request. Rows
+older than two years are deleted daily. Migration V26 adds `user_activity`; the endpoints are
+`/api/admin/activity/sessions` and `/api/admin/activity/events`.
+
 ## v1.1.28 — 4 November 2026
 
 **Access requests.** Someone who signs in with an address that is not on the access list can now ask
