@@ -1002,3 +1002,44 @@ export async function deleteAiImplementation(
   return { ok: false, message: body.message ?? `Backend error: ${res.status}` };
 }
 
+export interface ActivitySession {
+  user_id: number | null;
+  email: string;
+  display_name: string | null;
+  started_at: string;
+  ended_at: string;
+  duration_seconds: number;
+  event_count: number;
+  view_count: number;
+  edit_count: number;
+}
+
+export interface ActivityEvent {
+  id: number;
+  user_id: number | null;
+  email: string;
+  at: string;
+  method: string;
+  path: string;
+  query: string | null;
+  status: number;
+  kind: string;
+  target: string | null;
+}
+
+export async function fetchActivity<T>(
+  email: string,
+  what: "sessions" | "events",
+  params: Record<string, string | number | undefined>,
+): Promise<T[]> {
+  const qs = new URLSearchParams();
+  for (const [k, v] of Object.entries(params)) {
+    if (v !== undefined && v !== "") qs.set(k, String(v));
+  }
+  const res = await fetch(`${backendUrl()}/api/admin/activity/${what}?${qs}`, {
+    headers: authHeaders(email),
+  });
+  if (!res.ok) throw new Error(`Backend error: ${res.status}`);
+  return res.json();
+}
+

@@ -16,6 +16,7 @@ import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import place.icomb.archiver.repository.AppUserRepository;
+import place.icomb.archiver.service.ActivityService;
 
 @Configuration
 @EnableWebSecurity
@@ -26,17 +27,20 @@ public class SecurityConfig {
   private final String adminToken;
   private final TrustedPeerResolver trustedPeerResolver;
   private final JwtDecoder mcpJwtDecoder;
+  private final ActivityService activityService;
 
   public SecurityConfig(
       JWKSource<SecurityContext> jwkSource,
       @Value("${archiver.mcp.oauth.issuer:https://archive.czernin.eu}") String mcpIssuer,
       AppUserRepository appUserRepository,
+      ActivityService activityService,
       @Value("${archiver.processor.token}") String processorToken,
       @Value("${archiver.admin.token:}") String adminToken,
       @Value("${archiver.auth.trusted-cidrs:}") String trustedCidrs,
       @Value("${archiver.auth.trusted-proxy-hosts:}") String trustedProxyHosts,
       @Value("${archiver.auth.trusted-peer-cache-seconds:30}") long trustedPeerCacheSeconds) {
     this.appUserRepository = appUserRepository;
+    this.activityService = activityService;
     this.mcpJwtDecoder = McpJwtDecoders.build(mcpIssuer, jwkSource);
     this.processorToken = processorToken;
     this.adminToken = adminToken;
@@ -72,6 +76,8 @@ public class SecurityConfig {
         .addFilterBefore(
             new McpBearerFilter(mcpJwtDecoder, appUserRepository),
             UsernamePasswordAuthenticationFilter.class)
+        .addFilterBefore(
+            new ActivityFilter(activityService), UsernamePasswordAuthenticationFilter.class)
         .authorizeHttpRequests(
             auth ->
                 auth
