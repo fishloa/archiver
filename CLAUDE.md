@@ -119,6 +119,12 @@ field — retrieval simply got worse. Only a search with a known-correct answer 
 - DB enforces 2-char ISO codes via CHECK constraints
 - Scraper sets both independently; don't assume they're the same
 - Translation skipped if lang = "en"
+- `page_translation` holds every model's translation per page **and language** (`lang` in
+  `en`/`de`/`cs`, text in `text`). Every pipeline, viewer, search and correction query reads
+  `lang = 'en'`; `page_text.text_en` caches the best English only. German and Czech rows are made
+  only by a PDF export that needs them (`TranslationService.translateMissing`), once per page,
+  with the best configured TRANSLATION model, and never in the record's own language, where the
+  export shows the transcription.
 
 ### Genealogy
 
@@ -219,7 +225,7 @@ Config: `backend/src/test/resources/application-test.yml`.
 - `service/PersonMatchWorker.java` — internal scheduled worker for `match_persons` jobs
 - `service/IngestService.java` — record creation, OCR job enqueuing
 - `service/StorageService.java` — file storage abstraction over archiver_store
-- `service/PdfExportService.java` — all three PDF exports (original scans, English translation, side-by-side); every PDF is built on demand (`PdfExportQueue`/`PdfExportWorker`), nothing is stored per record
+- `service/PdfExportService.java` — all three PDF exports (original scans, translation, side-by-side; the last two in `en`, `de` or `cs`); every PDF is built on demand (`PdfExportQueue`/`PdfExportWorker`), nothing is stored per record
 - `service/MarkdownPdfRenderer.java` — markdown → PDF: headings, tables, bold runs, OCR figures
 - `service/OcrImageService.java` — crops the figures Mistral found (signatures, stamps) out of the scan
 - `service/FamilyTreeService.java` — read model of the family tree: search, kinship, people

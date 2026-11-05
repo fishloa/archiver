@@ -22,7 +22,7 @@ guidance with it.
 | `delete_page` | remove one page (a blank or duplicate sheet) by `recordId` and `seq`; the pages after it close the gap. Cannot be undone; a reason is required |
 | `add_person`, `update_person`, `add_name`, `add_event`, `update_event`, `link_parent`, `add_couple`, `cite`, `link_record`, `add_media`, `merge_persons`, `undo_change`, `tree_changes` | edit the family tree. Every call needs a reason and is one undoable write; `get_person` shows the ids they take |
 | `get_page` | one page's text, translation, content type and the address of its scan |
-| `export_pdf`, `get_pdf_export`, `download_pdf` | ask for a PDF of a record or chosen pages (`pages: "14"`), poll it, then `download_pdf` returns the file itself as an embedded resource a client can save to disk. Up to 8 MB it comes whole; a larger PDF is refused with its number of parts and fetched with `part=1`, `part=2`, … (8 MB each; save in order and `cat` them into one file, then check the SHA-256 given with every part). Anything above about 12 MB in one reply used to die as "session expired" |
+| `export_pdf`, `get_pdf_export`, `download_pdf` | ask for a PDF of a record or chosen pages (`pages: "14"`, with `variant: "translation"` or `"side-by-side"` and `lang: "en" | "de" | "cs"`), poll it, then `download_pdf` returns the file itself as an embedded resource a client can save to disk. Up to 8 MB it comes whole; a larger PDF is refused with its number of parts and fetched with `part=1`, `part=2`, … (8 MB each; save in order and `cat` them into one file, then check the SHA-256 given with every part). Anything above about 12 MB in one reply used to die as "session expired" |
 
 The last three, and every tree-editing tool, are administrators only and fail closed: no provable
 `ROLE_ADMIN`, no action. `reocr_page` also refuses a record that is on hold,
@@ -292,8 +292,11 @@ GET  /api/pdf-exports/{id}                                                   →
 GET  /api/pdf-exports/{id}/file                                              → the PDF (200 once ready)
 ```
 
-`variant` is `original` (the scans with a searchable text layer), `english` or `side-by-side`;
-both fields are optional (`original`, the whole record). `pages` takes ranges and comma lists
+`variant` is `original` (the scans with a searchable text layer), `translation` (`english` is the
+English alias) or `side-by-side`; `lang` is `en` (default), `de` or `cs` and applies to the last two.
+In the record's own language the text is the transcription; a translation the archive does not
+hold yet is made while the PDF is built, once per page, and kept for every later export. Every
+field is optional (`original`, English, the whole record). `pages` takes ranges and comma lists
 (`1,3,5-10`). `state` runs `queued`, `building`, `ready`, or ends `failed` (with `error`) or
 `expired`. An identical request is reused: `200` while a finished one is unexpired, `202` and the
 same id while one is in flight. A finished PDF is kept **24 hours**; after that the file answers
