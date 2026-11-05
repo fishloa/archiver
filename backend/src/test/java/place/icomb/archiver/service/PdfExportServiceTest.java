@@ -517,13 +517,14 @@ class PdfExportServiceTest {
   private void czech(String text) {
     jdbc.update(
         """
-        INSERT INTO page_translation (page_id, lang, model, text, created_at)
-        VALUES ((SELECT id FROM page WHERE record_id = ? AND seq = 1),
-                'cs', 'mistral-medium-latest', ?, now())
+        INSERT INTO page_translation (page_id, lang, model, text, source_md5, created_at)
+        SELECT p.id, 'cs', 'mistral-medium-latest', ?,
+               (SELECT md5(pt.text_raw) FROM page_text pt WHERE pt.page_id = p.id), now()
+        FROM page p WHERE p.record_id = ? AND p.seq = 1
         ON CONFLICT (page_id, lang, model) DO UPDATE SET text = EXCLUDED.text
         """,
-        recordId,
-        text);
+        text,
+        recordId);
   }
 
   @Test

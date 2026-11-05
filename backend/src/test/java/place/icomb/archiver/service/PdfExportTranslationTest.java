@@ -74,6 +74,7 @@ class PdfExportTranslationTest {
   }
 
   @Autowired private PdfExportWorker worker;
+  @Autowired private ManualCorrectionService corrections;
   @Autowired private PdfExportQueue queue;
   @Autowired private StorageService storage;
   @Autowired private JdbcTemplate jdbc;
@@ -237,5 +238,20 @@ class PdfExportTranslationTest {
     assertThat(queue.find(a).orElseThrow().state()).isEqualTo("ready");
     assertThat(queue.find(b).orElseThrow().state()).isEqualTo("ready");
     assertThat(TranslatorStub.calls(model)).isEqualTo(3);
+  }
+
+  @Test
+  void aCorrectedTranscriptionIsTranslatedAgainAndTheNewTextRendered() throws Exception {
+    assertThat(build(Variant.TRANSLATION, pages, "cs").state()).isEqualTo("ready");
+    assertThat(TranslatorStub.calls(model)).isEqualTo(3);
+
+    corrections.correctPage(pages.get(0), "text_raw", "Text 1", "Text eins", "typo", false);
+    model.resetAll();
+    TranslatorStub.reply(model, "Nový překlad");
+
+    PdfExportQueue.View again = build(Variant.TRANSLATION, pages, "cs");
+    assertThat(again.state()).as("error: %s", again.error()).isEqualTo("ready");
+    assertThat(TranslatorStub.calls(model)).isEqualTo(1);
+    assertThat(textOf(again)).contains("Nový překlad");
   }
 }

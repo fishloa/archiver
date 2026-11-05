@@ -237,11 +237,13 @@ class TranslationServiceTest {
 
   private void czech(String model, String text) {
     jdbc.update(
-        "INSERT INTO page_translation (page_id, lang, model, text, created_at)"
-            + " VALUES (?, 'cs', ?, ?, now())",
+        "INSERT INTO page_translation (page_id, lang, model, text, source_md5, created_at)"
+            + " VALUES (?, 'cs', ?, ?, (SELECT md5(text_raw) FROM page_text WHERE page_id = ?),"
+            + " now())",
         pageId,
         model,
-        text);
+        text,
+        pageId);
   }
 
   @Test

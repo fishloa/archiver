@@ -259,6 +259,8 @@ public class CoverSheetService {
                   SELECT count(DISTINCT p.id) FROM page p
                   JOIN page_translation tr ON tr.page_id = p.id
                   WHERE p.record_id = ? AND tr.lang = ? AND tr.text <> ''
+                    AND EXISTS (SELECT 1 FROM page_text src WHERE src.page_id = p.id
+                                AND md5(src.text_raw) = tr.source_md5)
                   """,
                   Integer.class,
                   recordId,

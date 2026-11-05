@@ -192,4 +192,20 @@ class TranslateMissingTest {
         .hasMessageContaining("Czech");
     assertThat(TranslatorStub.calls(model)).isZero();
   }
+
+  @Test
+  void aTranslationOfTextThatWasLaterCorrectedIsTranslatedAgain() throws Exception {
+    translations.translateMissing(record, pages.subList(0, 1), "cs");
+    assertThat(TranslatorStub.calls(model)).isEqualTo(1);
+    jdbc.update("UPDATE page_text SET text_raw = 'Korrigiert' WHERE page_id = ?", pages.get(0));
+    TranslatorStub.reply(model, "Opravený text");
+
+    assertThat(translations.bestByRecord(record, "cs")).isEmpty();
+    assertThat(translations.translateMissing(record, pages.subList(0, 1), "cs")).isEqualTo(1);
+
+    assertThat(TranslatorStub.calls(model)).isEqualTo(2);
+    assertThat(czech(pages.get(0))).isEqualTo("Opravený text");
+    assertThat(translations.bestByRecord(record, "cs")).containsEntry(1, "Opravený text");
+    assertThat(translations.translateMissing(record, pages.subList(0, 1), "cs")).isZero();
+  }
 }

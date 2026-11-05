@@ -119,6 +119,9 @@ public class TranslationService {
         JOIN LATERAL (
             SELECT tr.text FROM page_translation tr
             WHERE tr.page_id = p.id AND tr.lang = ? AND tr.text IS NOT NULL AND tr.text <> ''
+            AND (tr.lang = 'en' OR EXISTS (SELECT 1 FROM page_text src
+                                          WHERE src.page_id = tr.page_id
+                                            AND md5(src.text_raw) = tr.source_md5))
             ORDER BY COALESCE(array_position(?::text[], tr.model), 999)
             LIMIT 1
         ) best ON true
@@ -167,6 +170,9 @@ public class TranslationService {
         JOIN LATERAL (
             SELECT tr.model FROM page_translation tr
             WHERE tr.page_id = p.id AND tr.lang = ? AND tr.text IS NOT NULL AND tr.text <> ''
+            AND (tr.lang = 'en' OR EXISTS (SELECT 1 FROM page_text src
+                                          WHERE src.page_id = tr.page_id
+                                            AND md5(src.text_raw) = tr.source_md5))
             ORDER BY COALESCE(array_position(?::text[], tr.model), 999)
             LIMIT 1
         ) shown ON true
@@ -198,7 +204,7 @@ public class TranslationService {
    */
   public void record(Long pageId, String model, String textEn) {
     if (textEn != null && !textEn.isBlank()) {
-      translations.upsert(pageId, "en", model, Markdown.repairTables(textEn));
+      translations.upsert(pageId, "en", model, Markdown.repairTables(textEn), null);
     }
     refreshShown(pageId);
   }
@@ -341,12 +347,38 @@ public class TranslationService {
    * cache: page_text.text_en is English only.
    */
   public void recordIn(Long pageId, String lang, String model, String text) {
+    String current =
+        "en".equals(lang)
+            ? null
+            : jdbc.query(
+                "SELECT md5(text_raw) FROM page_text WHERE page_id = ? ORDER BY id DESC LIMIT 1",
+                rs -> rs.next() ? rs.getString(1) : null,
+                pageId);
+    recordIn(pageId, lang, model, text, current);
+  }
+
+  /**
+   * @param sourceMd5 md5 of the transcription that was translated; a non-English row counts only
+   *     while the page's text still hashes to it
+   */
+  public void recordIn(Long pageId, String lang, String model, String text, String sourceMd5) {
     if ("en".equals(lang)) {
       record(pageId, model, text);
       return;
     }
     if (text != null && !text.isBlank()) {
-      translations.upsert(pageId, lang, model, Markdown.repairTables(text));
+      translations.upsert(pageId, lang, model, Markdown.repairTables(text), sourceMd5);
+    }
+  }
+
+  private static String md5(String text) {
+    try {
+      byte[] digest =
+          java.security.MessageDigest.getInstance("MD5")
+              .digest(text.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+      return java.util.HexFormat.of().formatHex(digest);
+    } catch (java.security.NoSuchAlgorithmException e) {
+      throw new IllegalStateException(e);
     }
   }
 
@@ -379,7 +411,8 @@ public class TranslationService {
                   JOIN page p ON p.id = sel.page_id
                   JOIN page_text pt ON pt.page_id = p.id
                   WHERE NOT EXISTS (SELECT 1 FROM page_translation tr
-                                    WHERE tr.page_id = p.id AND tr.lang = ? AND tr.text <> '')
+                                    WHERE tr.page_id = p.id AND tr.lang = ? AND tr.text <> ''
+                                      AND tr.source_md5 = md5(pt.text_raw))
                   ORDER BY sel.ord
                   """,
                   pageIds.stream().map(String::valueOf).collect(Collectors.joining(",")),
@@ -421,7 +454,13 @@ public class TranslationService {
                   + e.getMessage(),
               e);
         }
-        recordIn(((Number) page.get("id")).longValue(), lang, translator.model(), translated);
+        String source = (String) page.get("text_raw");
+        recordIn(
+            ((Number) page.get("id")).longValue(),
+            lang,
+            translator.model(),
+            translated,
+            md5(source));
       }
       return missing.size();
     }

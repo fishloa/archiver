@@ -408,8 +408,10 @@ class PdfExportApiTest {
   @Test
   void aCzechTranslationAlreadyHeldIsNamedCzech() throws Exception {
     jdbc.update(
-        "INSERT INTO page_translation (page_id, lang, model, text)"
-            + " SELECT id, 'cs', 'stored-model', 'Český text' FROM page WHERE record_id = ?",
+        "INSERT INTO page_translation (page_id, lang, model, text, source_md5)"
+            + " SELECT p.id, 'cs', 'stored-model', 'Český text',"
+            + " (SELECT md5(pt.text_raw) FROM page_text pt WHERE pt.page_id = p.id)"
+            + " FROM page p WHERE p.record_id = ?",
         record);
     String one = created("{\"variant\":\"translation\",\"lang\":\"cs\"}", 202).get("id").asText();
     String both = created("{\"variant\":\"side-by-side\",\"lang\":\"cs\"}", 202).get("id").asText();

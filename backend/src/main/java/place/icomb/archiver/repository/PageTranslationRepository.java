@@ -19,16 +19,17 @@ public interface PageTranslationRepository extends Repository<PageTranslation, L
   @Modifying
   @Query(
       """
-      INSERT INTO page_translation (page_id, lang, model, text, created_at)
-      VALUES (:pageId, :lang, :model, :text, now())
+      INSERT INTO page_translation (page_id, lang, model, text, source_md5, created_at)
+      VALUES (:pageId, :lang, :model, :text, :sourceMd5, now())
       ON CONFLICT (page_id, lang, model) DO UPDATE
-        SET text = EXCLUDED.text, created_at = now()
+        SET text = EXCLUDED.text, source_md5 = EXCLUDED.source_md5, created_at = now()
       """)
   void upsert(
       @Param("pageId") Long pageId,
       @Param("lang") String lang,
       @Param("model") String model,
-      @Param("text") String text);
+      @Param("text") String text,
+      @Param("sourceMd5") String sourceMd5);
 
   /** Models that have already translated this page. */
   @Query("SELECT model FROM page_translation WHERE page_id = :pageId AND lang = 'en'")
