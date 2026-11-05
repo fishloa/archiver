@@ -9,6 +9,25 @@ new revision, no build is triggered, and the release silently never happens —
 which is exactly what v1.0.0 did on its first attempt. Add the entry below,
 commit, then tag that commit.
 
+## v1.1.31 — 5 November 2026
+
+**PDF exports in English, German or Czech.** The translation PDF and the side-by-side PDF can now
+be made in English, German or Czech, chosen per export: for example a Czech StB file with German
+text beside the scans. Exporting in a record's own language uses its transcription, with no model
+call. A page with no translation in the chosen language is translated while the export is built,
+stored in `page_translation` (which gains `lang`; `text_en` is renamed `text`), and never paid for
+again until the page's transcription changes, which `source_md5` detects. English behaviour, the
+pipeline and the English request bodies are unchanged. The export API and MCP `export_pdf` take
+`lang` (`en` default, `de`, `cs`); variant `translation` is the new name of `english`, which
+remains an alias. Migration V27.
+
+**Record page.** Translation quality sits on the left and Export on the right, with labelled Pages,
+Format (Original scans, Translation, Side by side) and Language fields.
+
+**Translation cleanup.** A translator preamble written before a markdown code fence ("Here is the
+translated text:") is now removed together with the fence. A bare label such as "Übersetzung:" is
+only removed when the original page does not itself begin with one.
+
 ## v1.1.30 — 5 November 2026
 
 **Page text wraps.** A code block in a page's rendered text (most often a translation the model
