@@ -214,7 +214,7 @@ class PdfExportQueueTest {
   void aNewTranslationChangesTheFingerprint() {
     String before = queue.fingerprint(record, pages);
     jdbc.update(
-        "INSERT INTO page_translation (page_id, model, text_en) VALUES (?, 'better', 'x')",
+        "INSERT INTO page_translation (page_id, model, text) VALUES (?, 'better', 'x')",
         pages.get(0));
     assertThat(queue.fingerprint(record, pages)).isNotEqualTo(before);
   }
@@ -223,8 +223,7 @@ class PdfExportQueueTest {
   void rewritingATranslationInPlaceChangesTheFingerprint() {
     // PageTranslationRepository.upsert overwrites a model's row with the same id.
     String before = queue.fingerprint(record, pages);
-    jdbc.update(
-        "UPDATE page_translation SET text_en = 'Rewritten' WHERE page_id = ?", pages.get(1));
+    jdbc.update("UPDATE page_translation SET text = 'Rewritten' WHERE page_id = ?", pages.get(1));
     assertThat(queue.fingerprint(record, pages)).isNotEqualTo(before);
   }
 
@@ -290,7 +289,7 @@ class PdfExportQueueTest {
     List<Long> selected = pages.subList(0, 1);
     String before = queue.fingerprint(record, selected);
     jdbc.update(
-        "INSERT INTO page_translation (page_id, model, text_en) VALUES (?, 'better', 'x')",
+        "INSERT INTO page_translation (page_id, model, text) VALUES (?, 'better', 'x')",
         pages.get(2));
     assertThat(queue.fingerprint(record, selected)).isNotEqualTo(before);
   }

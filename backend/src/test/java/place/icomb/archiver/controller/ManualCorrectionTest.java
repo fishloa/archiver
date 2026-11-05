@@ -91,7 +91,7 @@ class ManualCorrectionTest {
         .param("t", "Er ist am 17. Jänner 1958 gestorben.\nSchönhof, am 17. Jänner 1938.")
         .param("e", "He died on 17 January 1958.\nSchönhof, 17 January 1938.")
         .update();
-    jdbc.sql("INSERT INTO page_translation (page_id, model, text_en) VALUES (:p, 'm', :e)")
+    jdbc.sql("INSERT INTO page_translation (page_id, model, text) VALUES (:p, 'm', :e)")
         .param("p", page)
         .param("e", "He died on 17 January 1958.\nSchönhof, 17 January 1938.")
         .update();
@@ -161,8 +161,24 @@ class ManualCorrectionTest {
             body("text_en", "died on 17 January 1958", "died on 17 January 1938", "year")));
     assertThat(text("SELECT text_en FROM page_text WHERE page_id = ?", page))
         .isEqualTo("He died on 17 January 1938.\nSchönhof, 17 January 1938.");
-    assertThat(text("SELECT text_en FROM page_translation WHERE page_id = ?", page))
+    assertThat(text("SELECT text FROM page_translation WHERE page_id = ?", page))
         .isEqualTo("He died on 17 January 1938.\nSchönhof, 17 January 1938.");
+  }
+
+  @Test
+  void anEnglishCorrectionLeavesOtherLanguagesAlone() throws Exception {
+    jdbc.sql("INSERT INTO page_translation (page_id, lang, model, text) VALUES (:p, 'cs', 'm', :c)")
+        .param("p", page)
+        .param("c", "Zemřel 17. ledna 1958. died on 17 January 1958")
+        .update();
+
+    ok(
+        post(
+            "/admin/pages/" + page + "/corrections",
+            body("text_en", "died on 17 January 1958", "died on 17 January 1938", "year")));
+
+    assertThat(text("SELECT text FROM page_translation WHERE page_id = ? AND lang = 'cs'", page))
+        .isEqualTo("Zemřel 17. ledna 1958. died on 17 January 1958");
   }
 
   @Test
@@ -259,7 +275,7 @@ class ManualCorrectionTest {
     ok(post("/admin/pages/" + page + "/corrections", en));
     assertThat(text("SELECT text_en FROM page_text WHERE page_id = ?", page))
         .isEqualTo("One line.");
-    assertThat(text("SELECT text_en FROM page_translation WHERE page_id = ?", page))
+    assertThat(text("SELECT text FROM page_translation WHERE page_id = ?", page))
         .isEqualTo("One line.");
   }
 

@@ -161,7 +161,7 @@ class PdfExportServiceTest {
 
     jdbc.update(
         """
-        INSERT INTO page_translation (page_id, model, text_en, created_at)
+        INSERT INTO page_translation (page_id, model, text, created_at)
         VALUES (?, 'mistral-small-latest', ?, now())
         """,
         pageId,
@@ -331,10 +331,10 @@ class PdfExportServiceTest {
     // Set on page_translation, which is where the export takes its English from.
     jdbc.update(
         """
-        INSERT INTO page_translation (page_id, model, text_en, created_at)
+        INSERT INTO page_translation (page_id, model, text, created_at)
         VALUES ((SELECT id FROM page WHERE record_id = ? AND seq = 1),
                 'mistral-small-latest', ?, now())
-        ON CONFLICT (page_id, model) DO UPDATE SET text_en = EXCLUDED.text_en
+        ON CONFLICT (page_id, lang, model) DO UPDATE SET text = EXCLUDED.text
         """,
         recordId,
         "A reasonably long line of translated archival prose. ".repeat(400));
@@ -406,9 +406,9 @@ class PdfExportServiceTest {
             "SELECT id FROM page WHERE record_id = ? AND seq = 1", Long.class, recordId);
     jdbc.update(
         """
-        INSERT INTO page_translation (page_id, model, text_en, created_at)
+        INSERT INTO page_translation (page_id, model, text, created_at)
         VALUES (?, 'mistral-medium-latest', ?, now())
-        ON CONFLICT (page_id, model) DO UPDATE SET text_en = EXCLUDED.text_en
+        ON CONFLICT (page_id, lang, model) DO UPDATE SET text = EXCLUDED.text
         """,
         pageId,
         "The carefully upgraded translation of this page.");

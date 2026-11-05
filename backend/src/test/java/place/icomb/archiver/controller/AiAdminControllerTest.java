@@ -210,7 +210,7 @@ class AiAdminControllerTest {
             attachmentId);
     jdbc.update(
         """
-        INSERT INTO page_translation (page_id, model, text_en, created_at)
+        INSERT INTO page_translation (page_id, model, text, created_at)
         VALUES (?, 'mistral-small-latest', 'cheap', now())
         """,
         pageId);

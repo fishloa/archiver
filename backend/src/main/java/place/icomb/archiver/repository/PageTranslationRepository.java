@@ -19,16 +19,19 @@ public interface PageTranslationRepository extends Repository<PageTranslation, L
   @Modifying
   @Query(
       """
-      INSERT INTO page_translation (page_id, model, text_en, created_at)
-      VALUES (:pageId, :model, :textEn, now())
-      ON CONFLICT (page_id, model) DO UPDATE
-        SET text_en = EXCLUDED.text_en, created_at = now()
+      INSERT INTO page_translation (page_id, lang, model, text, created_at)
+      VALUES (:pageId, :lang, :model, :text, now())
+      ON CONFLICT (page_id, lang, model) DO UPDATE
+        SET text = EXCLUDED.text, created_at = now()
       """)
   void upsert(
-      @Param("pageId") Long pageId, @Param("model") String model, @Param("textEn") String textEn);
+      @Param("pageId") Long pageId,
+      @Param("lang") String lang,
+      @Param("model") String model,
+      @Param("text") String text);
 
   /** Models that have already translated this page. */
-  @Query("SELECT model FROM page_translation WHERE page_id = :pageId")
+  @Query("SELECT model FROM page_translation WHERE page_id = :pageId AND lang = 'en'")
   List<String> modelsFor(@Param("pageId") Long pageId);
 
   /**
@@ -38,7 +41,7 @@ public interface PageTranslationRepository extends Repository<PageTranslation, L
    * List<Map<String,Object>>} as a single-column result and fails with "expected 1, actual 3" the
    * moment a page actually has a translation.
    */
-  @Query("SELECT * FROM page_translation WHERE page_id = :pageId ORDER BY model")
+  @Query("SELECT * FROM page_translation WHERE page_id = :pageId AND lang = 'en' ORDER BY model")
   List<PageTranslation> findByPageId(@Param("pageId") Long pageId);
 
   /** Pages of a record that no model has translated at the given quality yet. */
@@ -49,7 +52,7 @@ public interface PageTranslationRepository extends Repository<PageTranslation, L
         AND EXISTS (SELECT 1 FROM page_text pt WHERE pt.page_id = p.id
                       AND pt.text_raw IS NOT NULL AND pt.text_raw <> '')
         AND NOT EXISTS (SELECT 1 FROM page_translation tr
-                          WHERE tr.page_id = p.id AND tr.model = :model)
+                          WHERE tr.page_id = p.id AND tr.lang = 'en' AND tr.model = :model)
       ORDER BY p.seq
       """)
   List<Long> pagesMissingModel(@Param("recordId") Long recordId, @Param("model") String model);
@@ -58,7 +61,7 @@ public interface PageTranslationRepository extends Repository<PageTranslation, L
   @Query(
       """
       SELECT count(*) FROM page p
-      JOIN page_translation tr ON tr.page_id = p.id AND tr.model = :model
+      JOIN page_translation tr ON tr.page_id = p.id AND tr.lang = 'en' AND tr.model = :model
       WHERE p.record_id = :recordId
       """)
   Integer countWithModel(@Param("recordId") Long recordId, @Param("model") String model);

@@ -17,8 +17,9 @@ public class PageTranslation {
 
   @Id private Long id;
   private Long pageId;
+  private String lang;
   private String model;
-  private String textEn;
+  private String text;
   private Instant createdAt;
 
   public Long getId() {
@@ -29,12 +30,16 @@ public class PageTranslation {
     return pageId;
   }
 
+  public String getLang() {
+    return lang;
+  }
+
   public String getModel() {
     return model;
   }
 
-  public String getTextEn() {
-    return textEn;
+  public String getText() {
+    return text;
   }
 
   public Instant getCreatedAt() {

@@ -120,7 +120,7 @@ class TranslationUpgradeTest {
   private void markUpgraded(long recordId) {
     jdbc.sql(
             """
-            INSERT INTO page_translation (page_id, model, text_en, created_at)
+            INSERT INTO page_translation (page_id, model, text, created_at)
             SELECT p.id, 'mistral-medium-latest', 'Good day', now()
             FROM page p WHERE p.record_id = :r
             """)

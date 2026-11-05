@@ -199,7 +199,7 @@ class AdvanceSinglePageTest {
     long[] ids = seedRecord("de");
     jdbc.sql(
             """
-            INSERT INTO page_translation (page_id, model, text_en)
+            INSERT INTO page_translation (page_id, model, text)
             VALUES (?, 'stale-engine', 'Vienna - Neustadt - Klippipark')
             """)
         .params(ids[1])

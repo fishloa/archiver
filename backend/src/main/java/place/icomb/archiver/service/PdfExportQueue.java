@@ -174,7 +174,7 @@ public class PdfExportQueue {
                concat_ws(':', p.id, p.record_id, p.seq, p.attachment_id,
                          coalesce(pt.id::text, '-'),
                          md5(coalesce(pt.text_en, '')),
-                         coalesce((SELECT string_agg(t.id::text || '=' || md5(t.text_en), ',' ORDER BY t.id)
+                         coalesce((SELECT string_agg(t.id::text || '=' || md5(t.text), ',' ORDER BY t.id)
                                    FROM page_translation t WHERE t.page_id = p.id), '-')),
                '|' ORDER BY sel.ord), ''))
         FROM unnest(string_to_array(?, ',')::bigint[]) WITH ORDINALITY AS sel(page_id, ord)

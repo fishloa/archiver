@@ -75,8 +75,8 @@ public class TranslationService {
     if (pageId == null) return null;
     return jdbc.query(
         """
-        SELECT tr.text_en FROM page_translation tr
-        WHERE tr.page_id = ? AND tr.text_en IS NOT NULL AND tr.text_en <> ''
+        SELECT tr.text FROM page_translation tr
+        WHERE tr.page_id = ? AND tr.lang = 'en' AND tr.text IS NOT NULL AND tr.text <> ''
         ORDER BY COALESCE(array_position(?::text[], tr.model), 999)
         LIMIT 1
         """,
@@ -95,11 +95,11 @@ public class TranslationService {
     Map<Integer, String> out = new HashMap<>();
     jdbc.query(
         """
-        SELECT p.seq, best.text_en
+        SELECT p.seq, best.text
         FROM page p
         JOIN LATERAL (
-            SELECT tr.text_en FROM page_translation tr
-            WHERE tr.page_id = p.id AND tr.text_en IS NOT NULL AND tr.text_en <> ''
+            SELECT tr.text FROM page_translation tr
+            WHERE tr.page_id = p.id AND tr.lang = 'en' AND tr.text IS NOT NULL AND tr.text <> ''
             ORDER BY COALESCE(array_position(?::text[], tr.model), 999)
             LIMIT 1
         ) best ON true
@@ -119,7 +119,7 @@ public class TranslationService {
     return jdbc.query(
         """
         SELECT tr.model FROM page_translation tr
-        WHERE tr.page_id = ? AND tr.text_en IS NOT NULL AND tr.text_en <> ''
+        WHERE tr.page_id = ? AND tr.lang = 'en' AND tr.text IS NOT NULL AND tr.text <> ''
         ORDER BY COALESCE(array_position(?::text[], tr.model), 999)
         LIMIT 1
         """,
@@ -142,7 +142,7 @@ public class TranslationService {
         FROM page p
         JOIN LATERAL (
             SELECT tr.model FROM page_translation tr
-            WHERE tr.page_id = p.id AND tr.text_en IS NOT NULL AND tr.text_en <> ''
+            WHERE tr.page_id = p.id AND tr.lang = 'en' AND tr.text IS NOT NULL AND tr.text <> ''
             ORDER BY COALESCE(array_position(?::text[], tr.model), 999)
             LIMIT 1
         ) shown ON true
@@ -173,7 +173,7 @@ public class TranslationService {
    */
   public void record(Long pageId, String model, String textEn) {
     if (textEn != null && !textEn.isBlank()) {
-      translations.upsert(pageId, model, Markdown.repairTables(textEn));
+      translations.upsert(pageId, "en", model, Markdown.repairTables(textEn));
     }
     refreshShown(pageId);
   }
@@ -190,13 +190,13 @@ public class TranslationService {
     jdbc.update(
         """
         UPDATE page_text SET text_en = (
-            SELECT tr.text_en FROM page_translation tr
-            WHERE tr.page_id = ? AND tr.text_en IS NOT NULL AND tr.text_en <> ''
+            SELECT tr.text FROM page_translation tr
+            WHERE tr.page_id = ? AND tr.lang = 'en' AND tr.text IS NOT NULL AND tr.text <> ''
             ORDER BY COALESCE(array_position(?::text[], tr.model), 999)
             LIMIT 1
         )
         WHERE page_id = ?
-          AND EXISTS (SELECT 1 FROM page_translation tr WHERE tr.page_id = ?)
+          AND EXISTS (SELECT 1 FROM page_translation tr WHERE tr.page_id = ? AND tr.lang = 'en')
         """,
         pageId,
         ranks(),
@@ -215,8 +215,8 @@ public class TranslationService {
         UPDATE page_text pt SET text_en = best.text_en
         FROM (
             SELECT p.id AS page_id, (
-                SELECT tr.text_en FROM page_translation tr
-                WHERE tr.page_id = p.id AND tr.text_en IS NOT NULL AND tr.text_en <> ''
+                SELECT tr.text FROM page_translation tr
+                WHERE tr.page_id = p.id AND tr.lang = 'en' AND tr.text IS NOT NULL AND tr.text <> ''
                 ORDER BY COALESCE(array_position(?::text[], tr.model), 999)
                 LIMIT 1
             ) AS text_en
