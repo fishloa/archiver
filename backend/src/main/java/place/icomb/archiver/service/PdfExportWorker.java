@@ -92,7 +92,8 @@ public class PdfExportWorker {
       Path temp = storageService.exportTempDir();
       partial = temp.resolve(export.id() + ".pdf.partial");
       int pdfPages =
-          pdfExportService.buildToFile(export.recordId(), seqs, export.variant(), partial, temp);
+          pdfExportService.buildToFile(
+              export.recordId(), seqs, export.variant(), export.lang(), partial, temp);
 
       long bytes = Files.size(partial);
       String address = storageService.newExportPath();

@@ -58,7 +58,7 @@ class PdfExportWorkerFailureTest {
 
   @Test
   void anErrorDuringTheBuildFailsTheExportInsteadOfEscaping() throws Exception {
-    when(pdfExportService.buildToFile(any(), any(), any(), any(), any()))
+    when(pdfExportService.buildToFile(any(), any(), any(), any(), any(), any()))
         .thenThrow(new OutOfMemoryError("Java heap space"));
 
     assertThat(worker.runOnce()).isTrue();
@@ -71,12 +71,12 @@ class PdfExportWorkerFailureTest {
   void aFinishedFileIsDeletedIfTheRowCannotBeMarkedReady() throws Exception {
     doAnswer(
             invocation -> {
-              Path target = invocation.getArgument(3);
+              Path target = invocation.getArgument(4);
               Files.writeString(target, "pdf-content");
               return 1;
             })
         .when(pdfExportService)
-        .buildToFile(any(), any(), any(), any(), any());
+        .buildToFile(any(), any(), any(), any(), any(), any());
     doThrow(new RuntimeException("db down"))
         .when(queue)
         .markReady(any(String.class), any(String.class), any(Long.class), any(Duration.class));
@@ -91,12 +91,12 @@ class PdfExportWorkerFailureTest {
   void aBuildThatIsNoLongerBuildingWhenItFinishesHasItsFileDeleted() throws Exception {
     doAnswer(
             invocation -> {
-              Path target = invocation.getArgument(3);
+              Path target = invocation.getArgument(4);
               Files.writeString(target, "pdf-content");
               return 1;
             })
         .when(pdfExportService)
-        .buildToFile(any(), any(), any(), any(), any());
+        .buildToFile(any(), any(), any(), any(), any(), any());
     when(queue.markReady(
             any(String.class), any(String.class), any(Long.class), any(Duration.class)))
         .thenReturn(false);
@@ -109,7 +109,7 @@ class PdfExportWorkerFailureTest {
 
   @Test
   void aDatabaseErrorWhileMarkingFailedDoesNotKillTheWorker() throws Exception {
-    when(pdfExportService.buildToFile(any(), any(), any(), any(), any()))
+    when(pdfExportService.buildToFile(any(), any(), any(), any(), any(), any()))
         .thenThrow(new IOException("no scan"));
     doThrow(new RuntimeException("db down")).when(queue).markFailed(any(), any());
 
