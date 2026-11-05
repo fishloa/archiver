@@ -126,6 +126,11 @@
 		font-family: ui-monospace, monospace;
 		font-size: 0.92em;
 	}
+
+	.markdown-text :global(pre) {
+		white-space: pre-wrap;
+		overflow-wrap: anywhere;
+	}
 	.markdown-text :global(hr) {
 		border: 0;
 		border-top: 1px solid var(--vui-border, currentColor);
