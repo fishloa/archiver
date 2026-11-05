@@ -37,4 +37,12 @@ public interface Translator extends AiImplementation {
 
   /** The translation carried by one response body, cleaned of anything the model added. */
   String parse(JsonNode responseBody);
+
+  /**
+   * As {@link #parse(JsonNode)}, knowing the text that was translated, so a heading the document
+   * itself opens with is not mistaken for something the model added.
+   */
+  default String parse(JsonNode responseBody, String sourceText) {
+    return parse(responseBody);
+  }
 }

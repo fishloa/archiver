@@ -55,6 +55,16 @@ public class SyncTranslateWorker extends GenericWorker {
   public static String translate(
       ResilientHttpClient http, Translator translator, String apiKey, Map<String, Object> body)
       throws IOException, InterruptedException {
+    return translate(http, translator, apiKey, body, null);
+  }
+
+  public static String translate(
+      ResilientHttpClient http,
+      Translator translator,
+      String apiKey,
+      Map<String, Object> body,
+      String sourceText)
+      throws IOException, InterruptedException {
     Map<String, Object> withModel = new java.util.LinkedHashMap<>(body);
     withModel.put("model", translator.model());
 
@@ -74,7 +84,7 @@ public class SyncTranslateWorker extends GenericWorker {
               + " "
               + response.body().substring(0, Math.min(300, response.body().length())));
     }
-    return translator.parse(MAPPER.readTree(response.body()));
+    return translator.parse(MAPPER.readTree(response.body()), sourceText);
   }
 
   @Override
@@ -108,7 +118,7 @@ public class SyncTranslateWorker extends GenericWorker {
       return;
     }
 
-    String translated = translate(http, translator, apiKey, translator.request(text, null));
+    String translated = translate(http, translator, apiKey, translator.request(text, null), text);
 
     // Every model's output is kept. text_en is only a cache of whichever is preferred, so a cheap
     // translation is never destroyed by a better one.

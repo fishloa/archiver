@@ -218,4 +218,44 @@ class ChatTranslatorTest {
     assertThat(ChatTranslator.stripPreamble("Hier ist die deutsche Übersetzung:\n\nX"))
         .isEqualTo("X");
   }
+
+  private static com.fasterxml.jackson.databind.JsonNode answer(String content) {
+    var f = JsonNodeFactory.instance;
+    return f.objectNode()
+        .set(
+            "choices",
+            f.arrayNode()
+                .add(f.objectNode().set("message", f.objectNode().put("content", content))));
+  }
+
+  @Test
+  void aBareLabelIsKeptWhenTheSourceOpensWithOne() {
+    String kept = "### Translation\n\nCertified copy of the birth record";
+    assertThat(translator().parse(answer(kept), "Übersetzung\n\nBeglaubigte Abschrift"))
+        .isEqualTo(kept);
+    assertThat(translator().parse(answer("Překlad:\n\nText"), "# Übersetzung\n\nText"))
+        .isEqualTo("Překlad:\n\nText");
+    assertThat(translator().parse(answer("Translation:\n\nText"), "Translation:\n\nText"))
+        .isEqualTo("Translation:\n\nText");
+  }
+
+  @Test
+  void aBareLabelTheSourceDoesNotHaveIsStillStripped() {
+    assertThat(
+            translator()
+                .parse(answer("### Translation\n\nCertified copy"), "Beglaubigte Abschrift"))
+        .isEqualTo("Certified copy");
+    assertThat(translator().parse(answer("### Translation\n\nCertified copy"), null))
+        .isEqualTo("Certified copy");
+  }
+
+  @Test
+  void aSpokenIntroductionIsStrippedWhateverTheSourceSays() {
+    assertThat(
+            translator()
+                .parse(
+                    answer("Here is the translation:\n\nCertified copy"),
+                    "Übersetzung\n\nBeglaubigte Abschrift"))
+        .isEqualTo("Certified copy");
+  }
 }

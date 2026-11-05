@@ -443,7 +443,8 @@ public class TranslationService {
                   http,
                   translator,
                   apiKey,
-                  translator.request((String) page.get("text_raw"), recordLang, lang));
+                  translator.request((String) page.get("text_raw"), recordLang, lang),
+                  (String) page.get("text_raw"));
         } catch (IOException | RuntimeException e) {
           throw new IllegalStateException(
               "Could not translate page "

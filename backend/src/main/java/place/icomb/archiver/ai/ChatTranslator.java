@@ -95,9 +95,14 @@ public class ChatTranslator implements Translator {
 
   @Override
   public String parse(JsonNode responseBody) {
+    return parse(responseBody, null);
+  }
+
+  @Override
+  public String parse(JsonNode responseBody, String sourceText) {
     String content =
         responseBody.path("choices").path(0).path("message").path("content").asText("").strip();
-    return stripPreamble(unwrapCodeFence(stripPreamble(content)));
+    return stripPreamble(unwrapCodeFence(stripPreamble(content, sourceText)), sourceText);
   }
 
   /**
@@ -126,6 +131,19 @@ public class ChatTranslator implements Translator {
     return body.substring(0, lastFence).strip();
   }
 
+  private static boolean isBareLabel(String line) {
+    return line.matches("(?i)^#{1,6}\\s*" + LANGUAGE + TRANSLATION_WORD + "\\s*[.:]?$")
+        || line.matches("(?i)^\\*{0,2}" + LANGUAGE + TRANSLATION_WORD + "\\*{0,2}\\s*[.:]$");
+  }
+
+  private static boolean opensWithLabel(String sourceText) {
+    if (sourceText == null) return false;
+    String stripped = sourceText.strip();
+    int newline = stripped.indexOf('\n');
+    String first = (newline < 0 ? stripped : stripped.substring(0, newline)).strip();
+    return first.matches("(?i)^[#*\\s]*" + LANGUAGE + TRANSLATION_WORD + "[*\\s]*[.:]?$");
+  }
+
   /**
    * Removes a preamble the model wrote about the translation.
    *
@@ -140,14 +158,22 @@ public class ChatTranslator implements Translator {
    * responses repeated the heading.
    */
   public static String stripPreamble(String text) {
+    return stripPreamble(text, null);
+  }
+
+  /**
+   * @param sourceText the text that was translated; when it opens with a bare label such as
+   *     "Übersetzung" the label is the document's own heading, so the answer's is kept
+   */
+  public static String stripPreamble(String text, String sourceText) {
     if (text == null) return "";
     String t = text.strip();
+    boolean labelIsContent = opensWithLabel(sourceText);
     for (int pass = 0; pass < 2; pass++) {
       int newline = t.indexOf('\n');
       String first = (newline < 0 ? t : t.substring(0, newline)).strip();
       boolean preamble =
-          first.matches("(?i)^#{1,6}\\s*" + LANGUAGE + TRANSLATION_WORD + "\\s*[.:]?$")
-              || first.matches("(?i)^\\*{0,2}" + LANGUAGE + TRANSLATION_WORD + "\\*{0,2}\\s*[.:]$")
+          (!labelIsContent && isBareLabel(first))
               || first.matches(
                   "(?i)^(here is|here's|below is)\\s+the\\s+"
                       + LANGUAGE
