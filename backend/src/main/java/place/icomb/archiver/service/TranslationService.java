@@ -1,11 +1,17 @@
 package place.icomb.archiver.service;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.stream.Collectors;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
+import place.icomb.archiver.ai.AiCapability;
+import place.icomb.archiver.ai.AiRegistry;
+import place.icomb.archiver.ai.ChatTranslator;
 import place.icomb.archiver.repository.PageTranslationRepository;
 import place.icomb.archiver.repository.RecordTranslationRepository;
 
@@ -32,13 +38,22 @@ public class TranslationService {
   private final JdbcTemplate jdbc;
   private final PageTranslationRepository translations;
   private final RecordTranslationRepository recordTranslations;
-  private final place.icomb.archiver.ai.AiRegistry registry;
+  private final AiRegistry registry;
+
+  private final ResilientHttpClient http = ResilientHttpClient.builder().build();
+
+  /**
+   * One lock per record and language, held while the missing pages are found and translated, so two
+   * exports building at once never pay for the same page. Assumes one backend instance, as
+   * PdfExportWorker's restart recovery already does.
+   */
+  private final ConcurrentHashMap<String, Object> translating = new ConcurrentHashMap<>();
 
   public TranslationService(
       JdbcTemplate jdbc,
       PageTranslationRepository translations,
       RecordTranslationRepository recordTranslations,
-      place.icomb.archiver.ai.AiRegistry registry) {
+      AiRegistry registry) {
     this.jdbc = jdbc;
     this.translations = translations;
     this.recordTranslations = recordTranslations;
@@ -92,6 +107,10 @@ public class TranslationService {
    * otherwise make 942 round trips to answer the same question.
    */
   public Map<Integer, String> bestEnglishByRecord(Long recordId) {
+    return bestByRecord(recordId, "en");
+  }
+
+  public Map<Integer, String> bestByRecord(Long recordId, String lang) {
     Map<Integer, String> out = new HashMap<>();
     jdbc.query(
         """
@@ -99,7 +118,7 @@ public class TranslationService {
         FROM page p
         JOIN LATERAL (
             SELECT tr.text FROM page_translation tr
-            WHERE tr.page_id = p.id AND tr.lang = 'en' AND tr.text IS NOT NULL AND tr.text <> ''
+            WHERE tr.page_id = p.id AND tr.lang = ? AND tr.text IS NOT NULL AND tr.text <> ''
             ORDER BY COALESCE(array_position(?::text[], tr.model), 999)
             LIMIT 1
         ) best ON true
@@ -108,6 +127,7 @@ public class TranslationService {
         rs -> {
           out.put(rs.getInt(1), rs.getString(2));
         },
+        lang,
         ranks(),
         recordId);
     return out;
@@ -135,6 +155,10 @@ public class TranslationService {
    * best model present, so "upgraded" is never claimed for pages that were not.
    */
   public List<String[]> modelBreakdown(Long recordId) {
+    return modelBreakdown(recordId, "en");
+  }
+
+  public List<String[]> modelBreakdown(Long recordId, String lang) {
     List<String[]> out = new ArrayList<>();
     jdbc.query(
         """
@@ -142,7 +166,7 @@ public class TranslationService {
         FROM page p
         JOIN LATERAL (
             SELECT tr.model FROM page_translation tr
-            WHERE tr.page_id = p.id AND tr.lang = 'en' AND tr.text IS NOT NULL AND tr.text <> ''
+            WHERE tr.page_id = p.id AND tr.lang = ? AND tr.text IS NOT NULL AND tr.text <> ''
             ORDER BY COALESCE(array_position(?::text[], tr.model), 999)
             LIMIT 1
         ) shown ON true
@@ -153,6 +177,7 @@ public class TranslationService {
         rs -> {
           out.add(new String[] {rs.getString(1), String.valueOf(rs.getInt(2))});
         },
+        lang,
         ranks(),
         recordId,
         ranks());
@@ -307,5 +332,98 @@ public class TranslationService {
         """,
         ranks(),
         ranks());
+  }
+
+  /**
+   * Records a model's translation of a page into {@code lang}.
+   *
+   * <p>English goes through {@link #record}, which also repoints the cache. Other languages have no
+   * cache: page_text.text_en is English only.
+   */
+  public void recordIn(Long pageId, String lang, String model, String text) {
+    if ("en".equals(lang)) {
+      record(pageId, model, text);
+      return;
+    }
+    if (text != null && !text.isBlank()) {
+      translations.upsert(pageId, lang, model, Markdown.repairTables(text));
+    }
+  }
+
+  /**
+   * Translates the selected pages that have no translation into {@code lang} yet, one request per
+   * page, storing each as it arrives so a failure part-way keeps what was already paid for.
+   *
+   * <p>English is never translated here, and neither is the record's own language: its text is the
+   * transcription.
+   *
+   * @return how many pages were sent to the model
+   */
+  public int translateMissing(long recordId, List<Long> pageIds, String lang)
+      throws IOException, InterruptedException {
+    if ("en".equals(lang)) {
+      return 0;
+    }
+    String recordLang =
+        jdbc.queryForObject("SELECT lang FROM record WHERE id = ?", String.class, recordId);
+    if (lang.equals(recordLang)) {
+      return 0;
+    }
+    synchronized (translating.computeIfAbsent(recordId + ":" + lang, k -> new Object())) {
+      List<Map<String, Object>> missing =
+          jdbc
+              .queryForList(
+                  """
+                  SELECT p.id, p.seq, pt.text_raw
+                  FROM unnest(string_to_array(?, ',')::bigint[]) WITH ORDINALITY AS sel(page_id, ord)
+                  JOIN page p ON p.id = sel.page_id
+                  JOIN page_text pt ON pt.page_id = p.id
+                  WHERE NOT EXISTS (SELECT 1 FROM page_translation tr
+                                    WHERE tr.page_id = p.id AND tr.lang = ? AND tr.text <> '')
+                  ORDER BY sel.ord
+                  """,
+                  pageIds.stream().map(String::valueOf).collect(Collectors.joining(",")),
+                  lang)
+              .stream()
+              .filter(row -> row.get("text_raw") instanceof String text && !text.isBlank())
+              .toList();
+      if (missing.isEmpty()) {
+        return 0;
+      }
+      String language = CoverSheetService.languageName(lang);
+      AiRegistry.Registration registration =
+          registry
+              .best(AiCapability.TRANSLATION)
+              .orElseThrow(
+                  () ->
+                      new IllegalStateException(
+                          "No translation model is configured, so the "
+                              + language
+                              + " text cannot be made"));
+      String apiKey = registry.credential(registration);
+      ChatTranslator translator = new ChatTranslator(registration, apiKey);
+      for (Map<String, Object> page : missing) {
+        String translated;
+        try {
+          translated =
+              SyncTranslateWorker.translate(
+                  http,
+                  translator,
+                  apiKey,
+                  translator.request((String) page.get("text_raw"), recordLang, lang));
+        } catch (IOException | RuntimeException e) {
+          throw new IllegalStateException(
+              "Could not translate page "
+                  + page.get("seq")
+                  + " into "
+                  + language
+                  + ": "
+                  + e.getMessage(),
+              e);
+        }
+        recordIn(((Number) page.get("id")).longValue(), lang, translator.model(), translated);
+      }
+      return missing.size();
+    }
   }
 }

@@ -316,6 +316,48 @@ class TranslationServiceTest {
         .isInstanceOf(DataIntegrityViolationException.class);
   }
 
+  @Test
+  void czechIsRankedAmongCzechTranslations() {
+    czech("mistral-small-latest", "levný");
+    czech("mistral-medium-latest", "pečlivý");
+    translation("google/gemma-4-31B-it", "english");
+
+    assertThat(translationService.bestByRecord(recordId, "cs")).containsEntry(1, "pečlivý");
+    assertThat(translationService.modelBreakdown(recordId, "cs").get(0)[0])
+        .isEqualTo("mistral-medium-latest");
+    assertThat(translationService.bestByRecord(recordId, "de")).isEmpty();
+  }
+
+  @Test
+  void recordingACzechTranslationLeavesTheEnglishCacheAlone() {
+    jdbc.update("UPDATE page_text SET text_en = 'kept' WHERE page_id = ?", pageId);
+    translationService.recordIn(pageId, "cs", "mistral-medium-latest", "Český");
+    translationService.recordIn(pageId, "cs", "mistral-small-latest", "   ");
+
+    assertThat(cached()).isEqualTo("kept");
+    assertThat(translationService.bestByRecord(recordId, "cs")).containsEntry(1, "Český");
+    assertThat(
+            jdbc.queryForObject(
+                "SELECT count(*) FROM page_translation WHERE page_id = ? AND lang = 'cs'",
+                Integer.class,
+                pageId))
+        .isEqualTo(1);
+  }
+
+  @Test
+  void aCzechTableIsRepairedOnTheWayIn() {
+    String table = "| Jméno | Datum |\n| --- |\n| Czernin | 1943 |";
+    translationService.recordIn(pageId, "cs", "mistral-medium-latest", table);
+    assertThat(translationService.bestByRecord(recordId, "cs"))
+        .containsEntry(1, Markdown.repairTables(table));
+  }
+
+  @Test
+  void englishRecordedThroughRecordInStillRefreshesTheCache() {
+    translationService.recordIn(pageId, "en", "mistral-small-latest", "cheap");
+    assertThat(cached()).isEqualTo("cheap");
+  }
+
   // -------------------------------------------------------------------------
   // Record metadata
   // -------------------------------------------------------------------------
