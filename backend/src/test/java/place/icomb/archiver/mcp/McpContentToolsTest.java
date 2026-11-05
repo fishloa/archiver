@@ -122,7 +122,7 @@ class McpContentToolsTest {
 
   @Test
   void aPdfOfChosenPagesIsRequestedPolledAndFetched() {
-    Map<String, Object> asked = tools.exportPdf(record, "original", "2");
+    Map<String, Object> asked = tools.exportPdf(record, "original", "2", null);
     assertThat(asked.get("state")).isEqualTo("queued");
     assertThat(asked.get("pageCount")).isEqualTo(1);
     String id = String.valueOf(asked.get("id"));
@@ -137,9 +137,9 @@ class McpContentToolsTest {
 
   @Test
   void anExportOfNoSuchPagesOrRecordIsRefusedClearly() {
-    assertThatThrownBy(() -> tools.exportPdf(record, "original", "50-60"))
+    assertThatThrownBy(() -> tools.exportPdf(record, "original", "50-60", null))
         .isInstanceOf(IllegalArgumentException.class);
-    assertThatThrownBy(() -> tools.exportPdf(-1L, null, null))
+    assertThatThrownBy(() -> tools.exportPdf(-1L, null, null, null))
         .isInstanceOf(IllegalArgumentException.class);
     assertThatThrownBy(() -> tools.getPdfExport("nope"))
         .isInstanceOf(IllegalArgumentException.class);
@@ -147,7 +147,7 @@ class McpContentToolsTest {
 
   @Test
   void aReadyPdfComesBackAsAnEmbeddedFileSoAClientCanSaveIt() {
-    String id = String.valueOf(tools.exportPdf(record, "original", "2").get("id"));
+    String id = String.valueOf(tools.exportPdf(record, "original", "2", null).get("id"));
     worker.runOnce();
 
     io.modelcontextprotocol.spec.McpSchema.CallToolResult result = tools.downloadPdf(id, null);
@@ -167,10 +167,36 @@ class McpContentToolsTest {
 
   @Test
   void aPdfThatIsNotReadyIsRefusedClearly() {
-    String id = String.valueOf(tools.exportPdf(record, "original", "3").get("id"));
+    String id = String.valueOf(tools.exportPdf(record, "original", "3", null).get("id"));
 
     assertThatThrownBy(() -> tools.downloadPdf(id, null))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining("prepared");
+  }
+
+  @Test
+  void aGermanPdfOfAGermanRecordReportsItsLanguage() {
+    Map<String, Object> asked = tools.exportPdf(record, "translation", "2", "de");
+    assertThat(asked.get("lang")).isEqualTo("de");
+    assertThat(asked.get("variant")).isEqualTo("translation");
+    String id = String.valueOf(asked.get("id"));
+
+    worker.runOnce();
+
+    assertThat(tools.getPdfExport(id).get("lang")).isEqualTo("de");
+    String text =
+        tools.downloadPdf(id, null).content().stream()
+            .filter(c -> c instanceof io.modelcontextprotocol.spec.McpSchema.TextContent)
+            .map(c -> ((io.modelcontextprotocol.spec.McpSchema.TextContent) c).text())
+            .findFirst()
+            .orElseThrow();
+    assertThat(text).contains("lang de");
+  }
+
+  @Test
+  void anUnknownLanguageIsRefusedNamingTheAcceptedOnes() {
+    assertThatThrownBy(() -> tools.exportPdf(record, "translation", "2", "fr"))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("en, de, cs");
   }
 }

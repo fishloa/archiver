@@ -18,12 +18,14 @@
 		recordId,
 		variant = 'original',
 		pages = '',
+		lang = 'en',
 		label,
 		class: klass = 'vui-btn vui-btn-primary vui-btn-sm'
 	}: {
 		recordId: number;
 		variant?: string;
 		pages?: string;
+		lang?: string;
 		label: string;
 		class?: string;
 	} = $props();
@@ -51,7 +53,7 @@
 				await fetch(createUrl(recordId), {
 					method: 'POST',
 					headers: { 'Content-Type': 'application/json' },
-					body: JSON.stringify(exportRequest(variant, pages))
+					body: JSON.stringify(exportRequest(variant, pages, lang))
 				})
 			);
 			if (destroyed) return;

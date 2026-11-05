@@ -77,7 +77,12 @@ public class TranslateBatchStage implements BatchStage {
 
   @Override
   public void applyResult(Job job, JsonNode body) {
-    String translated = translator.parse(body);
+    String source =
+        jdbc.query(
+            "SELECT text_raw FROM page_text WHERE page_id = ? ORDER BY id DESC LIMIT 1",
+            rs -> rs.next() ? rs.getString(1) : null,
+            job.getPageId());
+    String translated = translator.parse(body, source);
 
     // Every model's output is kept. text_en is only a cache of whichever is preferred, so a
     // cheap translation is never destroyed by a better one — and an upgrade already done can

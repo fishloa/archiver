@@ -156,7 +156,9 @@ public class CoverSheetService {
       int transcribed,
       int translated,
       Instant ingestedAt,
-      String selection) {}
+      String selection,
+      String textLanguage,
+      boolean transcriptionShown) {}
 
   // -------------------------------------------------------------------------
   // Gathering
@@ -166,7 +168,7 @@ public class CoverSheetService {
    * @param selectedSeqs the pages this extract contains, so a partial extract says so rather than
    *     claiming to be the whole file
    */
-  public Cover gather(Long recordId, List<Integer> selectedSeqs) {
+  public Cover gather(Long recordId, List<Integer> selectedSeqs, String lang) {
     Map<String, Object> r =
         jdbc.queryForMap(
             """
@@ -222,10 +224,13 @@ public class CoverSheetService {
             rs -> rs.next() ? rs.getString(1) : null,
             recordId);
 
-    // The models actually behind this record's English, named honestly: a record can be part
-    // upgraded, and claiming the better model for pages that never got it would misdescribe the
-    // evidence.
-    String model = describeModels(translationService.modelBreakdown(recordId));
+    // The models actually behind this record's text in the export's language, named honestly: a
+    // record can be part upgraded, and claiming the better model for pages that never got it would
+    // misdescribe the evidence.
+    boolean english = "en".equals(lang);
+    boolean transcriptionShown = !english && lang.equals(str(r.get("lang")));
+    String model =
+        transcriptionShown ? "" : describeModels(translationService.modelBreakdown(recordId, lang));
 
     int transcribed =
         orZero(
@@ -233,15 +238,34 @@ public class CoverSheetService {
                 "SELECT count(*) FROM page p JOIN page_text pt ON pt.page_id = p.id WHERE p.record_id = ?",
                 Integer.class,
                 recordId));
-    int translated =
-        orZero(
-            jdbc.queryForObject(
-                """
-                SELECT count(*) FROM page p JOIN page_text pt ON pt.page_id = p.id
-                WHERE p.record_id = ? AND pt.text_en IS NOT NULL AND pt.text_en <> ''
-                """,
-                Integer.class,
-                recordId));
+    int translated;
+    if (transcriptionShown) {
+      translated = 0;
+    } else if (english) {
+      translated =
+          orZero(
+              jdbc.queryForObject(
+                  """
+                  SELECT count(*) FROM page p JOIN page_text pt ON pt.page_id = p.id
+                  WHERE p.record_id = ? AND pt.text_en IS NOT NULL AND pt.text_en <> ''
+                  """,
+                  Integer.class,
+                  recordId));
+    } else {
+      translated =
+          orZero(
+              jdbc.queryForObject(
+                  """
+                  SELECT count(DISTINCT p.id) FROM page p
+                  JOIN page_translation tr ON tr.page_id = p.id
+                  WHERE p.record_id = ? AND tr.lang = ? AND tr.text <> ''
+                    AND EXISTS (SELECT 1 FROM page_text src WHERE src.page_id = p.id
+                                AND md5(src.text_raw) = tr.source_md5)
+                  """,
+                  Integer.class,
+                  recordId,
+                  lang));
+    }
 
     return new Cover(
         str(r.get("archive_name")),
@@ -261,7 +285,9 @@ public class CoverSheetService {
         transcribed,
         translated,
         r.get("created_at") instanceof java.sql.Timestamp ts ? ts.toInstant() : null,
-        describeSelection(selectedSeqs, pageCount));
+        describeSelection(selectedSeqs, pageCount),
+        languageName(lang),
+        transcriptionShown);
   }
 
   /** "mistral-medium-latest", or "mistral-medium-latest (12 pages), mistral-small-latest (26)". */
@@ -413,9 +439,15 @@ public class CoverSheetService {
             + (c.ocrEngines() == null || c.ocrEngines().isBlank() ? "" : " by " + c.ocrEngines())
             + ".";
     out.add(transcription);
-    if (c.translated() > 0) {
+    if (c.transcriptionShown()) {
       out.add(
-          "English is machine translation"
+          "The text shown is the "
+              + c.textLanguage()
+              + " transcription itself, not a translation.");
+    } else if (c.translated() > 0) {
+      out.add(
+          c.textLanguage()
+              + " is machine translation"
               + (c.translationModel() == null || c.translationModel().isBlank()
                   ? ""
                   : " (" + c.translationModel() + ")")

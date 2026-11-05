@@ -1,11 +1,14 @@
 package place.icomb.archiver.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.dao.DuplicateKeyException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.DynamicPropertyRegistry;
@@ -107,9 +110,9 @@ class TranslationServiceTest {
   private void translation(String model, String text) {
     jdbc.update(
         """
-        INSERT INTO page_translation (page_id, model, text_en, created_at)
+        INSERT INTO page_translation (page_id, model, text, created_at)
         VALUES (?, ?, ?, now())
-        ON CONFLICT (page_id, model) DO UPDATE SET text_en = EXCLUDED.text_en
+        ON CONFLICT (page_id, lang, model) DO UPDATE SET text = EXCLUDED.text
         """,
         pageId,
         model,
@@ -226,6 +229,135 @@ class TranslationServiceTest {
 
   private Long recordIdOf(Long page) {
     return jdbc.queryForObject("SELECT record_id FROM page WHERE id = ?", Long.class, page);
+  }
+
+  // -------------------------------------------------------------------------
+  // Other languages share the table and never reach English
+  // -------------------------------------------------------------------------
+
+  private void czech(String model, String text) {
+    jdbc.update(
+        "INSERT INTO page_translation (page_id, lang, model, text, source_md5, created_at)"
+            + " VALUES (?, 'cs', ?, ?, (SELECT md5(text_raw) FROM page_text WHERE page_id = ?),"
+            + " now())",
+        pageId,
+        model,
+        text,
+        pageId);
+  }
+
+  @Test
+  void aCzechTranslationIsNeverTakenForTheEnglishOne() {
+    translation("mistral-small-latest", "cheap");
+    czech("mistral-medium-latest", "Český překlad");
+
+    assertThat(translationService.bestEnglish(pageId)).isEqualTo("cheap");
+    assertThat(translationService.bestModel(pageId)).isEqualTo("mistral-small-latest");
+    assertThat(translationService.bestEnglishByRecord(recordId)).containsEntry(1, "cheap");
+    assertThat(translationService.modelBreakdown(recordId).get(0)[0])
+        .isEqualTo("mistral-small-latest");
+    translationService.refreshShown(pageId);
+    assertThat(cached()).isEqualTo("cheap");
+    jdbc.update("UPDATE page_text SET text_en = 'stale' WHERE page_id = ?", pageId);
+    assertThat(translationService.refreshAllStale()).isEqualTo(1);
+    assertThat(cached()).isEqualTo("cheap");
+  }
+
+  @Test
+  void aPageWithOnlyACzechTranslationKeepsItsEnglishCache() {
+    jdbc.update("UPDATE page_text SET text_en = 'kept' WHERE page_id = ?", pageId);
+    czech("mistral-medium-latest", "Český překlad");
+
+    translationService.refreshShown(pageId);
+    assertThat(cached()).isEqualTo("kept");
+    assertThat(translationService.refreshAllStale()).isZero();
+    assertThat(cached()).isEqualTo("kept");
+    assertThat(translationService.bestEnglish(pageId)).isNull();
+  }
+
+  @Test
+  void existingRowsAreEnglishAndOneModelTranslatesAPageOncePerLanguage() {
+    translation("mistral-small-latest", "cheap");
+    assertThat(
+            jdbc.queryForObject(
+                "SELECT lang FROM page_translation WHERE page_id = ?", String.class, pageId))
+        .isEqualTo("en");
+
+    czech("mistral-small-latest", "levný");
+    assertThat(
+            jdbc.queryForObject(
+                "SELECT count(*) FROM page_translation WHERE page_id = ?", Integer.class, pageId))
+        .isEqualTo(2);
+    assertThatThrownBy(() -> czech("mistral-small-latest", "again"))
+        .isInstanceOf(DuplicateKeyException.class);
+    assertThatThrownBy(
+            () ->
+                jdbc.update(
+                    "INSERT INTO page_translation (page_id, lang, model, text)"
+                        + " VALUES (?, 'fr', 'm', 'x')",
+                    pageId))
+        .isInstanceOf(DataIntegrityViolationException.class);
+  }
+
+  @Test
+  void anExportIsEnglishUnlessToldOtherwiseAndOnlyInTheThreeLanguages() {
+    jdbc.update(
+        "INSERT INTO pdf_export (record_id, variant, page_ids, fingerprint)"
+            + " VALUES (?, 'english', '{}', 'x')",
+        recordId);
+    assertThat(
+            jdbc.queryForObject(
+                "SELECT lang FROM pdf_export WHERE record_id = ?", String.class, recordId))
+        .isEqualTo("en");
+    assertThatThrownBy(
+            () ->
+                jdbc.update(
+                    "INSERT INTO pdf_export (record_id, variant, page_ids, fingerprint, lang)"
+                        + " VALUES (?, 'english', '{}', 'x', 'fr')",
+                    recordId))
+        .isInstanceOf(DataIntegrityViolationException.class);
+  }
+
+  @Test
+  void czechIsRankedAmongCzechTranslations() {
+    czech("mistral-small-latest", "levný");
+    czech("mistral-medium-latest", "pečlivý");
+    translation("google/gemma-4-31B-it", "english");
+
+    assertThat(translationService.bestByRecord(recordId, "cs")).containsEntry(1, "pečlivý");
+    assertThat(translationService.modelBreakdown(recordId, "cs").get(0)[0])
+        .isEqualTo("mistral-medium-latest");
+    assertThat(translationService.bestByRecord(recordId, "de")).isEmpty();
+  }
+
+  @Test
+  void recordingACzechTranslationLeavesTheEnglishCacheAlone() {
+    jdbc.update("UPDATE page_text SET text_en = 'kept' WHERE page_id = ?", pageId);
+    translationService.recordIn(pageId, "cs", "mistral-medium-latest", "Český");
+    translationService.recordIn(pageId, "cs", "mistral-small-latest", "   ");
+
+    assertThat(cached()).isEqualTo("kept");
+    assertThat(translationService.bestByRecord(recordId, "cs")).containsEntry(1, "Český");
+    assertThat(
+            jdbc.queryForObject(
+                "SELECT count(*) FROM page_translation WHERE page_id = ? AND lang = 'cs'",
+                Integer.class,
+                pageId))
+        .isEqualTo(1);
+  }
+
+  @Test
+  void aCzechTableIsRepairedOnTheWayIn() {
+    String table = "| Jméno | Datum |\n| --- |\n| Czernin | 1943 |";
+    translationService.recordIn(pageId, "cs", "mistral-medium-latest", table);
+    assertThat(translationService.bestByRecord(recordId, "cs"))
+        .containsEntry(1, Markdown.repairTables(table));
+  }
+
+  @Test
+  void englishRecordedThroughRecordInStillRefreshesTheCache() {
+    translationService.recordIn(pageId, "en", "mistral-small-latest", "cheap");
+    assertThat(cached()).isEqualTo("cheap");
   }
 
   // -------------------------------------------------------------------------

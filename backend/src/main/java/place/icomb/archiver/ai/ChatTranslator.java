@@ -2,6 +2,7 @@ package place.icomb.archiver.ai;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 
 /**
@@ -25,11 +26,16 @@ public class ChatTranslator implements Translator {
    * with preserving them. A model that renders "Führungszeugnis" as "Leadership Certificate" —
    * which one candidate did — is worse than no translation, because it reads as authoritative.
    */
-  private static final String INSTRUCTION =
-      "Translate the following German or Czech archival document text into English. "
-          + "Preserve all proper names, place names, dates, reference numbers and titles exactly "
-          + "as written. Keep the markdown structure. Do not add commentary or explanation. "
-          + "Output only the translation.\n\n";
+  private static String instruction(String targetLang) {
+    return "Translate the following German or Czech archival document text into "
+        + Locale.of(targetLang).getDisplayLanguage(Locale.ENGLISH)
+        + ". Preserve all proper names, place names, dates, reference numbers and titles exactly "
+        + "as written. Keep the markdown structure. Do not add commentary or explanation. "
+        + "Output only the translation.\n\n";
+  }
+
+  private static final String LANGUAGE = "((?:english|czech|german)\\s+)?";
+  private static final String TRANSLATION_WORD = "(?:translations?|překlad|[üÜ]bersetzung)";
 
   private final AiRegistry.Registration registration;
   private final String apiKey;
@@ -77,21 +83,26 @@ public class ChatTranslator implements Translator {
   }
 
   @Override
-  public Map<String, Object> request(String text, String sourceLang) {
+  public Map<String, Object> request(String text, String sourceLang, String targetLang) {
     return Map.of(
         "max_tokens",
         4000,
         "temperature",
         0.1,
         "messages",
-        List.of(Map.of("role", "user", "content", INSTRUCTION + text)));
+        List.of(Map.of("role", "user", "content", instruction(targetLang) + text)));
   }
 
   @Override
   public String parse(JsonNode responseBody) {
+    return parse(responseBody, null);
+  }
+
+  @Override
+  public String parse(JsonNode responseBody, String sourceText) {
     String content =
         responseBody.path("choices").path(0).path("message").path("content").asText("").strip();
-    return stripPreamble(unwrapCodeFence(content));
+    return stripPreamble(unwrapCodeFence(stripPreamble(content, sourceText)), sourceText);
   }
 
   /**
@@ -120,6 +131,19 @@ public class ChatTranslator implements Translator {
     return body.substring(0, lastFence).strip();
   }
 
+  private static boolean isBareLabel(String line) {
+    return line.matches("(?i)^#{1,6}\\s*" + LANGUAGE + TRANSLATION_WORD + "\\s*[.:]?$")
+        || line.matches("(?i)^\\*{0,2}" + LANGUAGE + TRANSLATION_WORD + "\\*{0,2}\\s*[.:]$");
+  }
+
+  private static boolean opensWithLabel(String sourceText) {
+    if (sourceText == null) return false;
+    String stripped = sourceText.strip();
+    int newline = stripped.indexOf('\n');
+    String first = (newline < 0 ? stripped : stripped.substring(0, newline)).strip();
+    return first.matches("(?i)^[#*\\s]*" + LANGUAGE + TRANSLATION_WORD + "[*\\s]*[.:]?$");
+  }
+
   /**
    * Removes a preamble the model wrote about the translation.
    *
@@ -134,16 +158,33 @@ public class ChatTranslator implements Translator {
    * responses repeated the heading.
    */
   public static String stripPreamble(String text) {
+    return stripPreamble(text, null);
+  }
+
+  /**
+   * @param sourceText the text that was translated; when it opens with a bare label such as
+   *     "Übersetzung" the label is the document's own heading, so the answer's is kept
+   */
+  public static String stripPreamble(String text, String sourceText) {
     if (text == null) return "";
     String t = text.strip();
+    boolean labelIsContent = opensWithLabel(sourceText);
     for (int pass = 0; pass < 2; pass++) {
       int newline = t.indexOf('\n');
       String first = (newline < 0 ? t : t.substring(0, newline)).strip();
       boolean preamble =
-          first.matches("(?i)^#{1,6}\\s*(english\\s+)?translations?\\s*[.:]?$")
-              || first.matches("(?i)^\\*{0,2}(english\\s+)?translations?\\*{0,2}\\s*[.:]$")
+          (!labelIsContent && isBareLabel(first))
               || first.matches(
-                  "(?i)^(here is|here's|below is)\\s+the\\s+(english\\s+)?translation\\b[^\\n]{0,200}:$");
+                  "(?i)^(here is|here's|below is)\\s+the\\s+"
+                      + LANGUAGE
+                      + "(?:translation|translated\\s+(?:text|version))\\b[^\\n]{0,200}:$")
+              || first.matches(
+                  "(?i)^(zde je|toto je)\\s+(?:(?:český|německý|anglický)\\s+)?"
+                      + "(?:překlad|přeložený\\s+text)\\b[^\\n]{0,200}:$")
+              || first.matches(
+                  "(?i)^(hier ist|nachfolgend)\\s+die\\s+"
+                      + "(?:(?:deutsche|tschechische|englische)\\s+)?"
+                      + "(?:[üÜ]bersetzung|[üÜ]bersetzte\\s+text)\\b[^\\n]{0,200}:$");
       if (!preamble) break;
       t = newline < 0 ? "" : t.substring(newline + 1).strip();
     }

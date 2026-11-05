@@ -268,11 +268,16 @@ public class ArchiverMcpTools {
       title = "Export PDF",
       description =
           "Ask for a PDF of a record, or of chosen pages. variant is 'original' (the scans with a"
-              + " searchable text layer, default), 'english' or 'side-by-side'. pages takes"
-              + " ranges and comma lists such as '14' or '1,3,5-10'; omit it for the whole"
-              + " record. The PDF is built in the background: poll get_pdf_export with the id"
-              + " until state is 'ready', then fetch downloadUrl with the same MCP token."
-              + " An identical request is reused. A finished PDF is kept 24 hours.",
+              + " searchable text layer, default), 'translation' or 'side-by-side' (scan facing"
+              + " text); 'english' still means the English translation. lang is the language of"
+              + " the text in a translation or side-by-side PDF: 'en' (default), 'de' or 'cs'. In"
+              + " the record's own language the text is its transcription; otherwise a"
+              + " translation the archive does not hold yet is made while the PDF is built, once"
+              + " per page, and kept. pages takes ranges and comma lists such as '14' or"
+              + " '1,3,5-10'; omit it for the whole record. The PDF is built in the background:"
+              + " poll get_pdf_export with the id until state is 'ready', then fetch downloadUrl"
+              + " with the same MCP token. An identical request is reused. A finished PDF is kept"
+              + " 24 hours.",
       annotations =
           @McpTool.McpAnnotations(
               title = "Export PDF",
@@ -281,16 +286,21 @@ public class ArchiverMcpTools {
               idempotentHint = true))
   public Map<String, Object> exportPdf(
       @McpToolParam(description = "Record id") Long recordId,
-      @McpToolParam(description = "original, english or side-by-side", required = false)
+      @McpToolParam(description = "original, translation or side-by-side", required = false)
           String variant,
       @McpToolParam(description = "Page selection, e.g. '14' or '1,3,5-10'", required = false)
-          String pages) {
+          String pages,
+      @McpToolParam(description = "Language of the text: en, de or cs", required = false)
+          String lang) {
     Map<String, Object> body = new LinkedHashMap<>();
     if (variant != null) {
       body.put("variant", variant);
     }
     if (pages != null) {
       body.put("pages", pages);
+    }
+    if (lang != null) {
+      body.put("lang", lang);
     }
     return pdfView(pdfExportController.create(recordId, body));
   }
@@ -299,7 +309,8 @@ public class ArchiverMcpTools {
       name = "get_pdf_export",
       title = "Get PDF Export",
       description =
-          "State of a PDF requested with export_pdf: queued, building, ready, failed or expired."
+          "State of a PDF requested with export_pdf: queued, building, ready, failed or expired,"
+              + " and its lang."
               + " When ready it carries downloadUrl, fetched with the same MCP token.",
       annotations =
           @McpTool.McpAnnotations(
@@ -333,6 +344,8 @@ public class ArchiverMcpTools {
               required = false)
           Integer part) {
     ResponseEntity<?> response = pdfExportController.file(id);
+    String lang =
+        response.getHeaders().getFirst(org.springframework.http.HttpHeaders.CONTENT_LANGUAGE);
     if (!response.getStatusCode().is2xxSuccessful()
         || !(response.getBody() instanceof org.springframework.core.io.Resource file)) {
       Object body = response.getBody();
@@ -400,6 +413,7 @@ public class ArchiverMcpTools {
                 + total
                 + " bytes, sha256 "
                 + sha256
+                + (lang == null ? "" : "; lang " + lang)
                 + ")")
         .addContent(
             io.modelcontextprotocol.spec.McpSchema.EmbeddedResource.builder(

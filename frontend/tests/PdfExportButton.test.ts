@@ -32,6 +32,25 @@ describe('PdfExportButton', () => {
 	const json = (status: number, body: unknown) =>
 		new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } });
 
+	it('asks for the chosen language', async () => {
+		fetchMock.mockResolvedValueOnce(json(202, { id: 'abc', state: 'ready', error: null }));
+
+		render(PdfExportButton, {
+			recordId: 7,
+			variant: 'translation',
+			pages: '',
+			lang: 'cs',
+			label: 'Get PDF'
+		});
+		await fireEvent.click(screen.getByRole('button'));
+		await vi.runAllTimersAsync();
+
+		expect(JSON.parse(fetchMock.mock.calls[0][1].body)).toEqual({
+			variant: 'translation',
+			lang: 'cs'
+		});
+	});
+
 	it('asks for the export, waits for it, then downloads it', async () => {
 		fetchMock
 			.mockResolvedValueOnce(json(202, { id: 'abc', state: 'queued', error: null }))

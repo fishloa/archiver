@@ -161,7 +161,7 @@ class PdfExportServiceTest {
 
     jdbc.update(
         """
-        INSERT INTO page_translation (page_id, model, text_en, created_at)
+        INSERT INTO page_translation (page_id, model, text, created_at)
         VALUES (?, 'mistral-small-latest', ?, now())
         """,
         pageId,
@@ -171,9 +171,15 @@ class PdfExportServiceTest {
   /** Builds a variant to a file, the way the worker does, and reads it back. */
   private byte[] build(Long recordId, List<Integer> seqNumbers, PdfExportService.Variant variant)
       throws Exception {
+    return build(recordId, seqNumbers, variant, "en");
+  }
+
+  private byte[] build(
+      Long recordId, List<Integer> seqNumbers, PdfExportService.Variant variant, String lang)
+      throws Exception {
     Path dir = Files.createTempDirectory("pdf-build");
     Path out = dir.resolve("out.pdf");
-    pdfExportService.buildToFile(recordId, seqNumbers, variant, out, dir);
+    pdfExportService.buildToFile(recordId, seqNumbers, variant, lang, out, dir);
     return Files.readAllBytes(out);
   }
 
@@ -185,7 +191,7 @@ class PdfExportServiceTest {
 
   @Test
   void englishExportRendersTheTranslation() throws Exception {
-    byte[] pdf = build(recordId, List.of(1), PdfExportService.Variant.ENGLISH);
+    byte[] pdf = build(recordId, List.of(1), PdfExportService.Variant.TRANSLATION);
     String text = textOf(pdf);
     assertThat(text).contains("Expropriation of the Czech nobility");
     assertThat(text).contains("Czech nobles");
@@ -257,7 +263,7 @@ class PdfExportServiceTest {
   void translatedExportsDrawTheFiguresTheEngineFound() throws Exception {
     // 21,996 pages reference a cut-out figure — signatures, stamps, seals. On a countersigned
     // order the signature block is the evidence.
-    byte[] pdf = build(recordId, List.of(1), PdfExportService.Variant.ENGLISH);
+    byte[] pdf = build(recordId, List.of(1), PdfExportService.Variant.TRANSLATION);
     try (PDDocument doc = Loader.loadPDF(pdf)) {
       // Page 0 is the cover; the document's own first page follows it.
       assertThat(countImages(doc, 1)).isEqualTo(1);
@@ -267,7 +273,7 @@ class PdfExportServiceTest {
   @Test
   void theOnDemandExportsCarryTheArchiveFooter() throws Exception {
     for (PdfExportService.Variant v :
-        List.of(PdfExportService.Variant.ENGLISH, PdfExportService.Variant.SIDE_BY_SIDE)) {
+        List.of(PdfExportService.Variant.TRANSLATION, PdfExportService.Variant.SIDE_BY_SIDE)) {
       String text = textOf(build(recordId, List.of(1), v));
       assertThat(text).as("%s footer URL", v).contains("/records/" + recordId + "/pages/1");
       assertThat(text).as("%s footer page label", v).contains("Archive Page 1");
@@ -281,7 +287,7 @@ class PdfExportServiceTest {
     // is the friction the footer exists to remove.
     String expected = "/records/" + recordId + "/pages/1";
     for (PdfExportService.Variant v :
-        List.of(PdfExportService.Variant.ENGLISH, PdfExportService.Variant.SIDE_BY_SIDE)) {
+        List.of(PdfExportService.Variant.TRANSLATION, PdfExportService.Variant.SIDE_BY_SIDE)) {
       try (PDDocument doc = Loader.loadPDF(build(recordId, List.of(1), v))) {
         var uris = new java.util.ArrayList<String>();
         // Page 0 is the cover, which links to the record; page 1 is the document's first page.
@@ -331,16 +337,16 @@ class PdfExportServiceTest {
     // Set on page_translation, which is where the export takes its English from.
     jdbc.update(
         """
-        INSERT INTO page_translation (page_id, model, text_en, created_at)
+        INSERT INTO page_translation (page_id, model, text, created_at)
         VALUES ((SELECT id FROM page WHERE record_id = ? AND seq = 1),
                 'mistral-small-latest', ?, now())
-        ON CONFLICT (page_id, model) DO UPDATE SET text_en = EXCLUDED.text_en
+        ON CONFLICT (page_id, lang, model) DO UPDATE SET text = EXCLUDED.text
         """,
         recordId,
         "A reasonably long line of translated archival prose. ".repeat(400));
 
     for (PdfExportService.Variant v :
-        List.of(PdfExportService.Variant.ENGLISH, PdfExportService.Variant.SIDE_BY_SIDE)) {
+        List.of(PdfExportService.Variant.TRANSLATION, PdfExportService.Variant.SIDE_BY_SIDE)) {
       byte[] pdf = build(recordId, List.of(1), v);
       try (PDDocument doc = Loader.loadPDF(pdf)) {
         // Cover, then the source page's own sheets.
@@ -366,7 +372,7 @@ class PdfExportServiceTest {
   @Test
   void theGeneratedExportsOpenWithACoverSheet() throws Exception {
     for (PdfExportService.Variant v :
-        List.of(PdfExportService.Variant.ENGLISH, PdfExportService.Variant.SIDE_BY_SIDE)) {
+        List.of(PdfExportService.Variant.TRANSLATION, PdfExportService.Variant.SIDE_BY_SIDE)) {
       try (PDDocument doc = Loader.loadPDF(build(recordId, List.of(1), v))) {
         String cover = pageText(doc, 1);
         assertThat(cover).as("%s masthead", v).contains("Czernin Archive");
@@ -392,7 +398,7 @@ class PdfExportServiceTest {
     // Otherwise a two-page extract of a thirty-page file reads as the whole file.
     jdbc.update("UPDATE record SET page_count = 30 WHERE id = ?", recordId);
     try (PDDocument doc =
-        Loader.loadPDF(build(recordId, List.of(1), PdfExportService.Variant.ENGLISH))) {
+        Loader.loadPDF(build(recordId, List.of(1), PdfExportService.Variant.TRANSLATION))) {
       assertThat(pageText(doc, 1)).contains("This extract contains page 1 of 30");
     }
   }
@@ -406,16 +412,16 @@ class PdfExportServiceTest {
             "SELECT id FROM page WHERE record_id = ? AND seq = 1", Long.class, recordId);
     jdbc.update(
         """
-        INSERT INTO page_translation (page_id, model, text_en, created_at)
+        INSERT INTO page_translation (page_id, model, text, created_at)
         VALUES (?, 'mistral-medium-latest', ?, now())
-        ON CONFLICT (page_id, model) DO UPDATE SET text_en = EXCLUDED.text_en
+        ON CONFLICT (page_id, lang, model) DO UPDATE SET text = EXCLUDED.text
         """,
         pageId,
         "The carefully upgraded translation of this page.");
     jdbc.update("UPDATE page_text SET text_en = ? WHERE page_id = ?", "The cheap one.", pageId);
 
     for (PdfExportService.Variant v :
-        List.of(PdfExportService.Variant.ENGLISH, PdfExportService.Variant.SIDE_BY_SIDE)) {
+        List.of(PdfExportService.Variant.TRANSLATION, PdfExportService.Variant.SIDE_BY_SIDE)) {
       String text = textOf(build(recordId, List.of(1), v));
       assertThat(text).as("%s shows the upgrade", v).contains("carefully upgraded");
       assertThat(text).as("%s drops the cheap one", v).doesNotContain("The cheap one.");
@@ -456,7 +462,7 @@ class PdfExportServiceTest {
       Path dir = scratch();
       Path out = dir.resolve(variant + ".pdf");
 
-      int pages = pdfExportService.buildToFile(recordId, List.of(1), variant, out, dir);
+      int pages = pdfExportService.buildToFile(recordId, List.of(1), variant, "en", out, dir);
 
       assertThat(out).exists();
       assertThat(pages).as(variant.toString()).isGreaterThanOrEqualTo(1);
@@ -471,7 +477,8 @@ class PdfExportServiceTest {
     Path dir = scratch();
     Path out = dir.resolve("english.pdf");
 
-    pdfExportService.buildToFile(recordId, List.of(1), PdfExportService.Variant.ENGLISH, out, dir);
+    pdfExportService.buildToFile(
+        recordId, List.of(1), PdfExportService.Variant.TRANSLATION, "en", out, dir);
 
     assertThat(textOf(Files.readAllBytes(out))).contains("Expropriation of the Czech nobility");
   }
@@ -481,7 +488,8 @@ class PdfExportServiceTest {
     Path dir = scratch();
     Path out = dir.resolve("original.pdf");
 
-    pdfExportService.buildToFile(recordId, List.of(1), PdfExportService.Variant.ORIGINAL, out, dir);
+    pdfExportService.buildToFile(
+        recordId, List.of(1), PdfExportService.Variant.ORIGINAL, "en", out, dir);
 
     try (var entries = Files.list(dir)) {
       assertThat(entries.map(p -> p.getFileName().toString())).containsExactly("original.pdf");
@@ -496,8 +504,97 @@ class PdfExportServiceTest {
     org.assertj.core.api.Assertions.assertThatThrownBy(
             () ->
                 pdfExportService.buildToFile(
-                    recordId, List.of(99), PdfExportService.Variant.ORIGINAL, out, dir))
+                    recordId, List.of(99), PdfExportService.Variant.ORIGINAL, "en", out, dir))
         .isInstanceOf(java.io.IOException.class)
         .hasMessageContaining("No valid pages");
+  }
+
+  // --- other languages ---------------------------------------------------------------------
+
+  private static final String DIACRITICS =
+      "Žluťoučký kůň úpěl ďábelské ódy: ěščřžýáíéůúťďň ĚŠČŘŽÝÁÍÉŮÚŤĎŇ";
+
+  private void czech(String text) {
+    jdbc.update(
+        """
+        INSERT INTO page_translation (page_id, lang, model, text, source_md5, created_at)
+        SELECT p.id, 'cs', 'mistral-medium-latest', ?,
+               (SELECT md5(pt.text_raw) FROM page_text pt WHERE pt.page_id = p.id), now()
+        FROM page p WHERE p.record_id = ? AND p.seq = 1
+        ON CONFLICT (page_id, lang, model) DO UPDATE SET text = EXCLUDED.text
+        """,
+        text,
+        recordId);
+  }
+
+  @Test
+  void aCzechExportShowsTheStoredCzechAndSaysSo() throws Exception {
+    czech("# Vyvlastnění české šlechty\n\nProti 10 nejvýznamnějším šlechticům.");
+
+    for (PdfExportService.Variant v :
+        List.of(PdfExportService.Variant.TRANSLATION, PdfExportService.Variant.SIDE_BY_SIDE)) {
+      try (PDDocument doc = Loader.loadPDF(build(recordId, List.of(1), v, "cs"))) {
+        String cover = pageText(doc, 1).replaceAll("\\s+", " ");
+        String page = pageText(doc, 2);
+        assertThat(page).as("%s text", v).contains("Vyvlastnění české šlechty");
+        assertThat(page).as("%s label", v).contains("Czech translation");
+        assertThat(page).as("%s no English", v).doesNotContain("Expropriation");
+        assertThat(cover)
+            .as("%s cover", v)
+            .contains("Czech is machine translation (mistral-medium-latest)")
+            .contains("German transcription is the authoritative text");
+      }
+    }
+  }
+
+  @Test
+  void aGermanExportOfAGermanRecordShowsTheTranscription() throws Exception {
+    for (PdfExportService.Variant v :
+        List.of(PdfExportService.Variant.TRANSLATION, PdfExportService.Variant.SIDE_BY_SIDE)) {
+      try (PDDocument doc = Loader.loadPDF(build(recordId, List.of(1), v, "de"))) {
+        String page = pageText(doc, 2);
+        assertThat(page).as("%s text", v).contains("Gegen 10 der wichtigsten Adligen");
+        assertThat(page).as("%s label", v).contains("German transcription");
+        assertThat(page).as("%s no English", v).doesNotContain("Expropriation");
+        assertThat(pageText(doc, 1).replaceAll("\\s+", " "))
+            .as("%s cover", v)
+            .contains("German transcription itself, not a translation")
+            .doesNotContain("machine translation");
+      }
+    }
+  }
+
+  @Test
+  void aCzechExportOfAnUntranslatedPageShowsTheTranscriptionNotTheEnglish() throws Exception {
+    try (PDDocument doc =
+        Loader.loadPDF(build(recordId, List.of(1), PdfExportService.Variant.TRANSLATION, "cs"))) {
+      String page = pageText(doc, 2);
+      assertThat(page).contains("Gegen 10 der wichtigsten Adligen");
+      assertThat(page).contains("[not translated - original text]");
+      assertThat(page).doesNotContain("Expropriation");
+    }
+  }
+
+  @Test
+  void czechDiacriticsRenderInBodyAndHeadings() throws Exception {
+    czech("# " + DIACRITICS + "\n\n" + DIACRITICS);
+    try (PDDocument doc =
+        Loader.loadPDF(build(recordId, List.of(1), PdfExportService.Variant.TRANSLATION, "cs"))) {
+      String page = pageText(doc, 2).replaceAll("\\s+", " ");
+      assertThat(page.split(java.util.regex.Pattern.quote(DIACRITICS), -1)).hasSize(3);
+      assertThat(page).doesNotContain("?");
+    }
+  }
+
+  @Test
+  void theEnglishExportsAreUnchangedByCzechRows() throws Exception {
+    for (PdfExportService.Variant v :
+        List.of(PdfExportService.Variant.TRANSLATION, PdfExportService.Variant.SIDE_BY_SIDE)) {
+      String before = textOf(build(recordId, List.of(1), v));
+      czech("Český text lepšího modelu");
+      String after = textOf(build(recordId, List.of(1), v));
+      assertThat(after).as("%s", v).isEqualTo(before).doesNotContain("Český");
+      jdbc.update("DELETE FROM page_translation WHERE lang = 'cs'");
+    }
   }
 }

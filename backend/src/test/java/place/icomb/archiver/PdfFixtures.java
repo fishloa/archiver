@@ -79,7 +79,7 @@ public final class PdfFixtures {
         "Text " + seq,
         english);
     jdbc.update(
-        "INSERT INTO page_translation (page_id, model, text_en) VALUES (?, 'test-model', ?)",
+        "INSERT INTO page_translation (page_id, model, text) VALUES (?, 'test-model', ?)",
         page,
         english);
     jdbc.update(

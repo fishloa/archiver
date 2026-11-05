@@ -522,7 +522,7 @@ public class ViewerController {
                     Map.of(
                         "model", t.getModel(),
                         "createdAt", String.valueOf(t.getCreatedAt()),
-                        "chars", t.getTextEn() == null ? 0 : t.getTextEn().length()))
+                        "chars", t.getText() == null ? 0 : t.getText().length()))
             .toList());
     result.put("upgradeModel", TranslationModels.upgradeModel());
     return ResponseEntity.ok(result);

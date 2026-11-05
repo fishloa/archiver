@@ -109,12 +109,15 @@ public class ManualCorrectionService {
             find);
       }
     } else if (whole) {
-      jdbc.update("UPDATE page_translation SET text_en = ? WHERE page_id = ?", replace, pageId);
+      jdbc.update(
+          "UPDATE page_translation SET text = ? WHERE page_id = ? AND lang = 'en'",
+          replace,
+          pageId);
     } else {
       // Every model's translation of the page, so the cache cannot be refilled from a stale one.
       jdbc.update(
-          "UPDATE page_translation SET text_en = replace(text_en, ?, ?)"
-              + " WHERE page_id = ? AND position(? in text_en) > 0",
+          "UPDATE page_translation SET text = replace(text, ?, ?)"
+              + " WHERE page_id = ? AND lang = 'en' AND position(? in text) > 0",
           find,
           replace,
           pageId,
@@ -193,8 +196,8 @@ public class ManualCorrectionService {
         """
         SELECT p.record_id AS "recordId", p.id AS "pageId", p.seq,
                coalesce(nullif(btrim(pt.text_en), ''),
-                        (SELECT tr.text_en FROM page_translation tr
-                         WHERE tr.page_id = p.id AND btrim(tr.text_en) <> ''
+                        (SELECT tr.text FROM page_translation tr
+                         WHERE tr.page_id = p.id AND tr.lang = 'en' AND btrim(tr.text) <> ''
                          ORDER BY tr.id LIMIT 1)) AS "textEn"
         FROM page p
         JOIN page_text pt ON pt.page_id = p.id
@@ -202,7 +205,8 @@ public class ManualCorrectionService {
               ~ '^\\s*$'
           AND (btrim(coalesce(pt.text_en, '')) <> ''
                OR EXISTS (SELECT 1 FROM page_translation tr
-                          WHERE tr.page_id = p.id AND btrim(tr.text_en) <> ''))
+                          WHERE tr.page_id = p.id AND tr.lang = 'en'
+                            AND btrim(tr.text) <> ''))
         ORDER BY p.record_id, p.seq
         """);
   }

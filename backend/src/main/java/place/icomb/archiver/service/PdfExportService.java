@@ -62,6 +62,39 @@ public class PdfExportService {
     return renderer;
   }
 
+  static String textLabel(String lang, boolean transcription) {
+    return CoverSheetService.languageName(lang)
+        + (transcription ? " transcription" : " translation");
+  }
+
+  private boolean transcribedIn(Long recordId, String lang) {
+    return !"en".equals(lang)
+        && lang.equals(
+            jdbcTemplate.queryForObject(
+                "SELECT lang FROM record WHERE id = ?", String.class, recordId));
+  }
+
+  private java.util.Map<Integer, String> textsIn(
+      Long recordId, String lang, boolean transcription) {
+    if ("en".equals(lang)) {
+      return translationService.bestEnglishByRecord(recordId);
+    }
+    if (!transcription) {
+      return translationService.bestByRecord(recordId, lang);
+    }
+    java.util.Map<Integer, String> out = new java.util.HashMap<>();
+    jdbcTemplate.query(
+        "SELECT p.seq, pt.text_raw FROM page p JOIN page_text pt ON pt.page_id = p.id"
+            + " WHERE p.record_id = ?",
+        rs -> {
+          if (rs.getString(2) != null) {
+            out.put(rs.getInt(1), rs.getString(2));
+          }
+        },
+        recordId);
+    return out;
+  }
+
   /**
    * Opens an extract with the record's cover sheet.
    *
@@ -74,10 +107,11 @@ public class PdfExportService {
       PDRectangle size,
       Long recordId,
       List<Integer> seqNumbers,
+      String lang,
       float margin)
       throws IOException {
     try {
-      CoverSheetService.Cover cover = coverSheetService.gather(recordId, seqNumbers);
+      CoverSheetService.Cover cover = coverSheetService.gather(recordId, seqNumbers, lang);
       coverSheetService.render(
           doc, renderer, size, cover, recordId, publicUrl + "/records/" + recordId, margin);
     } catch (Exception e) {
@@ -90,8 +124,8 @@ public class PdfExportService {
   public enum Variant {
     /** The scanned images, exactly as held. */
     ORIGINAL,
-    /** The English translation, rendered from the markdown the OCR produced. */
-    ENGLISH,
+    /** The text of each page, rendered from its markdown: English unless asked otherwise. */
+    TRANSLATION,
     /** Scan and translation facing each other on one landscape page. */
     SIDE_BY_SIDE
   }
@@ -104,14 +138,20 @@ public class PdfExportService {
    * three-page extract. The caller chooses the scratch directory: the archive's own volume, not
    * {@code /tmp}.
    *
-   * <p>ENGLISH renders one PDF page per source page, so the export lines up with the original page
-   * for page: a page with no text still produces a page rather than shifting everything after it,
-   * which would make the two impossible to read side by side.
+   * <p>TRANSLATION renders one PDF page per source page, so the export lines up with the original
+   * page for page: a page with no text still produces a page rather than shifting everything after
+   * it, which would make the two impossible to read side by side.
    *
+   * @param lang en, de or cs; the scans ignore it
    * @return the number of PDF pages written
    */
   public int buildToFile(
-      Long recordId, List<Integer> seqNumbers, Variant variant, Path target, Path scratchDir)
+      Long recordId,
+      List<Integer> seqNumbers,
+      Variant variant,
+      String lang,
+      Path target,
+      Path scratchDir)
       throws IOException {
     RandomAccessStreamCache.StreamCacheCreateFunction cache =
         () ->
@@ -119,8 +159,8 @@ public class PdfExportService {
     try (PDDocument doc = new PDDocument(cache)) {
       switch (variant) {
         case ORIGINAL -> renderOriginal(doc, recordId, seqNumbers);
-        case ENGLISH -> renderEnglish(doc, recordId, seqNumbers);
-        case SIDE_BY_SIDE -> renderSideBySide(doc, recordId, seqNumbers);
+        case TRANSLATION -> renderTranslation(doc, recordId, seqNumbers, lang);
+        case SIDE_BY_SIDE -> renderSideBySide(doc, recordId, seqNumbers, lang);
       }
       if (doc.getNumberOfPages() == 0) {
         throw new IOException("No valid pages found for the given selection");
@@ -189,8 +229,8 @@ public class PdfExportService {
    * <p>A footer links back to the page in the archive, so a printed or forwarded extract can be
    * traced to its source.
    */
-  private void renderSideBySide(PDDocument doc, Long recordId, List<Integer> seqNumbers)
-      throws IOException {
+  private void renderSideBySide(
+      PDDocument doc, Long recordId, List<Integer> seqNumbers, String lang) throws IOException {
     final float margin = 28f;
     final float gutter = 16f;
     final float footerHeight = 22f;
@@ -200,11 +240,12 @@ public class PdfExportService {
       PDRectangle landscape =
           new PDRectangle(PDRectangle.A4.getHeight(), PDRectangle.A4.getWidth());
 
-      addCoverSheet(doc, renderer, landscape, recordId, seqNumbers, margin);
+      addCoverSheet(doc, renderer, landscape, recordId, seqNumbers, lang, margin);
 
-      // Best translation per page, asked for once. An export always shows the best text the
-      // archive holds, whatever page_text happens to have cached.
-      java.util.Map<Integer, String> best = translationService.bestEnglishByRecord(recordId);
+      boolean english = "en".equals(lang);
+      boolean transcription = transcribedIn(recordId, lang);
+      String label = english ? "" : textLabel(lang, transcription);
+      java.util.Map<Integer, String> best = textsIn(recordId, lang, transcription);
 
       for (int seq : seqNumbers) {
         List<java.util.Map<String, Object>> rows =
@@ -222,10 +263,11 @@ public class PdfExportService {
         }
         java.util.Map<String, Object> row = rows.get(0);
 
-        String english = best.getOrDefault(seq, (String) row.get("text_en"));
+        String shown = best.getOrDefault(seq, english ? (String) row.get("text_en") : null);
         String raw = (String) row.get("text_raw");
-        String rightText =
-            english != null && !english.isBlank() ? english : (raw == null ? "" : raw);
+        boolean hasText = shown != null && !shown.isBlank();
+        String rightText = hasText ? shown : (raw == null ? "" : raw);
+        String heading = hasText ? label : "";
 
         float halfWidth = (landscape.getWidth() - 2 * margin - gutter) / 2f;
         float contentTop = landscape.getHeight() - margin;
@@ -262,6 +304,8 @@ public class PdfExportService {
             lineIndex =
                 renderer.drawElements(
                     cs, lines, lineIndex, margin + halfWidth + gutter, contentTop, contentBottom);
+            renderer.drawText(
+                cs, heading, margin + halfWidth + gutter, contentTop + 8f, 7.5f, false);
 
             // Footer: where this page lives in the archive, and which page it is.
             renderer.drawFooter(
@@ -401,12 +445,15 @@ public class PdfExportService {
     return out;
   }
 
-  private void renderEnglish(PDDocument doc, Long recordId, List<Integer> seqNumbers)
-      throws IOException {
+  private void renderTranslation(
+      PDDocument doc, Long recordId, List<Integer> seqNumbers, String lang) throws IOException {
     {
       MarkdownPdfRenderer renderer = newRenderer(doc);
-      addCoverSheet(doc, renderer, PDRectangle.A4, recordId, seqNumbers, 56f);
-      java.util.Map<Integer, String> best = translationService.bestEnglishByRecord(recordId);
+      addCoverSheet(doc, renderer, PDRectangle.A4, recordId, seqNumbers, lang, 56f);
+      boolean english = "en".equals(lang);
+      boolean transcription = transcribedIn(recordId, lang);
+      String label = english ? "" : textLabel(lang, transcription);
+      java.util.Map<Integer, String> best = textsIn(recordId, lang, transcription);
       for (int seq : seqNumbers) {
         List<java.util.Map<String, Object>> rows =
             jdbcTemplate.queryForList(
@@ -423,9 +470,11 @@ public class PdfExportService {
         Long pageId = null;
         if (!rows.isEmpty()) {
           pageId = ((Number) rows.get(0).get("page_id")).longValue();
-          String en = best.getOrDefault(seq, (String) rows.get(0).get("text_en"));
-          if (en != null && !en.isBlank()) {
-            text = en;
+          String shown =
+              best.getOrDefault(seq, english ? (String) rows.get(0).get("text_en") : null);
+          if (shown != null && !shown.isBlank()) {
+            text = shown;
+            note = label;
           } else {
             // Untranslated pages fall back to the original transcription rather than appearing
             // blank, so the export never silently omits a page's content.

@@ -2,6 +2,9 @@ package place.icomb.archiver.ai;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.fasterxml.jackson.databind.node.JsonNodeFactory;
+import java.util.List;
+import java.util.Map;
 import org.junit.jupiter.api.Test;
 
 /**
@@ -111,5 +114,148 @@ class ChatTranslatorTest {
   void stripPreambleHandlesEmptyAndNull() {
     assertThat(ChatTranslator.stripPreamble(null)).isEmpty();
     assertThat(ChatTranslator.stripPreamble("   ")).isEmpty();
+  }
+
+  private static ChatTranslator translator() {
+    return new ChatTranslator(
+        new AiRegistry.Registration(
+            "t",
+            AiCapability.TRANSLATION,
+            "openai",
+            "m",
+            "http://localhost",
+            "/v1/chat/completions",
+            null,
+            1,
+            1,
+            true,
+            JsonNodeFactory.instance.objectNode()),
+        "k");
+  }
+
+  private static String content(Map<String, Object> request) {
+    return String.valueOf(((Map<?, ?>) ((List<?>) request.get("messages")).get(0)).get("content"));
+  }
+
+  @Test
+  void theEnglishRequestIsExactlyWhatItWas() {
+    String old =
+        "Translate the following German or Czech archival document text into English. "
+            + "Preserve all proper names, place names, dates, reference numbers and titles exactly "
+            + "as written. Keep the markdown structure. Do not add commentary or explanation. "
+            + "Output only the translation.\n\n";
+    Map<String, Object> expected =
+        Map.of(
+            "max_tokens",
+            4000,
+            "temperature",
+            0.1,
+            "messages",
+            List.of(Map.of("role", "user", "content", old + "Seite 1")));
+
+    assertThat(translator().request("Seite 1", null)).isEqualTo(expected);
+    assertThat(translator().request("Seite 1", "de", "en")).isEqualTo(expected);
+  }
+
+  @Test
+  void aCzechOrGermanRequestNamesItsTargetAndKeepsTheEvidenceWording() {
+    String czech = content(translator().request("Seite 1", "de", "cs"));
+    assertThat(czech)
+        .startsWith("Translate the following German or Czech archival document text into Czech. ")
+        .contains("Preserve all proper names, place names, dates, reference numbers and titles")
+        .endsWith("Output only the translation.\n\nSeite 1");
+    assertThat(content(translator().request("Strana 1", "cs", "de")))
+        .contains("text into German. ");
+  }
+
+  @Test
+  void removesCzechAndGermanPreambles() {
+    assertThat(ChatTranslator.stripPreamble("Here is the Czech translation:\n\nTajné"))
+        .isEqualTo("Tajné");
+    assertThat(ChatTranslator.stripPreamble("### Czech translation\n\nTajné")).isEqualTo("Tajné");
+    assertThat(ChatTranslator.stripPreamble("Překlad:\n\nTajné")).isEqualTo("Tajné");
+    assertThat(ChatTranslator.stripPreamble("Übersetzung:\n\nGeheim")).isEqualTo("Geheim");
+    assertThat(
+            ChatTranslator.stripPreamble(
+                "Here is the German translation of the document:\n\nGeheim"))
+        .isEqualTo("Geheim");
+  }
+
+  @Test
+  void keepsACzechHeadingThatIsPartOfTheDocument() {
+    String real = "# Překlad smlouvy\n\nText";
+    assertThat(ChatTranslator.stripPreamble(real)).isEqualTo(real);
+  }
+
+  @Test
+  void aPreambleBeforeACodeFenceIsRemovedWithTheFence() {
+    var body =
+        JsonNodeFactory.instance
+            .objectNode()
+            .set(
+                "choices",
+                JsonNodeFactory.instance
+                    .arrayNode()
+                    .add(
+                        JsonNodeFactory.instance
+                            .objectNode()
+                            .set(
+                                "message",
+                                JsonNodeFactory.instance
+                                    .objectNode()
+                                    .put(
+                                        "content",
+                                        "Here is the translated text:\n\n```markdown\n"
+                                            + "# Title\n\nBody\n```"))));
+
+    assertThat(translator().parse(body)).isEqualTo("# Title\n\nBody");
+  }
+
+  @Test
+  void recognisesTranslatedTextAndCzechAndGermanIntroductions() {
+    assertThat(ChatTranslator.stripPreamble("Here is the translated version:\n\nX")).isEqualTo("X");
+    assertThat(ChatTranslator.stripPreamble("Zde je český překlad:\n\nX")).isEqualTo("X");
+    assertThat(ChatTranslator.stripPreamble("Hier ist die deutsche Übersetzung:\n\nX"))
+        .isEqualTo("X");
+  }
+
+  private static com.fasterxml.jackson.databind.JsonNode answer(String content) {
+    var f = JsonNodeFactory.instance;
+    return f.objectNode()
+        .set(
+            "choices",
+            f.arrayNode()
+                .add(f.objectNode().set("message", f.objectNode().put("content", content))));
+  }
+
+  @Test
+  void aBareLabelIsKeptWhenTheSourceOpensWithOne() {
+    String kept = "### Translation\n\nCertified copy of the birth record";
+    assertThat(translator().parse(answer(kept), "Übersetzung\n\nBeglaubigte Abschrift"))
+        .isEqualTo(kept);
+    assertThat(translator().parse(answer("Překlad:\n\nText"), "# Übersetzung\n\nText"))
+        .isEqualTo("Překlad:\n\nText");
+    assertThat(translator().parse(answer("Translation:\n\nText"), "Translation:\n\nText"))
+        .isEqualTo("Translation:\n\nText");
+  }
+
+  @Test
+  void aBareLabelTheSourceDoesNotHaveIsStillStripped() {
+    assertThat(
+            translator()
+                .parse(answer("### Translation\n\nCertified copy"), "Beglaubigte Abschrift"))
+        .isEqualTo("Certified copy");
+    assertThat(translator().parse(answer("### Translation\n\nCertified copy"), null))
+        .isEqualTo("Certified copy");
+  }
+
+  @Test
+  void aSpokenIntroductionIsStrippedWhateverTheSourceSays() {
+    assertThat(
+            translator()
+                .parse(
+                    answer("Here is the translation:\n\nCertified copy"),
+                    "Übersetzung\n\nBeglaubigte Abschrift"))
+        .isEqualTo("Certified copy");
   }
 }

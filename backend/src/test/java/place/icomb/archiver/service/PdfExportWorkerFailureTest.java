@@ -33,6 +33,7 @@ class PdfExportWorkerFailureTest {
   private PdfExportQueue queue;
   private PdfExportService pdfExportService;
   private StorageService storageService;
+  private TranslationService translationService;
   private PdfExportWorker worker;
 
   @BeforeEach
@@ -40,14 +41,17 @@ class PdfExportWorkerFailureTest {
     queue = mock(PdfExportQueue.class);
     pdfExportService = mock(PdfExportService.class);
     storageService = mock(StorageService.class);
-    worker = new PdfExportWorker(queue, pdfExportService, storageService, 24, 0);
+    translationService = mock(TranslationService.class);
+    worker =
+        new PdfExportWorker(queue, pdfExportService, translationService, storageService, 24, 0);
 
     // Common stubbing
     when(queue.claimNext())
         .thenReturn(
             Optional.of(
-                new PdfExportQueue.Claimed("id-1", 1L, Variant.ORIGINAL, List.of(10L), "fp")));
-    when(queue.fingerprint(1L, List.of(10L))).thenReturn("fp");
+                new PdfExportQueue.Claimed(
+                    "id-1", 1L, Variant.ORIGINAL, "en", List.of(10L), "fp", 7L)));
+    when(queue.fingerprint(1L, List.of(10L), "en", 7L)).thenReturn("fp");
     when(queue.seqsOf(1L, List.of(10L))).thenReturn(List.of(1));
     when(storageService.freeBytes()).thenReturn(Long.MAX_VALUE);
     when(storageService.exportTempDir()).thenReturn(temp);
@@ -56,7 +60,7 @@ class PdfExportWorkerFailureTest {
 
   @Test
   void anErrorDuringTheBuildFailsTheExportInsteadOfEscaping() throws Exception {
-    when(pdfExportService.buildToFile(any(), any(), any(), any(), any()))
+    when(pdfExportService.buildToFile(any(), any(), any(), any(), any(), any()))
         .thenThrow(new OutOfMemoryError("Java heap space"));
 
     assertThat(worker.runOnce()).isTrue();
@@ -69,12 +73,12 @@ class PdfExportWorkerFailureTest {
   void aFinishedFileIsDeletedIfTheRowCannotBeMarkedReady() throws Exception {
     doAnswer(
             invocation -> {
-              Path target = invocation.getArgument(3);
+              Path target = invocation.getArgument(4);
               Files.writeString(target, "pdf-content");
               return 1;
             })
         .when(pdfExportService)
-        .buildToFile(any(), any(), any(), any(), any());
+        .buildToFile(any(), any(), any(), any(), any(), any());
     doThrow(new RuntimeException("db down"))
         .when(queue)
         .markReady(any(String.class), any(String.class), any(Long.class), any(Duration.class));
@@ -89,12 +93,12 @@ class PdfExportWorkerFailureTest {
   void aBuildThatIsNoLongerBuildingWhenItFinishesHasItsFileDeleted() throws Exception {
     doAnswer(
             invocation -> {
-              Path target = invocation.getArgument(3);
+              Path target = invocation.getArgument(4);
               Files.writeString(target, "pdf-content");
               return 1;
             })
         .when(pdfExportService)
-        .buildToFile(any(), any(), any(), any(), any());
+        .buildToFile(any(), any(), any(), any(), any(), any());
     when(queue.markReady(
             any(String.class), any(String.class), any(Long.class), any(Duration.class)))
         .thenReturn(false);
@@ -107,7 +111,7 @@ class PdfExportWorkerFailureTest {
 
   @Test
   void aDatabaseErrorWhileMarkingFailedDoesNotKillTheWorker() throws Exception {
-    when(pdfExportService.buildToFile(any(), any(), any(), any(), any()))
+    when(pdfExportService.buildToFile(any(), any(), any(), any(), any(), any()))
         .thenThrow(new IOException("no scan"));
     doThrow(new RuntimeException("db down")).when(queue).markFailed(any(), any());
 

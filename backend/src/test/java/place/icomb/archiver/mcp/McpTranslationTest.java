@@ -95,9 +95,9 @@ class McpTranslationTest {
   private void translation(String model, String text) {
     jdbc.update(
         """
-        INSERT INTO page_translation (page_id, model, text_en, created_at)
+        INSERT INTO page_translation (page_id, model, text, created_at)
         VALUES (?, ?, ?, now())
-        ON CONFLICT (page_id, model) DO UPDATE SET text_en = EXCLUDED.text_en
+        ON CONFLICT (page_id, lang, model) DO UPDATE SET text = EXCLUDED.text
         """,
         pageId,
         model,

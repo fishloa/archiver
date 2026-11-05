@@ -129,7 +129,7 @@ class PdfExportQueueTest {
   @Test
   void theVariantSpellingsTheApiAcceptsAreParsed() {
     assertThat(PdfExportQueue.parseVariant(null)).isEqualTo(Variant.ORIGINAL);
-    assertThat(PdfExportQueue.parseVariant("english")).isEqualTo(Variant.ENGLISH);
+    assertThat(PdfExportQueue.parseVariant("english")).isEqualTo(Variant.TRANSLATION);
     assertThat(PdfExportQueue.parseVariant("side-by-side")).isEqualTo(Variant.SIDE_BY_SIDE);
     assertThat(PdfExportQueue.parseVariant("SideBySide")).isEqualTo(Variant.SIDE_BY_SIDE);
     assertThatThrownBy(() -> PdfExportQueue.parseVariant("pdf"))
@@ -183,7 +183,8 @@ class PdfExportQueueTest {
   void aDifferentVariantOrSelectionIsADifferentExport() {
     String original = request().view().id();
 
-    assertThat(queue.request(record, Variant.ENGLISH, pages).view().id()).isNotEqualTo(original);
+    assertThat(queue.request(record, Variant.TRANSLATION, pages).view().id())
+        .isNotEqualTo(original);
     assertThat(queue.request(record, Variant.ORIGINAL, pages.subList(0, 2)).view().id())
         .isNotEqualTo(original);
   }
@@ -214,7 +215,7 @@ class PdfExportQueueTest {
   void aNewTranslationChangesTheFingerprint() {
     String before = queue.fingerprint(record, pages);
     jdbc.update(
-        "INSERT INTO page_translation (page_id, model, text_en) VALUES (?, 'better', 'x')",
+        "INSERT INTO page_translation (page_id, model, text) VALUES (?, 'better', 'x')",
         pages.get(0));
     assertThat(queue.fingerprint(record, pages)).isNotEqualTo(before);
   }
@@ -223,8 +224,7 @@ class PdfExportQueueTest {
   void rewritingATranslationInPlaceChangesTheFingerprint() {
     // PageTranslationRepository.upsert overwrites a model's row with the same id.
     String before = queue.fingerprint(record, pages);
-    jdbc.update(
-        "UPDATE page_translation SET text_en = 'Rewritten' WHERE page_id = ?", pages.get(1));
+    jdbc.update("UPDATE page_translation SET text = 'Rewritten' WHERE page_id = ?", pages.get(1));
     assertThat(queue.fingerprint(record, pages)).isNotEqualTo(before);
   }
 
@@ -290,7 +290,7 @@ class PdfExportQueueTest {
     List<Long> selected = pages.subList(0, 1);
     String before = queue.fingerprint(record, selected);
     jdbc.update(
-        "INSERT INTO page_translation (page_id, model, text_en) VALUES (?, 'better', 'x')",
+        "INSERT INTO page_translation (page_id, model, text) VALUES (?, 'better', 'x')",
         pages.get(2));
     assertThat(queue.fingerprint(record, selected)).isNotEqualTo(before);
   }
@@ -326,7 +326,7 @@ class PdfExportQueueTest {
   @Test
   void claimingTakesTheOldestQueuedExportAndMarksItBuilding() {
     String first = request().view().id();
-    queue.request(record, Variant.ENGLISH, pages);
+    queue.request(record, Variant.TRANSLATION, pages);
 
     PdfExportQueue.Claimed claimed = queue.claimNext().orElseThrow();
 
@@ -465,7 +465,7 @@ class PdfExportQueueTest {
     queue.markReady(expired, "exports/aa/x.pdf", 1, Duration.ofHours(24));
     jdbc.update("UPDATE pdf_export SET expires_at = now() - interval '1 second'");
     queue.expireDue();
-    String failed = queue.request(record, Variant.ENGLISH, pages).view().id();
+    String failed = queue.request(record, Variant.TRANSLATION, pages).view().id();
     queue.markFailed(failed, "x");
     jdbc.update(
         "UPDATE pdf_export SET created_at = now() - interval '8 days' WHERE id = ?::uuid", expired);
@@ -481,7 +481,7 @@ class PdfExportQueueTest {
     String id = request().view().id();
     queue.claimNext();
     queue.markReady(id, "exports/aa/x.pdf", 1, Duration.ofHours(24));
-    queue.request(record, Variant.ENGLISH, pages);
+    queue.request(record, Variant.TRANSLATION, pages);
 
     assertThat(queue.pathsForRecord(record)).containsExactly("exports/aa/x.pdf");
   }
@@ -567,5 +567,162 @@ class PdfExportQueueTest {
             jdbc.queryForObject(
                 "SELECT count(*) FROM pdf_export WHERE state = 'building'", Long.class))
         .isEqualTo((long) queued);
+  }
+
+  // --- languages ---------------------------------------------------------------------------
+
+  @Test
+  void theLanguagesAnExportCanBeMadeInAreParsedAndAnythingElseIsRefused() {
+    assertThat(PdfExportQueue.parseLang(null)).isEqualTo("en");
+    assertThat(PdfExportQueue.parseLang(" ")).isEqualTo("en");
+    assertThat(PdfExportQueue.parseLang("CS")).isEqualTo("cs");
+    assertThat(PdfExportQueue.parseLang("de")).isEqualTo("de");
+    assertThatThrownBy(() -> PdfExportQueue.parseLang("fr"))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("fr")
+        .hasMessageContaining("en, de, cs");
+  }
+
+  @Test
+  void translationIsTheVariantsNameAndEnglishItsEnglishAlias() {
+    assertThat(PdfExportQueue.parseVariant("translation")).isEqualTo(Variant.TRANSLATION);
+    assertThat(PdfExportQueue.parseVariant("english")).isEqualTo(Variant.TRANSLATION);
+    assertThat(PdfExportQueue.resolveLang("english", null)).isEqualTo("en");
+    assertThat(PdfExportQueue.resolveLang("translation", "cs")).isEqualTo("cs");
+    assertThat(PdfExportQueue.resolveLang(null, "de")).isEqualTo("de");
+    assertThatThrownBy(() -> PdfExportQueue.resolveLang("english", "cs"))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("translation");
+  }
+
+  @Test
+  void filesAreNamedForTheirLanguage() {
+    assertThat(PdfExportQueue.fileSuffix(Variant.ORIGINAL, "en")).isEqualTo("-original");
+    assertThat(PdfExportQueue.fileSuffix(Variant.TRANSLATION, "en")).isEqualTo("-english");
+    assertThat(PdfExportQueue.fileSuffix(Variant.SIDE_BY_SIDE, "en"))
+        .isEqualTo("-original-and-english");
+    assertThat(PdfExportQueue.fileSuffix(Variant.TRANSLATION, "cs")).isEqualTo("-czech");
+    assertThat(PdfExportQueue.fileSuffix(Variant.SIDE_BY_SIDE, "cs"))
+        .isEqualTo("-original-and-czech");
+    assertThat(PdfExportQueue.fileSuffix(Variant.TRANSLATION, "de")).isEqualTo("-german");
+    assertThat(PdfExportQueue.fileSuffix(Variant.SIDE_BY_SIDE, "de"))
+        .isEqualTo("-original-and-german");
+  }
+
+  @Test
+  void aCzechTranslationChangesTheCzechFingerprintButNotTheEnglishOne() {
+    String english = queue.fingerprint(record, pages);
+    String czech = queue.fingerprint(record, pages, "cs");
+    jdbc.update(
+        "INSERT INTO page_translation (page_id, lang, model, text) VALUES (?, 'cs', 'better', 'x')",
+        pages.get(0));
+
+    assertThat(queue.fingerprint(record, pages, "cs")).isNotEqualTo(czech);
+    assertThat(queue.fingerprint(record, pages)).isEqualTo(english);
+    assertThat(queue.fingerprint(record, pages, "en")).isEqualTo(english);
+  }
+
+  @Test
+  void eachLanguageHasItsOwnFingerprint() {
+    assertThat(
+            List.of(
+                queue.fingerprint(record, pages, "en"),
+                queue.fingerprint(record, pages, "de"),
+                queue.fingerprint(record, pages, "cs")))
+        .doesNotHaveDuplicates();
+  }
+
+  @Test
+  void correctingTheTranscriptionChangesAGermanFingerprint() {
+    String before = queue.fingerprint(record, pages, "de");
+    jdbc.update("UPDATE page_text SET text_raw = 'Korrigiert' WHERE page_id = ?", pages.get(0));
+    assertThat(queue.fingerprint(record, pages, "de")).isNotEqualTo(before);
+  }
+
+  @Test
+  void aTranslationMadeAfterTheRequestIsNotAChangeToThePages() {
+    queue.request(record, Variant.TRANSLATION, pages, "cs");
+    PdfExportQueue.Claimed claimed = queue.claimNext().orElseThrow();
+    jdbc.update(
+        "INSERT INTO page_translation (page_id, lang, model, text) VALUES (?, 'cs', 'm', 'x')",
+        pages.get(0));
+
+    assertThat(queue.fingerprint(record, pages, "cs", claimed.translationCutoff()))
+        .isEqualTo(claimed.fingerprint());
+    assertThat(queue.fingerprint(record, pages, "cs")).isNotEqualTo(claimed.fingerprint());
+  }
+
+  @Test
+  void aTranslationCommittedWhileTheRequestWasBeingMadeCannotChangeItsFingerprint() {
+    long cutoff = queue.translationCutoff();
+    String before = queue.fingerprint(record, pages, "cs", cutoff);
+    jdbc.update(
+        "INSERT INTO page_translation (page_id, lang, model, text) VALUES (?, 'cs', 'late', 'x')",
+        pages.get(0));
+
+    assertThat(queue.fingerprint(record, pages, "cs", cutoff)).isEqualTo(before);
+    assertThat(queue.translationCutoff()).isGreaterThan(cutoff);
+    assertThat(queue.fingerprint(record, pages, "cs", queue.translationCutoff()))
+        .isNotEqualTo(before);
+  }
+
+  @Test
+  void theCutoffAnExportWasRequestedWithIsTheOneItIsCheckedWith() {
+    long cutoff = queue.translationCutoff();
+    queue.request(record, Variant.TRANSLATION, pages, "cs");
+    assertThat(queue.claimNext().orElseThrow().translationCutoff()).isEqualTo(cutoff);
+  }
+
+  @Test
+  void reuseMatchesTheLanguage() {
+    String cs = queue.request(record, Variant.TRANSLATION, pages, "cs").view().id();
+    String de = queue.request(record, Variant.TRANSLATION, pages, "de").view().id();
+    String en = queue.request(record, Variant.TRANSLATION, pages).view().id();
+
+    assertThat(List.of(cs, de, en)).doesNotHaveDuplicates();
+    assertThat(queue.request(record, Variant.TRANSLATION, pages, "cs").view().id()).isEqualTo(cs);
+  }
+
+  @Test
+  void anExportCarriesItsLanguageAndAnEnglishOneKeepsItsName() {
+    PdfExportQueue.View cs = queue.request(record, Variant.TRANSLATION, pages, "cs").view();
+    assertThat(cs.lang()).isEqualTo("cs");
+    assertThat(cs.variant()).isEqualTo("translation");
+    assertThat(queue.row(cs.id()).orElseThrow().lang()).isEqualTo("cs");
+
+    PdfExportQueue.View en = queue.request(record, Variant.TRANSLATION, pages).view();
+    assertThat(en.lang()).isEqualTo("en");
+    assertThat(en.variant()).isEqualTo("english");
+  }
+
+  @Test
+  void anOriginalIsTheSameExportWhateverLanguageIsAsked() {
+    PdfExportQueue.View asked = queue.request(record, Variant.ORIGINAL, pages, "cs").view();
+    assertThat(asked.lang()).isEqualTo("en");
+    assertThat(request().view().id()).isEqualTo(asked.id());
+  }
+
+  @Test
+  void aClaimCarriesTheLanguageAndTheTranslationsItWasAskedAbout() {
+    queue.request(record, Variant.SIDE_BY_SIDE, pages, "de");
+    PdfExportQueue.Claimed claimed = queue.claimNext().orElseThrow();
+    assertThat(claimed.lang()).isEqualTo("de");
+    assertThat(claimed.translationCutoff()).isNotNull();
+  }
+
+  private String storedFingerprint(String id) {
+    return jdbc.queryForObject(
+        "SELECT fingerprint FROM pdf_export WHERE id = ?::uuid", String.class, id);
+  }
+
+  @Test
+  void refingerprintingTouchesOnlyABuildingExport() {
+    String id = queue.request(record, Variant.TRANSLATION, pages, "cs").view().id();
+    queue.refingerprint(id, "while-queued");
+    assertThat(storedFingerprint(id)).isNotEqualTo("while-queued");
+
+    queue.claimNext();
+    queue.refingerprint(id, "while-building");
+    assertThat(storedFingerprint(id)).isEqualTo("while-building");
   }
 }

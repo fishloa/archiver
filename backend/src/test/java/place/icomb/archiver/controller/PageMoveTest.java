@@ -151,7 +151,7 @@ class PageMoveTest {
         .param("t", "Text " + tag)
         .param("e", "English " + tag)
         .update();
-    jdbc.sql("INSERT INTO page_translation (page_id, model, text_en) VALUES (:p, 'test', :e)")
+    jdbc.sql("INSERT INTO page_translation (page_id, model, text) VALUES (:p, 'test', :e)")
         .param("p", pageId)
         .param("e", "English " + tag)
         .update();
