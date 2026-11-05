@@ -382,4 +382,85 @@ class PdfExportApiTest {
 
     assertThat(doc.get("links").has("pdfExport")).isFalse();
   }
+
+  // --- languages ---------------------------------------------------------------------------
+
+  @Test
+  void aGermanTranslationOfAGermanRecordIsNamedForItsLanguage() throws Exception {
+    JsonNode made = created("{\"variant\":\"translation\",\"lang\":\"de\"}", 202);
+    assertThat(made.get("lang").asText()).isEqualTo("de");
+    assertThat(made.get("variant").asText()).isEqualTo("translation");
+    String both = created("{\"variant\":\"side-by-side\",\"lang\":\"de\"}", 202).get("id").asText();
+    worker.drain();
+
+    HttpResponse<byte[]> file = getBytes("/pdf-exports/" + made.get("id").asText() + "/file");
+    assertThat(file.headers().firstValue("Content-Disposition").orElse(""))
+        .contains("record-" + record + "-german.pdf");
+    assertThat(file.headers().firstValue("Content-Language").orElse("")).isEqualTo("de");
+    assertThat(
+            getBytes("/pdf-exports/" + both + "/file")
+                .headers()
+                .firstValue("Content-Disposition")
+                .orElse(""))
+        .contains("record-" + record + "-original-and-german.pdf");
+  }
+
+  @Test
+  void aCzechTranslationAlreadyHeldIsNamedCzech() throws Exception {
+    jdbc.update(
+        "INSERT INTO page_translation (page_id, lang, model, text)"
+            + " SELECT id, 'cs', 'stored-model', 'Český text' FROM page WHERE record_id = ?",
+        record);
+    String one = created("{\"variant\":\"translation\",\"lang\":\"cs\"}", 202).get("id").asText();
+    String both = created("{\"variant\":\"side-by-side\",\"lang\":\"cs\"}", 202).get("id").asText();
+    worker.drain();
+
+    assertThat(
+            getBytes("/pdf-exports/" + one + "/file")
+                .headers()
+                .firstValue("Content-Disposition")
+                .orElse(""))
+        .contains("record-" + record + "-czech.pdf");
+    assertThat(
+            getBytes("/pdf-exports/" + both + "/file")
+                .headers()
+                .firstValue("Content-Disposition")
+                .orElse(""))
+        .contains("record-" + record + "-original-and-czech.pdf");
+  }
+
+  @Test
+  void anUnknownLanguageIsRefusedAndNothingIsQueued() throws Exception {
+    HttpResponse<String> resp =
+        post(
+            "/records/" + record + "/pdf-exports",
+            "{\"variant\":\"translation\",\"lang\":\"fr\"}",
+            true);
+    assertThat(resp.statusCode()).isEqualTo(400);
+    assertThat(json.readTree(resp.body()).get("error").asText()).contains("en, de, cs");
+    assertThat(exports()).isZero();
+  }
+
+  @Test
+  void englishPairedWithAnotherLanguageIsRefused() throws Exception {
+    HttpResponse<String> resp =
+        post(
+            "/records/" + record + "/pdf-exports",
+            "{\"variant\":\"english\",\"lang\":\"cs\"}",
+            true);
+    assertThat(resp.statusCode()).isEqualTo(400);
+    assertThat(json.readTree(resp.body()).get("error").asText()).contains("translation");
+    assertThat(exports()).isZero();
+  }
+
+  @Test
+  void anEnglishExportAnswersAsItAlwaysDid() throws Exception {
+    JsonNode english = created("{\"variant\":\"english\"}", 202);
+    assertThat(english.get("variant").asText()).isEqualTo("english");
+    assertThat(english.get("lang").asText()).isEqualTo("en");
+    assertThat(created("{\"variant\":\"translation\"}", 202).get("id").asText())
+        .isEqualTo(english.get("id").asText());
+    assertThat(created("{\"variant\":\"original\",\"lang\":\"cs\"}", 202).get("lang").asText())
+        .isEqualTo("en");
+  }
 }

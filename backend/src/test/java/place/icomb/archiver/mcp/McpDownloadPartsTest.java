@@ -73,7 +73,7 @@ class McpDownloadPartsTest {
     for (int seq = 1; seq <= 4; seq++) {
       PdfFixtures.page(jdbc, storageRoot, record, seq, "English " + seq);
     }
-    exportId = String.valueOf(tools.exportPdf(record, "original", null).get("id"));
+    exportId = String.valueOf(tools.exportPdf(record, "original", null, null).get("id"));
     worker.runOnce();
   }
 

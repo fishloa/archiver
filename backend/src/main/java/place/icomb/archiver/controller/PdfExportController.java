@@ -53,9 +53,12 @@ public class PdfExportController {
     Map<String, Object> in = body == null ? Map.of() : body;
 
     Variant variant;
+    String lang;
     String pages;
     try {
-      variant = PdfExportQueue.parseVariant(text(in, "variant"));
+      String asked = text(in, "variant");
+      variant = PdfExportQueue.parseVariant(asked);
+      lang = PdfExportQueue.resolveLang(asked, text(in, "lang"));
       pages = text(in, "pages");
     } catch (IllegalArgumentException e) {
       return error(HttpStatus.BAD_REQUEST, e.getMessage());
@@ -71,7 +74,7 @@ public class PdfExportController {
       return error(HttpStatus.BAD_REQUEST, "No page matches that selection");
     }
 
-    PdfExportQueue.Requested requested = queue.request(recordId, variant, pageIds);
+    PdfExportQueue.Requested requested = queue.request(recordId, variant, pageIds, lang);
     boolean reusedFinished = !requested.created() && "ready".equals(requested.view().state());
     return ResponseEntity.status(reusedFinished ? HttpStatus.OK : HttpStatus.ACCEPTED)
         .body(describe(requested.view()));
@@ -105,6 +108,7 @@ public class PdfExportController {
                 + ".pdf";
         yield ResponseEntity.ok()
             .contentType(MediaType.APPLICATION_PDF)
+            .header(HttpHeaders.CONTENT_LANGUAGE, row.lang())
             .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + name + "\"")
             .contentLength(file.toFile().length())
             .body(new FileSystemResource(file));
@@ -124,6 +128,7 @@ public class PdfExportController {
     out.put("state", v.state());
     out.put("pageCount", v.pageCount());
     out.put("variant", v.variant());
+    out.put("lang", v.lang());
     out.put("bytes", v.bytes());
     out.put("expiresAt", v.expiresAt() == null ? null : v.expiresAt().toString());
     out.put("error", v.error());
