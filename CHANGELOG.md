@@ -9,6 +9,12 @@ new revision, no build is triggered, and the release silently never happens —
 which is exactly what v1.0.0 did on its first attempt. Add the entry below,
 commit, then tag that commit.
 
+## v1.1.30 — 5 November 2026
+
+**Page text wraps.** A code block in a page's rendered text (most often a translation the model
+wrapped in a markdown fence) now wraps inside the panel instead of running off it on one very wide
+line.
+
 ## v1.1.29 — 4 November 2026
 
 **User activity log.** Admin → Activity lists the sessions of people signed in with role user or
