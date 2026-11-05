@@ -20,6 +20,8 @@ import org.springframework.stereotype.Service;
  * mark it ready. A failure marks it failed with the reason; the person asks again, which makes a
  * new export. Scheduling lives in {@code WorkerSchedulingConfig}.
  *
+ * <p>Pages a translation in another language still needs are translated first, once, and kept.
+ *
  * <p>Recovery at startup assumes a single backend instance: a second instance would fail the
  * first's building exports and empty the shared temp area.
  */
@@ -35,6 +37,7 @@ public class PdfExportWorker {
 
   private final PdfExportQueue queue;
   private final PdfExportService pdfExportService;
+  private final TranslationService translationService;
   private final StorageService storageService;
   private final Duration ttl;
   private long minFreeBytes;
@@ -42,11 +45,13 @@ public class PdfExportWorker {
   public PdfExportWorker(
       PdfExportQueue queue,
       PdfExportService pdfExportService,
+      TranslationService translationService,
       StorageService storageService,
       @Value("${archiver.pdf-export.ttl-hours:24}") long ttlHours,
       @Value("${archiver.pdf-export.min-free-bytes:2147483648}") long minFreeBytes) {
     this.queue = queue;
     this.pdfExportService = pdfExportService;
+    this.translationService = translationService;
     this.storageService = storageService;
     this.ttl = Duration.ofHours(ttlHours);
     this.minFreeBytes = minFreeBytes;
@@ -88,6 +93,11 @@ public class PdfExportWorker {
       if (seqs.size() != export.pageIds().size()) {
         throw new IOException("Some of the requested pages are no longer in the record");
       }
+      if (translationService.translateMissing(export.recordId(), export.pageIds(), export.lang())
+          > 0) {
+        queue.refingerprint(
+            export.id(), queue.fingerprint(export.recordId(), export.pageIds(), export.lang()));
+      }
 
       Path temp = storageService.exportTempDir();
       partial = temp.resolve(export.id() + ".pdf.partial");
@@ -112,10 +122,11 @@ public class PdfExportWorker {
       }
       placed = null;
       log.info(
-          "PDF export {} ready: record={} variant={} pages={} bytes={} ({}ms)",
+          "PDF export {} ready: record={} variant={} lang={} pages={} bytes={} ({}ms)",
           export.id(),
           export.recordId(),
           export.variant(),
+          export.lang(),
           pdfPages,
           bytes,
           System.currentTimeMillis() - started);

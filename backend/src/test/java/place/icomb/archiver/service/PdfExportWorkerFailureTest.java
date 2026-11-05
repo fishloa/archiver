@@ -34,6 +34,7 @@ class PdfExportWorkerFailureTest {
   private PdfExportQueue queue;
   private PdfExportService pdfExportService;
   private StorageService storageService;
+  private TranslationService translationService;
   private PdfExportWorker worker;
 
   @BeforeEach
@@ -41,7 +42,9 @@ class PdfExportWorkerFailureTest {
     queue = mock(PdfExportQueue.class);
     pdfExportService = mock(PdfExportService.class);
     storageService = mock(StorageService.class);
-    worker = new PdfExportWorker(queue, pdfExportService, storageService, 24, 0);
+    translationService = mock(TranslationService.class);
+    worker =
+        new PdfExportWorker(queue, pdfExportService, translationService, storageService, 24, 0);
 
     // Common stubbing
     when(queue.claimNext())
