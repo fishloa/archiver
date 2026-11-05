@@ -97,7 +97,7 @@ public class ChatTranslator implements Translator {
   public String parse(JsonNode responseBody) {
     String content =
         responseBody.path("choices").path(0).path("message").path("content").asText("").strip();
-    return stripPreamble(unwrapCodeFence(content));
+    return stripPreamble(unwrapCodeFence(stripPreamble(content)));
   }
 
   /**
@@ -151,7 +151,14 @@ public class ChatTranslator implements Translator {
               || first.matches(
                   "(?i)^(here is|here's|below is)\\s+the\\s+"
                       + LANGUAGE
-                      + "translation\\b[^\\n]{0,200}:$");
+                      + "(?:translation|translated\\s+(?:text|version))\\b[^\\n]{0,200}:$")
+              || first.matches(
+                  "(?i)^(zde je|toto je)\\s+(?:(?:český|německý|anglický)\\s+)?"
+                      + "(?:překlad|přeložený\\s+text)\\b[^\\n]{0,200}:$")
+              || first.matches(
+                  "(?i)^(hier ist|nachfolgend)\\s+die\\s+"
+                      + "(?:(?:deutsche|tschechische|englische)\\s+)?"
+                      + "(?:[üÜ]bersetzung|[üÜ]bersetzte\\s+text)\\b[^\\n]{0,200}:$");
       if (!preamble) break;
       t = newline < 0 ? "" : t.substring(newline + 1).strip();
     }

@@ -186,4 +186,36 @@ class ChatTranslatorTest {
     String real = "# Překlad smlouvy\n\nText";
     assertThat(ChatTranslator.stripPreamble(real)).isEqualTo(real);
   }
+
+  @Test
+  void aPreambleBeforeACodeFenceIsRemovedWithTheFence() {
+    var body =
+        JsonNodeFactory.instance
+            .objectNode()
+            .set(
+                "choices",
+                JsonNodeFactory.instance
+                    .arrayNode()
+                    .add(
+                        JsonNodeFactory.instance
+                            .objectNode()
+                            .set(
+                                "message",
+                                JsonNodeFactory.instance
+                                    .objectNode()
+                                    .put(
+                                        "content",
+                                        "Here is the translated text:\n\n```markdown\n"
+                                            + "# Title\n\nBody\n```"))));
+
+    assertThat(translator().parse(body)).isEqualTo("# Title\n\nBody");
+  }
+
+  @Test
+  void recognisesTranslatedTextAndCzechAndGermanIntroductions() {
+    assertThat(ChatTranslator.stripPreamble("Here is the translated version:\n\nX")).isEqualTo("X");
+    assertThat(ChatTranslator.stripPreamble("Zde je český překlad:\n\nX")).isEqualTo("X");
+    assertThat(ChatTranslator.stripPreamble("Hier ist die deutsche Übersetzung:\n\nX"))
+        .isEqualTo("X");
+  }
 }
