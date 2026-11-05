@@ -39,10 +39,17 @@ export function fileUrl(id: string): string {
 	return `${statusUrl(id)}/file`;
 }
 
-/** The request body: the whole record unless pages are given. */
-export function exportRequest(variant: string, pages: string): { variant: string; pages?: string } {
+/** The request body: the whole record unless pages are given, English unless told otherwise. */
+export function exportRequest(
+	variant: string,
+	pages: string,
+	lang: string = 'en'
+): { variant: string; pages?: string; lang?: string } {
+	const body: { variant: string; pages?: string; lang?: string } = { variant };
 	const trimmed = pages.trim();
-	return trimmed ? { variant, pages: trimmed } : { variant };
+	if (trimmed) body.pages = trimmed;
+	if (lang !== 'en' && variant !== 'original') body.lang = lang;
+	return body;
 }
 
 /** Milliseconds to wait before asking again: brisk at first, then easing off to five seconds. */

@@ -24,6 +24,17 @@ describe('addresses', () => {
 });
 
 describe('exportRequest', () => {
+	it('names a language only when it is not English and the export has text', () => {
+		expect(exportRequest('translation', '', 'en')).toEqual({ variant: 'translation' });
+		expect(exportRequest('translation', '2', 'cs')).toEqual({
+			variant: 'translation',
+			pages: '2',
+			lang: 'cs'
+		});
+		expect(exportRequest('side-by-side', '', 'de')).toEqual({ variant: 'side-by-side', lang: 'de' });
+		expect(exportRequest('original', '', 'cs')).toEqual({ variant: 'original' });
+	});
+
 	it('asks for the whole record when no pages are given', () => {
 		expect(exportRequest('original', '')).toEqual({ variant: 'original' });
 		expect(exportRequest('english', '   ')).toEqual({ variant: 'english' });

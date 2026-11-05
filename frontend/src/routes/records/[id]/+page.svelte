@@ -10,7 +10,8 @@
 		BookmarkCheck, X, Users, ShieldAlert, Baby, Skull,
 		Languages,
 		Sparkles,
-		Loader} from 'lucide-svelte';
+		Loader,
+		Download} from 'lucide-svelte';
 	import type { PipelineEvent, JobStat } from '$lib/server/api';
 	import { isKept, keptCount, keptPagesParam, clearKept } from '$lib/kept-pages.svelte';
 	import { enhance } from '$app/forms';
@@ -29,12 +30,19 @@
 	let rawOpen = $state(false);
 	let timelineOpen = $state(false);
 	let exportPages = $state('');
-	/** Which rendering an export produces: the scans, or the English translation. */
-	let exportVariant = $state<'original' | 'english' | 'side-by-side'>('original');
+	let exportVariant = $state<'original' | 'translation' | 'side-by-side'>('original');
+	let exportLang = $state<'en' | 'de' | 'cs'>('en');
+	let exportLangName = $derived(
+		exportLang === 'de'
+			? $t('record.exportLangDe')
+			: exportLang === 'cs'
+				? $t('record.exportLangCs')
+				: $t('record.exportLangEn')
+	);
 
 	let downloadLabel = $derived(
-		exportVariant === 'english'
-			? 'Download English'
+		exportVariant === 'translation'
+			? `Download ${exportLangName}`
 			: exportVariant === 'side-by-side'
 				? 'Download side by side'
 				: 'Download PDF'
@@ -167,167 +175,197 @@
 	{/if}
 </div>
 
-<!-- Action bar -->
-{#if record.sourceUrl || pages.length > 0}
-	<div class="flex flex-wrap items-center gap-3 mb-6 py-3 px-4 rounded-lg bg-surface border border-border vui-animate-fade-in">
-		<!--
-			Left: choose what to export and get it. The page picker feeds the download button
-			rather than a second link beside it — two controls that both produced a PDF, one
-			honouring the picker and one ignoring it, was the whole confusion here.
-		-->
-		{#if pages.length > 0}
-			<input
-				type="text"
-				bind:value={exportPages}
-				placeholder={$t('record.pagesExportPlaceholder')}
-				title="Leave empty for the whole record, or give pages like 1,3,5-10"
-				class="px-2.5 py-1.5 rounded-md border border-border bg-bg-deep text-text text-[length:var(--vui-text-sm)] placeholder:text-text-sub focus:outline-none focus:ring-1 focus:ring-accent w-40"
-			/>
-			<select
-				bind:value={exportVariant}
-				class="px-2 py-1.5 rounded-md border border-border bg-bg-deep text-text text-[length:var(--vui-text-sm)] focus:outline-none focus:ring-1 focus:ring-accent"
-				title="Original scans with a searchable text layer, the English translation as text, or both facing each other"
-			>
-				<option value="original">Original scans</option>
-				<option value="english">English translation</option>
-				<option value="side-by-side">Side by side</option>
-			</select>
+<!-- Source link and the destructive controls, kept out of the way above the two panels -->
+{#if record.sourceUrl || isAdmin}
+	<div class="flex items-center justify-end gap-3 mb-3 vui-animate-fade-in">
+		{#if record.sourceUrl}
+			<a href={record.sourceUrl} class="vui-btn vui-btn-ghost vui-btn-sm" target="_blank" rel="noopener noreferrer">
+				<ExternalLink size={13} strokeWidth={2} /> {$t('record.source')}
+			</a>
 		{/if}
-		<!--
-			Every variant is rendered on request, the scans included: the old stored PDFs carry a text
-			layer built before block coordinates were kept, so a selection returned text from
-			somewhere else on the page. The page picker feeds this button; empty means the whole record.
-		-->
-		{#if pages.length > 0}
-			<PdfExportButton
-				recordId={record.id}
-				variant={exportVariant}
-				pages={exportPages}
-				label={downloadLabel}
-			/>
-		{/if}
-		{#if kCount > 0}
-			<div class="flex items-center gap-2">
-				<PdfExportButton
-					recordId={record.id}
-					variant={exportVariant}
-					pages={kParam}
-					label="Download {kCount} kept"
-					class="vui-btn vui-btn-sm !bg-emerald-600 !border-emerald-600 !text-white"
-				/>
+		{#if isAdmin}
+			<div class="relative">
 				<button
 					class="vui-btn vui-btn-ghost vui-btn-sm text-text-sub"
-					onclick={() => clearKept(record.id)}
-					title="Clear kept pages"
+					onclick={() => adminDropdownOpen = !adminDropdownOpen}
+					title={$t('admin.adminActions')}
 				>
-					<X size={13} strokeWidth={2} />
+					<ShieldAlert size={13} strokeWidth={2} />
+					{$t('admin.resetPipeline')}
+					<ChevronDown size={12} strokeWidth={2} class="ml-1" />
 				</button>
+
+				{#if adminDropdownOpen}
+					<!-- svelte-ignore a11y_no_static_element_interactions -->
+					<div
+						class="absolute right-0 top-full mt-1 w-64 rounded-lg border border-border bg-surface shadow-lg z-20 p-1"
+						onmouseleave={() => adminDropdownOpen = false}
+					>
+						<button
+							class="w-full text-left px-3 py-2 rounded-md text-[length:var(--vui-text-sm)] hover:bg-bg-deep vui-transition"
+							onclick={() => { confirmAction = 'resetOcr'; adminDropdownOpen = false; }}
+						>
+							<div class="font-medium">{$t('admin.rerunOcr')}</div>
+							<div class="text-[length:var(--vui-text-xs)] text-text-sub">{$t('admin.rerunOcrDesc')}</div>
+						</button>
+						<button
+							class="w-full text-left px-3 py-2 rounded-md text-[length:var(--vui-text-sm)] hover:bg-bg-deep vui-transition"
+							onclick={() => { confirmAction = 'resetTranslate'; adminDropdownOpen = false; }}
+						>
+							<div class="font-medium">{$t('admin.retranslate')}</div>
+							<div class="text-[length:var(--vui-text-xs)] text-text-sub">{$t('admin.retranslateDesc')}</div>
+						</button>
+						<button
+							class="w-full text-left px-3 py-2 rounded-md text-[length:var(--vui-text-sm)] hover:bg-bg-deep vui-transition"
+							onclick={() => { confirmAction = 'resetEmbed'; adminDropdownOpen = false; }}
+						>
+							<div class="font-medium">{$t('admin.reembed')}</div>
+							<div class="text-[length:var(--vui-text-xs)] text-text-sub">{$t('admin.reembedDesc')}</div>
+						</button>
+					</div>
+				{/if}
+			</div>
+		{/if}
+	</div>
+{/if}
+
+{#if translationStatus || pages.length > 0}
+	<div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+		{#if translationStatus}
+			<!-- Translation quality: offer a better model, but only where it has not already run -->
+			<div class="py-3 px-4 rounded-lg bg-surface border border-border vui-animate-fade-in">
+				<div class="flex items-center gap-3 flex-wrap">
+					<Languages size={14} strokeWidth={2} class="text-text-sub" />
+					<span class="text-[length:var(--vui-text-xs)] font-semibold text-text-sub uppercase tracking-wider">
+						Translation quality
+					</span>
+
+					{#if translationStatus.inFlight > 0}
+						<span class="tq-note">
+							Improving {translationStatus.inFlight.toLocaleString()} page{translationStatus.inFlight === 1 ? '' : 's'}…
+						</span>
+					{:else if translationStatus.pagesUpgradable === 0}
+						<span class="tq-note tq-done">
+							<CircleCheckBig size={12} strokeWidth={2} />
+							Already improved using {translationStatus.upgradeModel}
+						</span>
+					{:else}
+						<span class="tq-note">
+							{translationStatus.pagesUpgradable.toLocaleString()} page{translationStatus.pagesUpgradable === 1 ? '' : 's'}
+							can be re-translated with a stronger model
+							{#if translationStatus.pagesUpgraded > 0}
+								&middot; {translationStatus.pagesUpgraded.toLocaleString()} already done
+							{/if}
+						</span>
+					{/if}
+
+					{#if translationStatus.canUpgrade}
+						<form method="POST" action="?/upgradeTranslation" use:enhance={() => {
+							upgrading = true;
+							return async ({ update }) => { await update(); upgrading = false; };
+						}} class="ml-auto">
+							<button class="vui-btn vui-btn-sm vui-btn-primary" type="submit" disabled={upgrading}>
+								{#if upgrading}
+									<Loader size={13} strokeWidth={2} class="animate-spin" /> Queueing…
+								{:else}
+									<Sparkles size={13} strokeWidth={2} /> Improve translation
+								{/if}
+							</button>
+						</form>
+					{/if}
+				</div>
+
+				{#if translationStatus.canUpgrade}
+					<div class="tq-hint">
+						The bulk translation favours speed and cost. On a sample of twenty pages the stronger
+						model kept every date and reference number, where the bulk one dropped a document date
+						and two file references. Pages already improved are never re-sent.
+					</div>
+				{/if}
 			</div>
 		{/if}
 
-		<!-- Right: where the record came from, then the destructive controls furthest away. -->
-		<div class="flex items-center gap-3 ml-auto">
-			{#if record.sourceUrl}
-				<a href={record.sourceUrl} class="vui-btn vui-btn-ghost vui-btn-sm" target="_blank" rel="noopener noreferrer">
-					<ExternalLink size={13} strokeWidth={2} /> {$t('record.source')}
-				</a>
-			{/if}
-			{#if isAdmin}
-				<div class="relative">
-					<button
-						class="vui-btn vui-btn-ghost vui-btn-sm text-text-sub"
-						onclick={() => adminDropdownOpen = !adminDropdownOpen}
-						title={$t('admin.adminActions')}
-					>
-						<ShieldAlert size={13} strokeWidth={2} />
-						{$t('admin.resetPipeline')}
-						<ChevronDown size={12} strokeWidth={2} class="ml-1" />
-					</button>
+		{#if pages.length > 0}
+			<!--
+				Every variant is rendered on request, the scans included: the old stored PDFs carry a text
+				layer built before block coordinates were kept. The page picker feeds the download button;
+				empty means the whole record.
+			-->
+			<div class="py-3 px-4 rounded-lg bg-surface border border-border vui-animate-fade-in {translationStatus ? '' : 'md:col-span-2'}">
+				<div class="flex items-center gap-3">
+					<Download size={14} strokeWidth={2} class="text-text-sub" />
+					<span class="text-[length:var(--vui-text-xs)] font-semibold text-text-sub uppercase tracking-wider">
+						{$t('record.exportTitle')}
+					</span>
+				</div>
 
-					{#if adminDropdownOpen}
-						<!-- svelte-ignore a11y_no_static_element_interactions -->
-						<div
-							class="absolute right-0 top-full mt-1 w-64 rounded-lg border border-border bg-surface shadow-lg z-20 p-1"
-							onmouseleave={() => adminDropdownOpen = false}
+				<div class="mt-3 flex flex-wrap items-end gap-3">
+					<label class="flex flex-col gap-1">
+						<span class="text-[length:var(--vui-text-xs)] text-text-sub">{$t('record.exportPagesLabel')}</span>
+						<input
+							type="text"
+							bind:value={exportPages}
+							placeholder={$t('record.pagesExportPlaceholder')}
+							title="Leave empty for the whole record, or give pages like 1,3,5-10"
+							class="px-2.5 py-1.5 rounded-md border border-border bg-bg-deep text-text text-[length:var(--vui-text-sm)] placeholder:text-text-sub focus:outline-none focus:ring-1 focus:ring-accent w-40"
+						/>
+					</label>
+					<label class="flex flex-col gap-1">
+						<span class="text-[length:var(--vui-text-xs)] text-text-sub">{$t('record.exportFormatLabel')}</span>
+						<select
+							bind:value={exportVariant}
+							class="px-2 py-1.5 rounded-md border border-border bg-bg-deep text-text text-[length:var(--vui-text-sm)] focus:outline-none focus:ring-1 focus:ring-accent"
+							title="Original scans with a searchable text layer, the text as a translation or transcription, or both facing each other"
 						>
-							<button
-								class="w-full text-left px-3 py-2 rounded-md text-[length:var(--vui-text-sm)] hover:bg-bg-deep vui-transition"
-								onclick={() => { confirmAction = 'resetOcr'; adminDropdownOpen = false; }}
+							<option value="original">Original scans</option>
+							<option value="translation">Translation</option>
+							<option value="side-by-side">Side by side</option>
+						</select>
+					</label>
+					{#if exportVariant !== 'original'}
+						<label class="flex flex-col gap-1">
+							<span class="text-[length:var(--vui-text-xs)] text-text-sub">{$t('record.exportLangLabel')}</span>
+							<select
+								bind:value={exportLang}
+								class="px-2 py-1.5 rounded-md border border-border bg-bg-deep text-text text-[length:var(--vui-text-sm)] focus:outline-none focus:ring-1 focus:ring-accent"
+								title={$t('record.exportLangTitle')}
 							>
-								<div class="font-medium">{$t('admin.rerunOcr')}</div>
-								<div class="text-[length:var(--vui-text-xs)] text-text-sub">{$t('admin.rerunOcrDesc')}</div>
-							</button>
+								<option value="en">{$t('record.exportLangEn')}</option>
+								<option value="de">{$t('record.exportLangDe')}</option>
+								<option value="cs">{$t('record.exportLangCs')}</option>
+							</select>
+						</label>
+					{/if}
+				</div>
+
+				<div class="mt-3 flex flex-wrap items-center gap-3">
+					<PdfExportButton
+						recordId={record.id}
+						variant={exportVariant}
+						lang={exportLang}
+						pages={exportPages}
+						label={downloadLabel}
+					/>
+					{#if kCount > 0}
+						<div class="flex items-center gap-2">
+							<PdfExportButton
+								recordId={record.id}
+								variant={exportVariant}
+								lang={exportLang}
+								pages={kParam}
+								label="Download {kCount} kept"
+								class="vui-btn vui-btn-sm !bg-emerald-600 !border-emerald-600 !text-white"
+							/>
 							<button
-								class="w-full text-left px-3 py-2 rounded-md text-[length:var(--vui-text-sm)] hover:bg-bg-deep vui-transition"
-								onclick={() => { confirmAction = 'resetTranslate'; adminDropdownOpen = false; }}
+								class="vui-btn vui-btn-ghost vui-btn-sm text-text-sub"
+								onclick={() => clearKept(record.id)}
+								title="Clear kept pages"
 							>
-								<div class="font-medium">{$t('admin.retranslate')}</div>
-								<div class="text-[length:var(--vui-text-xs)] text-text-sub">{$t('admin.retranslateDesc')}</div>
-							</button>
-							<button
-								class="w-full text-left px-3 py-2 rounded-md text-[length:var(--vui-text-sm)] hover:bg-bg-deep vui-transition"
-								onclick={() => { confirmAction = 'resetEmbed'; adminDropdownOpen = false; }}
-							>
-								<div class="font-medium">{$t('admin.reembed')}</div>
-								<div class="text-[length:var(--vui-text-xs)] text-text-sub">{$t('admin.reembedDesc')}</div>
+								<X size={13} strokeWidth={2} />
 							</button>
 						</div>
 					{/if}
 				</div>
-			{/if}
-		</div>
-	</div>
-{/if}
-
-<!-- Translation quality: offer a better model, but only where it has not already run -->
-{#if translationStatus}
-	<div class="mb-6 py-3 px-4 rounded-lg bg-surface border border-border vui-animate-fade-in">
-		<div class="flex items-center gap-3 flex-wrap">
-			<Languages size={14} strokeWidth={2} class="text-text-sub" />
-			<span class="text-[length:var(--vui-text-xs)] font-semibold text-text-sub uppercase tracking-wider">
-				Translation quality
-			</span>
-
-			{#if translationStatus.inFlight > 0}
-				<span class="tq-note">
-					Improving {translationStatus.inFlight.toLocaleString()} page{translationStatus.inFlight === 1 ? '' : 's'}…
-				</span>
-			{:else if translationStatus.pagesUpgradable === 0}
-				<span class="tq-note tq-done">
-					<CircleCheckBig size={12} strokeWidth={2} />
-					Already improved using {translationStatus.upgradeModel}
-				</span>
-			{:else}
-				<span class="tq-note">
-					{translationStatus.pagesUpgradable.toLocaleString()} page{translationStatus.pagesUpgradable === 1 ? '' : 's'}
-					can be re-translated with a stronger model
-					{#if translationStatus.pagesUpgraded > 0}
-						&middot; {translationStatus.pagesUpgraded.toLocaleString()} already done
-					{/if}
-				</span>
-			{/if}
-
-			{#if translationStatus.canUpgrade}
-				<form method="POST" action="?/upgradeTranslation" use:enhance={() => {
-					upgrading = true;
-					return async ({ update }) => { await update(); upgrading = false; };
-				}} class="ml-auto">
-					<button class="vui-btn vui-btn-sm vui-btn-primary" type="submit" disabled={upgrading}>
-						{#if upgrading}
-							<Loader size={13} strokeWidth={2} class="animate-spin" /> Queueing…
-						{:else}
-							<Sparkles size={13} strokeWidth={2} /> Improve translation
-						{/if}
-					</button>
-				</form>
-			{/if}
-		</div>
-
-		{#if translationStatus.canUpgrade}
-			<div class="tq-hint">
-				The bulk translation favours speed and cost. On a sample of twenty pages the stronger
-				model kept every date and reference number, where the bulk one dropped a document date
-				and two file references. Pages already improved are never re-sent.
 			</div>
 		{/if}
 	</div>
