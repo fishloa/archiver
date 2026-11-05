@@ -90,8 +90,8 @@ public class PdfExportService {
   public enum Variant {
     /** The scanned images, exactly as held. */
     ORIGINAL,
-    /** The English translation, rendered from the markdown the OCR produced. */
-    ENGLISH,
+    /** The text of each page, rendered from its markdown: English unless asked otherwise. */
+    TRANSLATION,
     /** Scan and translation facing each other on one landscape page. */
     SIDE_BY_SIDE
   }
@@ -104,9 +104,9 @@ public class PdfExportService {
    * three-page extract. The caller chooses the scratch directory: the archive's own volume, not
    * {@code /tmp}.
    *
-   * <p>ENGLISH renders one PDF page per source page, so the export lines up with the original page
-   * for page: a page with no text still produces a page rather than shifting everything after it,
-   * which would make the two impossible to read side by side.
+   * <p>TRANSLATION renders one PDF page per source page, so the export lines up with the original
+   * page for page: a page with no text still produces a page rather than shifting everything after
+   * it, which would make the two impossible to read side by side.
    *
    * @return the number of PDF pages written
    */
@@ -119,7 +119,7 @@ public class PdfExportService {
     try (PDDocument doc = new PDDocument(cache)) {
       switch (variant) {
         case ORIGINAL -> renderOriginal(doc, recordId, seqNumbers);
-        case ENGLISH -> renderEnglish(doc, recordId, seqNumbers);
+        case TRANSLATION -> renderEnglish(doc, recordId, seqNumbers);
         case SIDE_BY_SIDE -> renderSideBySide(doc, recordId, seqNumbers);
       }
       if (doc.getNumberOfPages() == 0) {

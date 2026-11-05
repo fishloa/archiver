@@ -32,6 +32,7 @@ public class PdfExportQueue {
       String state,
       int pageCount,
       String variant,
+      String lang,
       Long bytes,
       Instant expiresAt,
       String error) {}
@@ -41,24 +42,42 @@ public class PdfExportQueue {
 
   /** An export a worker has taken. */
   public record Claimed(
-      String id, long recordId, Variant variant, List<Long> pageIds, String fingerprint) {}
+      String id,
+      long recordId,
+      Variant variant,
+      String lang,
+      List<Long> pageIds,
+      String fingerprint,
+      Instant requestedAt) {}
 
   /** The columns the file endpoint needs. */
   public record Row(
-      String id, long recordId, String state, String path, Variant variant, String error) {}
+      String id,
+      long recordId,
+      String state,
+      String path,
+      Variant variant,
+      String lang,
+      String error) {}
+
+  public static final List<String> LANGS = List.of("en", "de", "cs");
+
+  private static final Timestamp NO_CUTOFF = Timestamp.from(Instant.parse("9999-12-31T00:00:00Z"));
 
   private static final String VIEW_SQL =
-      "SELECT id::text AS id, state, cardinality(page_ids) AS page_count, variant, bytes,"
+      "SELECT id::text AS id, state, cardinality(page_ids) AS page_count, variant, lang, bytes,"
           + " expires_at, error FROM pdf_export";
 
   private static final RowMapper<View> VIEW =
       (rs, n) -> {
         Timestamp expires = rs.getTimestamp("expires_at");
+        String lang = rs.getString("lang");
         return new View(
             rs.getString("id"),
             rs.getString("state"),
             rs.getInt("page_count"),
-            apiName(fromDb(rs.getString("variant"))),
+            apiName(fromDb(rs.getString("variant")), lang),
+            lang,
             (Long) rs.getObject("bytes"),
             expires == null ? null : expires.toInstant(),
             rs.getString("error"));
@@ -72,26 +91,29 @@ public class PdfExportQueue {
     this.pdfExportService = pdfExportService;
   }
 
-  // --- variants ----------------------------------------------------------------------------
+  // --- variants and languages --------------------------------------------------------------
 
   static String dbName(Variant v) {
     return switch (v) {
       case ORIGINAL -> "original";
-      case ENGLISH -> "english";
+      case TRANSLATION -> "english";
       case SIDE_BY_SIDE -> "side_by_side";
     };
   }
 
   static Variant fromDb(String s) {
     return switch (s) {
-      case "english" -> Variant.ENGLISH;
+      case "english" -> Variant.TRANSLATION;
       case "side_by_side" -> Variant.SIDE_BY_SIDE;
       default -> Variant.ORIGINAL;
     };
   }
 
-  /** The API's spelling: original, english or side-by-side. */
-  static String apiName(Variant v) {
+  /** The API's spelling: an English translation still answers to english, as it always has. */
+  static String apiName(Variant v, String lang) {
+    if (v == Variant.TRANSLATION && !"en".equals(lang)) {
+      return "translation";
+    }
     return v == Variant.SIDE_BY_SIDE ? "side-by-side" : dbName(v);
   }
 
@@ -102,18 +124,48 @@ public class PdfExportQueue {
     }
     return switch (s.trim().toLowerCase(Locale.ROOT)) {
       case "original" -> Variant.ORIGINAL;
-      case "english" -> Variant.ENGLISH;
+      case "translation", "english" -> Variant.TRANSLATION;
       case "side-by-side", "sidebyside", "side_by_side" -> Variant.SIDE_BY_SIDE;
       default -> throw new IllegalArgumentException("Unknown variant: " + s);
     };
   }
 
+  public static String parseLang(String s) {
+    if (s == null || s.isBlank()) {
+      return "en";
+    }
+    String lang = s.trim().toLowerCase(Locale.ROOT);
+    if (!LANGS.contains(lang)) {
+      throw new IllegalArgumentException(
+          "Unknown language: " + s + " (accepted: " + String.join(", ", LANGS) + ")");
+    }
+    return lang;
+  }
+
+  public static String resolveLang(String variant, String lang) {
+    String parsed = parseLang(lang);
+    if (variant != null
+        && "english".equals(variant.trim().toLowerCase(Locale.ROOT))
+        && !"en".equals(parsed)) {
+      throw new IllegalArgumentException(
+          "variant 'english' is the English translation; ask for variant 'translation' with lang "
+              + parsed);
+    }
+    return parsed;
+  }
+
   /** Named for what the file contains, so a folder of exports reads without opening them. */
-  public static String fileSuffix(Variant v) {
+  public static String fileSuffix(Variant v, String lang) {
+    String language =
+        switch (lang) {
+          case "de" -> "german";
+          case "cs" -> "czech";
+          default -> "english";
+        };
     return switch (v) {
       case ORIGINAL -> "-original";
-      case ENGLISH -> "-english";
-      case SIDE_BY_SIDE -> "-original-and-english";
+      case TRANSLATION -> "-" + language;
+      case SIDE_BY_SIDE -> "-original-and-" + language;
     };
   }
 
@@ -147,15 +199,30 @@ public class PdfExportQueue {
         args.toArray());
   }
 
-  /**
-   * What these pages are right now: an md5 over the whole record and archive rows (minus the
-   * volatile {@code updated_at}), the ids and engines of every transcription and the ids and models
-   * of every translation in the record (the cover sheet prints record-wide provenance), and, for
-   * each selected page in order, its id, record, position, scan, text, a hash of its English text,
-   * and each of its translations (id and a hash of its text, since a re-run overwrites a row in
-   * place). Re-OCR, a new translation, a replaced scan or a moved page all change it.
-   */
   public String fingerprint(long recordId, List<Long> pageIds) {
+    return fingerprint(recordId, pageIds, "en");
+  }
+
+  public String fingerprint(long recordId, List<Long> pageIds, String lang) {
+    return fingerprint(recordId, pageIds, lang, null);
+  }
+
+  /**
+   * What these pages are right now, for an export in {@code lang}: an md5 over the whole record and
+   * archive rows (minus the volatile {@code updated_at}), the ids and engines of every
+   * transcription and the ids and models of every translation into {@code lang} in the record (the
+   * cover sheet prints record-wide provenance), and, for each selected page in order, its id,
+   * record, position, scan, text, a hash of its English text, and each of its translations into
+   * {@code lang} (id and a hash of its text, since a re-run overwrites a row in place). Outside
+   * English it also covers the language and the transcriptions, which a German export of a German
+   * record shows. Re-OCR, a new translation, a replaced scan or a moved page all change it.
+   *
+   * @param before when given, translations into a language other than English made after it are
+   *     left out: those are the ones exports made themselves while building, not a change to the
+   *     pages
+   */
+  public String fingerprint(long recordId, List<Long> pageIds, String lang, Instant before) {
+    Timestamp cutoff = before == null ? NO_CUTOFF : Timestamp.from(before);
     return jdbc.queryForObject(
         """
         SELECT md5(
@@ -169,14 +236,21 @@ public class PdfExportQueue {
           || coalesce((SELECT md5(string_agg(t2.id::text || ':' || t2.model, ','
                                              ORDER BY t2.id))
                        FROM page_translation t2 JOIN page p3 ON p3.id = t2.page_id
-                       WHERE p3.record_id = ?), '')
+                       WHERE p3.record_id = ? AND t2.lang = ?
+                         AND (t2.lang = 'en' OR t2.created_at <= ?)), '')
           || coalesce(string_agg(
                concat_ws(':', p.id, p.record_id, p.seq, p.attachment_id,
                          coalesce(pt.id::text, '-'),
                          md5(coalesce(pt.text_en, '')),
                          coalesce((SELECT string_agg(t.id::text || '=' || md5(t.text), ',' ORDER BY t.id)
-                                   FROM page_translation t WHERE t.page_id = p.id), '-')),
-               '|' ORDER BY sel.ord), ''))
+                                   FROM page_translation t
+                                   WHERE t.page_id = p.id AND t.lang = ?
+                                     AND (t.lang = 'en' OR t.created_at <= ?)), '-')),
+               '|' ORDER BY sel.ord), '')
+          || CASE WHEN ? = 'en' THEN ''
+                  ELSE ? || md5(coalesce(string_agg(coalesce(pt.text_raw, ''), '|'
+                                                    ORDER BY sel.ord), ''))
+             END)
         FROM unnest(string_to_array(?, ',')::bigint[]) WITH ORDINALITY AS sel(page_id, ord)
         JOIN page p ON p.id = sel.page_id
         LEFT JOIN page_text pt ON pt.page_id = p.id
@@ -185,6 +259,12 @@ public class PdfExportQueue {
         recordId,
         recordId,
         recordId,
+        lang,
+        cutoff,
+        lang,
+        cutoff,
+        lang,
+        lang,
         csv(pageIds));
   }
 
@@ -214,25 +294,32 @@ public class PdfExportQueue {
   /**
    * Asks for an export, reusing an identical one when there is one.
    *
-   * <p>Identical means the same record, variant and fingerprint, and either still queued or
-   * building, or finished and not yet expired. Serialised on the fingerprint, so two identical
+   * <p>Identical means the same record, variant, language and fingerprint, and either still queued
+   * or building, or finished and not yet expired. Serialised on the fingerprint, so two identical
    * requests arriving together cannot both insert.
    */
   @Transactional
   public Requested request(long recordId, Variant variant, List<Long> pageIds) {
-    String fingerprint = fingerprint(recordId, pageIds);
+    return request(recordId, variant, pageIds, "en");
+  }
+
+  @Transactional
+  public Requested request(long recordId, Variant variant, List<Long> pageIds, String lang) {
+    String stored = variant == Variant.ORIGINAL ? "en" : lang;
+    String fingerprint = fingerprint(recordId, pageIds, stored);
     jdbc.queryForList("SELECT pg_advisory_xact_lock(hashtext(?))", fingerprint);
 
     List<View> reusable =
         jdbc.query(
             VIEW_SQL
-                + " WHERE record_id = ? AND variant = ? AND fingerprint = ?"
+                + " WHERE record_id = ? AND variant = ? AND lang = ? AND fingerprint = ?"
                 + " AND (state IN ('queued', 'building')"
                 + "      OR (state = 'ready' AND expires_at > now()))"
                 + " ORDER BY created_at DESC LIMIT 1",
             VIEW,
             recordId,
             dbName(variant),
+            stored,
             fingerprint);
     if (!reusable.isEmpty()) {
       return new Requested(reusable.get(0), false);
@@ -240,11 +327,12 @@ public class PdfExportQueue {
 
     String id =
         jdbc.queryForObject(
-            "INSERT INTO pdf_export (record_id, variant, page_ids, fingerprint)"
-                + " VALUES (?, ?, string_to_array(?, ',')::bigint[], ?) RETURNING id::text",
+            "INSERT INTO pdf_export (record_id, variant, lang, page_ids, fingerprint)"
+                + " VALUES (?, ?, ?, string_to_array(?, ',')::bigint[], ?) RETURNING id::text",
             String.class,
             recordId,
             dbName(variant),
+            stored,
             csv(pageIds),
             fingerprint);
     return new Requested(find(id).orElseThrow(), true);
@@ -274,7 +362,7 @@ public class PdfExportQueue {
             u ->
                 jdbc
                     .query(
-                        "SELECT id::text AS id, record_id, state, path, variant, error"
+                        "SELECT id::text AS id, record_id, state, path, variant, lang, error"
                             + " FROM pdf_export WHERE id = ?::uuid",
                         (rs, n) ->
                             new Row(
@@ -283,6 +371,7 @@ public class PdfExportQueue {
                                 rs.getString("state"),
                                 rs.getString("path"),
                                 fromDb(rs.getString("variant")),
+                                rs.getString("lang"),
                                 rs.getString("error")),
                         u.toString())
                     .stream()
@@ -310,16 +399,18 @@ public class PdfExportQueue {
             UPDATE pdf_export SET state = 'building', started_at = now()
             WHERE id = (SELECT id FROM pdf_export WHERE state = 'queued'
                         ORDER BY created_at, id FOR UPDATE SKIP LOCKED LIMIT 1)
-            RETURNING id::text AS id, record_id, variant,
-                      array_to_string(page_ids, ',') AS page_ids, fingerprint
+            RETURNING id::text AS id, record_id, variant, lang,
+                      array_to_string(page_ids, ',') AS page_ids, fingerprint, created_at
             """,
             (rs, n) ->
                 new Claimed(
                     rs.getString("id"),
                     rs.getLong("record_id"),
                     fromDb(rs.getString("variant")),
+                    rs.getString("lang"),
                     ids(rs.getString("page_ids")),
-                    rs.getString("fingerprint")))
+                    rs.getString("fingerprint"),
+                    rs.getTimestamp("created_at").toInstant()))
         .stream()
         .findFirst();
   }
@@ -347,6 +438,17 @@ public class PdfExportQueue {
         "UPDATE pdf_export SET state = 'failed', error = ?, finished_at = now()"
             + " WHERE id = ?::uuid",
         error,
+        id);
+  }
+
+  /**
+   * Records what the pages are after a build translated some of them, so an identical request
+   * reuses this export rather than building it again.
+   */
+  public void refingerprint(String id, String fingerprint) {
+    jdbc.update(
+        "UPDATE pdf_export SET fingerprint = ? WHERE id = ?::uuid AND state = 'building'",
+        fingerprint,
         id);
   }
 

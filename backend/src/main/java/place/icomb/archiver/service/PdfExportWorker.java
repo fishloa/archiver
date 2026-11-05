@@ -77,7 +77,9 @@ public class PdfExportWorker {
       if (storageService.freeBytes() < minFreeBytes) {
         throw new IOException("Not enough free space on the archive volume to build a PDF");
       }
-      String now = queue.fingerprint(export.recordId(), export.pageIds());
+      String now =
+          queue.fingerprint(
+              export.recordId(), export.pageIds(), export.lang(), export.requestedAt());
       if (!now.equals(export.fingerprint())) {
         throw new IOException(
             "The pages changed after this export was requested; request it again");

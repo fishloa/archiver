@@ -99,7 +99,10 @@ public class PdfExportController {
           yield error(HttpStatus.GONE, "The file is no longer available; request the PDF again");
         }
         String name =
-            "record-" + row.recordId() + PdfExportQueue.fileSuffix(row.variant()) + ".pdf";
+            "record-"
+                + row.recordId()
+                + PdfExportQueue.fileSuffix(row.variant(), row.lang())
+                + ".pdf";
         yield ResponseEntity.ok()
             .contentType(MediaType.APPLICATION_PDF)
             .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + name + "\"")

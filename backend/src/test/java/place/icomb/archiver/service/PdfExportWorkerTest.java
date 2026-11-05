@@ -109,7 +109,7 @@ class PdfExportWorkerTest {
 
   @Test
   void theOtherVariantsBuildToo() throws Exception {
-    for (Variant variant : List.of(Variant.ENGLISH, Variant.SIDE_BY_SIDE)) {
+    for (Variant variant : List.of(Variant.TRANSLATION, Variant.SIDE_BY_SIDE)) {
       String id = request(variant);
       worker.runOnce();
       assertThat(queue.find(id).orElseThrow().state()).as(variant.toString()).isEqualTo("ready");
@@ -128,7 +128,7 @@ class PdfExportWorkerTest {
   @Test
   void drainBuildsEverythingQueued() {
     String a = request(Variant.ORIGINAL);
-    String b = request(Variant.ENGLISH);
+    String b = request(Variant.TRANSLATION);
 
     worker.drain();
 
@@ -158,7 +158,7 @@ class PdfExportWorkerTest {
 
   @Test
   void pagesChangedAfterTheRequestFailTheExportRatherThanMixOldAndNew() {
-    String id = request(Variant.ENGLISH);
+    String id = request(Variant.TRANSLATION);
     jdbc.update("UPDATE page_text SET text_en = 'Edited' WHERE page_id = ?", pages.get(0));
 
     worker.runOnce();
@@ -248,7 +248,7 @@ class PdfExportWorkerTest {
   void aRestartLeavesFinishedAndQueuedExportsAlone() {
     String ready = request(Variant.ORIGINAL);
     worker.runOnce();
-    String queued = request(Variant.ENGLISH);
+    String queued = request(Variant.TRANSLATION);
 
     worker.recoverAfterRestart();
 

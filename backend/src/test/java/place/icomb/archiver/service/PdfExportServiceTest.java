@@ -185,7 +185,7 @@ class PdfExportServiceTest {
 
   @Test
   void englishExportRendersTheTranslation() throws Exception {
-    byte[] pdf = build(recordId, List.of(1), PdfExportService.Variant.ENGLISH);
+    byte[] pdf = build(recordId, List.of(1), PdfExportService.Variant.TRANSLATION);
     String text = textOf(pdf);
     assertThat(text).contains("Expropriation of the Czech nobility");
     assertThat(text).contains("Czech nobles");
@@ -257,7 +257,7 @@ class PdfExportServiceTest {
   void translatedExportsDrawTheFiguresTheEngineFound() throws Exception {
     // 21,996 pages reference a cut-out figure — signatures, stamps, seals. On a countersigned
     // order the signature block is the evidence.
-    byte[] pdf = build(recordId, List.of(1), PdfExportService.Variant.ENGLISH);
+    byte[] pdf = build(recordId, List.of(1), PdfExportService.Variant.TRANSLATION);
     try (PDDocument doc = Loader.loadPDF(pdf)) {
       // Page 0 is the cover; the document's own first page follows it.
       assertThat(countImages(doc, 1)).isEqualTo(1);
@@ -267,7 +267,7 @@ class PdfExportServiceTest {
   @Test
   void theOnDemandExportsCarryTheArchiveFooter() throws Exception {
     for (PdfExportService.Variant v :
-        List.of(PdfExportService.Variant.ENGLISH, PdfExportService.Variant.SIDE_BY_SIDE)) {
+        List.of(PdfExportService.Variant.TRANSLATION, PdfExportService.Variant.SIDE_BY_SIDE)) {
       String text = textOf(build(recordId, List.of(1), v));
       assertThat(text).as("%s footer URL", v).contains("/records/" + recordId + "/pages/1");
       assertThat(text).as("%s footer page label", v).contains("Archive Page 1");
@@ -281,7 +281,7 @@ class PdfExportServiceTest {
     // is the friction the footer exists to remove.
     String expected = "/records/" + recordId + "/pages/1";
     for (PdfExportService.Variant v :
-        List.of(PdfExportService.Variant.ENGLISH, PdfExportService.Variant.SIDE_BY_SIDE)) {
+        List.of(PdfExportService.Variant.TRANSLATION, PdfExportService.Variant.SIDE_BY_SIDE)) {
       try (PDDocument doc = Loader.loadPDF(build(recordId, List.of(1), v))) {
         var uris = new java.util.ArrayList<String>();
         // Page 0 is the cover, which links to the record; page 1 is the document's first page.
@@ -340,7 +340,7 @@ class PdfExportServiceTest {
         "A reasonably long line of translated archival prose. ".repeat(400));
 
     for (PdfExportService.Variant v :
-        List.of(PdfExportService.Variant.ENGLISH, PdfExportService.Variant.SIDE_BY_SIDE)) {
+        List.of(PdfExportService.Variant.TRANSLATION, PdfExportService.Variant.SIDE_BY_SIDE)) {
       byte[] pdf = build(recordId, List.of(1), v);
       try (PDDocument doc = Loader.loadPDF(pdf)) {
         // Cover, then the source page's own sheets.
@@ -366,7 +366,7 @@ class PdfExportServiceTest {
   @Test
   void theGeneratedExportsOpenWithACoverSheet() throws Exception {
     for (PdfExportService.Variant v :
-        List.of(PdfExportService.Variant.ENGLISH, PdfExportService.Variant.SIDE_BY_SIDE)) {
+        List.of(PdfExportService.Variant.TRANSLATION, PdfExportService.Variant.SIDE_BY_SIDE)) {
       try (PDDocument doc = Loader.loadPDF(build(recordId, List.of(1), v))) {
         String cover = pageText(doc, 1);
         assertThat(cover).as("%s masthead", v).contains("Czernin Archive");
@@ -392,7 +392,7 @@ class PdfExportServiceTest {
     // Otherwise a two-page extract of a thirty-page file reads as the whole file.
     jdbc.update("UPDATE record SET page_count = 30 WHERE id = ?", recordId);
     try (PDDocument doc =
-        Loader.loadPDF(build(recordId, List.of(1), PdfExportService.Variant.ENGLISH))) {
+        Loader.loadPDF(build(recordId, List.of(1), PdfExportService.Variant.TRANSLATION))) {
       assertThat(pageText(doc, 1)).contains("This extract contains page 1 of 30");
     }
   }
@@ -415,7 +415,7 @@ class PdfExportServiceTest {
     jdbc.update("UPDATE page_text SET text_en = ? WHERE page_id = ?", "The cheap one.", pageId);
 
     for (PdfExportService.Variant v :
-        List.of(PdfExportService.Variant.ENGLISH, PdfExportService.Variant.SIDE_BY_SIDE)) {
+        List.of(PdfExportService.Variant.TRANSLATION, PdfExportService.Variant.SIDE_BY_SIDE)) {
       String text = textOf(build(recordId, List.of(1), v));
       assertThat(text).as("%s shows the upgrade", v).contains("carefully upgraded");
       assertThat(text).as("%s drops the cheap one", v).doesNotContain("The cheap one.");
@@ -471,7 +471,8 @@ class PdfExportServiceTest {
     Path dir = scratch();
     Path out = dir.resolve("english.pdf");
 
-    pdfExportService.buildToFile(recordId, List.of(1), PdfExportService.Variant.ENGLISH, out, dir);
+    pdfExportService.buildToFile(
+        recordId, List.of(1), PdfExportService.Variant.TRANSLATION, out, dir);
 
     assertThat(textOf(Files.readAllBytes(out))).contains("Expropriation of the Czech nobility");
   }

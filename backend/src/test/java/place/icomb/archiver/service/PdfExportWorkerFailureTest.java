@@ -15,6 +15,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
+import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
@@ -46,8 +47,9 @@ class PdfExportWorkerFailureTest {
     when(queue.claimNext())
         .thenReturn(
             Optional.of(
-                new PdfExportQueue.Claimed("id-1", 1L, Variant.ORIGINAL, List.of(10L), "fp")));
-    when(queue.fingerprint(1L, List.of(10L))).thenReturn("fp");
+                new PdfExportQueue.Claimed(
+                    "id-1", 1L, Variant.ORIGINAL, "en", List.of(10L), "fp", Instant.EPOCH)));
+    when(queue.fingerprint(1L, List.of(10L), "en", Instant.EPOCH)).thenReturn("fp");
     when(queue.seqsOf(1L, List.of(10L))).thenReturn(List.of(1));
     when(storageService.freeBytes()).thenReturn(Long.MAX_VALUE);
     when(storageService.exportTempDir()).thenReturn(temp);
