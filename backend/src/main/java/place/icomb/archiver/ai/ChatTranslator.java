@@ -2,6 +2,7 @@ package place.icomb.archiver.ai;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 
 /**
@@ -25,11 +26,16 @@ public class ChatTranslator implements Translator {
    * with preserving them. A model that renders "Führungszeugnis" as "Leadership Certificate" —
    * which one candidate did — is worse than no translation, because it reads as authoritative.
    */
-  private static final String INSTRUCTION =
-      "Translate the following German or Czech archival document text into English. "
-          + "Preserve all proper names, place names, dates, reference numbers and titles exactly "
-          + "as written. Keep the markdown structure. Do not add commentary or explanation. "
-          + "Output only the translation.\n\n";
+  private static String instruction(String targetLang) {
+    return "Translate the following German or Czech archival document text into "
+        + Locale.of(targetLang).getDisplayLanguage(Locale.ENGLISH)
+        + ". Preserve all proper names, place names, dates, reference numbers and titles exactly "
+        + "as written. Keep the markdown structure. Do not add commentary or explanation. "
+        + "Output only the translation.\n\n";
+  }
+
+  private static final String LANGUAGE = "((?:english|czech|german)\\s+)?";
+  private static final String TRANSLATION_WORD = "(?:translations?|překlad|[üÜ]bersetzung)";
 
   private final AiRegistry.Registration registration;
   private final String apiKey;
@@ -77,14 +83,14 @@ public class ChatTranslator implements Translator {
   }
 
   @Override
-  public Map<String, Object> request(String text, String sourceLang) {
+  public Map<String, Object> request(String text, String sourceLang, String targetLang) {
     return Map.of(
         "max_tokens",
         4000,
         "temperature",
         0.1,
         "messages",
-        List.of(Map.of("role", "user", "content", INSTRUCTION + text)));
+        List.of(Map.of("role", "user", "content", instruction(targetLang) + text)));
   }
 
   @Override
@@ -140,10 +146,12 @@ public class ChatTranslator implements Translator {
       int newline = t.indexOf('\n');
       String first = (newline < 0 ? t : t.substring(0, newline)).strip();
       boolean preamble =
-          first.matches("(?i)^#{1,6}\\s*(english\\s+)?translations?\\s*[.:]?$")
-              || first.matches("(?i)^\\*{0,2}(english\\s+)?translations?\\*{0,2}\\s*[.:]$")
+          first.matches("(?i)^#{1,6}\\s*" + LANGUAGE + TRANSLATION_WORD + "\\s*[.:]?$")
+              || first.matches("(?i)^\\*{0,2}" + LANGUAGE + TRANSLATION_WORD + "\\*{0,2}\\s*[.:]$")
               || first.matches(
-                  "(?i)^(here is|here's|below is)\\s+the\\s+(english\\s+)?translation\\b[^\\n]{0,200}:$");
+                  "(?i)^(here is|here's|below is)\\s+the\\s+"
+                      + LANGUAGE
+                      + "translation\\b[^\\n]{0,200}:$");
       if (!preamble) break;
       t = newline < 0 ? "" : t.substring(newline + 1).strip();
     }

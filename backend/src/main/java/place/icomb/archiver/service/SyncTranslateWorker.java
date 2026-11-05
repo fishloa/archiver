@@ -1,7 +1,7 @@
 package place.icomb.archiver.service;
 
-import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import java.io.IOException;
 import java.net.URI;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
@@ -52,6 +52,31 @@ public class SyncTranslateWorker extends GenericWorker {
     this.translationService = translationService;
   }
 
+  public static String translate(
+      ResilientHttpClient http, Translator translator, String apiKey, Map<String, Object> body)
+      throws IOException, InterruptedException {
+    Map<String, Object> withModel = new java.util.LinkedHashMap<>(body);
+    withModel.put("model", translator.model());
+
+    var request =
+        HttpRequest.newBuilder()
+            .uri(URI.create(translator.endpoint() + translator.endpointPath()))
+            .header("Content-Type", "application/json")
+            .header("Authorization", "Bearer " + apiKey)
+            .POST(HttpRequest.BodyPublishers.ofString(MAPPER.writeValueAsString(withModel)))
+            .build();
+
+    HttpResponse<String> response = http.send(request, HttpResponse.BodyHandlers.ofString());
+    if (response.statusCode() != 200) {
+      throw new IllegalStateException(
+          "translate failed: HTTP "
+              + response.statusCode()
+              + " "
+              + response.body().substring(0, Math.min(300, response.body().length())));
+    }
+    return translator.parse(MAPPER.readTree(response.body()));
+  }
+
   @Override
   protected String model() {
     return translator.model();
@@ -83,29 +108,7 @@ public class SyncTranslateWorker extends GenericWorker {
       return;
     }
 
-    Map<String, Object> body = translator.request(text, null);
-    Map<String, Object> withModel = new java.util.LinkedHashMap<>(body);
-    withModel.put("model", translator.model());
-
-    var request =
-        HttpRequest.newBuilder()
-            .uri(URI.create(translator.endpoint() + translator.endpointPath()))
-            .header("Content-Type", "application/json")
-            .header("Authorization", "Bearer " + apiKey)
-            .POST(HttpRequest.BodyPublishers.ofString(MAPPER.writeValueAsString(withModel)))
-            .build();
-
-    HttpResponse<String> response = http.send(request, HttpResponse.BodyHandlers.ofString());
-    if (response.statusCode() != 200) {
-      throw new IllegalStateException(
-          "translate failed: HTTP "
-              + response.statusCode()
-              + " "
-              + response.body().substring(0, Math.min(300, response.body().length())));
-    }
-
-    JsonNode parsed = MAPPER.readTree(response.body());
-    String translated = translator.parse(parsed);
+    String translated = translate(http, translator, apiKey, translator.request(text, null));
 
     // Every model's output is kept. text_en is only a cache of whichever is preferred, so a cheap
     // translation is never destroyed by a better one.
