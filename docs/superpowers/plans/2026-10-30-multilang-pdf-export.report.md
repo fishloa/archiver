@@ -15,7 +15,11 @@ Nothing pushed, tagged or deployed. No production access. CHANGELOG.md untouched
 8. `e3f8f57` Accept and report lang on the PDF export endpoint and MCP tools (Task 7)
 9. `97d620d` Choose English, German or Czech for translation and side-by-side PDFs (Task 8, including the Layout section)
 10. `6b2601e` Document PDF exports in German and Czech (Task 9)
-11. this report
+11. `8231713` Report on the multi-language PDF export implementation
+12. `3238fef` A Czech or German translation counts only while it matches the current transcription (review 1)
+13. `474cb6b` Check an export against the translation id it was requested with, not a clock (review 2)
+14. `b996536` Keep a translation's opening label when the source document opens with one (review 3)
+15. report update
 
 Task 10 changed no files (no lint fixes were needed).
 
@@ -52,3 +56,13 @@ The spec's release step (a real `cs` export of one small record on production) i
 - No real-hardware or production check of a `cs` export (see above).
 - Frontend lint (`eslint`) not runnable here; `make lint` for the frontend will need the repo's own environment.
 - Concurrency lock in `translateMissing` is JVM-local (single backend assumption, as the plan states).
+
+## Review fixes (after the first report)
+
+V27 was edited in place for the two schema changes (never applied to a persistent database); no V28.
+
+1. **Stale cs/de translations** (`3238fef`). `page_translation.source_md5` (nullable, set for lang <> 'en' from the md5 of the text_raw that was sent). A cs/de row is present and rendered only when some `page_text.text_raw` of the page still hashes to it: enforced in `translateMissing`, `bestByRecord`, `modelBreakdown` and the cover sheet's translated count, so no call site of re-OCR, correction or advance needs to know. Rows without it (including older ones) count as missing and are re-translated; the upsert replaces the row under the (page_id, lang, model) key. English rows are untouched. `recordIn(pageId, lang, model, text)` still works and takes the md5 from the current page text; `translateMissing` passes the md5 of the exact text it sent, so a correction made during the call is not mistaken for a match. Tests: TranslateMissingTest (translate, correct text_raw, asked again, new text stored and rendered) and PdfExportTranslationTest (the same through ManualCorrectionService and a full export). Existing tests that insert cs rows by SQL now set source_md5.
+2. **Fingerprint cutoff race** (`474cb6b`). The time cutoff is replaced by an id cutoff: `pdf_export.translation_cutoff` holds `max(page_translation.id)` read once in `request()` and used both for the request fingerprint and, via `Claimed.translationCutoff`, the worker's pre-build check (`Claimed.requestedAt` is gone). The two computations therefore measure the same rows however exports interleave. Tests: a row committed after the cutoff does not change the fingerprint at that cutoff; the claimed cutoff equals the one at request; the earlier sibling-export test uses the new cutoff. Residual: a row whose id was allocated before the cutoff but committed after it would still show; translation rows are written by single autocommit statements, so that window is a few microseconds.
+3. **Real heading deleted** (`b996536`). `Translator.parse(body, sourceText)` (default delegates to `parse(body)`); `ChatTranslator` strips a bare-label first line ("### Translation", "Übersetzung:", "Překlad:", etc.) only when the source's first line is not itself such a label (en/de/cs, loosely matched: with or without #, asterisks, colon). "Here is the ... translation:" style introductions stay unconditional. Sync worker, the on-demand export path and the batch stage pass the source (the batch stage reads text_raw in `applyResult`). Request bodies unchanged. Tests: kept when source opens with a label, stripped when it does not or the source is unknown, spoken introductions stripped regardless.
+
+Final verification: full backend suite 851 tests, 0 failures/errors/skipped; spotless clean. Frontend: vitest 134 passed, svelte-check 0 errors.
