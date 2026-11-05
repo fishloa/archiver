@@ -84,7 +84,7 @@ public class PdfExportWorker {
       }
       String now =
           queue.fingerprint(
-              export.recordId(), export.pageIds(), export.lang(), export.requestedAt());
+              export.recordId(), export.pageIds(), export.lang(), export.translationCutoff());
       if (!now.equals(export.fingerprint())) {
         throw new IOException(
             "The pages changed after this export was requested; request it again");

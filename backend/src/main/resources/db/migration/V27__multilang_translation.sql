@@ -10,4 +10,5 @@ ALTER TABLE page_translation
     ADD CONSTRAINT page_translation_page_id_lang_model_key UNIQUE (page_id, lang, model);
 
 ALTER TABLE pdf_export
-    ADD COLUMN lang text NOT NULL DEFAULT 'en' CHECK (lang IN ('en', 'de', 'cs'));
+    ADD COLUMN lang text NOT NULL DEFAULT 'en' CHECK (lang IN ('en', 'de', 'cs')),
+    ADD COLUMN translation_cutoff bigint;

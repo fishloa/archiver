@@ -48,7 +48,7 @@ public class PdfExportQueue {
       String lang,
       List<Long> pageIds,
       String fingerprint,
-      Instant requestedAt) {}
+      Long translationCutoff) {}
 
   /** The columns the file endpoint needs. */
   public record Row(
@@ -61,8 +61,6 @@ public class PdfExportQueue {
       String error) {}
 
   public static final List<String> LANGS = List.of("en", "de", "cs");
-
-  private static final Timestamp NO_CUTOFF = Timestamp.from(Instant.parse("9999-12-31T00:00:00Z"));
 
   private static final String VIEW_SQL =
       "SELECT id::text AS id, state, cardinality(page_ids) AS page_count, variant, lang, bytes,"
@@ -199,6 +197,10 @@ public class PdfExportQueue {
         args.toArray());
   }
 
+  public long translationCutoff() {
+    return jdbc.queryForObject("SELECT coalesce(max(id), 0) FROM page_translation", Long.class);
+  }
+
   public String fingerprint(long recordId, List<Long> pageIds) {
     return fingerprint(recordId, pageIds, "en");
   }
@@ -217,12 +219,13 @@ public class PdfExportQueue {
    * English it also covers the language and the transcriptions, which a German export of a German
    * record shows. Re-OCR, a new translation, a replaced scan or a moved page all change it.
    *
-   * @param before when given, translations into a language other than English made after it are
-   *     left out: those are the ones exports made themselves while building, not a change to the
-   *     pages
+   * @param cutoffId when given, translations into a language other than English with a greater id
+   *     are left out: those are the ones exports made themselves while building, not a change to
+   *     the pages. An id taken once and stored with the export, so the request and the claim
+   *     measure the same rows however other exports interleave
    */
-  public String fingerprint(long recordId, List<Long> pageIds, String lang, Instant before) {
-    Timestamp cutoff = before == null ? NO_CUTOFF : Timestamp.from(before);
+  public String fingerprint(long recordId, List<Long> pageIds, String lang, Long cutoffId) {
+    long cutoff = cutoffId == null ? Long.MAX_VALUE : cutoffId;
     return jdbc.queryForObject(
         """
         SELECT md5(
@@ -237,7 +240,7 @@ public class PdfExportQueue {
                                              ORDER BY t2.id))
                        FROM page_translation t2 JOIN page p3 ON p3.id = t2.page_id
                        WHERE p3.record_id = ? AND t2.lang = ?
-                         AND (t2.lang = 'en' OR t2.created_at <= ?)), '')
+                         AND (t2.lang = 'en' OR t2.id <= ?)), '')
           || coalesce(string_agg(
                concat_ws(':', p.id, p.record_id, p.seq, p.attachment_id,
                          coalesce(pt.id::text, '-'),
@@ -245,7 +248,7 @@ public class PdfExportQueue {
                          coalesce((SELECT string_agg(t.id::text || '=' || md5(t.text), ',' ORDER BY t.id)
                                    FROM page_translation t
                                    WHERE t.page_id = p.id AND t.lang = ?
-                                     AND (t.lang = 'en' OR t.created_at <= ?)), '-')),
+                                     AND (t.lang = 'en' OR t.id <= ?)), '-')),
                '|' ORDER BY sel.ord), '')
           || CASE WHEN ? = 'en' THEN ''
                   ELSE ? || md5(coalesce(string_agg(coalesce(pt.text_raw, ''), '|'
@@ -306,7 +309,8 @@ public class PdfExportQueue {
   @Transactional
   public Requested request(long recordId, Variant variant, List<Long> pageIds, String lang) {
     String stored = variant == Variant.ORIGINAL ? "en" : lang;
-    String fingerprint = fingerprint(recordId, pageIds, stored);
+    long cutoff = translationCutoff();
+    String fingerprint = fingerprint(recordId, pageIds, stored, cutoff);
     jdbc.queryForList("SELECT pg_advisory_xact_lock(hashtext(?))", fingerprint);
 
     List<View> reusable =
@@ -327,14 +331,16 @@ public class PdfExportQueue {
 
     String id =
         jdbc.queryForObject(
-            "INSERT INTO pdf_export (record_id, variant, lang, page_ids, fingerprint)"
-                + " VALUES (?, ?, ?, string_to_array(?, ',')::bigint[], ?) RETURNING id::text",
+            "INSERT INTO pdf_export (record_id, variant, lang, page_ids, fingerprint,"
+                + " translation_cutoff)"
+                + " VALUES (?, ?, ?, string_to_array(?, ',')::bigint[], ?, ?) RETURNING id::text",
             String.class,
             recordId,
             dbName(variant),
             stored,
             csv(pageIds),
-            fingerprint);
+            fingerprint,
+            cutoff);
     return new Requested(find(id).orElseThrow(), true);
   }
 
@@ -400,7 +406,7 @@ public class PdfExportQueue {
             WHERE id = (SELECT id FROM pdf_export WHERE state = 'queued'
                         ORDER BY created_at, id FOR UPDATE SKIP LOCKED LIMIT 1)
             RETURNING id::text AS id, record_id, variant, lang,
-                      array_to_string(page_ids, ',') AS page_ids, fingerprint, created_at
+                      array_to_string(page_ids, ',') AS page_ids, fingerprint, translation_cutoff
             """,
             (rs, n) ->
                 new Claimed(
@@ -410,7 +416,7 @@ public class PdfExportQueue {
                     rs.getString("lang"),
                     ids(rs.getString("page_ids")),
                     rs.getString("fingerprint"),
-                    rs.getTimestamp("created_at").toInstant()))
+                    (Long) rs.getObject("translation_cutoff")))
         .stream()
         .findFirst();
   }

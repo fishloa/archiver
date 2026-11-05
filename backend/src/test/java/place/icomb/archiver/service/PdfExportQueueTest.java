@@ -647,9 +647,30 @@ class PdfExportQueueTest {
         "INSERT INTO page_translation (page_id, lang, model, text) VALUES (?, 'cs', 'm', 'x')",
         pages.get(0));
 
-    assertThat(queue.fingerprint(record, pages, "cs", claimed.requestedAt()))
+    assertThat(queue.fingerprint(record, pages, "cs", claimed.translationCutoff()))
         .isEqualTo(claimed.fingerprint());
     assertThat(queue.fingerprint(record, pages, "cs")).isNotEqualTo(claimed.fingerprint());
+  }
+
+  @Test
+  void aTranslationCommittedWhileTheRequestWasBeingMadeCannotChangeItsFingerprint() {
+    long cutoff = queue.translationCutoff();
+    String before = queue.fingerprint(record, pages, "cs", cutoff);
+    jdbc.update(
+        "INSERT INTO page_translation (page_id, lang, model, text) VALUES (?, 'cs', 'late', 'x')",
+        pages.get(0));
+
+    assertThat(queue.fingerprint(record, pages, "cs", cutoff)).isEqualTo(before);
+    assertThat(queue.translationCutoff()).isGreaterThan(cutoff);
+    assertThat(queue.fingerprint(record, pages, "cs", queue.translationCutoff()))
+        .isNotEqualTo(before);
+  }
+
+  @Test
+  void theCutoffAnExportWasRequestedWithIsTheOneItIsCheckedWith() {
+    long cutoff = queue.translationCutoff();
+    queue.request(record, Variant.TRANSLATION, pages, "cs");
+    assertThat(queue.claimNext().orElseThrow().translationCutoff()).isEqualTo(cutoff);
   }
 
   @Test
@@ -682,11 +703,11 @@ class PdfExportQueueTest {
   }
 
   @Test
-  void aClaimCarriesTheLanguageAndWhenItWasAskedFor() {
+  void aClaimCarriesTheLanguageAndTheTranslationsItWasAskedAbout() {
     queue.request(record, Variant.SIDE_BY_SIDE, pages, "de");
     PdfExportQueue.Claimed claimed = queue.claimNext().orElseThrow();
     assertThat(claimed.lang()).isEqualTo("de");
-    assertThat(claimed.requestedAt()).isNotNull();
+    assertThat(claimed.translationCutoff()).isNotNull();
   }
 
   private String storedFingerprint(String id) {
