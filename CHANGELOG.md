@@ -9,6 +9,14 @@ new revision, no build is triggered, and the release silently never happens —
 which is exactly what v1.0.0 did on its first attempt. Add the entry below,
 commit, then tag that commit.
 
+## v1.1.32 — 6 November 2026
+
+**MCP administrators can edit again.** The MCP access token carries no role, and the MCP endpoint
+mapped only the token's scopes, so `ROLE_ADMIN` never reached a tool call: every admin-only tool
+(tree edits, `hold_record`, `reocr_page`, `delete_page`) refused every user, administrators
+included. The caller's role is now read from `app_user` on each MCP call, so a change of role takes
+effect without reconnecting the connector.
+
 ## v1.1.31 — 5 November 2026
 
 **PDF exports in English, German or Czech.** The translation PDF and the side-by-side PDF can now
