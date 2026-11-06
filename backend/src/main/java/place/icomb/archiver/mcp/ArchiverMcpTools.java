@@ -61,19 +61,20 @@ public class ArchiverMcpTools {
     this.downloadPartBytes = downloadPartBytes;
   }
 
-  /**
-   * Refuses anything but an administrator, and refuses when it cannot tell.
-   *
-   * <p>The MCP session filter grants {@code ROLE_ADMIN} to an administrator, so the caller's role
-   * is knowable here. It fails closed: if no authenticated context reaches the tool invocation the
-   * answer is no, which at worst makes a tool unusable and never leaves it unguarded.
-   */
   private boolean isHeld(long recordId) {
     return Boolean.TRUE.equals(
         jdbcTemplate.queryForObject(
             "SELECT ai_held_at IS NOT NULL FROM record WHERE id = ?", Boolean.class, recordId));
   }
 
+  /**
+   * Refuses anything but an administrator, and refuses when it cannot tell.
+   *
+   * <p>{@code McpJwtAuthenticationConverter} grants {@code ROLE_ADMIN} to a caller whose user is an
+   * administrator, so the caller's role is knowable here. It fails closed: if no authenticated
+   * context reaches the tool invocation the answer is no, which at worst makes a tool unusable and
+   * never leaves it unguarded.
+   */
   private void requireAdmin() {
     if (!isAdmin()) {
       throw new IllegalStateException("this tool is available to administrators only");

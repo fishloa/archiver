@@ -15,6 +15,7 @@ import org.springframework.security.web.servlet.util.matcher.PathPatternRequestM
 import org.springframework.security.web.util.matcher.OrRequestMatcher;
 import org.springframework.security.web.util.matcher.RequestMatcher;
 import org.springframework.web.cors.CorsConfigurationSource;
+import place.icomb.archiver.repository.AppUserRepository;
 
 /**
  * The Resource Server role: validates the per-user JWTs issued by McpAuthorizationServerConfig on
@@ -63,14 +64,17 @@ public class McpResourceServerConfig {
   private final String issuer;
   private final JWKSource<SecurityContext> jwkSource;
   private final CorsConfigurationSource mcpCorsSource;
+  private final AppUserRepository appUserRepository;
 
   public McpResourceServerConfig(
       @Value("${archiver.mcp.oauth.issuer:https://archive.czernin.eu}") String issuer,
       JWKSource<SecurityContext> jwkSource,
-      CorsConfigurationSource mcpCorsSource) {
+      CorsConfigurationSource mcpCorsSource,
+      AppUserRepository appUserRepository) {
     this.issuer = issuer;
     this.jwkSource = jwkSource;
     this.mcpCorsSource = mcpCorsSource;
+    this.appUserRepository = appUserRepository;
   }
 
   @Bean
@@ -106,6 +110,12 @@ public class McpResourceServerConfig {
               mcpAuthorization.authorizationServer(issuer);
               mcpAuthorization.resourcePath("/api/mcp/sse");
               mcpAuthorization.jwtDecoder(jwtDecoder);
+              mcpAuthorization.oauth2ResourceServer(
+                  rs ->
+                      rs.jwt(
+                          jwt ->
+                              jwt.jwtAuthenticationConverter(
+                                  new McpJwtAuthenticationConverter(appUserRepository))));
             })
         .authorizeHttpRequests(
             auth ->
