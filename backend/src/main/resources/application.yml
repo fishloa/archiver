@@ -61,8 +61,6 @@ archiver:
     trusted-cidrs: ${AUTH_TRUSTED_CIDRS:127.0.0.1/32,::1/128,10.0.0.0/16,192.168.16.0/22}
     trusted-proxy-hosts: ${AUTH_TRUSTED_PROXY_HOSTS:web}
     trusted-peer-cache-seconds: ${AUTH_TRUSTED_PEER_CACHE_SECONDS:30}
-  openai:
-    api-key: ${OPENAI_API_KEY:}
   embed:
     tei-url: ${EMBED_TEI_URL:}
     tei-key: ${EMBED_TEI_KEY:}

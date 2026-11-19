@@ -27,6 +27,7 @@ public class ArchiverMcpTools {
   private final place.icomb.archiver.controller.PdfExportController pdfExportController;
   private final place.icomb.archiver.service.IngestService ingestService;
   private final place.icomb.archiver.genealogy.GenealogyReadService genealogyRead;
+  private final place.icomb.archiver.genealogy.HintService hints;
 
   /**
    * Largest slice of a PDF returned in one reply; the default is what a client reliably carries.
@@ -47,6 +48,7 @@ public class ArchiverMcpTools {
       place.icomb.archiver.controller.PdfExportController pdfExportController,
       place.icomb.archiver.service.IngestService ingestService,
       place.icomb.archiver.genealogy.GenealogyReadService genealogyRead,
+      place.icomb.archiver.genealogy.HintService hints,
       @org.springframework.beans.factory.annotation.Value(
               "${archiver.mcp.download-part-bytes:8388608}")
           int downloadPartBytes) {
@@ -60,6 +62,7 @@ public class ArchiverMcpTools {
     this.pdfExportController = pdfExportController;
     this.ingestService = ingestService;
     this.genealogyRead = genealogyRead;
+    this.hints = hints;
     this.downloadPartBytes = downloadPartBytes;
   }
 
@@ -613,6 +616,9 @@ public class ArchiverMcpTools {
           Boolean includeHints) {
     Map<String, Object> out = new LinkedHashMap<>();
     out.put("people", pagePeople.forRecord(recordId));
+    if (Boolean.TRUE.equals(includeHints) && isAdmin()) {
+      out.put("hints", hints.list(null, recordId));
+    }
     return out;
   }
 

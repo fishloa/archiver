@@ -14,6 +14,7 @@ public class PagePersonMatch {
   private String personName;
   private float score;
   private String context;
+  private String figureId;
   @ReadOnlyProperty private Instant createdAt;
 
   public PagePersonMatch() {}
@@ -64,6 +65,14 @@ public class PagePersonMatch {
 
   public void setContext(String context) {
     this.context = context;
+  }
+
+  public String getFigureId() {
+    return figureId;
+  }
+
+  public void setFigureId(String figureId) {
+    this.figureId = figureId;
   }
 
   public Instant getCreatedAt() {

@@ -5,8 +5,9 @@ import org.slf4j.LoggerFactory;
 import place.icomb.archiver.model.Job;
 
 /**
- * Internal worker that claims {@code match_persons} jobs and runs person matching on the record's
- * pages. Instances are created by {@link place.icomb.archiver.config.WorkerSchedulingConfig}.
+ * Internal worker that claims {@code match_persons} jobs and makes hints for the job's page, or for
+ * every page of its record. Instances are created by {@link
+ * place.icomb.archiver.config.WorkerSchedulingConfig}.
  */
 public class PersonMatchWorker extends GenericWorker {
 
@@ -31,6 +32,10 @@ public class PersonMatchWorker extends GenericWorker {
 
   @Override
   protected void processJob(Job job) throws Exception {
-    personMatchService.matchRecord(job.getRecordId());
+    if (job.getPageId() != null) {
+      personMatchService.matchPage(job.getPageId());
+    } else {
+      personMatchService.matchRecord(job.getRecordId());
+    }
   }
 }

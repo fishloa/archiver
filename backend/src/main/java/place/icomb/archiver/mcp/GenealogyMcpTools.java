@@ -14,6 +14,7 @@ import place.icomb.archiver.genealogy.GenEntity;
 import place.icomb.archiver.genealogy.GenealogyException;
 import place.icomb.archiver.genealogy.GenealogyHistoryService;
 import place.icomb.archiver.genealogy.GenealogyService;
+import place.icomb.archiver.genealogy.HintService;
 import place.icomb.archiver.service.OcrFigures;
 
 /**
@@ -29,14 +30,17 @@ public class GenealogyMcpTools {
   private final JdbcTemplate jdbc;
   private final TransactionTemplate tx;
   private final OcrFigures ocrFigures;
+  private final HintService hints;
 
   public GenealogyMcpTools(
       GenealogyService genealogy,
       GenealogyHistoryService history,
       JdbcTemplate jdbc,
       PlatformTransactionManager transactions,
-      OcrFigures ocrFigures) {
+      OcrFigures ocrFigures,
+      HintService hints) {
     this.ocrFigures = ocrFigures;
+    this.hints = hints;
     this.genealogy = genealogy;
     this.history = history;
     this.jdbc = jdbc;
@@ -379,6 +383,32 @@ public class GenealogyMcpTools {
                     "quality",
                     quality),
                 reason));
+  }
+
+  @McpTool(
+      name = "suggest_people",
+      title = "Suggest People (Hints)",
+      description =
+          "Queue a hint run: the model suggests which tree people a record's pages name, and which"
+              + " pictures may show them. Give recordId for every page, recordId and seq for one"
+              + " page, or pageId. Replaces earlier hints for those pages; creates no links. Costs"
+              + " one model call per page. Returns jobId and pages. Read the hints with"
+              + " find_people_in_document(includeHints=true). Administrators only.",
+      annotations = @McpTool.McpAnnotations(readOnlyHint = false, destructiveHint = false))
+  public Map<String, Object> suggestPeople(
+      @McpToolParam(description = "Record id", required = false) Long recordId,
+      @McpToolParam(description = "Page sequence, with recordId", required = false) Integer seq,
+      @McpToolParam(description = "Page id, instead of recordId", required = false) Long pageId) {
+    return run(
+        () -> {
+          if (seq != null) {
+            if (recordId == null) {
+              throw GenealogyException.badRequest("seq needs recordId");
+            }
+            return hints.run(null, page(recordId, seq));
+          }
+          return hints.run(recordId, pageId);
+        });
   }
 
   @McpTool(

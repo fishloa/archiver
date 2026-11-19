@@ -1,5 +1,6 @@
 package place.icomb.archiver.service;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.net.URI;
 import java.net.http.HttpRequest;
@@ -7,11 +8,12 @@ import java.net.http.HttpResponse;
 import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
+import place.icomb.archiver.ai.AiCapability;
+import place.icomb.archiver.ai.AiRegistry;
+import place.icomb.archiver.ai.ChatTranslator;
 import place.icomb.archiver.model.PagePersonMatch;
 import place.icomb.archiver.model.PageText;
 import place.icomb.archiver.repository.PagePersonMatchRepository;
@@ -20,6 +22,11 @@ import place.icomb.archiver.repository.PageTextRepository;
 import place.icomb.archiver.repository.RecordRepository;
 import place.icomb.archiver.service.FamilyTreeService.Person;
 
+/**
+ * Hints: people a page may name, and figures on it that may show them. Made only when an
+ * administrator asks ({@code match_persons} jobs), by the archive's configured translation model
+ * over candidates a name heuristic picks from the tree. A hint is never a link.
+ */
 @Service
 public class PersonMatchService {
   private static final Logger log = LoggerFactory.getLogger(PersonMatchService.class);
@@ -27,7 +34,9 @@ public class PersonMatchService {
   private static final int MAX_MATCHES_PER_PAGE = 10;
   private static final int MAX_LLM_CANDIDATES = 20;
   private static final double MIN_SCORE = 0.3;
+  private static final double MIN_MODEL_SCORE = 0.1;
   private static final int CONTEXT_CHARS = 100;
+  private static final int CAPTION_CHARS = 200;
   private static final int PROXIMITY_WINDOW = 3;
   private static final String FAMILY_SURNAME = "czernin";
 
@@ -37,7 +46,8 @@ public class PersonMatchService {
   private final PageRepository pageRepo;
   private final RecordRepository recordRepo;
   private final TranslationService translationService;
-  private final String openaiApiKey;
+  private final AiRegistry registry;
+  private final OcrFigures ocrFigures;
   private final ResilientHttpClient httpClient;
   private final ObjectMapper objectMapper;
 
@@ -48,103 +58,67 @@ public class PersonMatchService {
       PageRepository pageRepo,
       RecordRepository recordRepo,
       TranslationService translationService,
-      @Value("${archiver.openai.api-key:}") String openaiApiKey) {
+      AiRegistry registry,
+      OcrFigures ocrFigures) {
     this.familyTreeService = familyTreeService;
     this.matchRepo = matchRepo;
     this.pageTextRepo = pageTextRepo;
     this.pageRepo = pageRepo;
     this.recordRepo = recordRepo;
     this.translationService = translationService;
-    this.openaiApiKey = openaiApiKey;
+    this.registry = registry;
+    this.ocrFigures = ocrFigures;
     this.httpClient = ResilientHttpClient.builder().build();
     this.objectMapper = new ObjectMapper();
   }
 
-  public List<PagePersonMatch> getPageMatches(Long pageId) {
-    if (matchRepo.existsByPageId(pageId)) {
-      return matchRepo.findByPageId(pageId);
-    }
-    return matchPage(pageId);
-  }
-
-  public List<RecordPersonMatch> getRecordMatches(Long recordId) {
-    var pages = pageRepo.findByRecordId(recordId);
-    if (pages.isEmpty()) return List.of();
-
-    List<Long> pageIds = pages.stream().map(p -> p.getId()).toList();
-    Map<Long, Integer> pageIdToSeq =
-        pages.stream().collect(java.util.stream.Collectors.toMap(p -> p.getId(), p -> p.getSeq()));
-
-    // Return only pre-computed matches (computed by matchRecord in the pipeline)
-
-    List<PagePersonMatch> allMatches = matchRepo.findByPageIdIn(pageIds);
-
-    // Aggregate by personId
-    Map<Integer, RecordPersonMatchBuilder> byPerson = new LinkedHashMap<>();
-    for (PagePersonMatch m : allMatches) {
-      byPerson
-          .computeIfAbsent(m.getPersonId(), k -> new RecordPersonMatchBuilder(m, pageIdToSeq))
-          .addMatch(m);
-    }
-
-    List<RecordPersonMatch> results = new ArrayList<>();
-    for (var builder : byPerson.values()) {
-      results.add(builder.build());
-    }
-
-    results.sort(Comparator.comparingDouble(RecordPersonMatch::maxScore).reversed());
-    return results;
-  }
-
-  /** Compute person matches for all pages in a record. Called from the pipeline after embedding. */
+  /** Replaces the hints of every page in a record. */
   public void matchRecord(Long recordId) {
     var pages = pageRepo.findByRecordId(recordId);
     int matched = 0;
     for (var page : pages) {
-      if (!matchRepo.existsByPageId(page.getId())) {
-        var results = matchPage(page.getId());
-        if (!results.isEmpty()) matched++;
-      }
+      if (!matchPage(page.getId()).isEmpty()) matched++;
     }
-    log.info("Record {} person matching: {}/{} pages had matches", recordId, matched, pages.size());
+    log.info("Record {} hints: {}/{} pages have some", recordId, matched, pages.size());
   }
 
-  private List<PagePersonMatch> matchPage(Long pageId) {
+  /**
+   * Replaces one page's hints. The model is asked before anything is deleted, so a failed call
+   * fails the job and leaves the page's previous hints as they were.
+   */
+  public List<PagePersonMatch> matchPage(Long pageId) {
     String text = getBestText(pageId);
-    if (text == null || text.isBlank()) {
-      return List.of();
-    }
+    List<Suggestion> suggestions =
+        text == null || text.isBlank() ? List.of() : suggest(pageId, text);
 
-    List<Person> people = familyTreeService.getAllPeople();
-    if (people.isEmpty()) return List.of();
-
-    Integer docYear = getDocumentYear(pageId);
-
-    // Stage 1: Heuristic pre-filter to find candidates
-    List<MatchResult> candidates = computeMatches(text, people, docYear);
-    if (candidates.isEmpty()) return List.of();
-
-    // Stage 2: LLM re-ranking (falls back to heuristic if unavailable)
-    List<MatchResult> finalResults = llmRerank(text, candidates, docYear);
-    if (finalResults == null) {
-      finalResults = candidates.stream().limit(MAX_MATCHES_PER_PAGE).toList();
-    }
-
-    // Store matches
+    matchRepo.deleteByPageId(pageId);
     List<PagePersonMatch> stored = new ArrayList<>();
-    for (MatchResult mr : finalResults) {
+    for (Suggestion s : suggestions) {
       PagePersonMatch match = new PagePersonMatch();
       match.setPageId(pageId);
-      match.setPersonId(mr.personId);
-      match.setPersonName(mr.personName);
-      match.setScore((float) mr.score);
-      match.setContext(mr.context);
+      match.setPersonId(s.personId());
+      match.setPersonName(s.personName());
+      match.setScore((float) s.score());
+      match.setContext(s.context());
+      match.setFigureId(s.figureId());
       stored.add(matchRepo.save(match));
     }
-
-    log.debug("Page {} matched {} persons", pageId, stored.size());
+    log.debug("Page {}: {} hints", pageId, stored.size());
     return stored;
   }
+
+  private List<Suggestion> suggest(Long pageId, String text) {
+    List<Person> people = familyTreeService.getAllPeople();
+    if (people.isEmpty()) return List.of();
+    Integer docYear = getDocumentYear(pageId);
+    List<MatchResult> candidates = computeMatches(text, people, docYear);
+    if (candidates.isEmpty()) return List.of();
+    return askModel(pageId, text, candidates, docYear);
+  }
+
+  /** A hint: the person named in the text when {@code figureId} is null, else shown in it. */
+  record Suggestion(
+      int personId, String personName, double score, String context, String figureId) {}
 
   // --- Core matching algorithm (package-private for testing) ---
 
@@ -231,56 +205,122 @@ public class PersonMatchService {
         .toList();
   }
 
-  // --- LLM re-ranking ---
+  // --- The model ---
 
-  private List<MatchResult> llmRerank(String text, List<MatchResult> candidates, Integer docYear) {
-    if (openaiApiKey == null || openaiApiKey.isBlank()) return null;
-    if (candidates.isEmpty()) return null;
+  private List<Suggestion> askModel(
+      Long pageId, String text, List<MatchResult> candidates, Integer docYear) {
+    List<OcrFigures.Figure> figures = ocrFigures.figures(pageId);
+    String markdown = pageTextRepo.findCurrentByPageId(pageId).map(PageText::getTextRaw).orElse("");
 
+    StringBuilder prompt = new StringBuilder();
+    prompt.append(
+        "You are identifying people mentioned in a historical document from the Czernin noble "
+            + "family archive (Bohemian/Austrian aristocracy).\n\n");
+    prompt.append("Document text:\n\"\"\"\n");
+    prompt.append(text, 0, Math.min(text.length(), 4000));
+    prompt.append("\n\"\"\"\n\n");
+    if (docYear != null) {
+      prompt.append("Approximate document year: ").append(docYear).append("\n\n");
+    }
+    prompt.append("Candidate family members (from heuristic pre-filter):\n");
+    for (MatchResult mr : candidates) {
+      Person p = familyTreeService.getPerson(mr.personId);
+      prompt.append("- ID ").append(mr.personId).append(": ").append(mr.personName);
+      if (p != null) {
+        prompt.append(" [").append(p.section).append("]");
+        if (p.birthYear != null) prompt.append(", born ").append(p.birthYear);
+        if (p.deathYear != null) prompt.append(", died ").append(p.deathYear);
+        if (p.birthPlace != null && !p.birthPlace.isBlank())
+          prompt.append(", birthplace: ").append(p.birthPlace);
+        if (p.fullEntry != null && !p.fullEntry.isBlank())
+          prompt.append(" | entry: ").append(p.fullEntry);
+      }
+      prompt.append(" (heuristic score: ").append(String.format("%.2f", mr.score)).append(")\n");
+    }
+    if (!figures.isEmpty()) {
+      prompt.append("\nPictures on this page, with the text printed next to each:\n");
+      for (OcrFigures.Figure f : figures) {
+        prompt
+            .append("- figureId \"")
+            .append(f.id())
+            .append("\" (picture ")
+            .append(f.number())
+            .append("): ")
+            .append(caption(markdown, f.id()))
+            .append("\n");
+      }
+    }
+    prompt.append(
+        "\nIdentify which candidates are ACTUALLY referenced in the document text. "
+            + "Consider name matches, titles (Graf/Count), locations, dates, and context. "
+            + "The Czernin family has 3 branches: CZERNIN 1 (Bohemian main line), "
+            + "CZERNIN 2 (Austrian/Styrian line), CZERNIN 3 (Bohemian cadet line). "
+            + "Use locations, dates, and context clues to pick the correct branch. "
+            + "Many family members share first names — disambiguate carefully using "
+            + "birth/death years, birthplaces, and the full genealogical entry. "
+            + "Only include people with clear textual evidence — do not guess. "
+            + "For a picture, name a candidate only when its caption or the text says who it "
+            + "shows.\n\n"
+            + "Respond with JSON only:\n"
+            + "{\"people\": [{\"personId\": N, \"score\": 0.0-1.0, \"context\": \"brief quote\"}],"
+            + " \"figures\": [{\"figureId\": \"id\", \"personId\": N, \"score\": 0.0-1.0,"
+            + " \"context\": \"brief quote\"}]}\n"
+            + "If nobody clearly matches, respond: {\"people\": [], \"figures\": []}");
+
+    JsonNode answer = call(prompt.toString());
+
+    Map<Integer, MatchResult> byId = new HashMap<>();
+    for (MatchResult mr : candidates) byId.put(mr.personId, mr);
+    Set<String> figureIds = new HashSet<>();
+    for (OcrFigures.Figure f : figures) figureIds.add(f.id());
+
+    List<Suggestion> named = new ArrayList<>();
+    Set<Integer> seen = new HashSet<>();
+    for (JsonNode node : answer.path("people")) {
+      MatchResult mr = byId.get(node.path("personId").asInt());
+      double score = Math.min(1.0, node.path("score").asDouble());
+      if (mr == null || score < MIN_MODEL_SCORE || !seen.add(mr.personId)) continue;
+      named.add(new Suggestion(mr.personId, mr.personName, score, context(node, mr), null));
+    }
+    named.sort(Comparator.comparingDouble(Suggestion::score).reversed());
+    List<Suggestion> out =
+        new ArrayList<>(named.subList(0, Math.min(named.size(), MAX_MATCHES_PER_PAGE)));
+
+    Set<String> pictured = new HashSet<>();
+    for (JsonNode node : answer.path("figures")) {
+      MatchResult mr = byId.get(node.path("personId").asInt());
+      String figureId = node.path("figureId").asText("");
+      double score = Math.min(1.0, node.path("score").asDouble());
+      if (mr == null
+          || !figureIds.contains(figureId)
+          || score < MIN_MODEL_SCORE
+          || !pictured.add(figureId + "/" + mr.personId)) continue;
+      out.add(new Suggestion(mr.personId, mr.personName, score, context(node, mr), figureId));
+    }
+    log.info(
+        "Page {}: model gave {} hints from {} candidates", pageId, out.size(), candidates.size());
+    return out;
+  }
+
+  private static String context(JsonNode node, MatchResult candidate) {
+    String said = node.path("context").asText("");
+    return said.isBlank() ? candidate.context() : said;
+  }
+
+  private JsonNode call(String prompt) {
+    AiRegistry.Registration registration =
+        registry
+            .best(AiCapability.TRANSLATION)
+            .orElseThrow(
+                () -> new IllegalStateException("No model is configured, so no hints can be made"));
+    String apiKey = registry.credential(registration);
+    ChatTranslator model = new ChatTranslator(registration, apiKey);
     try {
-      StringBuilder prompt = new StringBuilder();
-      prompt.append(
-          "You are identifying people mentioned in a historical document from the Czernin noble "
-              + "family archive (Bohemian/Austrian aristocracy).\n\n");
-      prompt.append("Document text:\n\"\"\"\n");
-      prompt.append(text, 0, Math.min(text.length(), 4000));
-      prompt.append("\n\"\"\"\n\n");
-      if (docYear != null) {
-        prompt.append("Approximate document year: ").append(docYear).append("\n\n");
-      }
-      prompt.append("Candidate family members (from heuristic pre-filter):\n");
-      for (MatchResult mr : candidates) {
-        Person p = familyTreeService.getPerson(mr.personId);
-        prompt.append("- ID ").append(mr.personId).append(": ").append(mr.personName);
-        if (p != null) {
-          prompt.append(" [").append(p.section).append("]");
-          if (p.birthYear != null) prompt.append(", born ").append(p.birthYear);
-          if (p.deathYear != null) prompt.append(", died ").append(p.deathYear);
-          if (p.birthPlace != null && !p.birthPlace.isBlank())
-            prompt.append(", birthplace: ").append(p.birthPlace);
-          if (p.fullEntry != null && !p.fullEntry.isBlank())
-            prompt.append(" | entry: ").append(p.fullEntry);
-        }
-        prompt.append(" (heuristic score: ").append(String.format("%.2f", mr.score)).append(")\n");
-      }
-      prompt.append(
-          "\nIdentify which candidates are ACTUALLY referenced in the document text. "
-              + "Consider name matches, titles (Graf/Count), locations, dates, and context. "
-              + "The Czernin family has 3 branches: CZERNIN 1 (Bohemian main line), "
-              + "CZERNIN 2 (Austrian/Styrian line), CZERNIN 3 (Bohemian cadet line). "
-              + "Use locations, dates, and context clues to pick the correct branch. "
-              + "Many family members share first names — disambiguate carefully using "
-              + "birth/death years, birthplaces, and the full genealogical entry. "
-              + "Only include people with clear textual evidence — do not guess.\n\n"
-              + "Respond with JSON only:\n"
-              + "{\"matches\": [{\"personId\": N, \"score\": 0.0-1.0, \"evidence\": \"brief quote\"}]}\n"
-              + "If nobody clearly matches, respond: {\"matches\": []}");
-
-      String jsonBody =
+      String body =
           objectMapper.writeValueAsString(
               Map.of(
                   "model",
-                  "gpt-4o-mini",
+                  model.model(),
                   "messages",
                   List.of(
                       Map.of(
@@ -289,80 +329,74 @@ public class PersonMatchService {
                           "content",
                           "You are a genealogy research assistant. "
                               + "Respond only with valid JSON, no markdown."),
-                      Map.of("role", "user", "content", prompt.toString())),
+                      Map.of("role", "user", "content", prompt)),
                   "temperature",
                   0.1,
                   "max_tokens",
-                  500));
-
+                  1000));
       HttpRequest request =
           HttpRequest.newBuilder()
-              .uri(URI.create("https://api.openai.com/v1/chat/completions"))
-              .header("Authorization", "Bearer " + openaiApiKey)
+              .uri(URI.create(model.endpoint() + model.endpointPath()))
               .header("Content-Type", "application/json")
-              .POST(HttpRequest.BodyPublishers.ofString(jsonBody))
+              .header("Authorization", "Bearer " + apiKey)
+              .POST(HttpRequest.BodyPublishers.ofString(body))
               .build();
-
       HttpResponse<String> response =
           httpClient.send(request, HttpResponse.BodyHandlers.ofString());
-
       if (response.statusCode() != 200) {
-        log.warn("OpenAI API error: {} {}", response.statusCode(), response.body());
-        return null;
+        throw new IllegalStateException(
+            "hint model failed: HTTP "
+                + response.statusCode()
+                + " "
+                + response.body().substring(0, Math.min(300, response.body().length())));
       }
+      String content =
+          objectMapper
+              .readTree(response.body())
+              .path("choices")
+              .path(0)
+              .path("message")
+              .path("content")
+              .asText("");
+      return objectMapper.readTree(ChatTranslator.unwrapCodeFence(content));
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+      throw new IllegalStateException("hint model call interrupted", e);
+    } catch (java.io.IOException e) {
+      throw new IllegalStateException("hint model failed: " + e.getMessage(), e);
+    }
+  }
 
-      var tree = objectMapper.readTree(response.body());
-      String content = tree.get("choices").get(0).get("message").get("content").asText();
-
-      // Strip markdown code fences if present
-      content = content.replaceAll("```json\\s*", "").replaceAll("```\\s*", "").trim();
-      var matchesNode = objectMapper.readTree(content).get("matches");
-
-      if (matchesNode == null || !matchesNode.isArray()) return null;
-
-      // Build lookup from candidates
-      Map<Integer, MatchResult> candidateMap = new HashMap<>();
-      for (MatchResult mr : candidates) {
-        candidateMap.put(mr.personId, mr);
-      }
-
-      List<MatchResult> results = new ArrayList<>();
-      for (var node : matchesNode) {
-        int personId = node.get("personId").asInt();
-        double llmScore = node.get("score").asDouble();
-        var candidate = candidateMap.get(personId);
-        if (candidate == null || llmScore < 0.1) continue;
-
-        // Blend LLM score (70%) with heuristic score (30%) to preserve geographic/temporal signals
-        double blended = llmScore * 0.7 + Math.min(candidate.score(), 1.0) * 0.3;
-        results.add(new MatchResult(personId, candidate.personName, blended, candidate.context));
-      }
-
-      // Include strong heuristic candidates the LLM missed (score > 1.0 = boosted)
-      Set<Integer> llmIds = results.stream().map(MatchResult::personId).collect(Collectors.toSet());
-      for (MatchResult mr : candidates) {
-        if (!llmIds.contains(mr.personId()) && mr.score() > 1.0) {
-          // Include at reduced confidence (heuristic-only)
-          results.add(
-              new MatchResult(
-                  mr.personId(), mr.personName(), Math.min(mr.score(), 1.0) * 0.8, mr.context()));
+  /**
+   * The text printed next to a figure: the nearest non-blank line before and after its {@code
+   * ![id]} reference, joined by " / ". Empty when the figure is not referenced.
+   */
+  static String caption(String markdown, String figureId) {
+    if (markdown == null) return "";
+    String[] lines = markdown.split("\\R");
+    for (int i = 0; i < lines.length; i++) {
+      if (!lines[i].contains("![" + figureId + "]")) continue;
+      List<String> parts = new ArrayList<>();
+      for (int j = i - 1; j >= 0; j--) {
+        if (!lines[j].isBlank()) {
+          if (!lines[j].contains("![")) parts.add(clip(lines[j]));
+          break;
         }
       }
-
-      // Sort by score descending, limit to MAX_MATCHES_PER_PAGE
-      results.sort(Comparator.comparingDouble(MatchResult::score).reversed());
-      if (results.size() > MAX_MATCHES_PER_PAGE) {
-        results = results.subList(0, MAX_MATCHES_PER_PAGE);
+      for (int j = i + 1; j < lines.length; j++) {
+        if (!lines[j].isBlank()) {
+          if (!lines[j].contains("![")) parts.add(clip(lines[j]));
+          break;
+        }
       }
-
-      log.info(
-          "Page LLM re-ranked: {} matches from {} candidates", results.size(), candidates.size());
-      return results;
-
-    } catch (Exception e) {
-      log.warn("LLM re-ranking failed, falling back to heuristic: {}", e.getMessage());
-      return null;
+      return String.join(" / ", parts);
     }
+    return "";
+  }
+
+  private static String clip(String line) {
+    String t = line.strip();
+    return t.length() <= CAPTION_CHARS ? t : t.substring(0, CAPTION_CHARS);
   }
 
   // --- Heuristic helper methods ---
@@ -653,36 +687,6 @@ public class PersonMatchService {
       this.person = person;
       this.bestScore = score;
       this.bestTokenIndex = tokenIndex;
-    }
-  }
-
-  public record RecordPersonMatch(
-      int personId, String personName, double maxScore, List<Integer> pageSeqs) {}
-
-  private static class RecordPersonMatchBuilder {
-    int personId;
-    String personName;
-    double maxScore;
-    Set<Long> pageIds = new HashSet<>();
-    Map<Long, Integer> pageIdToSeq;
-
-    RecordPersonMatchBuilder(PagePersonMatch first, Map<Long, Integer> pageIdToSeq) {
-      this.personId = first.getPersonId();
-      this.personName = first.getPersonName();
-      this.maxScore = first.getScore();
-      this.pageIds.add(first.getPageId());
-      this.pageIdToSeq = pageIdToSeq;
-    }
-
-    void addMatch(PagePersonMatch m) {
-      pageIds.add(m.getPageId());
-      maxScore = Math.max(maxScore, m.getScore());
-    }
-
-    RecordPersonMatch build() {
-      List<Integer> seqs =
-          pageIds.stream().map(id -> pageIdToSeq.getOrDefault(id, 0)).sorted().toList();
-      return new RecordPersonMatch(personId, personName, maxScore, seqs);
     }
   }
 }
