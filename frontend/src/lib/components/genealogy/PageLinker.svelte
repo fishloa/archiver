@@ -15,22 +15,9 @@
 
 	let mode: 'picture' | 'person' = $state('picture');
 	let crop: Crop | null = $state(null);
-	let natural = $state({ width: 0, height: 0 });
-	let selected: string | null = $state(null);
+	let picked: string | null = $state(null);
 	let reason = $derived($t('link.reasonDefault', recordId, seq));
 	let reasonEdit: string | null = $state(null);
-
-	function scanLoaded(e: Event) {
-		const img = e.target as HTMLImageElement;
-		if (img instanceof HTMLImageElement) {
-			natural = { width: img.naturalWidth, height: img.naturalHeight };
-		}
-	}
-
-	function choose(f: Figure) {
-		selected = f.id;
-		crop = { left: f.left, top: f.top, width: f.width, height: f.height };
-	}
 </script>
 
 <section class="linker">
@@ -48,20 +35,7 @@
 		<form method="POST" action="?/linkMedia">
 			<p class="help">{$t('link.help')}</p>
 			<input type="hidden" name="pageId" value={pageId} />
-			<div class="scan" onloadcapture={scanLoaded}>
-				<CropSelector {src} bind:crop />
-				{#if natural.width > 0 && figures.length > 0}
-					<svg class="figures" viewBox="0 0 {natural.width} {natural.height}" preserveAspectRatio="none">
-						{#each figures as f (f.id)}
-							<!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_static_element_interactions -->
-							<g class="figure" class:picked={selected === f.id} onclick={() => choose(f)}>
-								<rect x={f.left} y={f.top} width={f.width} height={f.height} />
-								<text x={f.left + 8} y={f.top + 8} dominant-baseline="hanging" font-size={Math.max(24, natural.width / 40)}>{f.number}</text>
-							</g>
-						{/each}
-					</svg>
-				{/if}
-			</div>
+			<CropSelector {src} {figures} bind:crop bind:picked />
 			<PersonPicker name="personId" label={$t('family.person')} />
 			<label class="check">
 				<input type="checkbox" name="isPortrait" />
@@ -122,35 +96,6 @@
 	.help {
 		font-size: 0.75rem;
 		color: var(--vui-text-muted);
-	}
-	.scan {
-		position: relative;
-		display: inline-block;
-		max-width: 100%;
-	}
-	.figures {
-		position: absolute;
-		inset: 0;
-		width: 100%;
-		height: 100%;
-		pointer-events: none;
-	}
-	.figure {
-		pointer-events: all;
-		cursor: pointer;
-	}
-	.figure rect {
-		fill: transparent;
-		stroke: var(--vui-accent);
-		stroke-width: 2;
-		vector-effect: non-scaling-stroke;
-	}
-	.figure.picked rect {
-		fill: color-mix(in srgb, var(--vui-accent) 25%, transparent);
-	}
-	.figure text {
-		fill: var(--vui-accent);
-		font-weight: 700;
 	}
 	.field,
 	.check {
