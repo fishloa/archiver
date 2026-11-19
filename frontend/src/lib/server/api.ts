@@ -560,6 +560,103 @@ export async function fetchRecordPersonMatches(
   return res.json();
 }
 
+// ── People on pages, figures, portraits and hints ──
+
+export interface PagePerson {
+  personId: number;
+  name: string;
+  birthYear: number | null;
+  deathYear: number | null;
+  portraitUrl: string | null;
+  via: string;
+  role: string;
+  roles: string[];
+  note: string | null;
+  mediaId?: number;
+  pageSeq?: number;
+}
+
+export interface Figure {
+  number: number;
+  id: string;
+  left: number;
+  top: number;
+  width: number;
+  height: number;
+}
+
+export interface Hint {
+  id: number;
+  pageId: number;
+  recordId: number;
+  pageSeq: number;
+  personId: number | null;
+  name: string;
+  birthYear: number | null;
+  deathYear: number | null;
+  score: number | null;
+  context: string | null;
+  figureId: string | null;
+  figureNumber: number | null;
+}
+
+export interface HintScope {
+  pageId?: number;
+  recordId?: number;
+}
+
+async function fetchJsonOr<T>(url: string, email: string | undefined, fallback: T): Promise<T> {
+  const res = await fetch(url, { headers: authHeaders(email) });
+  if (!res.ok) return fallback;
+  return res.json();
+}
+
+export function fetchPagePeople(email: string | undefined, pageId: number): Promise<PagePerson[]> {
+  return fetchJsonOr(`${backendUrl()}/api/family-tree/page-people/${pageId}`, email, []);
+}
+
+export function fetchRecordPeople(
+  email: string | undefined,
+  recordId: number,
+): Promise<PagePerson[]> {
+  return fetchJsonOr(`${backendUrl()}/api/family-tree/record-people/${recordId}`, email, []);
+}
+
+export function fetchPageFigures(email: string | undefined, pageId: number): Promise<Figure[]> {
+  return fetchJsonOr(`${backendUrl()}/api/family-tree/pages/${pageId}/figures`, email, []);
+}
+
+export async function fetchPortraits(
+  email: string | undefined,
+  ids: number[],
+): Promise<Record<number, string>> {
+  if (ids.length === 0) return {};
+  return fetchJsonOr(
+    `${backendUrl()}/api/family-tree/portraits?ids=${ids.join(",")}`,
+    email,
+    {},
+  );
+}
+
+export function fetchHints(email: string, scope: HintScope): Promise<Hint[]> {
+  const params = new URLSearchParams();
+  if (scope.pageId != null) params.set("pageId", String(scope.pageId));
+  if (scope.recordId != null) params.set("recordId", String(scope.recordId));
+  return fetchGenealogyAdmin<Hint[]>(email, `hints?${params}`);
+}
+
+export function runHints(email: string, scope: HintScope): Promise<GenealogyWriteResult> {
+  return genealogyWrite(email, "POST", "hints/run", { ...scope });
+}
+
+export function confirmHint(
+  email: string,
+  id: number,
+  body: { reason?: string; role?: string; portrait?: boolean },
+): Promise<GenealogyWriteResult> {
+  return genealogyWrite(email, "POST", `hints/${id}/confirm`, body);
+}
+
 // ── Admin Pipeline Reset ──
 
 export interface ResetResult {
