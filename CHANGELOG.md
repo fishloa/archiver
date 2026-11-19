@@ -9,6 +9,22 @@ new revision, no build is triggered, and the release silently never happens —
 which is exactly what v1.0.0 did on its first attempt. Add the entry below,
 commit, then tag that commit.
 
+## v1.1.33 — 19 November 2026
+
+**Tree evidence, people on pages, pictures by number.** A page and a record show who is linked to
+them, with portraits, and portraits appear beside names across the tree. Administrators link a
+picture (click a numbered OCR figure, or drag a box) or a person straight from the page viewer.
+MCP gains `cite` for outside sources (URL or title, later repointed to a record), `update_fact`,
+`delete_fact`, `tag_media`, and `add_media` by `figure: N`; `get_page` lists the page's figures.
+Pictures can be re-tagged, re-captioned and re-cropped; one-off facts with conflicting evidence are
+marked disputed on the person page.
+
+**Matching is no longer a pipeline stage.** Records go from embedding straight to complete. Person
+suggestions ("hints") are made only when an administrator asks (`suggest_people`, or the button on
+a page or record), are hidden by default, and become links only when confirmed. A finished hint job
+does not advance its record. V28 adds the figure to hints, drops a page's hints when it is re-read,
+and cancels every queued or failed old matching job. The OpenAI configuration is gone.
+
 ## v1.1.32 — 6 November 2026
 
 **MCP administrators can edit again.** The MCP access token carries no role, and the MCP endpoint
