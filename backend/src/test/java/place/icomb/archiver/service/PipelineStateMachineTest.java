@@ -527,7 +527,7 @@ class PipelineStateMachineTest {
   // ---------------------------------------------------------------------------
 
   @Test
-  void fullChain_ocrPendingToMatching_noPages() {
+  void fullChain_ocrPendingToEmbedding_noPages() {
     Long archiveId = createArchive();
     // 0-page record in ocr_pending with metadata_lang='en' (no translation needed)
     Long recordId =
