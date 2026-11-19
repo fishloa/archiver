@@ -8,7 +8,8 @@ import {
 	updateProfile,
 	genealogyWrite,
 	fetchGenealogyAdmin,
-	fetchCurrentUser
+	fetchCurrentUser,
+	fetchPortraits
 } from '$lib/server/api';
 import { formToBody, type Change, type Source } from '$lib/genealogy';
 
@@ -48,9 +49,21 @@ export const load: PageServerLoad = async ({ url, parent, locals }) => {
 		]);
 	}
 
+	const ids = new Set<number>();
+	for (const r of results) ids.add(r.personId);
+	if (person) {
+		for (const c of person.couples ?? []) ids.add(c.spouseId);
+		for (const l of person.parentLinks ?? []) if (l.parentId != null) ids.add(l.parentId);
+		if (person.parent) ids.add(person.parent.id);
+		for (const s of person.siblings ?? []) ids.add(s.id);
+		for (const c of person.children ?? []) ids.add(c.id);
+	}
+	const portraits = await fetchPortraits(locals.userEmail, [...ids]);
+
 	return {
 		q,
 		results,
+		portraits,
 		relationship,
 		person,
 		personId: personId ? parseInt(personId) : null,

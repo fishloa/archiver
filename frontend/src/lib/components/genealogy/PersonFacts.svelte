@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { t } from '$lib/i18n';
+	import PersonAvatar from './PersonAvatar.svelte';
 	import {
 		COUPLE_TYPE_LABELS,
 		LINK_TYPE_LABELS,
@@ -12,8 +13,15 @@
 		type PersonDetail
 	} from '$lib/genealogy';
 
-	let { person, onNavigate }: { person: PersonDetail; onNavigate: (id: number) => void } =
-		$props();
+	let {
+		person,
+		onNavigate,
+		portraits = {}
+	}: {
+		person: PersonDetail;
+		onNavigate: (id: number) => void;
+		portraits?: Record<number, string>;
+	} = $props();
 
 	const otherNames = $derived(person.names.filter((n) => !n.isPrimary));
 	const parents = $derived(
@@ -83,7 +91,8 @@
 			<h3 class="vui-section-header">{$t('family.spouses')}</h3>
 			<ul class="plain">
 				{#each person.couples as c (c.id)}
-					<li>
+					<li class="person">
+						<PersonAvatar url={portraits[c.spouseId] ?? null} name={c.spouseName} size="sm" />
 						<button class="vui-btn vui-btn-ghost vui-btn-sm" onclick={() => onNavigate(c.spouseId)}>{c.spouseName}</button>
 						<span class="vui-badge">{$t(COUPLE_TYPE_LABELS[c.type as keyof typeof COUPLE_TYPE_LABELS])}</span>
 					</li>
@@ -97,7 +106,8 @@
 			<h3 class="vui-section-header">{$t('family.otherParents')}</h3>
 			<ul class="plain">
 				{#each parents as l (l.id)}
-					<li>
+					<li class="person">
+						<PersonAvatar url={portraits[l.parentId] ?? null} name={l.otherName} size="sm" />
 						<button class="vui-btn vui-btn-ghost vui-btn-sm" onclick={() => onNavigate(l.parentId)}>{l.otherName}</button>
 						<span class="vui-badge">{$t(LINK_TYPE_LABELS[l.type as keyof typeof LINK_TYPE_LABELS])}</span>
 					</li>
@@ -179,6 +189,11 @@
 		padding: 0;
 		display: flex;
 		flex-direction: column;
+		gap: 6px;
+	}
+	.person {
+		display: flex;
+		align-items: center;
 		gap: 6px;
 	}
 	.event {

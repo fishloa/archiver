@@ -96,4 +96,22 @@ describe('PersonFacts', () => {
 		expect(screen.getByText('No events recorded')).toBeTruthy();
 		expect(screen.queryByRole('img')).toBeNull();
 	});
+
+	it('puts a portrait beside a spouse who has one and nothing beside one who has none', () => {
+		const withParent = {
+			...alexander,
+			parentLinks: [
+				{ id: 20, relation: 'parent', type: 'step', parentId: 500, otherName: 'Step Parent', childId: 322 }
+			]
+		} as unknown as PersonDetail;
+		render(PersonFacts, {
+			person: withParent,
+			onNavigate: vi.fn(),
+			portraits: { 400: '/api/family-tree/media/1/image' }
+		});
+
+		const avatar = screen.getByRole('img', { name: 'Diana Zannick Hutton/Hulton' });
+		expect(avatar.getAttribute('src')).toBe('/api/family-tree/media/1/image');
+		expect(screen.queryAllByRole('img', { name: 'Step Parent' })).toHaveLength(0);
+	});
 });

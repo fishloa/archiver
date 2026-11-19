@@ -5,6 +5,7 @@
 	import { t } from '$lib/i18n';
 	import ChangeHistory from '$lib/components/genealogy/ChangeHistory.svelte';
 	import PersonEditor from '$lib/components/genealogy/PersonEditor.svelte';
+	import PersonAvatar from '$lib/components/genealogy/PersonAvatar.svelte';
 	import PersonFacts from '$lib/components/genealogy/PersonFacts.svelte';
 
 	let { data, form } = $props();
@@ -88,7 +89,7 @@
 					{/if}
 				</div>
 
-				<PersonFacts person={p} onNavigate={navigatePerson} />
+				<PersonFacts person={p} onNavigate={navigatePerson} portraits={data.portraits} />
 
 				<!-- Family links -->
 				<div class="detail-family">
@@ -96,7 +97,8 @@
 						<div class="family-row">
 							<span class="family-label">{$t('family.parent')}</span>
 							<button class="family-link" onclick={() => navigatePerson(p.parent.id)}>
-								<span class="link-name">{p.parent.name}</span>
+								<PersonAvatar url={data.portraits[p.parent.id] ?? null} name={p.parent.name} size="sm" />
+							<span class="link-name">{p.parent.name}</span>
 								{#if p.parent.birthYear || p.parent.deathYear}
 									<span class="link-dates">
 										{#if p.parent.birthYear}<span class="date-birth">*{p.parent.birthYear}</span>{/if}
@@ -113,7 +115,8 @@
 							<div class="family-chips">
 								{#each p.siblings as sib}
 									<button class="family-link" onclick={() => navigatePerson(sib.id)}>
-										<span class="link-name">{sib.name}</span>
+										<PersonAvatar url={data.portraits[sib.id] ?? null} name={sib.name} size="sm" />
+									<span class="link-name">{sib.name}</span>
 										{#if sib.birthYear || sib.deathYear}
 											<span class="link-dates">
 												{#if sib.birthYear}<span class="date-birth">*{sib.birthYear}</span>{/if}
@@ -132,7 +135,8 @@
 							<div class="family-chips">
 								{#each p.children as child}
 									<button class="family-link" onclick={() => navigatePerson(child.id)}>
-										<span class="link-name">{child.name}</span>
+										<PersonAvatar url={data.portraits[child.id] ?? null} name={child.name} size="sm" />
+									<span class="link-name">{child.name}</span>
 										{#if child.birthYear || child.deathYear}
 											<span class="link-dates">
 												{#if child.birthYear}<span class="date-birth">*{child.birthYear}</span>{/if}
@@ -221,7 +225,10 @@
 						onclick={() => selectPerson(result.personId)}
 					>
 						<div class="result-header">
-							<span class="result-name">{result.name}</span>
+							<span class="result-who">
+								<PersonAvatar url={data.portraits[result.personId] ?? null} name={result.name} size="sm" />
+								<span class="result-name">{result.name}</span>
+							</span>
 							<span class="result-score">{(result.score * 100).toFixed(0)}%</span>
 						</div>
 						<div class="result-meta">
@@ -515,6 +522,12 @@
 		align-items: baseline;
 		justify-content: space-between;
 		margin-bottom: 6px;
+	}
+
+	.result-who {
+		display: inline-flex;
+		align-items: center;
+		gap: 8px;
 	}
 
 	.result-name {
