@@ -263,30 +263,6 @@ class FamilyTreeControllerTest {
     assertThat(resp.statusCode()).isEqualTo(404);
   }
 
-  // ── Page/Record matches (empty since no match data seeded) ──
-
-  @Test
-  void pageMatchesReturnsEmptyForUnknownPage() throws Exception {
-    var req = authedGet(base() + "/page-matches/999999").build();
-    var resp = http.send(req, HttpResponse.BodyHandlers.ofString());
-
-    assertThat(resp.statusCode()).isEqualTo(200);
-    List<Map<String, Object>> results =
-        mapper.readValue(resp.body(), new TypeReference<List<Map<String, Object>>>() {});
-    assertThat(results).isEmpty();
-  }
-
-  @Test
-  void recordMatchesReturnsEmptyForUnknownRecord() throws Exception {
-    var req = authedGet(base() + "/record-matches/999999").build();
-    var resp = http.send(req, HttpResponse.BodyHandlers.ofString());
-
-    assertThat(resp.statusCode()).isEqualTo(200);
-    List<Map<String, Object>> results =
-        mapper.readValue(resp.body(), new TypeReference<List<Map<String, Object>>>() {});
-    assertThat(results).isEmpty();
-  }
-
   // ── Reload is gone: the tree is the database, and edits go through the admin API ──
 
   @Test

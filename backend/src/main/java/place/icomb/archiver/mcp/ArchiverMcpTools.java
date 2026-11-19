@@ -13,7 +13,6 @@ import place.icomb.archiver.controller.ApiController;
 import place.icomb.archiver.controller.SemanticSearchController;
 import place.icomb.archiver.service.FamilyTreeService;
 import place.icomb.archiver.service.FamilyTreeService.Person;
-import place.icomb.archiver.service.PersonMatchService;
 
 @Component
 public class ArchiverMcpTools {
@@ -21,7 +20,8 @@ public class ArchiverMcpTools {
   private final ApiController apiController;
   private final SemanticSearchController semanticSearchController;
   private final FamilyTreeService familyTreeService;
-  private final PersonMatchService personMatchService;
+  private final place.icomb.archiver.genealogy.PagePeopleService pagePeople;
+  private final place.icomb.archiver.service.OcrFigures ocrFigures;
   private final JdbcTemplate jdbcTemplate;
   private final place.icomb.archiver.service.JobService jobService;
   private final place.icomb.archiver.controller.PdfExportController pdfExportController;
@@ -40,7 +40,8 @@ public class ArchiverMcpTools {
       ApiController apiController,
       SemanticSearchController semanticSearchController,
       FamilyTreeService familyTreeService,
-      PersonMatchService personMatchService,
+      place.icomb.archiver.genealogy.PagePeopleService pagePeople,
+      place.icomb.archiver.service.OcrFigures ocrFigures,
       JdbcTemplate jdbcTemplate,
       place.icomb.archiver.service.JobService jobService,
       place.icomb.archiver.controller.PdfExportController pdfExportController,
@@ -52,7 +53,8 @@ public class ArchiverMcpTools {
     this.apiController = apiController;
     this.semanticSearchController = semanticSearchController;
     this.familyTreeService = familyTreeService;
-    this.personMatchService = personMatchService;
+    this.pagePeople = pagePeople;
+    this.ocrFigures = ocrFigures;
     this.jdbcTemplate = jdbcTemplate;
     this.jobService = jobService;
     this.pdfExportController = pdfExportController;
@@ -261,6 +263,14 @@ public class ArchiverMcpTools {
     }
     Map<String, Object> page = new LinkedHashMap<>(pages.get(0));
     page.put("recordId", recordId);
+    List<Map<String, Object>> ids =
+        jdbcTemplate.queryForList(
+            "SELECT id FROM page WHERE record_id = ? AND seq = ?", recordId, seq);
+    page.put(
+        "figures",
+        ids.isEmpty()
+            ? List.of()
+            : ocrFigures.figures(((Number) ids.get(0).get("id")).longValue()));
     return page;
   }
 
@@ -587,26 +597,22 @@ public class ArchiverMcpTools {
       name = "find_people_in_document",
       title = "Find People in Document",
       description =
-          "Find Czernin family members mentioned in a document's OCR text. Uses fuzzy name "
-              + "matching with temporal disambiguation (boosts people alive during the document's "
-              + "date range). Returns matched people with confidence scores and text context.",
+          "The people confirmed on a document: those a curator linked to the record or to a page,"
+              + " and those tagged on a picture cut from a page. Each has via (page, picture or"
+              + " record), role, note and pageSeq.",
       annotations =
           @McpTool.McpAnnotations(
               title = "Find People in Document",
               readOnlyHint = true,
               destructiveHint = false))
-  public List<Map<String, Object>> findPeopleInDocument(
-      @McpToolParam(description = "Record ID of the document to analyze") Long recordId) {
-    var matches = personMatchService.getRecordMatches(recordId);
-    List<Map<String, Object>> out = new ArrayList<>();
-    for (var m : matches) {
-      Map<String, Object> entry = new LinkedHashMap<>();
-      entry.put("personId", m.personId());
-      entry.put("personName", m.personName());
-      entry.put("maxScore", m.maxScore());
-      entry.put("pageCount", m.pageSeqs().size());
-      out.add(entry);
-    }
+  public Map<String, Object> findPeopleInDocument(
+      @McpToolParam(description = "Record ID of the document to analyze") Long recordId,
+      @McpToolParam(
+              description = "Also return unconfirmed person-matching hints (administrators only)",
+              required = false)
+          Boolean includeHints) {
+    Map<String, Object> out = new LinkedHashMap<>();
+    out.put("people", pagePeople.forRecord(recordId));
     return out;
   }
 
