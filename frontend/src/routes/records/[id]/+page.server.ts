@@ -2,16 +2,18 @@ import {
 	fetchRecord,
 	fetchRecordPages,
 	fetchRecordTimeline,
-	fetchRecordPersonMatches,
+	fetchRecordPeople,
+	fetchHints,
 	resetRecordPipeline,
 	fetchTranslationStatus,
 	upgradeTranslation,
 } from '$lib/server/api';
-import type { RecordPersonMatch } from '$lib/server/api';
+import type { Hint } from '$lib/server/api';
+import { hintActions } from '$lib/server/link-actions';
 import { error, fail } from '@sveltejs/kit';
 import type { PageServerLoad, Actions } from './$types';
 
-export const load: PageServerLoad = async ({ params, locals }) => {
+export const load: PageServerLoad = async ({ params, locals, parent }) => {
 	const id = Number(params.id);
 	if (isNaN(id)) error(400, 'Invalid record ID');
 
@@ -22,16 +24,17 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 			fetchRecordTimeline(locals.userEmail, id),
 		]);
 
-		// Fetch person matches with 3s timeout so slow LLM calls don't block page load
-		const timeout = new Promise<RecordPersonMatch[]>((resolve) => setTimeout(() => resolve([]), 3000));
-		const personMatches = await Promise.race([
-			fetchRecordPersonMatches(locals.userEmail, id).catch(() => [] as RecordPersonMatch[]),
-			timeout,
-		]);
+		const people = await fetchRecordPeople(locals.userEmail, id);
+
+		let hints: Hint[] = [];
+		const { user } = await parent();
+		if (locals.userEmail && user?.role === 'admin') {
+			hints = await fetchHints(locals.userEmail, { recordId: id }).catch(() => []);
+		}
 
 		const translationStatus = await fetchTranslationStatus(locals.userEmail, id);
 
-		return { record, pages, timeline, personMatches, translationStatus };
+		return { record, pages, timeline, people, hints, translationStatus };
 	} catch (e) {
 		if (e && typeof e === 'object' && 'status' in e) throw e;
 		error(404, 'Record not found');
@@ -39,6 +42,7 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 };
 
 export const actions: Actions = {
+	...hintActions,
 	resetOcr: async ({ params, locals }) => {
 		const id = Number(params.id);
 		if (!locals.userEmail) return fail(401, { error: 'Not authenticated' });

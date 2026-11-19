@@ -98,6 +98,8 @@ public class ManualCorrectionService {
       if (whole) {
         // Nothing of the old chunks can be patched; they are rebuilt by re-embedding the record.
         jdbc.update("DELETE FROM text_chunk WHERE page_id = ?", pageId);
+        // A new transcription, like a re-OCR: hints made from the old one no longer apply.
+        jdbc.update("DELETE FROM page_person_match WHERE page_id = ?", pageId);
       } else {
         // The chunks are made from the original text; keep their copy of the passage in step.
         jdbc.update(

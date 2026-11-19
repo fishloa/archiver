@@ -44,7 +44,6 @@ public class PipelineStateMachine {
     private Boolean allOcrJobsComplete;
     private Boolean allTranslationJobsComplete;
     private Boolean embedJobComplete;
-    private Boolean matchJobComplete;
     private Boolean hasPrePopulatedText;
     private String contentLang;
     private String metadataLang;
@@ -135,21 +134,6 @@ public class PipelineStateMachine {
         embedJobComplete = completed != null && completed > 0;
       }
       return embedJobComplete;
-    }
-
-    boolean matchJobComplete() {
-      if (matchJobComplete == null) {
-        Long completed =
-            jdbc.queryForObject(
-                """
-                SELECT count(*) FROM job
-                WHERE record_id = ? AND kind = 'match_persons' AND status = 'completed'
-                """,
-                Long.class,
-                recordId);
-        matchJobComplete = completed != null && completed > 0;
-      }
-      return matchJobComplete;
     }
 
     boolean hasPrePopulatedText() {
@@ -262,22 +246,18 @@ public class PipelineStateMachine {
         // now; enqueueing again here would embed the record twice.
         ctx -> logTranslationCompleteIfNeeded(ctx));
 
-    // EMBEDDING → MATCHING: embed job complete
+    // EMBEDDING → COMPLETE: embed job complete
     addTransition(
         EMBEDDING,
-        MATCHING,
+        COMPLETE,
         RecordContext::embedJobComplete,
-        ctx -> {
-          logPipelineEvent(ctx.recordId, "embedding", "completed", null);
-          jobService.enqueueJob("match_persons", ctx.recordId, null, null);
-          logPipelineEvent(ctx.recordId, "matching", "started", null);
-        });
+        ctx -> logPipelineEvent(ctx.recordId, "embedding", "completed", null));
 
-    // MATCHING → COMPLETE: match job complete
+    // MATCHING → COMPLETE: releases records that were mid-match when matching left the pipeline
     addTransition(
         MATCHING,
         COMPLETE,
-        RecordContext::matchJobComplete,
+        ctx -> true,
         ctx -> logPipelineEvent(ctx.recordId, "matching", "completed", null));
   }
 

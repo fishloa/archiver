@@ -24,7 +24,18 @@ class PersonMatchServiceTest {
   static void setup() throws Exception {
     treeService = FamilyTreeService.forPeople(FamilyTreeGolden.legacyPeople());
     allPeople = treeService.getAllPeople();
-    matchService = new PersonMatchService(treeService, null, null, null, null, null, "");
+    matchService = new PersonMatchService(treeService, null, null, null, null, null, null, null);
+  }
+
+  @Test
+  void aFiguresCaptionIsTheTextOnEitherSideOfIt() {
+    String markdown =
+        "# Album\n\nPage heading\n\nGraf Rudolf, 1938\n\n![img-1.jpeg](img-1.jpeg)\n\n"
+            + "Im Garten von Dymokury\n\nUnrelated paragraph";
+    assertThat(PersonMatchService.caption(markdown, "img-1.jpeg"))
+        .isEqualTo("Graf Rudolf, 1938 / Im Garten von Dymokury");
+    assertThat(PersonMatchService.caption(markdown, "img-9.jpeg")).isEmpty();
+    assertThat(PersonMatchService.caption("![img-0.jpeg](img-0.jpeg)", "img-0.jpeg")).isEmpty();
   }
 
   @Test

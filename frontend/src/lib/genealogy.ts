@@ -182,6 +182,7 @@ export interface RecordLink {
 
 export interface MediaItem {
 	id: number;
+	mediaPersonId: number;
 	pageId: number;
 	recordId: number;
 	pageSeq: number;

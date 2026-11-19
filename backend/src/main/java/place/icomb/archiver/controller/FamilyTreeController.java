@@ -16,28 +16,30 @@ import org.springframework.web.bind.annotation.RestController;
 import place.icomb.archiver.genealogy.GenealogyException;
 import place.icomb.archiver.genealogy.GenealogyReadService;
 import place.icomb.archiver.genealogy.MediaImages;
-import place.icomb.archiver.model.PagePersonMatch;
+import place.icomb.archiver.genealogy.PagePeopleService;
 import place.icomb.archiver.service.FamilyTreeService;
 import place.icomb.archiver.service.FamilyTreeService.Person;
-import place.icomb.archiver.service.PersonMatchService;
-import place.icomb.archiver.service.PersonMatchService.RecordPersonMatch;
+import place.icomb.archiver.service.OcrFigures;
 
 @RestController
 @RequestMapping("/api/family-tree")
 public class FamilyTreeController {
 
   private final FamilyTreeService familyTreeService;
-  private final PersonMatchService personMatchService;
+  private final PagePeopleService pagePeople;
+  private final OcrFigures ocrFigures;
   private final GenealogyReadService genealogy;
   private final MediaImages images;
 
   public FamilyTreeController(
       FamilyTreeService familyTreeService,
-      PersonMatchService personMatchService,
+      PagePeopleService pagePeople,
+      OcrFigures ocrFigures,
       GenealogyReadService genealogy,
       MediaImages images) {
     this.familyTreeService = familyTreeService;
-    this.personMatchService = personMatchService;
+    this.pagePeople = pagePeople;
+    this.ocrFigures = ocrFigures;
     this.genealogy = genealogy;
     this.images = images;
   }
@@ -178,50 +180,23 @@ public class FamilyTreeController {
     return ref;
   }
 
-  @GetMapping("/page-matches/{pageId}")
-  public ResponseEntity<List<Map<String, Object>>> pageMatches(@PathVariable Long pageId) {
-    var matches = personMatchService.getPageMatches(pageId);
-    List<Map<String, Object>> response = new ArrayList<>();
-    for (PagePersonMatch m : matches) {
-      Map<String, Object> map = new LinkedHashMap<>();
-      map.put("personId", m.getPersonId());
-      map.put("personName", m.getPersonName());
-      map.put("score", m.getScore());
-      map.put("context", m.getContext());
-      // Enrich with family tree data
-      Person p = familyTreeService.getPerson(m.getPersonId());
-      if (p != null) {
-        map.put("section", p.section);
-        map.put("code", p.fullCode());
-        map.put("birthYear", p.birthYear);
-        map.put("deathYear", p.deathYear);
-      }
-      response.add(map);
-    }
-    return ResponseEntity.ok(response);
+  @GetMapping("/page-people/{pageId}")
+  public List<Map<String, Object>> pagePeople(@PathVariable long pageId) {
+    return pagePeople.forPage(pageId);
   }
 
-  @GetMapping("/record-matches/{recordId}")
-  public ResponseEntity<List<Map<String, Object>>> recordMatches(@PathVariable Long recordId) {
-    var matches = personMatchService.getRecordMatches(recordId);
-    List<Map<String, Object>> response = new ArrayList<>();
-    for (RecordPersonMatch m : matches) {
-      Map<String, Object> map = new LinkedHashMap<>();
-      map.put("personId", m.personId());
-      map.put("personName", m.personName());
-      map.put("maxScore", m.maxScore());
-      map.put("pageCount", m.pageSeqs().size());
-      map.put("pageSeqs", m.pageSeqs());
-      // Enrich with family tree data
-      Person p = familyTreeService.getPerson(m.personId());
-      if (p != null) {
-        map.put("section", p.section);
-        map.put("code", p.fullCode());
-        map.put("birthYear", p.birthYear);
-        map.put("deathYear", p.deathYear);
-      }
-      response.add(map);
-    }
-    return ResponseEntity.ok(response);
+  @GetMapping("/record-people/{recordId}")
+  public List<Map<String, Object>> recordPeople(@PathVariable long recordId) {
+    return pagePeople.forRecord(recordId);
+  }
+
+  @GetMapping("/pages/{pageId}/figures")
+  public List<OcrFigures.Figure> figures(@PathVariable long pageId) {
+    return ocrFigures.figures(pageId);
+  }
+
+  @GetMapping("/portraits")
+  public Map<Integer, String> portraits(@RequestParam List<Integer> ids) {
+    return pagePeople.portraits(ids);
   }
 }

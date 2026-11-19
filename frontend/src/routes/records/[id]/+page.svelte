@@ -7,7 +7,7 @@
 		ArrowLeft, ChevronDown, Clock,
 		CircleCheckBig, AlertTriangle, Play, ExternalLink,
 		FileText, Hash, Calendar, Archive, Bookmark, Layers,
-		BookmarkCheck, X, Users, ShieldAlert, Baby, Skull,
+		BookmarkCheck, X, Users, ShieldAlert,
 		Languages,
 		Sparkles,
 		Loader,
@@ -15,12 +15,14 @@
 	import type { PipelineEvent, JobStat } from '$lib/server/api';
 	import { isKept, keptCount, keptPagesParam, clearKept } from '$lib/kept-pages.svelte';
 	import { enhance } from '$app/forms';
+	import PagePeople from '$lib/components/genealogy/PagePeople.svelte';
+	import HintList from '$lib/components/genealogy/HintList.svelte';
 
 	let { data, form } = $props();
 	let record = $derived(data.record);
 	let pages = $derived(data.pages);
 	let timeline = $derived(data.timeline);
-	let personMatches = $derived(data.personMatches ?? []);
+	let people = $derived(data.people ?? []);
 
 	let sourceMeta = $derived(parseSourceMeta(record.rawSourceMetadata));
 	let nadNumber = $derived(sourceMeta.nad_number ? String(sourceMeta.nad_number) : null);
@@ -501,50 +503,24 @@
 			</div>
 		{/if}
 
-		<!-- People Mentioned -->
-		{#if personMatches.length > 0}
+		<!-- People in this record -->
+		{#if people.length > 0 || isAdmin}
 			<div class="vui-card p-4">
 				<h3 class="text-[length:var(--vui-text-xs)] font-semibold text-text-sub uppercase tracking-wider mb-3 flex items-center gap-1.5">
 					<Users size={14} strokeWidth={2} />
 					{$t('record.peopleMentioned')}
 				</h3>
-				<div class="space-y-2.5">
-					{#each personMatches as match}
-						<div class="px-2.5 py-1.5 -mx-1 rounded-md">
-							<a
-								href="/family-tree?personId={match.personId}"
-								class="group flex items-center gap-2 vui-transition"
-							>
-								<span class="text-[length:var(--vui-text-sm)] text-text font-medium group-hover:text-accent vui-transition truncate">
-									{match.personName}
-								</span>
-								{#if match.birthYear}
-									<span class="flex items-center gap-0.5 text-[length:var(--vui-text-xs)] text-text-sub">
-										<Baby size={12} strokeWidth={2} class="text-accent" />
-										{match.birthYear}
-									</span>
-								{/if}
-								{#if match.deathYear}
-									<span class="flex items-center gap-0.5 text-[length:var(--vui-text-xs)] text-text-sub">
-										<Skull size={12} strokeWidth={2} class="text-red-400" />
-										{match.deathYear}
-									</span>
-								{/if}
-							</a>
-							{#if match.pageSeqs && match.pageSeqs.length > 0}
-								<div class="flex items-center gap-1 mt-1 flex-wrap">
-									<span class="text-[length:var(--vui-text-xs)] text-text-sub">pg:</span>
-									{#each match.pageSeqs as seq}
-										<a
-											href="/records/{data.record.id}/pages/{seq}"
-											class="text-[length:var(--vui-text-xs)] text-accent hover:underline tabular-nums"
-										>{seq}</a>
-									{/each}
-								</div>
-							{/if}
-						</div>
-					{/each}
-				</div>
+				<PagePeople {people} recordId={record.id} />
+				{#if isAdmin}
+					<div class="mt-3">
+						<HintList
+							hints={data.hints}
+							scope="record"
+							scopeId={record.id}
+							pagesQueued={form?.pagesQueued ?? null}
+						/>
+					</div>
+				{/if}
 			</div>
 		{/if}
 

@@ -346,6 +346,23 @@ class PipelineAuditTest {
   }
 
   @Test
+  void auditReleasesEveryRecordLeftInMatching() {
+    Long archiveId = createArchive();
+    Long noJob = createRecord(archiveId, "matching", 1);
+    createPage(noJob, 1);
+    createJob(noJob, null, "embed_record", "completed", 0);
+    Long pendingJob = createRecord(archiveId, "matching", 1);
+    createPage(pendingJob, 1);
+    createJob(pendingJob, null, "embed_record", "completed", 0);
+    createJob(pendingJob, null, "match_persons", "pending", 0);
+
+    auditService.auditPipeline();
+
+    assertThat(getRecordStatus(noJob)).isEqualTo("complete");
+    assertThat(getRecordStatus(pendingJob)).isEqualTo("complete");
+  }
+
+  @Test
   void kindWithoutAnExplicitLease_usesTheShortDefault() {
     // Ordinary kinds keep the short lease, so a genuinely dead job is recovered quickly.
     Long archiveId = createArchive();

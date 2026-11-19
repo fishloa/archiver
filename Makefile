@@ -50,7 +50,7 @@ test-frontend:
 	cd frontend && bun run test && bun test tests/i18n-completeness.test.ts
 
 lint-frontend:
-	cd frontend && npx eslint . && npx prettier --check .
+	cd frontend && bun run check
 
 # Smoke test (live site)
 test-smoke:

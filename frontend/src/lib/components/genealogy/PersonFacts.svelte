@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { t } from '$lib/i18n';
+	import PersonAvatar from './PersonAvatar.svelte';
 	import {
 		COUPLE_TYPE_LABELS,
 		LINK_TYPE_LABELS,
@@ -12,8 +13,15 @@
 		type PersonDetail
 	} from '$lib/genealogy';
 
-	let { person, onNavigate }: { person: PersonDetail; onNavigate: (id: number) => void } =
-		$props();
+	let {
+		person,
+		onNavigate,
+		portraits = {}
+	}: {
+		person: PersonDetail;
+		onNavigate: (id: number) => void;
+		portraits?: Record<number, string>;
+	} = $props();
 
 	const otherNames = $derived(person.names.filter((n) => !n.isPrimary));
 	const parents = $derived(
@@ -23,6 +31,22 @@
 	const recordSources = $derived(
 		new Set(person.sources.filter((s) => s.recordId != null).map((s) => s.id))
 	);
+	const SINGLE_TAGS = ['BIRT', 'CHR', 'BAPM', 'DEAT', 'BURI', 'MARR', 'DIV'];
+	const disputed = $derived.by(() => {
+		const groups = new Map<string, PersonDetail['events']>();
+		for (const ev of person.events) {
+			if (!SINGLE_TAGS.includes(ev.tag)) continue;
+			const key = `${ev.tag}|${ev.coupleId ?? ''}`;
+			groups.set(key, [...(groups.get(key) ?? []), ev]);
+		}
+		const ids = new Set<number>();
+		for (const evs of groups.values()) {
+			if (evs.some((e) => e.date !== evs[0].date || e.place !== evs[0].place)) {
+				for (const e of evs) ids.add(e.id);
+			}
+		}
+		return ids;
+	});
 	const citesDocument = (c: Citation) => c.pageId != null || recordSources.has(c.sourceId);
 </script>
 
@@ -58,6 +82,7 @@
 				{#each person.events as ev (ev.id)}
 					<li class="event">
 						<span class="event-tag">{$t(eventLabel(ev.tag))}</span>
+						{#if disputed.has(ev.id)}<span class="vui-badge vui-badge-warning">{$t('family.disputed')}</span>{/if}
 						{#if ev.date}<span class="event-date">{ev.date}</span>{/if}
 						{#if ev.place}<span>{ev.place}</span>{/if}
 						{#if ev.description}<span class="muted">{ev.description}</span>{/if}
@@ -83,7 +108,8 @@
 			<h3 class="vui-section-header">{$t('family.spouses')}</h3>
 			<ul class="plain">
 				{#each person.couples as c (c.id)}
-					<li>
+					<li class="person">
+						<PersonAvatar url={portraits[c.spouseId] ?? null} name={c.spouseName} size="sm" />
 						<button class="vui-btn vui-btn-ghost vui-btn-sm" onclick={() => onNavigate(c.spouseId)}>{c.spouseName}</button>
 						<span class="vui-badge">{$t(COUPLE_TYPE_LABELS[c.type as keyof typeof COUPLE_TYPE_LABELS])}</span>
 					</li>
@@ -97,7 +123,8 @@
 			<h3 class="vui-section-header">{$t('family.otherParents')}</h3>
 			<ul class="plain">
 				{#each parents as l (l.id)}
-					<li>
+					<li class="person">
+						<PersonAvatar url={portraits[l.parentId] ?? null} name={l.otherName} size="sm" />
 						<button class="vui-btn vui-btn-ghost vui-btn-sm" onclick={() => onNavigate(l.parentId)}>{l.otherName}</button>
 						<span class="vui-badge">{$t(LINK_TYPE_LABELS[l.type as keyof typeof LINK_TYPE_LABELS])}</span>
 					</li>
@@ -179,6 +206,11 @@
 		padding: 0;
 		display: flex;
 		flex-direction: column;
+		gap: 6px;
+	}
+	.person {
+		display: flex;
+		align-items: center;
 		gap: 6px;
 	}
 	.event {

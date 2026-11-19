@@ -20,7 +20,9 @@
 		type PersonDetail,
 		type Source
 	} from '$lib/genealogy';
+	import type { Figure } from '$lib/server/api';
 	import type { PageResponse } from '$lib/types';
+	import MediaEditor from './MediaEditor.svelte';
 	import CropSelector from './CropSelector.svelte';
 	import PersonPicker from './PersonPicker.svelte';
 	import RecordPagePicker from './RecordPagePicker.svelte';
@@ -28,8 +30,14 @@
 	let {
 		person,
 		places,
-		sources
-	}: { person: PersonDetail; places: { id: number; name: string }[]; sources: Source[] } = $props();
+		sources,
+		scans = {}
+	}: {
+		person: PersonDetail;
+		places: { id: number; name: string }[];
+		sources: Source[];
+		scans?: Record<number, { src: string | null; figures: Figure[] }>;
+	} = $props();
 
 	let mediaPage: PageResponse | null = $state(null);
 	let crop: Crop | null = $state(null);
@@ -263,12 +271,7 @@
 	<section class="vui-card">
 		<h3 class="vui-section-header">{$t('family.media')}</h3>
 		{#each person.media as m (m.id)}
-			<form method="POST" action="?/edit" use:enhance class="inline">
-				{@render target('DELETE', `media/${m.id}`)}
-				<img class="thumb" src={m.imageUrl} alt={m.caption ?? ''} />
-				{@render reason()}
-				<button class="vui-btn vui-btn-danger vui-btn-sm">{$t('family.delete')}</button>
-			</form>
+			<MediaEditor media={m} src={scans[m.id]?.src} figures={scans[m.id]?.figures} />
 		{/each}
 		<form method="POST" action="?/edit" use:enhance class="grid">
 			{@render target('POST', 'media')}
@@ -360,10 +363,6 @@
 		border-bottom: 1px solid var(--vui-border);
 		padding-bottom: 8px;
 		margin-bottom: 8px;
-	}
-	.thumb {
-		max-height: 48px;
-		border-radius: var(--vui-radius-sm);
 	}
 	.muted {
 		color: var(--vui-text-muted);

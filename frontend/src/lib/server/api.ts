@@ -513,51 +513,101 @@ export async function fetchGenealogyAdmin<T>(email: string, path: string): Promi
   return res.json();
 }
 
-export interface PagePersonMatch {
+// ── People on pages, figures, portraits and hints ──
+
+export interface PagePerson {
   personId: number;
-  personName: string;
-  score: number;
-  context: string | null;
-  section: string | null;
-  code: string | null;
+  name: string;
   birthYear: number | null;
   deathYear: number | null;
+  portraitUrl: string | null;
+  via: string;
+  role: string;
+  roles: string[];
+  note: string | null;
+  mediaId?: number;
+  pageSeq?: number;
 }
 
-export async function fetchPagePersonMatches(
-  email: string | undefined,
-  pageId: number,
-): Promise<PagePersonMatch[]> {
-  const res = await fetch(
-    `${backendUrl()}/api/family-tree/page-matches/${pageId}`,
-    { headers: authHeaders(email) },
-  );
-  if (!res.ok) return [];
+export interface Figure {
+  number: number;
+  id: string;
+  left: number;
+  top: number;
+  width: number;
+  height: number;
+}
+
+export interface Hint {
+  id: number;
+  pageId: number;
+  recordId: number;
+  pageSeq: number;
+  personId: number | null;
+  name: string;
+  birthYear: number | null;
+  deathYear: number | null;
+  score: number | null;
+  context: string | null;
+  figureId: string | null;
+  figureNumber: number | null;
+}
+
+export interface HintScope {
+  pageId?: number;
+  recordId?: number;
+}
+
+async function fetchJsonOr<T>(url: string, email: string | undefined, fallback: T): Promise<T> {
+  const res = await fetch(url, { headers: authHeaders(email) });
+  if (!res.ok) return fallback;
   return res.json();
 }
 
-export interface RecordPersonMatch {
-  personId: number;
-  personName: string;
-  maxScore: number;
-  pageCount: number;
-  pageSeqs: number[];
-  section: string | null;
-  code: string | null;
-  birthYear: number | null;
-  deathYear: number | null;
+export function fetchPagePeople(email: string | undefined, pageId: number): Promise<PagePerson[]> {
+  return fetchJsonOr(`${backendUrl()}/api/family-tree/page-people/${pageId}`, email, []);
 }
 
-export async function fetchRecordPersonMatches(
+export function fetchRecordPeople(
   email: string | undefined,
   recordId: number,
-): Promise<RecordPersonMatch[]> {
-  const res = await fetch(
-    `${backendUrl()}/api/family-tree/record-matches/${recordId}`,
-    { headers: authHeaders(email) },
+): Promise<PagePerson[]> {
+  return fetchJsonOr(`${backendUrl()}/api/family-tree/record-people/${recordId}`, email, []);
+}
+
+export function fetchPageFigures(email: string | undefined, pageId: number): Promise<Figure[]> {
+  return fetchJsonOr(`${backendUrl()}/api/family-tree/pages/${pageId}/figures`, email, []);
+}
+
+export async function fetchPortraits(
+  email: string | undefined,
+  ids: number[],
+): Promise<Record<number, string>> {
+  if (ids.length === 0) return {};
+  return fetchJsonOr(
+    `${backendUrl()}/api/family-tree/portraits?ids=${ids.join(",")}`,
+    email,
+    {},
   );
-  if (!res.ok) return [];
-  return res.json();
+}
+
+export function fetchHints(email: string, scope: HintScope): Promise<Hint[]> {
+  const params = new URLSearchParams();
+  if (scope.pageId != null) params.set("pageId", String(scope.pageId));
+  if (scope.recordId != null) params.set("recordId", String(scope.recordId));
+  return fetchGenealogyAdmin<Hint[]>(email, `hints?${params}`);
+}
+
+export function runHints(email: string, scope: HintScope): Promise<GenealogyWriteResult> {
+  return genealogyWrite(email, "POST", "hints/run", { ...scope });
+}
+
+export function confirmHint(
+  email: string,
+  id: number,
+  body: { reason?: string; role?: string; portrait?: boolean },
+): Promise<GenealogyWriteResult> {
+  return genealogyWrite(email, "POST", `hints/${id}/confirm`, body);
 }
 
 // ── Admin Pipeline Reset ──

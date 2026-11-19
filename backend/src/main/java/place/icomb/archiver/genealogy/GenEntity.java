@@ -180,6 +180,28 @@ public enum GenEntity {
         .orElseThrow(() -> GenealogyException.badRequest("unknown entity '%s'".formatted(key)));
   }
 
+  public static final List<String> EDITABLE_KEYS =
+      List.of(
+          "name",
+          "event",
+          "couple",
+          "parent_link",
+          "place",
+          "place_name",
+          "source",
+          "citation",
+          "record_link",
+          "media",
+          "media_person");
+
+  public static GenEntity byKey(String key) {
+    if (key == null || !EDITABLE_KEYS.contains(key)) {
+      throw GenealogyException.badRequest(
+          "unknown kind '%s'; use one of %s".formatted(key, String.join(", ", EDITABLE_KEYS)));
+    }
+    return ofKey(key);
+  }
+
   static String snake(String camel) {
     StringBuilder sb = new StringBuilder();
     for (char c : camel.toCharArray()) {

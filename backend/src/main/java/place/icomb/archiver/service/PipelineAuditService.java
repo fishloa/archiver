@@ -298,18 +298,12 @@ public class PipelineAuditService {
     }
     total += embeddingDone.size();
 
-    // --- Pass 9b: Stuck matching records where match job is done ---
+    // --- Pass 9b: Records left in matching, which is no longer a pipeline stage ---
     List<Long> matchingDone =
         jdbcTemplate.queryForList(
             """
         SELECT r.id FROM record r
         WHERE r.status = 'matching'
-          AND EXISTS (
-            SELECT 1 FROM job j
-            WHERE j.record_id = r.id
-              AND j.kind = 'match_persons'
-              AND j.status = 'completed'
-          )
         ORDER BY r.id
         """,
             Long.class);

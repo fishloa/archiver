@@ -96,4 +96,50 @@ describe('PersonFacts', () => {
 		expect(screen.getByText('No events recorded')).toBeTruthy();
 		expect(screen.queryByRole('img')).toBeNull();
 	});
+
+	it('puts a portrait beside a spouse who has one and nothing beside one who has none', () => {
+		const withParent = {
+			...alexander,
+			parentLinks: [
+				{ id: 20, relation: 'parent', type: 'step', parentId: 500, otherName: 'Step Parent', childId: 322 }
+			]
+		} as unknown as PersonDetail;
+		render(PersonFacts, {
+			person: withParent,
+			onNavigate: vi.fn(),
+			portraits: { 400: '/api/family-tree/media/1/image' }
+		});
+
+		const avatars = document.querySelectorAll('img.avatar');
+		expect(avatars).toHaveLength(1);
+		expect(avatars[0].getAttribute('src')).toBe('/api/family-tree/media/1/image');
+	});
+
+	it('marks events of one tag that disagree as disputed, and shows both with their citations', () => {
+		const rival = {
+			...alexander.events[0],
+			id: 12,
+			date: '2 MAY 1913',
+			place: 'Prag',
+			citations: [{ id: 9, sourceId: 2, sourceTitle: 'Taufbuch', pageId: null, detail: null, quality: 1 }]
+		};
+		render(PersonFacts, {
+			person: { ...alexander, events: [alexander.events[0], rival] },
+			onNavigate: vi.fn()
+		});
+		expect(screen.getAllByText('disputed')).toHaveLength(2);
+		expect(screen.getByText('30 APR 1913')).toBeTruthy();
+		expect(screen.getByText('2 MAY 1913')).toBeTruthy();
+		expect(screen.getByText('Taufbuch', { selector: '.vui-badge' })).toBeTruthy();
+	});
+
+	it('does not mark a lone event, agreeing duplicates or a marriage per spouse', () => {
+		const twin = { ...alexander.events[0], id: 12 };
+		const otherMarriage = { ...alexander.events[1], id: 13, coupleId: 8, date: '1 JAN 1960' };
+		render(PersonFacts, {
+			person: { ...alexander, events: [alexander.events[0], twin, alexander.events[1], otherMarriage] },
+			onNavigate: vi.fn()
+		});
+		expect(screen.queryAllByText('disputed')).toHaveLength(0);
+	});
 });

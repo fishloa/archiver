@@ -175,8 +175,9 @@ public class JobService {
     job = jobRepository.save(job);
     recordEventService.pipelineChanged(job.getKind(), "completed");
 
-    // Let the state machine evaluate guards and chain through any applicable transitions
-    if (job.getRecordId() != null) {
+    // A hint job is asked for on any record and is not a pipeline stage: it must not start paid
+    // stages on a record still being processed.
+    if (job.getRecordId() != null && !"match_persons".equals(job.getKind())) {
       stateMachine.autoAdvance(job.getRecordId());
     }
 

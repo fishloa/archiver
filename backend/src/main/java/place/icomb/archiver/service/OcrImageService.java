@@ -101,24 +101,16 @@ public class OcrImageService {
       double sx = full.getWidth() / pw;
       double sy = full.getHeight() / ph;
 
+      int number = 0;
       for (JsonNode img : page.path("images")) {
-        String id = img.path("id").asText("");
-        if (id.isEmpty()) continue;
-        int x = (int) Math.max(0, Math.floor(img.path("top_left_x").asDouble() * sx));
-        int y = (int) Math.max(0, Math.floor(img.path("top_left_y").asDouble() * sy));
-        int w =
-            (int)
-                Math.ceil(
-                    (img.path("bottom_right_x").asDouble() - img.path("top_left_x").asDouble())
-                        * sx);
-        int h =
-            (int)
-                Math.ceil(
-                    (img.path("bottom_right_y").asDouble() - img.path("top_left_y").asDouble())
-                        * sy);
-        w = Math.max(1, Math.min(w, full.getWidth() - x));
-        h = Math.max(1, Math.min(h, full.getHeight() - y));
-        if (x >= full.getWidth() || y >= full.getHeight()) continue;
+        OcrFigures.Figure box =
+            OcrFigures.box(++number, img, sx, sy, full.getWidth(), full.getHeight());
+        if (box == null) continue;
+        String id = box.id();
+        int x = box.left();
+        int y = box.top();
+        int w = box.width();
+        int h = box.height();
 
         BufferedImage crop = full.getSubimage(x, y, w, h);
         // getSubimage shares the parent raster; JPEG writing needs a standalone RGB image, and

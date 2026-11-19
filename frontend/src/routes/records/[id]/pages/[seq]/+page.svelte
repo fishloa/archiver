@@ -1,11 +1,14 @@
 <script lang="ts">
 	import PdfExportButton from '$lib/components/PdfExportButton.svelte';
 	import MarkdownText from '$lib/components/MarkdownText.svelte';
-	import { ArrowLeft, ArrowRight, ChevronDown, Bookmark, BookmarkCheck, X, Users, Baby, Skull } from 'lucide-svelte';
+	import { ArrowLeft, ArrowRight, ChevronDown, Bookmark, BookmarkCheck, X, Users } from 'lucide-svelte';
+	import PagePeople from '$lib/components/genealogy/PagePeople.svelte';
+	import PageLinker from '$lib/components/genealogy/PageLinker.svelte';
+	import HintList from '$lib/components/genealogy/HintList.svelte';
 	import { isKept, toggleKept, keptCount, keptPagesParam, clearKept } from '$lib/kept-pages.svelte';
 	import { language, t } from '$lib/i18n';
 
-	let { data } = $props();
+	let { data, form } = $props();
 	let record = $derived(data.record);
 	let page = $derived(data.page);
 	let prev = $derived(data.prev);
@@ -16,7 +19,8 @@
 	// Only the OCR text carries a content type; the translation preserves it, so both
 	// sides of the panel render the same way.
 	let isMarkdown = $derived(pageText?.contentType === 'text/markdown');
-	let personMatches = $derived(data.personMatches ?? []);
+	let people = $derived(data.people ?? []);
+	let isAdmin = $derived(data.user?.role === 'admin');
 
 	let lang = $derived($language);
 	let originalOpen = $state(false);
@@ -129,8 +133,8 @@
 
 	<!-- Right-hand side: People Mentioned + Main text -->
 	<div class="lg:flex-1 min-w-0 flex flex-col gap-4">
-		<!-- People Mentioned -->
-		{#if personMatches.length > 0}
+		<!-- People on this page -->
+		{#if people.length > 0}
 			<div class="vui-card">
 				<button
 					class="flex items-center gap-1.5 text-[length:var(--vui-text-sm)] font-semibold text-text vui-transition hover:text-text cursor-pointer w-full"
@@ -143,40 +147,37 @@
 					/>
 					<Users size={16} strokeWidth={2} />
 					{$t('page.peopleMentioned')}
-					<span class="text-text-sub font-normal ml-1">({personMatches.length})</span>
+					<span class="text-text-sub font-normal ml-1">({people.length})</span>
 				</button>
 				{#if peopleOpen}
-					<div class="mt-3 flex flex-col gap-2">
-						{#each personMatches as match}
-							<a
-								href="/family-tree?personId={match.personId}"
-								class="group block px-4 py-3 rounded-lg bg-bg-deep border border-border vui-transition hover:border-accent hover:bg-surface"
-							>
-								<div class="text-[length:var(--vui-text-base)] font-semibold text-text">
-									{match.personName}
-								</div>
-								<div class="flex items-center gap-3 mt-1.5 text-[length:var(--vui-text-sm)] text-text-sub">
-									{#if match.birthYear}
-										<span class="flex items-center gap-1">
-											<Baby size={16} strokeWidth={2} class="text-accent" />
-											{match.birthYear}
-										</span>
-									{/if}
-									{#if match.deathYear}
-										<span class="flex items-center gap-1">
-											<Skull size={16} strokeWidth={2} class="text-red-400" />
-											{match.deathYear}
-										</span>
-									{/if}
-									{#if match.section}
-										<span class="text-text-sub">{match.section}</span>
-									{/if}
-								</div>
-							</a>
-						{/each}
+					<div class="mt-3">
+						<PagePeople {people} />
 					</div>
 				{/if}
 			</div>
+		{/if}
+
+		{#if isAdmin}
+			<div class="vui-card">
+				<HintList
+					hints={data.hints}
+					scope="page"
+					scopeId={page.id}
+					pagesQueued={form?.pagesQueued ?? null}
+				/>
+			</div>
+			{#if page.attachmentId}
+				<div class="vui-card">
+					{#if form?.error}<p class="text-red-400 text-[length:var(--vui-text-sm)]">{form.error}</p>{/if}
+					<PageLinker
+						recordId={record.id}
+						pageId={page.id}
+						seq={page.seq}
+						src="/api/files/{page.attachmentId}"
+						figures={data.figures}
+					/>
+				</div>
+			{/if}
 		{/if}
 
 		<!-- Main text pane (language-aware) -->

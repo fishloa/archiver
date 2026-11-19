@@ -14,14 +14,16 @@ guidance with it.
 | MCP tool | For |
 |---|---|
 | `search_documents`, `semantic_search`, `browse_documents`, `get_document` | finding and reading records |
-| `list_archives`, `search_family_tree`, `get_person`, `find_people_in_document` | archives, people |
+| `list_archives`, `search_family_tree`, `get_person` | archives, people |
+| `find_people_in_document` | the people confirmed on a record's pages; an administrator adds `includeHints=true` for the unconfirmed hints |
 | `list_jobs` | the queue, and where a job id comes from |
 | `hold_record` | **the panic button** — stop a record's AI processing, or release it |
 | `cancel_job` | one queued job, by id |
 | `reocr_page` | read one page again on a chosen engine |
 | `delete_page` | remove one page (a blank or duplicate sheet) by `recordId` and `seq`; the pages after it close the gap. Cannot be undone; a reason is required |
-| `add_person`, `update_person`, `add_name`, `add_event`, `update_event`, `link_parent`, `add_couple`, `cite`, `link_record`, `add_media`, `merge_persons`, `undo_change`, `tree_changes` | edit the family tree. Every call needs a reason and is one undoable write; `get_person` shows the ids they take |
-| `get_page` | one page's text, translation, content type and the address of its scan |
+| `add_person`, `update_person`, `add_name`, `add_event`, `update_event`, `link_parent`, `add_couple`, `cite`, `link_record`, `add_media`, `update_fact`, `delete_fact`, `tag_media`, `merge_persons`, `undo_change`, `tree_changes` | edit the family tree. Every call needs a reason and is one undoable write; `get_person` shows the ids they take. `cite` takes an archive `recordId` or an outside source (`url`, or `sourceTitle` with `author`, `sourceNotes`), found or made once; `add_media` takes `pageId` or `recordId`+`seq`, whole, cropped, or cut to an OCR `figure`; `update_fact` and `delete_fact` take a `kind` and row id for anything the add tools made; `tag_media` shows a person in an image, `portrait: true` makes it their portrait |
+| `suggest_people` | queue a hint run for a record, a page (`recordId`+`seq`) or `pageId`: the model proposes which tree people the pages name and which pictures may show them. One model call per page; creates no links |
+| `get_page` | one page's text, translation, content type, the address of its scan and its numbered OCR figures |
 | `export_pdf`, `get_pdf_export`, `download_pdf` | ask for a PDF of a record or chosen pages (`pages: "14"`, with `variant: "translation"` or `"side-by-side"` and `lang: "en" | "de" | "cs"`), poll it, then `download_pdf` returns the file itself as an embedded resource a client can save to disk. Up to 8 MB it comes whole; a larger PDF is refused with its number of parts and fetched with `part=1`, `part=2`, … (8 MB each; save in order and `cat` them into one file, then check the SHA-256 given with every part). Anything above about 12 MB in one reply used to die as "session expired" |
 
 The last three, and every tree-editing tool, are administrators only and fail closed: no provable
@@ -280,6 +282,21 @@ its JSON body (on `DELETE` too).
 
 Refusals are `{"error":…}`: 400 for bad input, 404 when something is missing, 409 for a conflict
 (a cycle, a third birth parent, deleting someone still linked: merge instead).
+
+### Hints
+
+`page_person_match` holds hints: a model's guesses, visible to administrators only and never part of
+the tree until confirmed. They are made only on request, with the best TRANSLATION model through
+`AiRegistry`; a page re-OCR'd or hand-transcribed loses its hints.
+
+| Call | Does |
+|---|---|
+| `POST /api/admin/genealogy/hints/run` `{"recordId":…}` or `{"pageId":…}` | queue a hint run (a `match_persons` job); replaces earlier hints for those pages |
+| `GET /api/admin/genealogy/hints?recordId=…\|pageId=…` | the hints |
+| `POST /api/admin/genealogy/hints/{id}/confirm` `{"reason":…,"role":…,"portrait":…}` | turn a hint into a record link or a picture tag |
+
+Everyone reads confirmed links with `GET /api/family-tree/page-people/{pageId}`, `/record-people/{recordId}`,
+`/pages/{pageId}/figures` and `/portraits`.
 
 ## PDFs
 

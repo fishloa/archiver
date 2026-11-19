@@ -8,7 +8,11 @@ import {
 	updateProfile,
 	genealogyWrite,
 	fetchGenealogyAdmin,
-	fetchCurrentUser
+	fetchCurrentUser,
+	fetchPortraits,
+	fetchPageFigures,
+	fetchRecordPages,
+	type Figure
 } from '$lib/server/api';
 import { formToBody, type Change, type Source } from '$lib/genealogy';
 
@@ -40,6 +44,7 @@ export const load: PageServerLoad = async ({ url, parent, locals }) => {
 	let history: Change[] = [];
 	let places: { id: number; name: string }[] = [];
 	let sources: Source[] = [];
+	const scans: Record<number, { src: string | null; figures: Figure[] }> = {};
 	if (editing && locals.userEmail) {
 		[history, places, sources] = await Promise.all([
 			fetchGenealogyAdmin<Change[]>(locals.userEmail, `changes?personId=${person.id}&limit=50`).catch(() => []),
@@ -48,16 +53,47 @@ export const load: PageServerLoad = async ({ url, parent, locals }) => {
 		]);
 	}
 
+	if (editing) {
+		const media: { id: number; pageId: number; recordId: number }[] = person.media ?? [];
+		const recordPages = new Map<number, Promise<{ id: number; attachmentId: number | null }[]>>();
+		await Promise.all(
+			media.map(async (m) => {
+				if (!recordPages.has(m.recordId)) {
+					recordPages.set(m.recordId, fetchRecordPages(locals.userEmail, m.recordId).catch(() => []));
+				}
+				const [pages, figures] = await Promise.all([
+					recordPages.get(m.recordId)!,
+					fetchPageFigures(locals.userEmail, m.pageId)
+				]);
+				const attachmentId = pages.find((p) => p.id === m.pageId)?.attachmentId ?? null;
+				scans[m.id] = { src: attachmentId != null ? `/api/files/${attachmentId}` : null, figures };
+			})
+		);
+	}
+
+	const ids = new Set<number>();
+	for (const r of results) ids.add(r.personId);
+	if (person) {
+		for (const c of person.couples ?? []) ids.add(c.spouseId);
+		for (const l of person.parentLinks ?? []) if (l.parentId != null) ids.add(l.parentId);
+		if (person.parent) ids.add(person.parent.id);
+		for (const s of person.siblings ?? []) ids.add(s.id);
+		for (const c of person.children ?? []) ids.add(c.id);
+	}
+	const portraits = await fetchPortraits(locals.userEmail, [...ids]);
+
 	return {
 		q,
 		results,
+		portraits,
 		relationship,
 		person,
 		personId: personId ? parseInt(personId) : null,
 		editing,
 		history,
 		places,
-		sources
+		sources,
+		scans
 	};
 };
 
