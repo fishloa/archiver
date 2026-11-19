@@ -99,7 +99,6 @@ services:
       ARCHIVER_ESCALATION_JUNK_RATIO_MAX: "0.25"
       ARCHIVER_ESCALATION_ENABLE_ABBYY: "false"
       SECRET_KEY: ${SECRET_KEY}
-      OPENAI_API_KEY: ${OPENAI_API_KEY}
       EMBED_TEI_URL: ${EMBED_TEI_URL:-https://api.deepinfra.com/v1/openai}
       EMBED_TEI_KEY: ${EMBED_TEI_KEY:-}
       EMBED_MODEL: ${EMBED_MODEL:-Qwen/Qwen3-Embedding-8B}
