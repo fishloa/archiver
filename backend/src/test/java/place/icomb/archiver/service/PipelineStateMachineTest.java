@@ -420,20 +420,13 @@ class PipelineStateMachineTest {
     assertThat(stateMachine.autoAdvance(recordId)).isTrue();
     assertThat(getRecordStatus(recordId)).isEqualTo("embedding");
 
-    // embedding → matching once the embed job is done
+    // embedding → complete once the embed job is done
     jdbc.sql("UPDATE job SET status = 'completed' WHERE record_id = :rid AND kind = 'embed_record'")
         .param("rid", recordId)
         .update();
     assertThat(stateMachine.autoAdvance(recordId)).isTrue();
-    assertThat(getRecordStatus(recordId)).isEqualTo("matching");
-
-    // matching → complete once the match job is done
-    jdbc.sql(
-            "UPDATE job SET status = 'completed' WHERE record_id = :rid AND kind = 'match_persons'")
-        .param("rid", recordId)
-        .update();
-    assertThat(stateMachine.autoAdvance(recordId)).isTrue();
     assertThat(getRecordStatus(recordId)).isEqualTo("complete");
+    assertThat(countJobs(recordId, "match_persons", "pending")).isZero();
   }
 
   // ---------------------------------------------------------------------------
@@ -491,11 +484,11 @@ class PipelineStateMachineTest {
   }
 
   // ---------------------------------------------------------------------------
-  // EMBEDDING → MATCHING
+  // EMBEDDING → COMPLETE
   // ---------------------------------------------------------------------------
 
   @Test
-  void embeddingToMatching_whenEmbedComplete() {
+  void embeddingToComplete_whenEmbedComplete() {
     Long archiveId = createArchive();
     Long recordId = createRecord(archiveId, "embedding", 1);
     createPage(recordId, 1);
@@ -505,10 +498,9 @@ class PipelineStateMachineTest {
     boolean advanced = stateMachine.autoAdvance(recordId);
 
     assertThat(advanced).isTrue();
-    assertThat(getRecordStatus(recordId)).isEqualTo("matching");
-    assertThat(countJobs(recordId, "match_persons", "pending")).isEqualTo(1);
+    assertThat(getRecordStatus(recordId)).isEqualTo("complete");
+    assertThat(countJobs(recordId, "match_persons", "pending")).isZero();
     assertThat(countPipelineEvents(recordId, "embedding", "completed")).isEqualTo(1);
-    assertThat(countPipelineEvents(recordId, "matching", "started")).isEqualTo(1);
   }
 
   // ---------------------------------------------------------------------------
@@ -516,22 +508,7 @@ class PipelineStateMachineTest {
   // ---------------------------------------------------------------------------
 
   @Test
-  void matchingToComplete_whenMatchDone() {
-    Long archiveId = createArchive();
-    Long recordId = createRecord(archiveId, "matching", 1);
-    createPage(recordId, 1);
-
-    createJob(recordId, null, "match_persons", "completed");
-
-    boolean advanced = stateMachine.autoAdvance(recordId);
-
-    assertThat(advanced).isTrue();
-    assertThat(getRecordStatus(recordId)).isEqualTo("complete");
-    assertThat(countPipelineEvents(recordId, "matching", "completed")).isEqualTo(1);
-  }
-
-  @Test
-  void matchingStays_whenMatchPending() {
+  void matchingToComplete_releasesRecordsLeftInMatching() {
     Long archiveId = createArchive();
     Long recordId = createRecord(archiveId, "matching", 1);
     createPage(recordId, 1);
@@ -540,12 +517,13 @@ class PipelineStateMachineTest {
 
     boolean advanced = stateMachine.autoAdvance(recordId);
 
-    assertThat(advanced).isFalse();
-    assertThat(getRecordStatus(recordId)).isEqualTo("matching");
+    assertThat(advanced).isTrue();
+    assertThat(getRecordStatus(recordId)).isEqualTo("complete");
+    assertThat(countPipelineEvents(recordId, "matching", "completed")).isEqualTo(1);
   }
 
   // ---------------------------------------------------------------------------
-  // Full chain: OCR_PENDING → ... → MATCHING (stops because match_persons is pending)
+  // Full chain: OCR_PENDING → ... → EMBEDDING (stops because embed_record is pending)
   // ---------------------------------------------------------------------------
 
   @Test
