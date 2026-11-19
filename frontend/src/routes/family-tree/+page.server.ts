@@ -9,7 +9,10 @@ import {
 	genealogyWrite,
 	fetchGenealogyAdmin,
 	fetchCurrentUser,
-	fetchPortraits
+	fetchPortraits,
+	fetchPageFigures,
+	fetchRecordPages,
+	type Figure
 } from '$lib/server/api';
 import { formToBody, type Change, type Source } from '$lib/genealogy';
 
@@ -41,12 +44,31 @@ export const load: PageServerLoad = async ({ url, parent, locals }) => {
 	let history: Change[] = [];
 	let places: { id: number; name: string }[] = [];
 	let sources: Source[] = [];
+	const scans: Record<number, { src: string | null; figures: Figure[] }> = {};
 	if (editing && locals.userEmail) {
 		[history, places, sources] = await Promise.all([
 			fetchGenealogyAdmin<Change[]>(locals.userEmail, `changes?personId=${person.id}&limit=50`).catch(() => []),
 			fetchGenealogyAdmin<{ id: number; name: string }[]>(locals.userEmail, 'places?limit=1000').catch(() => []),
 			fetchGenealogyAdmin<Source[]>(locals.userEmail, 'sources?limit=1000').catch(() => [])
 		]);
+	}
+
+	if (editing) {
+		const media: { id: number; pageId: number; recordId: number }[] = person.media ?? [];
+		const recordPages = new Map<number, Promise<{ id: number; attachmentId: number | null }[]>>();
+		await Promise.all(
+			media.map(async (m) => {
+				if (!recordPages.has(m.recordId)) {
+					recordPages.set(m.recordId, fetchRecordPages(locals.userEmail, m.recordId).catch(() => []));
+				}
+				const [pages, figures] = await Promise.all([
+					recordPages.get(m.recordId)!,
+					fetchPageFigures(locals.userEmail, m.pageId)
+				]);
+				const attachmentId = pages.find((p) => p.id === m.pageId)?.attachmentId ?? null;
+				scans[m.id] = { src: attachmentId != null ? `/api/files/${attachmentId}` : null, figures };
+			})
+		);
 	}
 
 	const ids = new Set<number>();
@@ -70,7 +92,8 @@ export const load: PageServerLoad = async ({ url, parent, locals }) => {
 		editing,
 		history,
 		places,
-		sources
+		sources,
+		scans
 	};
 };
 

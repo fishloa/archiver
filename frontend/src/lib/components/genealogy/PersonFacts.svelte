@@ -31,6 +31,22 @@
 	const recordSources = $derived(
 		new Set(person.sources.filter((s) => s.recordId != null).map((s) => s.id))
 	);
+	const SINGLE_TAGS = ['BIRT', 'CHR', 'BAPM', 'DEAT', 'BURI', 'MARR', 'DIV'];
+	const disputed = $derived.by(() => {
+		const groups = new Map<string, PersonDetail['events']>();
+		for (const ev of person.events) {
+			if (!SINGLE_TAGS.includes(ev.tag)) continue;
+			const key = `${ev.tag}|${ev.coupleId ?? ''}`;
+			groups.set(key, [...(groups.get(key) ?? []), ev]);
+		}
+		const ids = new Set<number>();
+		for (const evs of groups.values()) {
+			if (evs.some((e) => e.date !== evs[0].date || e.place !== evs[0].place)) {
+				for (const e of evs) ids.add(e.id);
+			}
+		}
+		return ids;
+	});
 	const citesDocument = (c: Citation) => c.pageId != null || recordSources.has(c.sourceId);
 </script>
 
@@ -66,6 +82,7 @@
 				{#each person.events as ev (ev.id)}
 					<li class="event">
 						<span class="event-tag">{$t(eventLabel(ev.tag))}</span>
+						{#if disputed.has(ev.id)}<span class="vui-badge vui-badge-warning">{$t('family.disputed')}</span>{/if}
 						{#if ev.date}<span class="event-date">{ev.date}</span>{/if}
 						{#if ev.place}<span>{ev.place}</span>{/if}
 						{#if ev.description}<span class="muted">{ev.description}</span>{/if}

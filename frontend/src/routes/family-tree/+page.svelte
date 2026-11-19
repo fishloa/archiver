@@ -210,7 +210,7 @@
 				{:else if form?.success}
 					<div class="vui-alert vui-alert-success">{$t('family.saved')}</div>
 				{/if}
-				<PersonEditor person={p} places={data.places} sources={data.sources} />
+				<PersonEditor person={p} places={data.places} sources={data.sources} scans={data.scans} />
 				<ChangeHistory changes={data.history} />
 			{/if}
 		{/if}

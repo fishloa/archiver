@@ -309,5 +309,6 @@ class AdminGenealogyControllerTest {
     assertThat(person.get("portrait").get("id").asLong()).isEqualTo(media.get("id").asLong());
     assertThat(person.get("portrait").get("imageUrl").asText())
         .isEqualTo("/api/family-tree/media/" + media.get("id").asLong() + "/image");
+    assertThat(person.get("portrait").get("mediaPersonId").asLong()).isPositive();
   }
 }

@@ -90,8 +90,9 @@ public class GenealogyReadService {
         Rows.camel(
             jdbc.queryForList(
                 """
-                SELECT m.id, m.page_id, pg.record_id, pg.seq AS page_seq, m.crop_left, m.crop_top,
-                       m.crop_width, m.crop_height, m.caption, m.date_text, mp.is_portrait,
+                SELECT m.id, mp.id AS media_person_id, m.page_id, pg.record_id, pg.seq AS page_seq,
+                       m.crop_left, m.crop_top, m.crop_width, m.crop_height, m.caption,
+                       m.date_text, mp.is_portrait,
                        '/api/family-tree/media/' || m.id || '/image' AS image_url
                 FROM gen_media_person mp
                 JOIN gen_media m ON m.id = mp.media_id
