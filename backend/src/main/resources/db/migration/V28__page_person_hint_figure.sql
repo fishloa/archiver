@@ -21,9 +21,10 @@ $$;
 CREATE TRIGGER page_text_drop_hints AFTER INSERT ON page_text
     FOR EACH ROW EXECUTE FUNCTION page_text_drop_hints();
 
--- Hints now run only when an administrator asks. Matching jobs the old pipeline queued, or would
--- retry (the audit re-queues failed jobs with attempts left), must not run as paid hint jobs.
+-- Hints now run only when an administrator asks. Matching jobs the old pipeline queued or left
+-- failed must not run as paid hint jobs: the audit re-queues failed jobs with attempts left, and
+-- retry-failed-jobs revives any failed job whose error does not start with "cancelled".
 UPDATE job
    SET status = 'completed', error = 'cancelled: hints run only on request', finished_at = now()
  WHERE kind = 'match_persons'
-   AND (status IN ('pending', 'claimed') OR (status = 'failed' AND attempts < 3));
+   AND status IN ('pending', 'claimed', 'failed');

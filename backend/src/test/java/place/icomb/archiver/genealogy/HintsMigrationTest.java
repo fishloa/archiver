@@ -14,6 +14,7 @@ import org.springframework.test.context.DynamicPropertySource;
 import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
+import place.icomb.archiver.controller.AdminPipelineController;
 import place.icomb.archiver.genealogy.legacy.V22__Import_legacy_genealogy;
 
 /**
@@ -43,6 +44,7 @@ class HintsMigrationTest {
 
   @Autowired private JdbcTemplate jdbc;
   @Autowired private DataSource dataSource;
+  @Autowired private AdminPipelineController retry;
 
   private long job(long record, String kind, String status, int attempts) {
     return jdbc.queryForObject(
@@ -55,7 +57,7 @@ class HintsMigrationTest {
   }
 
   @Test
-  void queuedMatchingJobsAreCancelledAndNothingElseIs() {
+  void everyUnfinishedMatchingJobIsCancelledAndNoneCanBeRetried() {
     long record = GenealogyFixtures.record(jdbc);
     long pending = job(record, "match_persons", "pending", 0);
     long claimed = job(record, "match_persons", "claimed", 1);
@@ -71,16 +73,21 @@ class HintsMigrationTest {
         .load()
         .migrate();
 
-    for (long id : new long[] {pending, claimed, retryable}) {
+    for (long id : new long[] {pending, claimed, retryable, spent}) {
       assertThat(jdbc.queryForMap("SELECT status, error FROM job WHERE id = ?", id))
           .containsEntry("status", "completed")
           .containsEntry("error", "cancelled: hints run only on request");
     }
-    assertThat(jdbc.queryForObject("SELECT status FROM job WHERE id = ?", String.class, spent))
-        .isEqualTo("failed");
     assertThat(jdbc.queryForObject("SELECT error FROM job WHERE id = ?", String.class, done))
         .isNull();
     assertThat(jdbc.queryForObject("SELECT status FROM job WHERE id = ?", String.class, embed))
         .isEqualTo("pending");
+
+    assertThat(retry.retryFailedJobs("match_persons", 1000).getBody()).containsEntry("retried", 0);
+    assertThat(
+            jdbc.queryForObject(
+                "SELECT count(*) FROM job WHERE kind = 'match_persons' AND status = 'pending'",
+                Long.class))
+        .isZero();
   }
 }
