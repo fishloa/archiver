@@ -4,7 +4,7 @@
 </script>
 
 {#if url}
-	<img class="avatar {size}" src={url} alt={name} loading="lazy" />
+	<img class="avatar {size}" src={url} alt="" loading="lazy" />
 {/if}
 
 <style>

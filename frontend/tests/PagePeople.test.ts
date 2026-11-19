@@ -29,6 +29,11 @@ describe('PagePeople', () => {
 		expect(a.textContent).toContain('Anna Czernin');
 	});
 
+	it('says so when nobody is linked yet', () => {
+		const { container } = render(PagePeople, { people: [] });
+		expect(container.textContent).toContain(get(t)('people.none'));
+	});
+
 	it('tags a person linked to the whole record, and only that person', () => {
 		const tag = get(t)('people.viaRecord');
 		const { container } = render(PagePeople, {

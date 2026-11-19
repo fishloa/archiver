@@ -6,6 +6,9 @@
 	let { people, recordId = null }: { people: PagePerson[]; recordId?: number | null } = $props();
 </script>
 
+{#if people.length === 0}
+	<p class="none">{$t('people.none')}</p>
+{/if}
 <ul class="people">
 	{#each people as p (p.personId + ':' + p.via + ':' + (p.mediaId ?? ''))}
 		<li>

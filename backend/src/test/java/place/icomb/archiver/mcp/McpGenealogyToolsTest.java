@@ -406,6 +406,26 @@ class McpGenealogyToolsTest {
   }
 
   @Test
+  void updatingMediaWithFigureAndCropTogetherIsRefused() throws Exception {
+    long page = pageWithFigures();
+    long person = newPerson();
+    Map<String, Object> m =
+        tools.addMedia(
+            null, null, page, 1, null, null, null, null, null, null, null, (int) person, "figure");
+    long before = lastChange();
+    assertThat(
+            tools
+                .updateFact(
+                    "media",
+                    ((Number) m.get("id")).longValue(),
+                    Map.of("figure", 1, "cropLeft", 0),
+                    "x")
+                .get("error"))
+        .isEqualTo("give figure or a pixel crop, not both");
+    assertThat(lastChange()).isEqualTo(before);
+  }
+
+  @Test
   void figureOutOfRangeIsRefused() throws Exception {
     long page = pageWithFigures();
     long before = lastChange();

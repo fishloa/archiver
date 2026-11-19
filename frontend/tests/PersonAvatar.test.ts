@@ -6,10 +6,10 @@ import PersonAvatar from '../src/lib/components/genealogy/PersonAvatar.svelte';
 describe('PersonAvatar', () => {
 	afterEach(() => cleanup());
 
-	it('renders a round image named after the person when there is a url', () => {
+	it('renders a decorative round image when there is a url', () => {
 		const { container } = render(PersonAvatar, { url: '/api/portraits/3', name: 'Anna Czernin' });
 		const img = container.querySelector('img') as HTMLImageElement;
-		expect(img.getAttribute('alt')).toBe('Anna Czernin');
+		expect(img.getAttribute('alt')).toBe('');
 		expect(img.getAttribute('src')).toBe('/api/portraits/3');
 	});
 

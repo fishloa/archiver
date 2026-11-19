@@ -153,7 +153,6 @@ public class HintService {
       link.put("recordId", recordId);
       link.put("pageId", pageId);
       link.put("role", role == null || role.isBlank() ? "mentioned" : role);
-      link.put("note", h.get("context"));
       out = genealogy.create(GenEntity.RECORD_LINK, link, why);
     } else {
       OcrFigures.Figure f =

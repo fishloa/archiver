@@ -376,7 +376,7 @@ class HintsTest {
         .containsEntry("person_id", X)
         .containsEntry("page_id", p1)
         .containsEntry("role", "mentioned")
-        .containsEntry("note", "Brief an den Grafen");
+        .containsEntry("note", null);
     assertThat(hintsOn(p1)).isEmpty();
     List<Map<String, Object>> changes =
         jdbc.queryForList("SELECT txid, reason FROM gen_change WHERE id > ?", before);

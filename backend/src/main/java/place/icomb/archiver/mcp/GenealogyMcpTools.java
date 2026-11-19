@@ -507,6 +507,12 @@ public class GenealogyMcpTools {
           GenEntity entity = GenEntity.byKey(kind);
           Map<String, Object> changes = new LinkedHashMap<>(fields == null ? Map.of() : fields);
           if (entity == GenEntity.MEDIA && changes.containsKey("figure")) {
+            if (changes.containsKey("cropLeft")
+                || changes.containsKey("cropTop")
+                || changes.containsKey("cropWidth")
+                || changes.containsKey("cropHeight")) {
+              throw GenealogyException.badRequest("give figure or a pixel crop, not both");
+            }
             Object figure = changes.remove("figure");
             Object page = changes.get("pageId");
             if (page == null) {

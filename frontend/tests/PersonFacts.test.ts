@@ -110,9 +110,9 @@ describe('PersonFacts', () => {
 			portraits: { 400: '/api/family-tree/media/1/image' }
 		});
 
-		const avatar = screen.getByRole('img', { name: 'Diana Zannick Hutton/Hulton' });
-		expect(avatar.getAttribute('src')).toBe('/api/family-tree/media/1/image');
-		expect(screen.queryAllByRole('img', { name: 'Step Parent' })).toHaveLength(0);
+		const avatars = document.querySelectorAll('img.avatar');
+		expect(avatars).toHaveLength(1);
+		expect(avatars[0].getAttribute('src')).toBe('/api/family-tree/media/1/image');
 	});
 
 	it('marks events of one tag that disagree as disputed, and shows both with their citations', () => {
