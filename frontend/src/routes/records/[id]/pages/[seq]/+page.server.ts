@@ -1,9 +1,17 @@
-import { fetchRecord, fetchRecordPages, fetchPageText, fetchPagePersonMatches } from '$lib/server/api';
-import type { PagePersonMatch } from '$lib/server/api';
+import {
+	fetchRecord,
+	fetchRecordPages,
+	fetchPageText,
+	fetchPagePeople,
+	fetchPageFigures,
+	fetchHints
+} from '$lib/server/api';
+import type { Figure, Hint } from '$lib/server/api';
+import { hintActions, linkActions } from '$lib/server/link-actions';
 import { error } from '@sveltejs/kit';
-import type { PageServerLoad } from './$types';
+import type { PageServerLoad, Actions } from './$types';
 
-export const load: PageServerLoad = async ({ params, locals }) => {
+export const load: PageServerLoad = async ({ params, locals, parent }) => {
 	const recordId = Number(params.id);
 	const seq = Number(params.seq);
 	if (isNaN(recordId) || isNaN(seq)) error(400, 'Invalid parameters');
@@ -35,17 +43,21 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 			// OCR text not available yet
 		}
 
-		// Fetch person matches (non-blocking)
-		let personMatches: PagePersonMatch[] = [];
-		try {
-			personMatches = await fetchPagePersonMatches(locals.userEmail, page.id);
-		} catch {
-			// Person matching not available
+		const people = await fetchPagePeople(locals.userEmail, page.id);
+
+		let figures: Figure[] = [];
+		let hints: Hint[] = [];
+		const { user } = await parent();
+		if (locals.userEmail && user?.role === 'admin') {
+			figures = await fetchPageFigures(locals.userEmail, page.id);
+			hints = await fetchHints(locals.userEmail, { pageId: page.id }).catch(() => []);
 		}
 
-		return { record, page, prev, next, totalPages: pages.length, pageText, personMatches };
+		return { record, page, prev, next, totalPages: pages.length, pageText, people, figures, hints };
 	} catch (e) {
 		if (e && typeof e === 'object' && 'status' in e) throw e;
 		error(404, 'Record not found');
 	}
 };
+
+export const actions: Actions = { ...hintActions, ...linkActions };

@@ -1,5 +1,4 @@
-import { semanticSearch, fetchRecordPersonMatches } from '$lib/server/api';
-import type { RecordPersonMatch } from '$lib/server/api';
+import { semanticSearch, fetchRecordPeople } from '$lib/server/api';
 import { env } from '$env/dynamic/private';
 import type { PageServerLoad } from './$types';
 
@@ -97,15 +96,15 @@ Question: ${q}`
 	// Record #links work immediately; person name links appear when this resolves.
 	const uniqueRecordIds = [...new Set(results.map((c) => c.recordId))];
 	const personRefsPromise = (answer && uniqueRecordIds.length > 0)
-		? Promise.all(uniqueRecordIds.map((rid) => fetchRecordPersonMatches(locals.userEmail, rid)))
+		? Promise.all(uniqueRecordIds.map((rid) => fetchRecordPeople(locals.userEmail, rid)))
 			.then((matchArrays) => {
 				const seen = new Set<number>();
 				const refs: { name: string; personId: number }[] = [];
 				for (const matches of matchArrays) {
 					for (const m of matches) {
-						if (!seen.has(m.personId) && answer!.includes(m.personName)) {
+						if (!seen.has(m.personId) && answer!.includes(m.name)) {
 							seen.add(m.personId);
-							refs.push({ name: m.personName, personId: m.personId });
+							refs.push({ name: m.name, personId: m.personId });
 						}
 					}
 				}

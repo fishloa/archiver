@@ -513,53 +513,6 @@ export async function fetchGenealogyAdmin<T>(email: string, path: string): Promi
   return res.json();
 }
 
-export interface PagePersonMatch {
-  personId: number;
-  personName: string;
-  score: number;
-  context: string | null;
-  section: string | null;
-  code: string | null;
-  birthYear: number | null;
-  deathYear: number | null;
-}
-
-export async function fetchPagePersonMatches(
-  email: string | undefined,
-  pageId: number,
-): Promise<PagePersonMatch[]> {
-  const res = await fetch(
-    `${backendUrl()}/api/family-tree/page-matches/${pageId}`,
-    { headers: authHeaders(email) },
-  );
-  if (!res.ok) return [];
-  return res.json();
-}
-
-export interface RecordPersonMatch {
-  personId: number;
-  personName: string;
-  maxScore: number;
-  pageCount: number;
-  pageSeqs: number[];
-  section: string | null;
-  code: string | null;
-  birthYear: number | null;
-  deathYear: number | null;
-}
-
-export async function fetchRecordPersonMatches(
-  email: string | undefined,
-  recordId: number,
-): Promise<RecordPersonMatch[]> {
-  const res = await fetch(
-    `${backendUrl()}/api/family-tree/record-matches/${recordId}`,
-    { headers: authHeaders(email) },
-  );
-  if (!res.ok) return [];
-  return res.json();
-}
-
 // ── People on pages, figures, portraits and hints ──
 
 export interface PagePerson {
