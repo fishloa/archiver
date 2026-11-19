@@ -53,7 +53,7 @@ pages of stored text remain in `page_text` until re-OCR'd.
 ### Document Pipeline
 
 ```
-ingesting → ocr_pending → ocr_done → translating → embedding → matching → complete
+ingesting → ocr_pending → ocr_done → translating → embedding → complete
                                                     → entities_pending → entities_done (future)
 ```
 
@@ -67,7 +67,8 @@ When all OCR jobs complete for a record, the state machine auto-enqueues:
   The LLM handles any source language, so there is no detection step.
 - `embed_record` (heading-aware chunks of the ORIGINAL text — not the translation —
   embedded cross-lingually so English queries retrieve German and Czech pages)
-- `match_persons` (heuristic + LLM person matching against family tree)
+
+`match_persons` is not a stage. It is the on-request hint job (admin `suggest_people` / `/api/admin/genealogy/hints/run`); the audit releases any record left in `matching`.
 
 ### Text Content Types
 
@@ -148,6 +149,7 @@ the Gramps schema, in GEDCOM 7 vocabulary. The tables hold:
   after each commit. Its answers are pinned to golden files captured from the old in-memory tree
   (`backend/src/test/resources/genealogy/golden`), and `FamilyTreeReadModelTest` guards them. Do
   not regenerate the files to make a change pass.
+- `page_person_match` holds admin-only hints, made on request by the best TRANSLATION model via `AiRegistry`. They are never links until an admin confirms one; a new `page_text` (re-OCR) or a whole hand transcription drops that page's hints. Everyone reads confirmed people through `/api/family-tree/page-people`, `record-people`, `pages/{id}/figures` and `portraits`.
 - Edit through `/api/admin/genealogy/**`, the MCP tree tools, or the admin edit mode on
   `/family-tree`. Read through `/api/family-tree/**`. `GET /api/admin/genealogy/export.ged` is
   the GEDCOM 7 export. Media crops are copied from the stored original pixel for pixel, never
@@ -222,7 +224,7 @@ Config: `backend/src/test/resources/application-test.yml`.
 
 - `service/JobService.java` — job orchestration, audit pipeline
 - `service/PipelineStateMachine.java` — formal state machine for pipeline transitions (guards, actions, chaining)
-- `service/PersonMatchWorker.java` — internal scheduled worker for `match_persons` jobs
+- `service/PersonMatchWorker.java` — internal worker for on-request `match_persons` hint jobs
 - `service/IngestService.java` — record creation, OCR job enqueuing
 - `service/StorageService.java` — file storage abstraction over archiver_store
 - `service/PdfExportService.java` — all three PDF exports (original scans, translation, side-by-side; the last two in `en`, `de` or `cs`); every PDF is built on demand (`PdfExportQueue`/`PdfExportWorker`), nothing is stored per record
