@@ -98,6 +98,22 @@ list is removed from this view's default and moves under hints (part 6). The rec
 (`/records/[id]`) gets the same treatment. MCP `find_people_in_document` returns confirmed links;
 hints only on request (a parameter), labelled as hints.
 
+### 2a. Linking from the page
+
+Linking never depends on hints. On any page, an administrator can start from what they are reading:
+
+- **Link a picture.** Click one of the numbered OCR figures, or drag a box around a picture the OCR
+  missed. Pick the person by typing their name (the tree's fuzzy search), tick "portrait" if it is
+  one, add an optional caption, save. This is one undoable write: the `gen_media` crop, cut from the
+  stored original at full resolution, and the `gen_media_person` tag. The picture appears on the
+  person at once.
+- **Add a person to the page.** Pick the person, a role (subject, mentioned, author, signatory,
+  witness, recipient, pictured, other) and an optional note; it creates a `gen_person_record` row for
+  this page and the person appears in "People on this page".
+- Both ask for a reason, prefilled with the record and page (editable), as every tree write does.
+- The same from MCP: `add_media` with `recordId`+`seq` or `pageId` and `figure: N` or a pixel crop;
+  `link_record` with `seq` (exists).
+
 ### 3. Portraits everywhere
 
 A small round portrait next to a person's name wherever a person appears on the site: search
