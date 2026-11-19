@@ -15,8 +15,7 @@ describe('PageLinker', () => {
 	it('prefills the reason with the record and page on both forms', async () => {
 		const { container } = render(PageLinker, props);
 		const picture = reasonIn(container, '?/linkMedia');
-		expect(picture).toContain('4093');
-		expect(picture).toContain('3');
+		expect(picture).toBe('from record 4093 page 3');
 		await fireEvent.click(container.querySelectorAll('.modes button')[1] as HTMLButtonElement);
 		expect(reasonIn(container, '?/linkPerson')).toBe(picture);
 	});
@@ -26,6 +25,7 @@ describe('PageLinker', () => {
 		const input = container.querySelector('form[action="?/linkMedia"] input[name="reason"]') as HTMLInputElement;
 		const prefilled = input.value;
 		await fireEvent.input(input, { target: { value: '' } });
+		expect(input.value).toBe('');
 		await fireEvent.click(container.querySelectorAll('.modes button')[1] as HTMLButtonElement);
 		expect(reasonIn(container, '?/linkPerson')).toBe(prefilled);
 	});
