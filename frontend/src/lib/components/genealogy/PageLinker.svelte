@@ -17,7 +17,6 @@
 	let crop: Crop | null = $state(null);
 	let picked: string | null = $state(null);
 	let reason = $derived($t('link.reasonDefault', recordId, seq));
-	let reasonEdit: string | null = $state(null);
 </script>
 
 <section class="linker">
@@ -47,7 +46,7 @@
 			</label>
 			<label class="field">
 				<span>{$t('family.reason')}</span>
-				<input class="vui-input" name="reason" value={reasonEdit ?? reason} oninput={(e) => (reasonEdit = e.currentTarget.value)} required />
+				<input class="vui-input" name="reason" value={reason} required />
 			</label>
 			<button class="vui-btn vui-btn-primary vui-btn-sm">{$t('link.save')}</button>
 		</form>
@@ -70,7 +69,7 @@
 			</label>
 			<label class="field">
 				<span>{$t('family.reason')}</span>
-				<input class="vui-input" name="reason" value={reasonEdit ?? reason} oninput={(e) => (reasonEdit = e.currentTarget.value)} required />
+				<input class="vui-input" name="reason" value={reason} required />
 			</label>
 			<button class="vui-btn vui-btn-primary vui-btn-sm">{$t('link.save')}</button>
 		</form>

@@ -320,6 +320,30 @@ class HintsTest {
   }
 
   @Test
+  void aFinishedHintJobDoesNotMoveItsRecordOn() throws Exception {
+    jdbc.update("UPDATE record SET status = 'ocr_done' WHERE id = ?", record);
+    transcribe(p1, "Brief an " + nameOf(X) + " Czernin.");
+    transcribe(p2, "Seite zwei.");
+    TranslatorStub.reply(model, "{\"people\":[]}");
+
+    long jobId =
+        ok(send("POST", "/admin/genealogy/hints/run", Map.of("pageId", p1), ADMIN), 200)
+            .get("jobId")
+            .asLong();
+    runQueuedHintJobs();
+
+    assertThat(jobStatus(jobId)).isEqualTo("completed");
+    assertThat(jdbc.queryForObject("SELECT status FROM record WHERE id = ?", String.class, record))
+        .isEqualTo("ocr_done");
+    assertThat(
+            jdbc.queryForObject(
+                "SELECT count(*) FROM job WHERE record_id = ? AND kind <> 'match_persons'",
+                Long.class,
+                record))
+        .isZero();
+  }
+
+  @Test
   void noRecordEnqueuesMatchingByItself() {
     jdbc.update("UPDATE record SET status = 'embedding' WHERE id = ?", record);
     jdbc.update(
