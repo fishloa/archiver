@@ -233,6 +233,43 @@ class PdfExportServiceTest {
   }
 
   @Test
+  void aHandCorrectedTranscriptionReachesTheScansTextLayer() throws Exception {
+    // The engine misread the name; the transcription was corrected by hand afterwards. The
+    // engine's response is kept as it was, and the layer must still say what the page says now.
+    jdbc.update(
+        """
+        UPDATE page_text SET raw_response = ?::jsonb, text_raw = ?
+        WHERE page_id = (SELECT id FROM page WHERE record_id = ? AND seq = 1)
+        """,
+        """
+        {"pages":[{"markdown":"Obecní úřad\\n\\npanu Pavlu Černíkoví",
+          "dimensions":{"width":1200,"height":1600},
+          "blocks":[{"content":"Obecní úřad",
+                     "top_left_x":100,"top_left_y":120,
+                     "bottom_right_x":900,"bottom_right_y":170},
+                    {"content":"panu Pavlu Černíkoví",
+                     "top_left_x":100,"top_left_y":300,
+                     "bottom_right_x":900,"bottom_right_y":350}],
+          "images":[]}]}
+        """,
+        "Obecní úřad\n\npanu Pavlu Černínovi",
+        recordId);
+
+    for (PdfExportService.Variant variant :
+        List.of(PdfExportService.Variant.ORIGINAL, PdfExportService.Variant.SIDE_BY_SIDE)) {
+      String text = textOf(build(recordId, List.of(1), variant));
+      assertThat(text).as(variant.name()).contains("Černínovi").doesNotContain("Černíkoví");
+    }
+    String stored =
+        jdbc.queryForObject(
+            "SELECT raw_response::text FROM page_text"
+                + " WHERE page_id = (SELECT id FROM page WHERE record_id = ? AND seq = 1)",
+            String.class,
+            recordId);
+    assertThat(stored).contains("Černíkoví");
+  }
+
+  @Test
   void theInvisibleLayerHoldsPlainTextNotMarkdown() throws Exception {
     // This layer is what a reader's search box matches against, so markdown in it makes
     // "![img-0.jpeg](img-0.jpeg)" and heading hashes part of the scan's searchable text.
