@@ -40,6 +40,8 @@ public class ManualCorrectionService {
   }
 
   private static final Set<String> PAGE_FIELDS = Set.of("text_raw", "text_en");
+  private static final Map<String, String> TRANSLATION_FIELDS =
+      Map.of("text_de", "de", "text_cs", "cs");
   private static final Set<String> RECORD_FIELDS =
       Set.of("title", "description", "title_en", "description_en");
 
@@ -60,7 +62,13 @@ public class ManualCorrectionService {
   @Transactional
   public Map<String, Object> correctPage(
       long pageId, String field, String find, String replace, String reason, boolean whole) {
-    require(field != null && PAGE_FIELDS.contains(field), "field must be one of " + PAGE_FIELDS);
+    if (field != null && TRANSLATION_FIELDS.containsKey(field)) {
+      return correctTranslation(
+          pageId, field, TRANSLATION_FIELDS.get(field), find, replace, reason, whole);
+    }
+    require(
+        field != null && PAGE_FIELDS.contains(field),
+        "field must be one of text_raw, text_en, text_de, text_cs");
     if (whole) {
       require(find == null, "give either find or replaceAll, not both");
     } else {
@@ -127,6 +135,84 @@ public class ManualCorrectionService {
     }
 
     long id = audit(recordId, pageId, field, whole ? current : find, replace, reason);
+    events.recordChanged(recordId, "text");
+    return Map.of(
+        "correctionId", id,
+        "recordId", recordId,
+        "pageId", pageId,
+        "field", field,
+        "applied", true,
+        "whole", whole);
+  }
+
+  /**
+   * Corrects a page's German or Czech translation. Only translations of the current transcription
+   * are touched: one made from an older text is no longer shown and is replaced by the next export,
+   * so correcting it would change nothing anyone reads.
+   */
+  private Map<String, Object> correctTranslation(
+      long pageId,
+      String field,
+      String lang,
+      String find,
+      String replace,
+      String reason,
+      boolean whole) {
+    if (whole) {
+      require(find == null, "give either find or replaceAll, not both");
+    } else {
+      require(find != null, "find is required");
+    }
+    checkEdit(find, replace, reason);
+
+    List<Map<String, Object>> page =
+        jdbc.queryForList("SELECT id, record_id FROM page WHERE id = ? FOR UPDATE", pageId);
+    if (page.isEmpty()) {
+      throw new CorrectionException(Kind.NOT_FOUND, "Page %d not found".formatted(pageId));
+    }
+    long recordId = ((Number) page.get(0).get("record_id")).longValue();
+
+    List<Map<String, Object>> rows =
+        jdbc.queryForList(
+            """
+            SELECT tr.id, tr.text FROM page_translation tr
+            JOIN page_text pt ON pt.page_id = tr.page_id AND md5(pt.text_raw) = tr.source_md5
+            WHERE tr.page_id = ? AND tr.lang = ? AND tr.text <> ''
+            ORDER BY tr.id
+            FOR UPDATE OF tr
+            """,
+            pageId,
+            lang);
+    if (rows.isEmpty()) {
+      throw new CorrectionException(
+          Kind.NOT_FOUND,
+          "Page %d has no %s translation of its current text; export it in %s first"
+              .formatted(pageId, lang, lang));
+    }
+
+    String old;
+    if (whole) {
+      old = (String) rows.get(0).get("text");
+      if (rows.stream().allMatch(r -> replace.equals(r.get("text")))) {
+        throw new CorrectionException(Kind.BAD_REQUEST, "the text is already exactly that");
+      }
+      for (Map<String, Object> r : rows) {
+        jdbc.update("UPDATE page_translation SET text = ? WHERE id = ?", replace, r.get("id"));
+      }
+    } else {
+      old = find;
+      List<Map<String, Object>> holding =
+          rows.stream().filter(r -> ((String) r.get("text")).contains(find)).toList();
+      if (holding.isEmpty()) {
+        throw new CorrectionException(Kind.CONFLICT, "find text not present in " + field);
+      }
+      for (Map<String, Object> r : holding) {
+        String updated = replaceOnce((String) r.get("text"), find, replace, field);
+        jdbc.update("UPDATE page_translation SET text = ? WHERE id = ?", updated, r.get("id"));
+      }
+    }
+
+    long id = audit(recordId, pageId, field, old, replace, reason);
     events.recordChanged(recordId, "text");
     return Map.of(
         "correctionId", id,

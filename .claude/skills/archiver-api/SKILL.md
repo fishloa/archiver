@@ -258,6 +258,7 @@ a correction cannot touch more than intended (`409` if absent or ambiguous, `400
 | Call | Does |
 |---|---|
 | `POST /api/admin/pages/{pageId}/corrections` `{"field":"text_raw"\|"text_en","find":"…","replace":"…","reason":"…"}` | Corrects the page's original text (and its embedding chunks) or its English (and every model's translation of it) |
+| `POST /api/admin/pages/{pageId}/corrections` `{"field":"text_de"\|"text_cs",…}` | Corrects the page's German or Czech translation, the ones PDF exports make. Only a translation of the current transcription is changed; `404` if there is none (export the page in that language first). Correcting `text_raw` makes the German and Czech stale, and the next export translates them again, so correct the transcription first |
 | `POST /api/admin/records/{id}/corrections` `{"field":"title"\|"description"\|"title_en"\|"description_en",…}` | Same, for the record's catalogue fields |
 | `POST /api/admin/pages/{pageId}/corrections` `{"field":…,"replace":"…","reason":"…","replaceAll":true}` | Replaces the page's whole original text or English (a transcription made by hand where both engines failed); explicit, never inferred from a missing `find`. The old chunks are dropped: follow it with `reset-pipeline` to `embedding` |
 | `GET /api/admin/records/{id}/corrections` | The audit, newest first |
