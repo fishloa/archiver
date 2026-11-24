@@ -180,6 +180,22 @@ class PdfExportQueueTest {
   }
 
   @Test
+  void aFileBuiltBeforeThisBackendStartedIsNotReused() {
+    // Built by the code that ran before the last deploy: the same pages may render differently
+    // now, so handing back that file would hide a fix for up to a day.
+    String id = request().view().id();
+    queue.claimNext();
+    queue.markReady(id, "exports/aa/x.pdf", 10, Duration.ofHours(24));
+    jdbc.update(
+        "UPDATE pdf_export SET finished_at = '2000-01-01T00:00:00Z' WHERE id = ?::uuid", id);
+
+    PdfExportQueue.Requested again = request();
+
+    assertThat(again.created()).isTrue();
+    assertThat(again.view().id()).isNotEqualTo(id);
+  }
+
+  @Test
   void aDifferentVariantOrSelectionIsADifferentExport() {
     String original = request().view().id();
 

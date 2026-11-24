@@ -84,6 +84,12 @@ public class PdfExportQueue {
   private final JdbcTemplate jdbc;
   private final PdfExportService pdfExportService;
 
+  /**
+   * When this backend started. A file finished before it was built by the code that ran before the
+   * last deploy, which may render the same pages differently, so it is not handed out again.
+   */
+  private final java.sql.Timestamp startedAt = java.sql.Timestamp.from(Instant.now());
+
   public PdfExportQueue(JdbcTemplate jdbc, PdfExportService pdfExportService) {
     this.jdbc = jdbc;
     this.pdfExportService = pdfExportService;
@@ -298,8 +304,8 @@ public class PdfExportQueue {
    * Asks for an export, reusing an identical one when there is one.
    *
    * <p>Identical means the same record, variant, language and fingerprint, and either still queued
-   * or building, or finished and not yet expired. Serialised on the fingerprint, so two identical
-   * requests arriving together cannot both insert.
+   * or building, or finished since this backend started and not yet expired. Serialised on the
+   * fingerprint, so two identical requests arriving together cannot both insert.
    */
   @Transactional
   public Requested request(long recordId, Variant variant, List<Long> pageIds) {
@@ -318,13 +324,14 @@ public class PdfExportQueue {
             VIEW_SQL
                 + " WHERE record_id = ? AND variant = ? AND lang = ? AND fingerprint = ?"
                 + " AND (state IN ('queued', 'building')"
-                + "      OR (state = 'ready' AND expires_at > now()))"
+                + "      OR (state = 'ready' AND expires_at > now() AND finished_at >= ?))"
                 + " ORDER BY created_at DESC LIMIT 1",
             VIEW,
             recordId,
             dbName(variant),
             stored,
-            fingerprint);
+            fingerprint,
+            startedAt);
     if (!reusable.isEmpty()) {
       return new Requested(reusable.get(0), false);
     }
