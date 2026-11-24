@@ -254,6 +254,35 @@ class ManualCorrectionTest {
   }
 
   @Test
+  void aCorrectionRetiresTheRecordsFinishedPdfsAndNoOthers() throws Exception {
+    long other =
+        newRecord(
+            jdbc.sql("SELECT archive_id FROM record WHERE id = :r")
+                .param("r", record)
+                .query(Long.class)
+                .single());
+    String mine = readyExport(record);
+    String theirs = readyExport(other);
+
+    ok(post("/admin/pages/" + page + "/corrections", body("text_raw", "1958", "1938", "year")));
+
+    assertThat(stillReusable(mine)).isFalse();
+    assertThat(stillReusable(theirs)).isTrue();
+  }
+
+  @Test
+  void aTitleCorrectionAlsoRetiresTheRecordsFinishedPdfs() throws Exception {
+    String mine = readyExport(record);
+
+    ok(
+        post(
+            "/admin/records/" + record + "/corrections",
+            body("title_en", "Party ticket", "Death notice", "Partezettel")));
+
+    assertThat(stillReusable(mine)).isFalse();
+  }
+
+  @Test
   void aCorrectionIsAuditedWithWhatItReplacedWhoAndWhy() throws Exception {
     ok(
         post(
@@ -409,6 +438,24 @@ class ManualCorrectionTest {
   }
 
   // --- harness ----------------------------------------------------------------------------
+
+  private String readyExport(long recordId) {
+    return jdbc.sql(
+            "INSERT INTO pdf_export (record_id, variant, page_ids, fingerprint, state, path,"
+                + " bytes, finished_at, expires_at)"
+                + " VALUES (:r, 'original', ARRAY[]::bigint[], 'fp', 'ready', 'exports/x.pdf',"
+                + " 10, now(), now() + interval '1 day') RETURNING id::text")
+        .param("r", recordId)
+        .query(String.class)
+        .single();
+  }
+
+  private boolean stillReusable(String exportId) {
+    return jdbc.sql("SELECT expires_at > now() FROM pdf_export WHERE id = :id::uuid")
+        .param("id", exportId)
+        .query(Boolean.class)
+        .single();
+  }
 
   /** A translation of the page into {@code lang}, made from its current text or an older one. */
   private long translation(String lang, String text, boolean current) {

@@ -259,6 +259,13 @@ public class ManualCorrectionService {
 
   private long audit(
       long recordId, Long pageId, String field, String find, String replace, String reason) {
+    // A finished PDF of this record shows the text as it was. Its fingerprint does not cover every
+    // field a correction can reach (an English or scan export ignores the transcription), so the
+    // record's finished exports are retired here rather than handed out again.
+    jdbc.update(
+        "UPDATE pdf_export SET expires_at = now()"
+            + " WHERE record_id = ? AND state = 'ready' AND expires_at > now()",
+        recordId);
     Authentication auth = SecurityContextHolder.getContext().getAuthentication();
     String who = auth != null ? auth.getName() : "unknown";
     return jdbc.queryForObject(
