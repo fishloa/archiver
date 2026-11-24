@@ -182,6 +182,78 @@ class ManualCorrectionTest {
   }
 
   @Test
+  void aGermanCorrectionChangesTheCurrentGermanTranslationOnly() throws Exception {
+    long current = translation("de", "Herrn Pavel Černík wurde das Heimatrecht zugesichert.", true);
+    long stale = translation("de", "Herrn Pavel Černík, ältere Fassung.", false);
+    jdbc.sql(
+            "INSERT INTO page_translation (page_id, lang, model, text, source_md5)"
+                + " SELECT :p, 'cs', 'cs-model', 'Pavel Černík', md5(text_raw)"
+                + " FROM page_text WHERE page_id = :p")
+        .param("p", page)
+        .update();
+
+    JsonNode out =
+        ok(
+            post(
+                "/admin/pages/" + page + "/corrections",
+                body("text_de", "Pavel Černík", "Pavel Černín", "the scan reads Černínovi")));
+
+    assertThat(out.get("field").asText()).isEqualTo("text_de");
+    assertThat(text("SELECT text FROM page_translation WHERE id = ?", current))
+        .isEqualTo("Herrn Pavel Černín wurde das Heimatrecht zugesichert.");
+    assertThat(text("SELECT text FROM page_translation WHERE id = ?", stale))
+        .isEqualTo("Herrn Pavel Černík, ältere Fassung.");
+    assertThat(text("SELECT text FROM page_translation WHERE page_id = ? AND lang = 'cs'", page))
+        .isEqualTo("Pavel Černík");
+    assertThat(text("SELECT text FROM page_translation WHERE page_id = ? AND lang = 'en'", page))
+        .contains("1958");
+    JsonNode audit = json.readTree(get("/admin/records/" + record + "/corrections").body()).get(0);
+    assertThat(audit.get("field").asText()).isEqualTo("text_de");
+    assertThat(audit.get("oldText").asText()).isEqualTo("Pavel Černík");
+    assertThat(audit.get("newText").asText()).isEqualTo("Pavel Černín");
+  }
+
+  @Test
+  void aGermanCorrectionNeedsAGermanTranslationOfTheCurrentText() throws Exception {
+    String p = "/admin/pages/" + page + "/corrections";
+    assertThat(post(p, body("text_de", "Černík", "Černín", "r")).statusCode()).isEqualTo(404);
+
+    long stale = translation("de", "Herrn Pavel Černík.", false);
+    assertThat(post(p, body("text_de", "Černík", "Černín", "r")).statusCode()).isEqualTo(404);
+    assertThat(text("SELECT text FROM page_translation WHERE id = ?", stale))
+        .isEqualTo("Herrn Pavel Černík.");
+
+    translation("de", "Herrn Pavel Černík und Frau Černík.", true);
+    assertThat(post(p, body("text_de", "Černík", "Černín", "r")).statusCode()).isEqualTo(409);
+    assertThat(post(p, body("text_de", "Salzburg", "Salzburg!", "r")).statusCode()).isEqualTo(409);
+    assertThat(count("SELECT count(*) FROM manual_correction")).isZero();
+  }
+
+  @Test
+  void aWholeGermanTranslationCanBeReplacedWhenAskedForExplicitly() throws Exception {
+    long current = translation("de", "Pausiert durch das Landesamt.", true);
+    String body =
+        json.writeValueAsString(
+            java.util.Map.of(
+                "field",
+                "text_de",
+                "replace",
+                "Zurückgestellt durch die Landesbehörde.",
+                "reason",
+                "by hand",
+                "replaceAll",
+                true));
+
+    JsonNode out = ok(post("/admin/pages/" + page + "/corrections", body));
+
+    assertThat(out.get("whole").asBoolean()).isTrue();
+    assertThat(text("SELECT text FROM page_translation WHERE id = ?", current))
+        .isEqualTo("Zurückgestellt durch die Landesbehörde.");
+    JsonNode audit = json.readTree(get("/admin/records/" + record + "/corrections").body()).get(0);
+    assertThat(audit.get("oldText").asText()).isEqualTo("Pausiert durch das Landesamt.");
+  }
+
+  @Test
   void aCorrectionIsAuditedWithWhatItReplacedWhoAndWhy() throws Exception {
     ok(
         post(
@@ -337,6 +409,21 @@ class ManualCorrectionTest {
   }
 
   // --- harness ----------------------------------------------------------------------------
+
+  /** A translation of the page into {@code lang}, made from its current text or an older one. */
+  private long translation(String lang, String text, boolean current) {
+    return jdbc.sql(
+            "INSERT INTO page_translation (page_id, lang, model, text, source_md5)"
+                + " SELECT :p, :l, :m, :t, CASE WHEN :c THEN md5(text_raw) ELSE md5('older') END"
+                + " FROM page_text WHERE page_id = :p RETURNING id")
+        .param("p", page)
+        .param("l", lang)
+        .param("m", "model-" + UUID.randomUUID())
+        .param("t", text)
+        .param("c", current)
+        .query(Long.class)
+        .single();
+  }
 
   private String body(String field, String find, String replace, String reason) throws Exception {
     return json.writeValueAsString(
