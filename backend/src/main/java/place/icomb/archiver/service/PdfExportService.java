@@ -349,7 +349,7 @@ public class PdfExportService {
     float drawY = boxY + (boxH - drawH) / 2f;
     cs.drawImage(image, drawX, drawY, drawW, drawH);
 
-    drawInvisibleTextLayer(cs, renderer, rawResponseJson, drawX, drawY, drawW, drawH);
+    drawInvisibleTextLayer(cs, renderer, rawResponseJson, plainText, drawX, drawY, drawW, drawH);
   }
 
   /**
@@ -362,12 +362,13 @@ public class PdfExportService {
       PDPageContentStream cs,
       MarkdownPdfRenderer renderer,
       String rawResponseJson,
+      String currentText,
       float drawX,
       float drawY,
       float drawW,
       float drawH)
       throws IOException {
-    List<Block> blocks = parseBlocks(rawResponseJson);
+    List<Block> blocks = parseBlocks(rawResponseJson, currentText);
     if (blocks.isEmpty()) {
       return;
     }
@@ -416,8 +417,11 @@ public class PdfExportService {
       float pageWidth,
       float pageHeight) {}
 
-  /** Reads block boxes from the OCR response, tolerating anything unexpected. */
-  private List<Block> parseBlocks(String rawResponseJson) {
+  /**
+   * Reads block boxes from the OCR response, tolerating anything unexpected, with the text of each
+   * as the page reads now: a hand correction since the engine read it is carried into its box.
+   */
+  private List<Block> parseBlocks(String rawResponseJson, String currentText) {
     List<Block> out = new java.util.ArrayList<>();
     if (rawResponseJson == null || rawResponseJson.isBlank()) return out;
     try {
@@ -427,10 +431,20 @@ public class PdfExportService {
       float pw = (float) page.path("dimensions").path("width").asDouble(0);
       float ph = (float) page.path("dimensions").path("height").asDouble(0);
       if (pw <= 0 || ph <= 0) return out;
-      for (com.fasterxml.jackson.databind.JsonNode b : page.path("blocks")) {
+      List<com.fasterxml.jackson.databind.JsonNode> nodes = new java.util.ArrayList<>();
+      page.path("blocks").forEach(nodes::add);
+      List<String> texts =
+          CorrectedBlocks.apply(
+              root.path("pages").isArray() && root.path("pages").path(0).has("markdown")
+                  ? OcrBatchStage.extractText(root)
+                  : null,
+              currentText,
+              nodes.stream().map(b -> b.path("content").asText("")).toList());
+      for (int k = 0; k < nodes.size(); k++) {
+        com.fasterxml.jackson.databind.JsonNode b = nodes.get(k);
         out.add(
             new Block(
-                b.path("content").asText(""),
+                texts.get(k),
                 (float) b.path("top_left_x").asDouble(0),
                 (float) b.path("top_left_y").asDouble(0),
                 (float) b.path("bottom_right_x").asDouble(0),
@@ -517,13 +531,15 @@ public class PdfExportService {
 
         List<java.util.Map<String, Object>> rows =
             jdbcTemplate.queryForList(
-                "SELECT raw_response::text AS raw_response FROM page_text WHERE page_id = ?",
+                "SELECT raw_response::text AS raw_response, text_raw FROM page_text"
+                    + " WHERE page_id = ?",
                 page.getId());
         String rawResponse = rows.isEmpty() ? null : (String) rows.get(0).get("raw_response");
+        String textRaw = rows.isEmpty() ? null : (String) rows.get(0).get("text_raw");
 
         try (PDPageContentStream cs = new PDPageContentStream(doc, pdfPage)) {
           cs.drawImage(image, 0, 0, imgWidth, imgHeight);
-          drawInvisibleTextLayer(cs, renderer, rawResponse, 0, 0, imgWidth, imgHeight);
+          drawInvisibleTextLayer(cs, renderer, rawResponse, textRaw, 0, 0, imgWidth, imgHeight);
         }
       }
     }
