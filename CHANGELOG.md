@@ -9,6 +9,13 @@ new revision, no build is triggered, and the release silently never happens —
 which is exactly what v1.0.0 did on its first attempt. Add the entry below,
 commit, then tag that commit.
 
+## v1.1.35 — 24 November 2026
+
+**Hand corrections reach the scan's text layer.** The invisible text over a scan in the original
+and side-by-side PDFs is drawn from the OCR engine's block boxes, and so kept a misreading after
+the transcription had been corrected. The corrected lines are now drawn in the engine's boxes; the
+engine's own response is unchanged.
+
 ## v1.1.34 — 24 November 2026
 
 **German and Czech translations can be corrected by hand.** `POST /api/admin/pages/{id}/corrections`
