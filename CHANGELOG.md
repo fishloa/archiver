@@ -9,6 +9,12 @@ new revision, no build is triggered, and the release silently never happens —
 which is exactly what v1.0.0 did on its first attempt. Add the entry below,
 commit, then tag that commit.
 
+## v1.1.34 — 24 November 2026
+
+**German and Czech translations can be corrected by hand.** `POST /api/admin/pages/{id}/corrections`
+takes `text_de` and `text_cs` as well as `text_raw` and `text_en`. Only the translation of the
+current transcription is changed; a page with none answers 404. V29 widens the audit's field check.
+
 ## v1.1.33 — 19 November 2026
 
 **Tree evidence, people on pages, pictures by number.** A page and a record show who is linked to
