@@ -9,6 +9,12 @@ new revision, no build is triggered, and the release silently never happens —
 which is exactly what v1.0.0 did on its first attempt. Add the entry below,
 commit, then tag that commit.
 
+## v1.1.36 — 24 November 2026
+
+**A deploy no longer serves PDFs built by the previous code.** An identical export request reused a
+finished file for 24 hours, even after a release changed how pages render. A finished export is now
+reused only if it was built since the backend last started.
+
 ## v1.1.35 — 24 November 2026
 
 **Hand corrections reach the scan's text layer.** The invisible text over a scan in the original
